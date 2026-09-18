@@ -20,10 +20,12 @@ input[type="text"] {
   flex: 1; min-width: 200px; padding: 8px 10px;
   background: #1e2126; border: 1px solid #333740; color: #e6e6e6; border-radius: 6px;
 }
-select {
+select, input[type="number"] {
   padding: 8px 10px; background: #1e2126; border: 1px solid #333740;
-  color: #e6e6e6; border-radius: 6px;
+  color: #e6e6e6; border-radius: 6px; color-scheme: dark; font: inherit;
 }
+input[type="number"] { width: 90px; }
+input[type="number"]:focus, input[type="text"]:focus, select:focus { outline: 1px solid #3a6df0; border-color: #3a6df0; }
 button {
   padding: 8px 14px; background: #3a6df0; border: none; color: white;
   border-radius: 6px; cursor: pointer; font-size: 14px;
@@ -224,3 +226,7 @@ main { padding-top: 4px; }
   .mobile-sort select { flex: 1; min-width: 0; }
   .mobile-sort button { padding: 8px 14px; }
 }
+
+/* Компактная ширина: на широких экранах контент не растягивается на весь монитор */
+#site-chrome, main, .page-header { max-width: 1100px; margin-left: auto; margin-right: auto; }
+.mastery-cat summary input, .mastery-row input { width: 76px; padding: 5px 8px; }
