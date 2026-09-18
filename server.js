@@ -37,6 +37,12 @@ const CITY_DISPLAY = {
   Brecilien: 'Brecilien',
 };
 
+// Налог с продажи через рынок: 8% без премиума, 4% с премиумом (параметр ?premium=true).
+const SALES_TAX = { premium: 0.04, free: 0.08 };
+function getSalesTaxRate(req) {
+  return req.query.premium === 'true' ? SALES_TAX.premium : SALES_TAX.free;
+}
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map();
 
@@ -122,13 +128,48 @@ async function fetchHistoryBatched(itemIds, hours, quality, locations) {
   return results.flat();
 }
 
-function totalVolume(historyData, itemId) {
+// AODP отдаёт "Fort Sterling" / "Black Market" с пробелом, а в query-параметрах их пишут без —
+// сравниваем по нормализованному имени.
+function normLocation(s) {
+  return String(s || '').replace(/\s+/g, '').toLowerCase();
+}
+
+// Объём сделок по item_id. Если передан locations — считаем только по этим городам
+// (нужно, чтобы объём относился к городам конкретной сделки, а не ко всем сразу).
+function totalVolume(historyData, itemId, locations) {
+  const allowed = locations ? new Set(locations.map(normLocation)) : null;
   let total = 0;
   for (const series of historyData) {
     if (series.item_id !== itemId) continue;
+    if (allowed && !allowed.has(normLocation(series.location))) continue;
     for (const p of series.data || []) total += p.item_count;
   }
   return total;
+}
+
+// Возраст котировки в минутах; null, если даты нет (AODP отдаёт 0001-01-01 для "нет данных").
+function quoteAgeMinutes(dateStr, now) {
+  if (!dateStr || dateStr === '0001-01-01T00:00:00') return null;
+  return (now - new Date(dateStr + 'Z').getTime()) / 60000;
+}
+
+// Возраст сделки = возраст самой старой из её котировок (свежесть цепочки определяет слабое звено).
+function dealAgeMinutes(dates, now) {
+  let oldest = null;
+  for (const d of dates) {
+    const age = quoteAgeMinutes(d, now);
+    if (age === null) return null;
+    if (oldest === null || age > oldest) oldest = age;
+  }
+  return oldest === null ? null : Math.round(oldest);
+}
+
+// Штраф скора за возраст данных: до часа — без штрафа, старше 3 часов — вдвое, между — линейно.
+function freshnessDecay(freshMinutes) {
+  if (freshMinutes === null || freshMinutes === undefined) return 0.5;
+  if (freshMinutes <= 60) return 1;
+  if (freshMinutes >= 180) return 0.5;
+  return 1 - 0.5 * ((freshMinutes - 60) / 120);
 }
 
 // Минимальный порог "это вообще продаётся" — растёт вместе с окном сканирования.
@@ -209,6 +250,7 @@ app.get('/api/refining-calc', async (req, res) => {
     }
 
     const rrr = rrrFromBonus(preset.bonus);
+    const taxRate = getSalesTaxRate(req);
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
 
     const perCity = queryCities.map((city) => {
@@ -216,16 +258,17 @@ app.get('/api/refining-calc', async (req, res) => {
       const prevPrice = prevId ? byItemCity[prevId]?.[city]?.sell_price_min || null : null;
       const outputSell = byItemCity[refinedId]?.[city]?.buy_price_max || null;
       const outputBuy = byItemCity[refinedId]?.[city]?.sell_price_min || null;
+      const netOutputSell = outputSell !== null ? outputSell * (1 - taxRate) : null;
       let baseCost = null;
       if (rawPrice !== null && (prevId === null || prevPrice !== null)) {
         baseCost = ratio.raw * rawPrice + (prevId ? ratio.prevRefined * prevPrice : 0);
       }
       const effectiveCost = baseCost !== null ? baseCost * (1 - rrr) : null;
-      const profit = effectiveCost !== null && outputSell !== null ? outputSell - effectiveCost : null;
-      return { city, rawPrice, prevPrice, outputSell, outputBuy, baseCost, effectiveCost, profit };
+      const profit = effectiveCost !== null && netOutputSell !== null ? netOutputSell - effectiveCost : null;
+      return { city, rawPrice, prevPrice, outputSell, outputBuy, netOutputSell, baseCost, effectiveCost, profit };
     });
 
-    res.json({ itemId: refinedId, tier, type, enchant, ratio, rrrPreset: { ...preset, rrr }, bonusCity: BONUS_CITY[type], perCity });
+    res.json({ itemId: refinedId, tier, type, enchant, ratio, taxRate, rrrPreset: { ...preset, rrr }, bonusCity: BONUS_CITY[type], perCity });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'failed to compute refining calc', details: err.message });
@@ -321,7 +364,9 @@ app.get('/api/craft-calc', async (req, res) => {
     for (const sp of sellPrices) {
       if (sp.buyMax && (!bestSell || sp.buyMax > bestSell.price)) bestSell = { city: sp.city, price: sp.buyMax };
     }
-    const profitPerUnit = bestSell ? bestSell.price - effectiveCostPerUnit : null;
+    const taxRate = getSalesTaxRate(req);
+    const netSellPrice = bestSell ? bestSell.price * (1 - taxRate) : null;
+    const profitPerUnit = netSellPrice !== null ? netSellPrice - effectiveCostPerUnit : null;
 
     res.json({
       itemId, enchant, quality, quantity,
@@ -334,6 +379,8 @@ app.get('/api/craft-calc', async (req, res) => {
       totalCost: effectiveCostPerUnit * quantity,
       sellPrices,
       bestSell,
+      taxRate,
+      netSellPrice,
       profitPerUnit,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
     });
@@ -349,7 +396,8 @@ let scanCache = null;
 
 app.get('/api/opportunities', async (req, res) => {
   try {
-    if (scanCache && Date.now() - scanCache.ts < SCAN_CACHE_TTL_MS) return res.json(scanCache.data);
+    const taxRate = getSalesTaxRate(req);
+    if (scanCache && scanCache.taxRate === taxRate && Date.now() - scanCache.ts < SCAN_CACHE_TTL_MS) return res.json(scanCache.data);
 
     const allIds = ITEMS.map((i) => i.id);
     const data = await fetchPricesBatched(allIds, 1);
@@ -364,44 +412,54 @@ app.get('/api/opportunities', async (req, res) => {
     const results = [];
     for (const itemId of Object.keys(byItem)) {
       const records = byItem[itemId];
-      let bestBuy = null;
-      let bestSell = null;
-      let freshestAgeMin = Infinity;
+      let bestBuy = null; // самая низкая sell_price_min — где дешевле всего купить
+      let bestSell = null; // самая высокая buy_price_max — где дороже всего продать
       for (const rec of records) {
-        if (rec.sell_price_min && (!bestBuy || rec.sell_price_min < bestBuy.price)) bestBuy = { city: rec.city, price: rec.sell_price_min };
-        if (rec.buy_price_max && (!bestSell || rec.buy_price_max > bestSell.price)) bestSell = { city: rec.city, price: rec.buy_price_max };
-        for (const d of [rec.sell_price_min_date, rec.buy_price_max_date]) {
-          if (d && d !== '0001-01-01T00:00:00') {
-            const ageMin = (now - new Date(d + 'Z').getTime()) / 60000;
-            if (ageMin < freshestAgeMin) freshestAgeMin = ageMin;
-          }
+        if (rec.sell_price_min && (!bestBuy || rec.sell_price_min < bestBuy.price)) {
+          bestBuy = { city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date };
+        }
+        if (rec.buy_price_max && (!bestSell || rec.buy_price_max > bestSell.price)) {
+          bestSell = { city: rec.city, price: rec.buy_price_max, date: rec.buy_price_max_date };
         }
       }
-      if (!bestBuy || !bestSell || bestSell.price <= bestBuy.price) continue;
-      const spread = bestSell.price - bestBuy.price;
+      if (!bestBuy || !bestSell) continue;
+
+      // Прибыль считаем после налога с продажи — сырой спред завышает выгоду.
+      const grossSellPrice = bestSell.price;
+      const spread = grossSellPrice * (1 - taxRate) - bestBuy.price;
+      if (spread <= 0) continue;
       const spreadPct = (spread / bestBuy.price) * 100;
-      results.push({ itemId, bestBuy, bestSell, spread, spreadPct, freshMinutes: freshestAgeMin === Infinity ? null : Math.round(freshestAgeMin) });
+      // Свежесть — по двум котировкам самой сделки, а не по любым записям предмета.
+      const freshMinutes = dealAgeMinutes([bestBuy.date, bestSell.date], now);
+      results.push({ itemId, bestBuy, bestSell, grossSellPrice, taxRate, spread, spreadPct, freshMinutes });
     }
 
     results.sort((a, b) => b.spreadPct - a.spreadPct);
 
+    // Стадия 2: у ВСЕХ позиций со спредом проверяем реальный объём сделок за 24ч —
+    // не только у топ-60 по спреду, иначе туда чаще всего попадают нишевые вещи
+    // с огромным спредом на 1-2 случайных ордерах, и почти всё потом отсеивается.
     const candidates = results;
-    const MIN_VOLUME_24H = 3;
+    const MIN_VOLUME_24H = 3; // меньше — считаем "по факту не продаётся"
+
     let withVolume = candidates;
     try {
       const historyData = await fetchHistoryBatched(candidates.map((c) => c.itemId), 24, 1, CITIES);
       withVolume = candidates
-        .map((c) => ({ ...c, volume24h: totalVolume(historyData, c.itemId) }))
+        // Объём — только по двум городам сделки: ликвидность в других городах мне не поможет.
+        .map((c) => ({ ...c, volume24h: totalVolume(historyData, c.itemId, [c.bestBuy.city, c.bestSell.city]) }))
         .filter((c) => c.volume24h >= MIN_VOLUME_24H)
-        .map((c) => ({ ...c, score: opportunityScore(c.spreadPct, c.volume24h) }))
+        .map((c) => ({ ...c, score: opportunityScore(c.spreadPct, c.volume24h) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
+      // Если история не смогла подгрузиться — не роняем весь сканер, просто отдаём
+      // без данных об объёме (клиент это отобразит как "не проверено").
       console.error('history check failed for opportunities scan:', err.message);
       withVolume = candidates.map((c) => ({ ...c, volume24h: null }));
     }
 
     const top = withVolume.slice(0, 25);
-    scanCache = { ts: Date.now(), data: top };
+    scanCache = { taxRate, ts: Date.now(), data: top };
     res.json(top);
   } catch (err) {
     console.error(err);
@@ -455,22 +513,21 @@ app.get('/api/bm-opportunities', async (req, res) => {
       const records = byItem[itemId];
       let bestBuy = null;
       let bmSell = null;
-      let freshestAgeMin = Infinity;
       for (const rec of records) {
         const isBM = rec.city === 'Black Market';
-        if (!isBM && rec.sell_price_min && (!bestBuy || rec.sell_price_min < bestBuy.price)) bestBuy = { city: rec.city, price: rec.sell_price_min };
-        if (isBM && rec.buy_price_max && (!bmSell || rec.buy_price_max > bmSell.price)) bmSell = { price: rec.buy_price_max };
-        for (const d of [rec.sell_price_min_date, rec.buy_price_max_date]) {
-          if (d && d !== '0001-01-01T00:00:00') {
-            const ageMin = (now - new Date(d + 'Z').getTime()) / 60000;
-            if (ageMin < freshestAgeMin) freshestAgeMin = ageMin;
-          }
+        if (!isBM && rec.sell_price_min && (!bestBuy || rec.sell_price_min < bestBuy.price)) {
+          bestBuy = { city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date };
+        }
+        if (isBM && rec.buy_price_max && (!bmSell || rec.buy_price_max > bmSell.price)) {
+          bmSell = { price: rec.buy_price_max, date: rec.buy_price_max_date };
         }
       }
       if (!bestBuy || !bmSell || bmSell.price <= bestBuy.price) continue;
       const profit = bmSell.price - bestBuy.price;
       const profitPct = (profit / bestBuy.price) * 100;
-      results.push({ itemId, bestBuy, bmPrice: bmSell.price, profit, profitPct, freshMinutes: freshestAgeMin === Infinity ? null : Math.round(freshestAgeMin) });
+      // Свежесть — по двум котировкам самой сделки (покупка в городе + цена БМ), а не по всем записям предмета.
+      const freshMinutes = dealAgeMinutes([bestBuy.date, bmSell.date], now);
+      results.push({ itemId, bestBuy, bmPrice: bmSell.price, profit, profitPct, freshMinutes });
     }
 
     results.sort((a, b) => b.profitPct - a.profitPct);
@@ -483,7 +540,7 @@ app.get('/api/bm-opportunities', async (req, res) => {
       withVolume = candidates
         .map((c) => ({ ...c, bmVolume24h: totalVolume(historyData, c.itemId) }))
         .filter((c) => c.bmVolume24h >= MIN_BM_VOLUME_24H)
-        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.bmVolume24h) }))
+        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.bmVolume24h) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
       console.error('BM history check failed:', err.message);
@@ -508,7 +565,8 @@ app.get('/api/craft-opportunities', async (req, res) => {
     const hours = ALLOWED_HOURS.includes(parseInt(req.query.hours, 10)) ? parseInt(req.query.hours, 10) : 24;
     const rrrId = req.query.rrr || 'none';
     const citiesParam = req.query.cities;
-    const cacheKey = `${hours}:${rrrId}:${citiesParam || 'default'}`;
+    const taxRate = getSalesTaxRate(req);
+    const cacheKey = `${hours}:${rrrId}:${citiesParam || 'default'}:${taxRate}`;
 
     if (craftScanCache && craftScanCache.key === cacheKey && Date.now() - craftScanCache.ts < SCAN_CACHE_TTL_MS) {
       return res.json(craftScanCache.data);
@@ -542,15 +600,19 @@ app.get('/api/craft-opportunities', async (req, res) => {
       const recipe = RECIPES[itemId];
       let cost = 0;
       let complete = true;
+      const quoteDates = [];
       for (const r of recipe.resources) {
         const cityPrices = materialByCity[r.resource] || {};
         let cheapest = null;
         for (const city of queryCities) {
           const rec = cityPrices[city];
-          if (rec && rec.sell_price_min && (!cheapest || rec.sell_price_min < cheapest)) cheapest = rec.sell_price_min;
+          if (rec && rec.sell_price_min && (!cheapest || rec.sell_price_min < cheapest.price)) {
+            cheapest = { price: rec.sell_price_min, date: rec.sell_price_min_date };
+          }
         }
         if (cheapest === null) { complete = false; break; }
-        cost += cheapest * r.count;
+        cost += cheapest.price * r.count;
+        quoteDates.push(cheapest.date);
       }
       if (!complete) continue;
 
@@ -559,13 +621,19 @@ app.get('/api/craft-opportunities', async (req, res) => {
       let bestSell = null;
       for (const city of queryCities) {
         const rec = sellCityData[city];
-        if (rec && rec.buy_price_max && (!bestSell || rec.buy_price_max > bestSell.price)) bestSell = { city, price: rec.buy_price_max };
+        if (rec && rec.buy_price_max && (!bestSell || rec.buy_price_max > bestSell.price)) {
+          bestSell = { city, price: rec.buy_price_max, date: rec.buy_price_max_date };
+        }
       }
-      if (!bestSell || bestSell.price <= effectiveCost) continue;
+      if (!bestSell) continue;
+      const netSell = bestSell.price * (1 - taxRate);
+      if (netSell <= effectiveCost) continue;
 
-      const profit = bestSell.price - effectiveCost;
+      const profit = netSell - effectiveCost;
       const profitPct = (profit / effectiveCost) * 100;
-      results.push({ itemId, cost: effectiveCost, bestSell, profit, profitPct });
+      // Свежесть — по самой старой из котировок сделки: цены материалов и цена продажи.
+      const freshMinutes = dealAgeMinutes([...quoteDates, bestSell.date], Date.now());
+      results.push({ itemId, cost: effectiveCost, bestSell, taxRate, profit, profitPct, freshMinutes });
     }
 
     results.sort((a, b) => b.profitPct - a.profitPct);
@@ -576,9 +644,10 @@ app.get('/api/craft-opportunities', async (req, res) => {
     try {
       const historyData = await fetchHistoryBatched(candidates.map((c) => c.itemId), hours, 1, queryCities);
       withVolume = candidates
-        .map((c) => ({ ...c, volume: totalVolume(historyData, c.itemId) }))
+        // Объём — по городу, где продаём готовый предмет.
+        .map((c) => ({ ...c, volume: totalVolume(historyData, c.itemId, [c.bestSell.city]) }))
         .filter((c) => c.volume >= minVolume)
-        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) }))
+        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
       console.error('craft scan history check failed:', err.message);
@@ -603,7 +672,8 @@ app.get('/api/refining-opportunities', async (req, res) => {
     const hours = ALLOWED_HOURS.includes(parseInt(req.query.hours, 10)) ? parseInt(req.query.hours, 10) : 24;
     const rrrId = req.query.rrr || 'none';
     const citiesParam = req.query.cities;
-    const cacheKey = `${hours}:${rrrId}:${citiesParam || 'default'}`;
+    const taxRate = getSalesTaxRate(req);
+    const cacheKey = `${hours}:${rrrId}:${citiesParam || 'default'}:${taxRate}`;
 
     if (refiningScanCache && refiningScanCache.key === cacheKey && Date.now() - refiningScanCache.ts < SCAN_CACHE_TTL_MS) {
       return res.json(refiningScanCache.data);
@@ -636,7 +706,9 @@ app.get('/api/refining-opportunities', async (req, res) => {
       let best = null;
       for (const city of queryCities) {
         const rec = byItemCity[itemId]?.[city];
-        if (rec && rec.sell_price_min && (!best || rec.sell_price_min < best)) best = rec.sell_price_min;
+        if (rec && rec.sell_price_min && (!best || rec.sell_price_min < best.price)) {
+          best = { price: rec.sell_price_min, date: rec.sell_price_min_date };
+        }
       }
       return best;
     };
@@ -644,7 +716,9 @@ app.get('/api/refining-opportunities', async (req, res) => {
       let best = null;
       for (const city of queryCities) {
         const rec = byItemCity[itemId]?.[city];
-        if (rec && rec.buy_price_max && (!best || rec.buy_price_max > best.price)) best = { city, price: rec.buy_price_max };
+        if (rec && rec.buy_price_max && (!best || rec.buy_price_max > best.price)) {
+          best = { city, price: rec.buy_price_max, date: rec.buy_price_max_date };
+        }
       }
       return best;
     };
@@ -656,19 +730,22 @@ app.get('/api/refining-opportunities', async (req, res) => {
       const refinedId = `T${tier}_${REFINED_NAME[type]}`;
       const prevId = tier > 2 ? `T${tier - 1}_${REFINED_NAME[type]}` : null;
 
-      const rawPrice = cheapestAcross(rawId);
-      const prevPrice = prevId ? cheapestAcross(prevId) : 0;
-      if (rawPrice === null || (prevId && prevPrice === null)) continue;
+      const rawQuote = cheapestAcross(rawId);
+      const prevQuote = prevId ? cheapestAcross(prevId) : null;
+      if (rawQuote === null || (prevId && prevQuote === null)) continue;
 
-      const cost = ratio.raw * rawPrice + (prevId ? ratio.prevRefined * prevPrice : 0);
+      const cost = ratio.raw * rawQuote.price + (prevId ? ratio.prevRefined * prevQuote.price : 0);
       const effectiveCost = cost * (1 - rrr);
 
       const bestSell = bestSellAcross(refinedId);
-      if (!bestSell || bestSell.price <= effectiveCost) continue;
+      if (!bestSell) continue;
+      const netSell = bestSell.price * (1 - taxRate);
+      if (netSell <= effectiveCost) continue;
 
-      const profit = bestSell.price - effectiveCost;
+      const profit = netSell - effectiveCost;
       const profitPct = (profit / effectiveCost) * 100;
-      results.push({ itemId: refinedId, type, tier, cost: effectiveCost, bestSell, profit, profitPct });
+      const freshMinutes = dealAgeMinutes([rawQuote.date, ...(prevQuote ? [prevQuote.date] : []), bestSell.date], Date.now());
+      results.push({ itemId: refinedId, type, tier, cost: effectiveCost, bestSell, taxRate, profit, profitPct, freshMinutes });
     }
 
     results.sort((a, b) => b.profitPct - a.profitPct);
@@ -679,9 +756,9 @@ app.get('/api/refining-opportunities', async (req, res) => {
     try {
       const historyData = await fetchHistoryBatched(candidates.map((c) => c.itemId), hours, 1, queryCities);
       withVolume = candidates
-        .map((c) => ({ ...c, volume: totalVolume(historyData, c.itemId) }))
+        .map((c) => ({ ...c, volume: totalVolume(historyData, c.itemId, [c.bestSell.city]) }))
         .filter((c) => c.volume >= minVolume)
-        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) }))
+        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
       console.error('refining scan history check failed:', err.message);

@@ -6,6 +6,12 @@ function activeCities() {
   return [...ALWAYS_CITIES, ...OPTIONAL_CITIES.filter((c) => enabledOptional.has(c))];
 }
 
+// Премиум-аккаунт меняет налог с продажи (4% вместо 8%) — передаётся во все расчёты прибыли.
+let premium = localStorage.getItem('albion_premium') === 'true';
+function premiumParam() {
+  return premium ? 'true' : 'false';
+}
+
 const STORAGE_KEY = 'albion_tracked_items';
 let ALL_ITEMS = [];
 let selectedInSearch = new Set();
@@ -23,6 +29,7 @@ const el = {
   autoToggle: document.getElementById('auto-refresh-toggle'),
   cityCaerleon: document.getElementById('city-caerleon'),
   cityBrecilien: document.getElementById('city-brecilien'),
+  premiumToggle: document.getElementById('premium-toggle'),
   qualitySelect: document.getElementById('quality-select'),
   enchantSelect: document.getElementById('enchant-select'),
   tableHead: document.getElementById('table-head'),
@@ -445,6 +452,11 @@ function toggleOptionalCity(city, checked) {
   buildHead();
   renderTable();
 }
+el.premiumToggle.checked = premium;
+el.premiumToggle.addEventListener('change', (e) => {
+  premium = e.target.checked;
+  localStorage.setItem('albion_premium', String(premium));
+});
 el.cityCaerleon.addEventListener('change', (e) => toggleOptionalCity('Caerleon', e.target.checked));
 el.cityBrecilien.addEventListener('change', (e) => toggleOptionalCity('Brecilien', e.target.checked));
 
@@ -474,7 +486,7 @@ async function runCalc() {
   try {
     const params = new URLSearchParams({
       type: calcEl.type.value, tier: calcEl.tier.value, enchant: calcEl.enchant.value,
-      rrr: calcEl.rrr.value, cities: activeCities().join(','),
+      rrr: calcEl.rrr.value, cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/refining-calc?${params}`);
     const data = await res.json();
@@ -511,6 +523,7 @@ function renderCalcResult(data) {
       Рецепт: ${data.ratio.raw} × сырьё T${data.tier}
       ${data.ratio.prevRefined ? `+ ${data.ratio.prevRefined} × материал T${data.tier - 1}` : ''}
       → 1 × ${data.itemId}. RRR: ${(data.rrrPreset.rrr * 100).toFixed(1)}% (${data.rrrPreset.label}).
+      Профит считается после налога с продажи (${(data.taxRate * 100).toFixed(0)}%).
       ⭐ — город со спец-бонусом переработки этого ресурса.
     </p>
     <table class="calc-table">
@@ -529,7 +542,7 @@ async function runScan() {
   scanBtn.disabled = true;
   scanResult.innerHTML = 'Сканирую весь каталог, это может занять несколько секунд...';
   try {
-    const res = await fetch('/api/opportunities');
+    const res = await fetch(`/api/opportunities?premium=${premiumParam()}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderScanResult(data);
@@ -565,7 +578,7 @@ function renderScanResult(rows) {
   }).join('');
 
   scanResult.innerHTML = `
-    <p class="calc-note">Предметы с объёмом меньше 3 сделок за 24ч уже отфильтрованы. ⚠ — данные старше 3 часов.</p>
+    <p class="calc-note">Спред — после налога с продажи (${rows[0] ? (rows[0].taxRate * 100).toFixed(0) : '8'}%). Объём — только по двум городам сделки; меньше 3 сделок за 24ч уже отфильтровано. Старые котировки понижают позицию в списке. ⚠ — данные старше 3 часов.</p>
     <table class="scan-table">
       <thead><tr><th>Предмет</th><th>Спред</th><th>Купить</th><th>Продать</th><th>Объём 24ч</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
@@ -719,6 +732,7 @@ async function runCraftCalc() {
     const params = new URLSearchParams({
       item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
       quantity: craftEl.quantity.value || '1', rrr: craftEl.rrr.value, cities: activeCities().join(','),
+      premium: premiumParam(),
     });
     const res = await fetch(`/api/craft-calc?${params}`);
     const data = await res.json();
@@ -774,6 +788,7 @@ function renderCraftResult(data) {
       <div class="craft-summary-row"><span>Себестоимость материала / шт (сырое)</span><span>${Math.round(data.materialCostPerUnit).toLocaleString('ru-RU')}</span></div>
       <div class="craft-summary-row"><span>Себестоимость с учётом RRR (${(data.rrrPreset.rrr * 100).toFixed(1)}%) / шт</span><span>${Math.round(data.effectiveCostPerUnit).toLocaleString('ru-RU')}</span></div>
       <div class="craft-summary-row"><span>Лучшая цена продажи</span><span>${data.bestSell ? `${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
+      <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${data.netSellPrice !== null ? Math.round(data.netSellPrice).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
@@ -790,7 +805,7 @@ async function runCraftScan() {
   craftScanBtn.disabled = true;
   craftScanResult.innerHTML = 'Считаю себестоимость по всем рецептам, это может занять несколько секунд...';
   try {
-    const params = new URLSearchParams({ hours: craftScanHours.value, cities: activeCities().join(','), rrr: 'none' });
+    const params = new URLSearchParams({ hours: craftScanHours.value, cities: activeCities().join(','), rrr: 'none', premium: premiumParam() });
     const res = await fetch(`/api/craft-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -823,7 +838,7 @@ function renderCraftScanResult(rows) {
   }).join('');
 
   craftScanResult.innerHTML = `
-    <p class="calc-note">Без зачарования, обычное качество. Объём считается за выбранный период, малоликвидное уже отфильтровано.</p>
+    <p class="calc-note">Без зачарования, обычное качество. Профит — после налога с продажи. Объём — по городу продажи за выбранный период, малоликвидное уже отфильтровано. Старые котировки понижают позицию в списке.</p>
     <table class="scan-table">
       <thead><tr><th>Предмет</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Объём</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
@@ -858,7 +873,7 @@ async function runRefineScan() {
   refineScanBtn.disabled = true;
   refineScanResult.innerHTML = 'Считаю по всем 35 комбинациям ресурс×тир...';
   try {
-    const params = new URLSearchParams({ hours: refineScanHours.value, rrr: refineScanRrr.value, cities: activeCities().join(',') });
+    const params = new URLSearchParams({ hours: refineScanHours.value, rrr: refineScanRrr.value, cities: activeCities().join(','), premium: premiumParam() });
     const res = await fetch(`/api/refining-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
