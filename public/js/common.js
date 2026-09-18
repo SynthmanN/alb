@@ -74,8 +74,21 @@ function applyTableSort(table, key) {
   headers[col].appendChild(arrow);
 }
 
+// На узком экране строка таблицы превращается в карточку "подпись: значение" (см. style.css) —
+// подпись берётся из data-label, который проставляем по заголовку колонки.
+function labelTableCells(table) {
+  if (!table) return;
+  const labels = [...table.querySelectorAll('thead th')].map((th) => sortHeaderLabel(th));
+  table.querySelectorAll('tbody > tr:not(.chart-row)').forEach((tr) => {
+    [...tr.children].forEach((td, i) => {
+      if (labels[i] && !td.hasAttribute('data-label')) td.setAttribute('data-label', labels[i]);
+    });
+  });
+}
+
 function wireTableSort(table, key) {
   if (!table) return;
+  labelTableCells(table);
   table.querySelectorAll('thead th').forEach((th) => {
     const label = sortHeaderLabel(th);
     if (!label) return; // колонки-действия без названия не сортируем

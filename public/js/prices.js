@@ -155,6 +155,7 @@ function renderTable() {
 
     el.tableBody.appendChild(row);
   }
+  labelTableCells(el.tableHead.closest('table'));
   applyTableSort(el.tableHead.closest('table'), 'main');
 }
 

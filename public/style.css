@@ -189,3 +189,29 @@ main { padding-top: 4px; }
   .settings-bar { gap: 10px; }
   th, td { padding: 8px 8px; }
 }
+
+/* --- Таблицы на смартфонах: строка превращается в карточку "подпись: значение" --- */
+@media (max-width: 640px) {
+  .table-scroll { overflow-x: visible; }
+  table, thead, tbody, tr, th, td { display: block; }
+  thead { display: none; } /* подписи колонок берутся из data-label каждой ячейки */
+  table { margin-top: 8px; }
+  tbody tr {
+    margin-bottom: 10px; padding: 6px 12px; border: 1px solid #2a2d33;
+    border-radius: 8px; background: #1a1d22;
+  }
+  tbody tr:hover { background: #1a1d22; }
+  td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 6px 0; text-align: right; white-space: normal; border-bottom: 1px dashed #23262b;
+  }
+  td:last-child { border-bottom: none; }
+  td::before { content: attr(data-label); color: #9aa0aa; font-size: 12px; text-align: left; flex-shrink: 0; }
+  td:not([data-label])::before { content: none; }
+  /* первая ячейка (название предмета) — заголовок карточки */
+  td:first-child { justify-content: flex-start; font-weight: 700; font-size: 14px; text-align: left; }
+  td:first-child::before { content: none; }
+  td:empty { display: none; }
+  .chart-row { padding: 0; border: none; background: none; }
+  .chart-row td { display: block; }
+}
