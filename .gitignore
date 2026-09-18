@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.log
+.claude/settings.local.json
+.DS_Store
+
+# исходные материалы для восстановления (транскрипт, дайджест) — не для GitHub
+export/

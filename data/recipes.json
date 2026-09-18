@@ -1,0 +1,7552 @@
+{
+ "T2_OFF_SHIELD": {
+  "resources": [
+   {
+    "resource": "T2_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T2_METALBAR",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T3_OFF_SHIELD": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_OFF_SHIELD": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T5_OFF_SHIELD": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T6_OFF_SHIELD": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T7_OFF_SHIELD": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T8_OFF_SHIELD": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_OFF_SHIELD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 4
+   },
+   {
+    "resource": "T4_ARTEFACT_OFF_SHIELD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_OFF_SHIELD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 4
+   },
+   {
+    "resource": "T5_ARTEFACT_OFF_SHIELD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_OFF_SHIELD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 4
+   },
+   {
+    "resource": "T6_ARTEFACT_OFF_SHIELD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_OFF_SHIELD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 4
+   },
+   {
+    "resource": "T7_ARTEFACT_OFF_SHIELD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_OFF_SHIELD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 4
+   },
+   {
+    "resource": "T8_ARTEFACT_OFF_SHIELD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T2_OFF_BOOK": {
+  "resources": [
+   {
+    "resource": "T2_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T2_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T3_OFF_BOOK": {
+  "resources": [
+   {
+    "resource": "T3_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T3_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_OFF_BOOK": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T5_OFF_BOOK": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T6_OFF_BOOK": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T7_OFF_BOOK": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T8_OFF_BOOK": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_OFF_TOME_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 4
+   },
+   {
+    "resource": "T4_ARTEFACT_OFF_TOME_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_OFF_TOME_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 4
+   },
+   {
+    "resource": "T5_ARTEFACT_OFF_TOME_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_OFF_TOME_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 4
+   },
+   {
+    "resource": "T6_ARTEFACT_OFF_TOME_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_OFF_TOME_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 4
+   },
+   {
+    "resource": "T7_ARTEFACT_OFF_TOME_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_OFF_TOME_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 4
+   },
+   {
+    "resource": "T8_ARTEFACT_OFF_TOME_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_OFF_TORCH": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T3_CLOTH",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_OFF_TORCH": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T5_OFF_TORCH": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T6_OFF_TORCH": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T7_OFF_TORCH": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T8_OFF_TORCH": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_OFF_TORCH_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T4_ARTEFACT_OFF_TORCH_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_OFF_TORCH_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T5_ARTEFACT_OFF_TORCH_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_OFF_TORCH_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T6_ARTEFACT_OFF_TORCH_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_OFF_TORCH_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T7_ARTEFACT_OFF_TORCH_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_OFF_TORCH_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 4
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T8_ARTEFACT_OFF_TORCH_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T2_CAPE": {
+  "resources": [
+   {
+    "resource": "T2_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T2_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T3_CAPE": {
+  "resources": [
+   {
+    "resource": "T3_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T3_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPE": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPE": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPE": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPE": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPE": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 4
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 4
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_FW_BRIDGEWATCH": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_FW_BRIDGEWATCH_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_FW_BRIDGEWATCH": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_FW_BRIDGEWATCH_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_FW_BRIDGEWATCH": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_FW_BRIDGEWATCH_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_FW_BRIDGEWATCH": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_FW_BRIDGEWATCH_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_FW_BRIDGEWATCH": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_FW_BRIDGEWATCH_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_FW_FORTSTERLING": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_FW_FORTSTERLING_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_FW_FORTSTERLING": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_FW_FORTSTERLING_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_FW_FORTSTERLING": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_FW_FORTSTERLING_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_FW_FORTSTERLING": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_FW_FORTSTERLING_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_FW_FORTSTERLING": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_FW_FORTSTERLING_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_FW_LYMHURST": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_FW_LYMHURST_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_FW_LYMHURST": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_FW_LYMHURST_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_FW_LYMHURST": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_FW_LYMHURST_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_FW_LYMHURST": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_FW_LYMHURST_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_FW_LYMHURST": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_FW_LYMHURST_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_FW_MARTLOCK": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_FW_MARTLOCK_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_FW_MARTLOCK": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_FW_MARTLOCK_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_FW_MARTLOCK": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_FW_MARTLOCK_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_FW_MARTLOCK": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_FW_MARTLOCK_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_FW_MARTLOCK": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_FW_MARTLOCK_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_FW_THETFORD": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_FW_THETFORD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_FW_THETFORD": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_FW_THETFORD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_FW_THETFORD": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_FW_THETFORD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_FW_THETFORD": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_FW_THETFORD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_FW_THETFORD": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_FW_THETFORD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_FW_CAERLEON": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_FW_CAERLEON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_FW_CAERLEON": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_FW_CAERLEON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_FW_CAERLEON": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_FW_CAERLEON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_FW_CAERLEON": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_FW_CAERLEON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_FW_CAERLEON": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_FW_CAERLEON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_FW_BRECILIEN": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_FW_BRECILIEN_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_MISTS",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_FW_BRECILIEN": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_FW_BRECILIEN_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_MISTS",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_FW_BRECILIEN": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_FW_BRECILIEN_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_MISTS",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_FW_BRECILIEN": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_FW_BRECILIEN_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_MISTS",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_FW_BRECILIEN": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_FW_BRECILIEN_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_MISTS",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T2_HEAD_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T2_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_HEAD_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T2_ARMOR_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T2_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T3_ARMOR_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T2_SHOES_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T2_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_SHOES_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_PLATE_SET1": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_PLATE_SET2": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_PLATE_SET3": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T2_HEAD_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T2_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_HEAD_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T3_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T2_ARMOR_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T2_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T3_ARMOR_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T3_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T2_SHOES_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T2_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_SHOES_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T3_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_LEATHER_SET1": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_LEATHER_SET2": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_LEATHER_SET3": {
+  "resources": [
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T2_HEAD_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T2_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_HEAD_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T3_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T2_ARMOR_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T2_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T3_ARMOR_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T3_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T2_SHOES_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T2_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_SHOES_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T3_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_CLOTH_SET1": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_CLOTH_SET2": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_HEAD_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_HEAD_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_HEAD_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_HEAD_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_HEAD_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_ARMOR_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_ARMOR_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_ARMOR_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_ARMOR_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_ARMOR_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_SHOES_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_SHOES_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_SHOES_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_SHOES_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_SHOES_CLOTH_SET3": {
+  "resources": [
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T2_2H_BOW": {
+  "resources": [
+   {
+    "resource": "T2_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T3_2H_BOW": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_BOW": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_BOW": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_BOW": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_BOW": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_BOW": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_WARBOW": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_WARBOW": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_WARBOW": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_WARBOW": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_WARBOW": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_LONGBOW": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_LONGBOW": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_LONGBOW": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_LONGBOW": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_LONGBOW": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 32
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_BOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 32
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_BOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_BOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 32
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_BOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_BOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 32
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_BOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_BOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 32
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_BOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_BOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 32
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_BOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_2H_CROSSBOW": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_CROSSBOW": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_CROSSBOW": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_CROSSBOW": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_CROSSBOW": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_CROSSBOW": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_CROSSBOWLARGE": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_CROSSBOWLARGE": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_CROSSBOWLARGE": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_CROSSBOWLARGE": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_CROSSBOWLARGE": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_1HCROSSBOW": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_1HCROSSBOW": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_1HCROSSBOW": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_1HCROSSBOW": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_1HCROSSBOW": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DUALCROSSBOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DUALCROSSBOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DUALCROSSBOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DUALCROSSBOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DUALCROSSBOW_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_CURSEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DEMONICSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DEMONICSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DEMONICSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DEMONICSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DEMONICSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T4_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T5_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T6_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T7_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T8_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T2_MAIN_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T2_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T2_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_FIRESTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_INFERNOSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_INFERNOSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_INFERNOSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_INFERNOSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_INFERNOSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_FIRESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T4_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_FIRESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T5_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_FIRESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T6_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_FIRESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T7_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_FIRESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   },
+   {
+    "resource": "T8_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_FROSTSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_GLACIALSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_GLACIALSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_GLACIALSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_GLACIALSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_GLACIALSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_FROSTSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_FROSTSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_FROSTSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_FROSTSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_FROSTSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_ARCANESTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_ENIGMATICSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_ENIGMATICSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_ENIGMATICSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_ENIGMATICSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_ENIGMATICSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_ARCANESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_ARCANESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_ARCANESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_ARCANESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_ARCANESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T3_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_HOLYSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DIVINESTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DIVINESTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DIVINESTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DIVINESTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DIVINESTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_HOLYSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_HOLYSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_HOLYSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_HOLYSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_HOLYSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T3_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_NATURESTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_WILDSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_WILDSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_WILDSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_WILDSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_WILDSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_NATURESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T4_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_NATURESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T5_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_NATURESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T6_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_NATURESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T7_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_NATURESTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T8_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_DAGGER": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T3_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_DAGGER": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_DAGGER": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_DAGGER": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_DAGGER": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_DAGGER": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DAGGERPAIR": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DAGGERPAIR": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DAGGERPAIR": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DAGGERPAIR": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DAGGERPAIR": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_CLAWPAIR": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_CLAWPAIR": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_CLAWPAIR": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_CLAWPAIR": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_CLAWPAIR": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DAGGERPAIR_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 16
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DAGGERPAIR_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 16
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DAGGERPAIR_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 16
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DAGGERPAIR_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 16
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DAGGERPAIR_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 16
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_SPEAR": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_SPEAR": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_SPEAR": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_SPEAR": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_SPEAR": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_SPEAR": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 16
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_SPEAR": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_SPEAR": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_SPEAR": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_SPEAR": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_SPEAR": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_GLAIVE": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_GLAIVE": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_GLAIVE": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_GLAIVE": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_GLAIVE": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_GLAIVE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_GLAIVE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_GLAIVE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_GLAIVE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_GLAIVE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_GLAIVE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_GLAIVE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_GLAIVE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_GLAIVE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_GLAIVE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_AXE": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 8
+   },
+   {
+    "resource": "T3_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_AXE": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 8
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_AXE": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 8
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_AXE": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 8
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_AXE": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 8
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_AXE": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 8
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_AXE": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_AXE": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_AXE": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_AXE": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_AXE": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_HALBERD": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_HALBERD": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_HALBERD": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_HALBERD": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_HALBERD": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_SCYTHE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_SCYTHE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_SCYTHE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_SCYTHE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_SCYTHE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_SCYTHE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_SCYTHE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_SCYTHE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_SCYTHE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 12
+   },
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_SCYTHE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T2_MAIN_SWORD": {
+  "resources": [
+   {
+    "resource": "T2_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T2_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_SWORD": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T3_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_SWORD": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_SWORD": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_SWORD": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_SWORD": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_SWORD": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_CLAYMORE": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_CLAYMORE": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_CLAYMORE": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_CLAYMORE": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_CLAYMORE": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DUALSWORD": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DUALSWORD": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DUALSWORD": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DUALSWORD": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DUALSWORD": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_SWORD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 8
+   },
+   {
+    "resource": "T4_ARTEFACT_MAIN_SWORD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_SWORD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 8
+   },
+   {
+    "resource": "T5_ARTEFACT_MAIN_SWORD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_SWORD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 8
+   },
+   {
+    "resource": "T6_ARTEFACT_MAIN_SWORD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_SWORD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 8
+   },
+   {
+    "resource": "T7_ARTEFACT_MAIN_SWORD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_SWORD_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 8
+   },
+   {
+    "resource": "T8_ARTEFACT_MAIN_SWORD_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_2H_QUARTERSTAFF": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T3_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_QUARTERSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_QUARTERSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_QUARTERSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_QUARTERSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_QUARTERSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_IRONCLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_IRONCLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_IRONCLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_IRONCLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_IRONCLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DOUBLEBLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DOUBLEBLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DOUBLEBLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DOUBLEBLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DOUBLEBLADEDSTAFF": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_HAMMER": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 24
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_HAMMER": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 24
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_HAMMER": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 24
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_HAMMER": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 24
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_HAMMER": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 24
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_HAMMER": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 24
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_POLEHAMMER": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_POLEHAMMER": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_POLEHAMMER": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_POLEHAMMER": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_POLEHAMMER": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_HAMMER": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_HAMMER": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_HAMMER": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_HAMMER": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_HAMMER": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_HAMMER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_HAMMER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_HAMMER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_HAMMER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_HAMMER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_HAMMER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_HAMMER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_HAMMER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_HAMMER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_HAMMER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_MAIN_MACE": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T3_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_MACE": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_MACE": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_MACE": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_MACE": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_MACE": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_MACE": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_MACE": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_MACE": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_MACE": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_MACE": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_FLAIL": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_FLAIL": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_FLAIL": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_FLAIL": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_FLAIL": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 20
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 12
+   }
+  ],
+  "silver": 0
+ },
+ "T4_MAIN_MACE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T4_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T4_ARTEFACT_MAIN_MACE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_MAIN_MACE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T5_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T5_ARTEFACT_MAIN_MACE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_MAIN_MACE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T6_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T6_ARTEFACT_MAIN_MACE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_MAIN_MACE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T7_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T7_ARTEFACT_MAIN_MACE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_MAIN_MACE_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 16
+   },
+   {
+    "resource": "T8_CLOTH",
+    "count": 8
+   },
+   {
+    "resource": "T8_ARTEFACT_MAIN_MACE_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_2H_KNUCKLES_SET1": {
+  "resources": [
+   {
+    "resource": "T3_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T3_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_KNUCKLES_SET1": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_KNUCKLES_SET1": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_KNUCKLES_SET1": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_KNUCKLES_SET1": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_KNUCKLES_SET1": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_KNUCKLES_SET2": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_KNUCKLES_SET2": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_KNUCKLES_SET2": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_KNUCKLES_SET2": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_KNUCKLES_SET2": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_KNUCKLES_SET3": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_KNUCKLES_SET3": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_KNUCKLES_SET3": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_KNUCKLES_SET3": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_KNUCKLES_SET3": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_KNUCKLES_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_KNUCKLES_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_KNUCKLES_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_KNUCKLES_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_KNUCKLES_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_KNUCKLES_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_KNUCKLES_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_KNUCKLES_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_KNUCKLES_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_METALBAR",
+    "count": 12
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 20
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_KNUCKLES_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T3_2H_SHAPESHIFTER_SET1": {
+  "resources": [
+   {
+    "resource": "T3_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T3_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T1_ALCHEMY_COMMON",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_SHAPESHIFTER_SET1": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T3_ALCHEMY_RARE_PANTHER",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_SHAPESHIFTER_SET1": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T5_ALCHEMY_RARE_PANTHER",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_SHAPESHIFTER_SET1": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T5_ALCHEMY_RARE_PANTHER",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_SHAPESHIFTER_SET1": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T7_ALCHEMY_RARE_PANTHER",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_SHAPESHIFTER_SET1": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T7_ALCHEMY_RARE_PANTHER",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_SHAPESHIFTER_SET2": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T3_ALCHEMY_RARE_ENT",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_SHAPESHIFTER_SET2": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T5_ALCHEMY_RARE_ENT",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_SHAPESHIFTER_SET2": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T5_ALCHEMY_RARE_ENT",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_SHAPESHIFTER_SET2": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T7_ALCHEMY_RARE_ENT",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_SHAPESHIFTER_SET2": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T7_ALCHEMY_RARE_ENT",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_SHAPESHIFTER_SET3": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T3_ALCHEMY_RARE_DIREBEAR",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_SHAPESHIFTER_SET3": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T5_ALCHEMY_RARE_DIREBEAR",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_SHAPESHIFTER_SET3": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T5_ALCHEMY_RARE_DIREBEAR",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_SHAPESHIFTER_SET3": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T7_ALCHEMY_RARE_DIREBEAR",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_SHAPESHIFTER_SET3": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T7_ALCHEMY_RARE_DIREBEAR",
+    "count": 2
+   }
+  ],
+  "silver": 0
+ },
+ "T4_2H_SHAPESHIFTER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T4_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T4_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T4_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_2H_SHAPESHIFTER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T5_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T5_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T5_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_2H_SHAPESHIFTER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T6_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T6_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T6_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T7_2H_SHAPESHIFTER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T7_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T7_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T7_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T8_2H_SHAPESHIFTER_CRYSTAL": {
+  "resources": [
+   {
+    "resource": "T8_PLANKS",
+    "count": 20
+   },
+   {
+    "resource": "T8_LEATHER",
+    "count": 12
+   },
+   {
+    "resource": "T8_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ }
+}

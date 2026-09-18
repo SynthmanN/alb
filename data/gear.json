@@ -1,0 +1,4285 @@
+[
+  {
+    "id": "T2_2H_BOW",
+    "name": "T2 Лук (новичок)",
+    "category": "weapon",
+    "tier": 2,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T2_MAIN_FIRESTAFF",
+    "name": "T2 Огненный посох (новичок)",
+    "category": "weapon",
+    "tier": 2,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T2_MAIN_SWORD",
+    "name": "T2 Палаш (новичок)",
+    "category": "weapon",
+    "tier": 2,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T2_OFF_BOOK",
+    "name": "T2 Книга заклинаний (новичок)",
+    "category": "weapon",
+    "tier": 2,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T2_OFF_SHIELD",
+    "name": "T2 Щит (новичок)",
+    "category": "weapon",
+    "tier": 2,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T3_2H_BOW",
+    "name": "T3 Лук (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T3_2H_CROSSBOW",
+    "name": "T3 Арбалет (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T3_2H_KNUCKLES_SET1",
+    "name": "T3 Перчатки крушителя (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T3_2H_QUARTERSTAFF",
+    "name": "T3 Боевой посох (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T3_2H_SHAPESHIFTER_SET1",
+    "name": "T3 Посох бродяги (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T3_MAIN_ARCANESTAFF",
+    "name": "T3 Мистический посох (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_AXE",
+    "name": "T3 Боевой топор (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_CURSEDSTAFF",
+    "name": "T3 Проклятый посох (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_DAGGER",
+    "name": "T3 Кинжал (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_FIRESTAFF",
+    "name": "T3 Огненный посох (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_FROSTSTAFF",
+    "name": "T3 Морозный посох (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_HAMMER",
+    "name": "T3 Молот (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_HOLYSTAFF",
+    "name": "T3 Священный посох (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_MACE",
+    "name": "T3 Булава (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_NATURESTAFF",
+    "name": "T3 Древесный посох (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_SPEAR",
+    "name": "T3 Копье (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_MAIN_SWORD",
+    "name": "T3 Палаш (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T3_OFF_BOOK",
+    "name": "T3 Книга заклинаний (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T3_OFF_SHIELD",
+    "name": "T3 Щит (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T3_OFF_TORCH",
+    "name": "T3 Факел (странник)",
+    "category": "weapon",
+    "tier": 3,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T4_2H_ARCANESTAFF",
+    "name": "T4 Большой мистический посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_ARCANESTAFF_CRYSTAL",
+    "name": "T4 Астральный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_AXE",
+    "name": "T4 Большой топор (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_BOW",
+    "name": "T4 Лук (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_BOW_CRYSTAL",
+    "name": "T4 Лук небесного странника (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_CLAWPAIR",
+    "name": "T4 Когти (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_CLAYMORE",
+    "name": "T4 Клеймор (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_CROSSBOW",
+    "name": "T4 Арбалет (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_CROSSBOWLARGE",
+    "name": "T4 Тяжелый арбалет (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_CURSEDSTAFF",
+    "name": "T4 Большой проклятый посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DAGGERPAIR",
+    "name": "T4 Парные кинжалы (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DAGGERPAIR_CRYSTAL",
+    "name": "T4 Парные истребители (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DEMONICSTAFF",
+    "name": "T4 Демонический посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DIVINESTAFF",
+    "name": "T4 Божественный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DOUBLEBLADEDSTAFF",
+    "name": "T4 Острый шест (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "name": "T4 Парный призрачный клинок (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DUALCROSSBOW_CRYSTAL",
+    "name": "T4 Искрящиеся бластеры (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_DUALSWORD",
+    "name": "T4 Парные мечи (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_ENIGMATICSTAFF",
+    "name": "T4 Загадочный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_FIRESTAFF",
+    "name": "T4 Большой огненный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_FLAIL",
+    "name": "T4 Моргенштерн (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_FROSTSTAFF",
+    "name": "T4 Большой морозный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_FROSTSTAFF_CRYSTAL",
+    "name": "T4 Снежный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_GLACIALSTAFF",
+    "name": "T4 Ледяной посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_GLAIVE",
+    "name": "T4 Глефа (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_GLAIVE_CRYSTAL",
+    "name": "T4 Глефа разлома (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_HALBERD",
+    "name": "T4 Алебарда (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_HAMMER",
+    "name": "T4 Большой молот (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_HAMMER_CRYSTAL",
+    "name": "T4 Молот истинных снарядов (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_HOLYSTAFF",
+    "name": "T4 Большой священный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_HOLYSTAFF_CRYSTAL",
+    "name": "T4 Посох возвышения (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_INFERNOSTAFF",
+    "name": "T4 Адский посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_IRONCLADEDSTAFF",
+    "name": "T4 Железный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_KNUCKLES_CRYSTAL",
+    "name": "T4 Силовые наручи (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_KNUCKLES_SET1",
+    "name": "T4 Перчатки крушителя (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_KNUCKLES_SET2",
+    "name": "T4 Боевые наручи (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_KNUCKLES_SET3",
+    "name": "T4 Шипастые рукавицы (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_LONGBOW",
+    "name": "T4 Длинный лук (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_MACE",
+    "name": "T4 Тяжелая булава (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_NATURESTAFF",
+    "name": "T4 Большой древесный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_POLEHAMMER",
+    "name": "T4 Чекан (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_QUARTERSTAFF",
+    "name": "T4 Боевой шест (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_SCYTHE_CRYSTAL",
+    "name": "T4 Хрустальный жнец (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_SHAPESHIFTER_CRYSTAL",
+    "name": "T4 Посох неподвижного взгляда (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_SHAPESHIFTER_SET1",
+    "name": "T4 Посох бродяги (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_SHAPESHIFTER_SET2",
+    "name": "T4 Непреодолимый посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_SHAPESHIFTER_SET3",
+    "name": "T4 Первобытный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_SPEAR",
+    "name": "T4 Пика (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_WARBOW",
+    "name": "T4 Боевой лук (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_2H_WILDSTAFF",
+    "name": "T4 Дикий посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T4_MAIN_1HCROSSBOW",
+    "name": "T4 Легкий арбалет (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_ARCANESTAFF",
+    "name": "T4 Мистический посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_AXE",
+    "name": "T4 Боевой топор (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_CURSEDSTAFF",
+    "name": "T4 Проклятый посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_CURSEDSTAFF_CRYSTAL",
+    "name": "T4 Посох гниения (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_DAGGER",
+    "name": "T4 Кинжал (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_FIRESTAFF",
+    "name": "T4 Огненный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_FIRESTAFF_CRYSTAL",
+    "name": "T4 Посох пламенного странника (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_FROSTSTAFF",
+    "name": "T4 Морозный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_HAMMER",
+    "name": "T4 Молот (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_HOLYSTAFF",
+    "name": "T4 Священный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_MACE",
+    "name": "T4 Булава (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_MACE_CRYSTAL",
+    "name": "T4 Грозовой монарх (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_NATURESTAFF",
+    "name": "T4 Древесный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_NATURESTAFF_CRYSTAL",
+    "name": "T4 Кузнечный посох (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_SPEAR",
+    "name": "T4 Копье (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_SWORD",
+    "name": "T4 Палаш (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_MAIN_SWORD_CRYSTAL",
+    "name": "T4 Клинок бесконечности (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T4_OFF_BOOK",
+    "name": "T4 Книга заклинаний (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T4_OFF_SHIELD",
+    "name": "T4 Щит (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T4_OFF_SHIELD_CRYSTAL",
+    "name": "T4 Несокрушимый бастион (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T4_OFF_TOME_CRYSTAL",
+    "name": "T4 Гримуар сокрытого времени (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T4_OFF_TORCH",
+    "name": "T4 Факел (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T4_OFF_TORCH_CRYSTAL",
+    "name": "T4 Факел синего пламени (знаток)",
+    "category": "weapon",
+    "tier": 4,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T5_2H_ARCANESTAFF",
+    "name": "T5 Большой мистический посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_ARCANESTAFF_CRYSTAL",
+    "name": "T5 Астральный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_AXE",
+    "name": "T5 Большой топор (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_BOW",
+    "name": "T5 Лук (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_BOW_CRYSTAL",
+    "name": "T5 Лук небесного странника (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_CLAWPAIR",
+    "name": "T5 Когти (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_CLAYMORE",
+    "name": "T5 Клеймор (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_CROSSBOW",
+    "name": "T5 Арбалет (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_CROSSBOWLARGE",
+    "name": "T5 Тяжелый арбалет (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_CURSEDSTAFF",
+    "name": "T5 Большой проклятый посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DAGGERPAIR",
+    "name": "T5 Парные кинжалы (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DAGGERPAIR_CRYSTAL",
+    "name": "T5 Парные истребители (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DEMONICSTAFF",
+    "name": "T5 Демонический посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DIVINESTAFF",
+    "name": "T5 Божественный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DOUBLEBLADEDSTAFF",
+    "name": "T5 Острый шест (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "name": "T5 Парный призрачный клинок (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DUALCROSSBOW_CRYSTAL",
+    "name": "T5 Искрящиеся бластеры (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_DUALSWORD",
+    "name": "T5 Парные мечи (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_ENIGMATICSTAFF",
+    "name": "T5 Загадочный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_FIRESTAFF",
+    "name": "T5 Большой огненный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_FLAIL",
+    "name": "T5 Моргенштерн (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_FROSTSTAFF",
+    "name": "T5 Большой морозный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_FROSTSTAFF_CRYSTAL",
+    "name": "T5 Снежный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_GLACIALSTAFF",
+    "name": "T5 Ледяной посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_GLAIVE",
+    "name": "T5 Глефа (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_GLAIVE_CRYSTAL",
+    "name": "T5 Глефа разлома (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_HALBERD",
+    "name": "T5 Алебарда (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_HAMMER",
+    "name": "T5 Большой молот (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_HAMMER_CRYSTAL",
+    "name": "T5 Молот истинных снарядов (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_HOLYSTAFF",
+    "name": "T5 Большой священный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_HOLYSTAFF_CRYSTAL",
+    "name": "T5 Посох возвышения (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_INFERNOSTAFF",
+    "name": "T5 Адский посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_IRONCLADEDSTAFF",
+    "name": "T5 Железный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_KNUCKLES_CRYSTAL",
+    "name": "T5 Силовые наручи (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_KNUCKLES_SET1",
+    "name": "T5 Перчатки крушителя (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_KNUCKLES_SET2",
+    "name": "T5 Боевые наручи (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_KNUCKLES_SET3",
+    "name": "T5 Шипастые рукавицы (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_LONGBOW",
+    "name": "T5 Длинный лук (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_MACE",
+    "name": "T5 Тяжелая булава (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_NATURESTAFF",
+    "name": "T5 Большой древесный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_POLEHAMMER",
+    "name": "T5 Чекан (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_QUARTERSTAFF",
+    "name": "T5 Боевой шест (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_SCYTHE_CRYSTAL",
+    "name": "T5 Хрустальный жнец (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_SHAPESHIFTER_CRYSTAL",
+    "name": "T5 Посох неподвижного взгляда (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_SHAPESHIFTER_SET1",
+    "name": "T5 Посох бродяги (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_SHAPESHIFTER_SET2",
+    "name": "T5 Непреодолимый посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_SHAPESHIFTER_SET3",
+    "name": "T5 Первобытный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_SPEAR",
+    "name": "T5 Пика (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_WARBOW",
+    "name": "T5 Боевой лук (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_2H_WILDSTAFF",
+    "name": "T5 Дикий посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T5_MAIN_1HCROSSBOW",
+    "name": "T5 Легкий арбалет (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_ARCANESTAFF",
+    "name": "T5 Мистический посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_AXE",
+    "name": "T5 Боевой топор (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_CURSEDSTAFF",
+    "name": "T5 Проклятый посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_CURSEDSTAFF_CRYSTAL",
+    "name": "T5 Посох гниения (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_DAGGER",
+    "name": "T5 Кинжал (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_FIRESTAFF",
+    "name": "T5 Огненный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_FIRESTAFF_CRYSTAL",
+    "name": "T5 Посох пламенного странника (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_FROSTSTAFF",
+    "name": "T5 Морозный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_HAMMER",
+    "name": "T5 Молот (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_HOLYSTAFF",
+    "name": "T5 Священный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_MACE",
+    "name": "T5 Булава (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_MACE_CRYSTAL",
+    "name": "T5 Грозовой монарх (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_NATURESTAFF",
+    "name": "T5 Древесный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_NATURESTAFF_CRYSTAL",
+    "name": "T5 Кузнечный посох (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_SPEAR",
+    "name": "T5 Копье (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_SWORD",
+    "name": "T5 Палаш (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_MAIN_SWORD_CRYSTAL",
+    "name": "T5 Клинок бесконечности (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T5_OFF_BOOK",
+    "name": "T5 Книга заклинаний (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T5_OFF_SHIELD",
+    "name": "T5 Щит (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T5_OFF_SHIELD_CRYSTAL",
+    "name": "T5 Несокрушимый бастион (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T5_OFF_TOME_CRYSTAL",
+    "name": "T5 Гримуар сокрытого времени (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T5_OFF_TORCH",
+    "name": "T5 Факел (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T5_OFF_TORCH_CRYSTAL",
+    "name": "T5 Факел синего пламени (эксперт)",
+    "category": "weapon",
+    "tier": 5,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T6_2H_ARCANESTAFF",
+    "name": "T6 Большой мистический посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_ARCANESTAFF_CRYSTAL",
+    "name": "T6 Астральный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_AXE",
+    "name": "T6 Большой топор (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_BOW",
+    "name": "T6 Лук (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_BOW_CRYSTAL",
+    "name": "T6 Лук небесного странника (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_CLAWPAIR",
+    "name": "T6 Когти (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_CLAYMORE",
+    "name": "T6 Клеймор (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_CROSSBOW",
+    "name": "T6 Арбалет (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_CROSSBOWLARGE",
+    "name": "T6 Тяжелый арбалет (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_CURSEDSTAFF",
+    "name": "T6 Большой проклятый посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DAGGERPAIR",
+    "name": "T6 Парные кинжалы (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DAGGERPAIR_CRYSTAL",
+    "name": "T6 Парные истребители (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DEMONICSTAFF",
+    "name": "T6 Демонический посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DIVINESTAFF",
+    "name": "T6 Божественный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DOUBLEBLADEDSTAFF",
+    "name": "T6 Острый шест (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "name": "T6 Парный призрачный клинок (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DUALCROSSBOW_CRYSTAL",
+    "name": "T6 Искрящиеся бластеры (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_DUALSWORD",
+    "name": "T6 Парные мечи (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_ENIGMATICSTAFF",
+    "name": "T6 Загадочный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_FIRESTAFF",
+    "name": "T6 Большой огненный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_FLAIL",
+    "name": "T6 Моргенштерн (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_FROSTSTAFF",
+    "name": "T6 Большой морозный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_FROSTSTAFF_CRYSTAL",
+    "name": "T6 Снежный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_GLACIALSTAFF",
+    "name": "T6 Ледяной посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_GLAIVE",
+    "name": "T6 Глефа (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_GLAIVE_CRYSTAL",
+    "name": "T6 Глефа разлома (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_HALBERD",
+    "name": "T6 Алебарда (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_HAMMER",
+    "name": "T6 Большой молот (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_HAMMER_CRYSTAL",
+    "name": "T6 Молот истинных снарядов (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_HOLYSTAFF",
+    "name": "T6 Большой священный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_HOLYSTAFF_CRYSTAL",
+    "name": "T6 Посох возвышения (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_INFERNOSTAFF",
+    "name": "T6 Адский посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_IRONCLADEDSTAFF",
+    "name": "T6 Железный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_KNUCKLES_CRYSTAL",
+    "name": "T6 Силовые наручи (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_KNUCKLES_SET1",
+    "name": "T6 Перчатки крушителя (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_KNUCKLES_SET2",
+    "name": "T6 Боевые наручи (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_KNUCKLES_SET3",
+    "name": "T6 Шипастые рукавицы (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_LONGBOW",
+    "name": "T6 Длинный лук (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_MACE",
+    "name": "T6 Тяжелая булава (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_NATURESTAFF",
+    "name": "T6 Большой древесный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_POLEHAMMER",
+    "name": "T6 Чекан (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_QUARTERSTAFF",
+    "name": "T6 Боевой шест (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_SCYTHE_CRYSTAL",
+    "name": "T6 Хрустальный жнец (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_SHAPESHIFTER_CRYSTAL",
+    "name": "T6 Посох неподвижного взгляда (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_SHAPESHIFTER_SET1",
+    "name": "T6 Посох бродяги (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_SHAPESHIFTER_SET2",
+    "name": "T6 Непреодолимый посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_SHAPESHIFTER_SET3",
+    "name": "T6 Первобытный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_SPEAR",
+    "name": "T6 Пика (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_WARBOW",
+    "name": "T6 Боевой лук (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_2H_WILDSTAFF",
+    "name": "T6 Дикий посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T6_MAIN_1HCROSSBOW",
+    "name": "T6 Легкий арбалет (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_ARCANESTAFF",
+    "name": "T6 Мистический посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_AXE",
+    "name": "T6 Боевой топор (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_CURSEDSTAFF",
+    "name": "T6 Проклятый посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_CURSEDSTAFF_CRYSTAL",
+    "name": "T6 Посох гниения (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_DAGGER",
+    "name": "T6 Кинжал (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_FIRESTAFF",
+    "name": "T6 Огненный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_FIRESTAFF_CRYSTAL",
+    "name": "T6 Посох пламенного странника (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_FROSTSTAFF",
+    "name": "T6 Морозный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_HAMMER",
+    "name": "T6 Молот (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_HOLYSTAFF",
+    "name": "T6 Священный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_MACE",
+    "name": "T6 Булава (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_MACE_CRYSTAL",
+    "name": "T6 Грозовой монарх (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_NATURESTAFF",
+    "name": "T6 Древесный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_NATURESTAFF_CRYSTAL",
+    "name": "T6 Кузнечный посох (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_SPEAR",
+    "name": "T6 Копье (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_SWORD",
+    "name": "T6 Палаш (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_MAIN_SWORD_CRYSTAL",
+    "name": "T6 Клинок бесконечности (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T6_OFF_BOOK",
+    "name": "T6 Книга заклинаний (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T6_OFF_SHIELD",
+    "name": "T6 Щит (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T6_OFF_SHIELD_CRYSTAL",
+    "name": "T6 Несокрушимый бастион (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T6_OFF_TOME_CRYSTAL",
+    "name": "T6 Гримуар сокрытого времени (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T6_OFF_TORCH",
+    "name": "T6 Факел (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T6_OFF_TORCH_CRYSTAL",
+    "name": "T6 Факел синего пламени (мастер)",
+    "category": "weapon",
+    "tier": 6,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T7_2H_ARCANESTAFF",
+    "name": "T7 Большой мистический посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_ARCANESTAFF_CRYSTAL",
+    "name": "T7 Астральный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_AXE",
+    "name": "T7 Большой топор (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_BOW",
+    "name": "T7 Лук (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_BOW_CRYSTAL",
+    "name": "T7 Лук небесного странника (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_CLAWPAIR",
+    "name": "T7 Когти (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_CLAYMORE",
+    "name": "T7 Клеймор (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_CROSSBOW",
+    "name": "T7 Арбалет (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_CROSSBOWLARGE",
+    "name": "T7 Тяжелый арбалет (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_CURSEDSTAFF",
+    "name": "T7 Большой проклятый посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DAGGERPAIR",
+    "name": "T7 Парные кинжалы (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DAGGERPAIR_CRYSTAL",
+    "name": "T7 Парные истребители (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DEMONICSTAFF",
+    "name": "T7 Демонический посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DIVINESTAFF",
+    "name": "T7 Божественный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DOUBLEBLADEDSTAFF",
+    "name": "T7 Острый шест (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "name": "T7 Парный призрачный клинок (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DUALCROSSBOW_CRYSTAL",
+    "name": "T7 Искрящиеся бластеры (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_DUALSWORD",
+    "name": "T7 Парные мечи (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_ENIGMATICSTAFF",
+    "name": "T7 Загадочный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_FIRESTAFF",
+    "name": "T7 Большой огненный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_FLAIL",
+    "name": "T7 Моргенштерн (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_FROSTSTAFF",
+    "name": "T7 Большой морозный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_FROSTSTAFF_CRYSTAL",
+    "name": "T7 Снежный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_GLACIALSTAFF",
+    "name": "T7 Ледяной посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_GLAIVE",
+    "name": "T7 Глефа (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_GLAIVE_CRYSTAL",
+    "name": "T7 Глефа разлома (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_HALBERD",
+    "name": "T7 Алебарда (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_HAMMER",
+    "name": "T7 Большой молот (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_HAMMER_CRYSTAL",
+    "name": "T7 Молот истинных снарядов (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_HOLYSTAFF",
+    "name": "T7 Большой священный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_HOLYSTAFF_CRYSTAL",
+    "name": "T7 Посох возвышения (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_INFERNOSTAFF",
+    "name": "T7 Адский посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_IRONCLADEDSTAFF",
+    "name": "T7 Железный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_KNUCKLES_CRYSTAL",
+    "name": "T7 Силовые наручи (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_KNUCKLES_SET1",
+    "name": "T7 Перчатки крушителя (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_KNUCKLES_SET2",
+    "name": "T7 Боевые наручи (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_KNUCKLES_SET3",
+    "name": "T7 Шипастые рукавицы (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_LONGBOW",
+    "name": "T7 Длинный лук (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_MACE",
+    "name": "T7 Тяжелая булава (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_NATURESTAFF",
+    "name": "T7 Большой древесный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_POLEHAMMER",
+    "name": "T7 Чекан (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_QUARTERSTAFF",
+    "name": "T7 Боевой шест (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_SCYTHE_CRYSTAL",
+    "name": "T7 Хрустальный жнец (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_SHAPESHIFTER_CRYSTAL",
+    "name": "T7 Посох неподвижного взгляда (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_SHAPESHIFTER_SET1",
+    "name": "T7 Посох бродяги (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_SHAPESHIFTER_SET2",
+    "name": "T7 Непреодолимый посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_SHAPESHIFTER_SET3",
+    "name": "T7 Первобытный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_SPEAR",
+    "name": "T7 Пика (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_WARBOW",
+    "name": "T7 Боевой лук (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_2H_WILDSTAFF",
+    "name": "T7 Дикий посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T7_MAIN_1HCROSSBOW",
+    "name": "T7 Легкий арбалет (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_ARCANESTAFF",
+    "name": "T7 Мистический посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_AXE",
+    "name": "T7 Боевой топор (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_CURSEDSTAFF",
+    "name": "T7 Проклятый посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_CURSEDSTAFF_CRYSTAL",
+    "name": "T7 Посох гниения (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_DAGGER",
+    "name": "T7 Кинжал (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_FIRESTAFF",
+    "name": "T7 Огненный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_FIRESTAFF_CRYSTAL",
+    "name": "T7 Посох пламенного странника (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_FROSTSTAFF",
+    "name": "T7 Морозный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_HAMMER",
+    "name": "T7 Молот (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_HOLYSTAFF",
+    "name": "T7 Священный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_MACE",
+    "name": "T7 Булава (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_MACE_CRYSTAL",
+    "name": "T7 Грозовой монарх (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_NATURESTAFF",
+    "name": "T7 Древесный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_NATURESTAFF_CRYSTAL",
+    "name": "T7 Кузнечный посох (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_SPEAR",
+    "name": "T7 Копье (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_SWORD",
+    "name": "T7 Палаш (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_MAIN_SWORD_CRYSTAL",
+    "name": "T7 Клинок бесконечности (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T7_OFF_BOOK",
+    "name": "T7 Книга заклинаний (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T7_OFF_SHIELD",
+    "name": "T7 Щит (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T7_OFF_SHIELD_CRYSTAL",
+    "name": "T7 Несокрушимый бастион (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T7_OFF_TOME_CRYSTAL",
+    "name": "T7 Гримуар сокрытого времени (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T7_OFF_TORCH",
+    "name": "T7 Факел (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T7_OFF_TORCH_CRYSTAL",
+    "name": "T7 Факел синего пламени (магистр)",
+    "category": "weapon",
+    "tier": 7,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T8_2H_ARCANESTAFF",
+    "name": "T8 Большой мистический посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_ARCANESTAFF_CRYSTAL",
+    "name": "T8 Астральный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_AXE",
+    "name": "T8 Рука Кхора",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_BOW",
+    "name": "T8 Лук (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_BOW_CRYSTAL",
+    "name": "T8 Лук небесного странника (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_CLAWPAIR",
+    "name": "T8 Когти (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_CLAYMORE",
+    "name": "T8 Клеймор (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_CROSSBOW",
+    "name": "T8 Арбалет (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_CROSSBOWLARGE",
+    "name": "T8 Тяжелый арбалет (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_CURSEDSTAFF",
+    "name": "T8 Большой проклятый посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DAGGERPAIR",
+    "name": "T8 Парные кинжалы (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DAGGERPAIR_CRYSTAL",
+    "name": "T8 Парные истребители (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DEMONICSTAFF",
+    "name": "T8 Демонический посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DIVINESTAFF",
+    "name": "T8 Божественный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DOUBLEBLADEDSTAFF",
+    "name": "T8 Острый шест (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
+    "name": "T8 Парный призрачный клинок (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DUALCROSSBOW_CRYSTAL",
+    "name": "T8 Искрящиеся бластеры (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_DUALSWORD",
+    "name": "T8 Парные мечи (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_ENIGMATICSTAFF",
+    "name": "T8 Загадочный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_FIRESTAFF",
+    "name": "T8 Гнев Vendetta",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_FLAIL",
+    "name": "T8 Моргенштерн (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_FROSTSTAFF",
+    "name": "T8 Большой морозный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_FROSTSTAFF_CRYSTAL",
+    "name": "T8 Снежный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_GLACIALSTAFF",
+    "name": "T8 Ледяной посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_GLAIVE",
+    "name": "T8 Глефа (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_GLAIVE_CRYSTAL",
+    "name": "T8 Глефа разлома (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_HALBERD",
+    "name": "T8 Алебарда (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_HAMMER",
+    "name": "T8 Большой молот (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_HAMMER_CRYSTAL",
+    "name": "T8 Молот истинных снарядов (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_HOLYSTAFF",
+    "name": "T8 Большой священный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_HOLYSTAFF_CRYSTAL",
+    "name": "T8 Посох возвышения (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_INFERNOSTAFF",
+    "name": "T8 Адский посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_IRONCLADEDSTAFF",
+    "name": "T8 Железный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_KNUCKLES_CRYSTAL",
+    "name": "T8 Силовые наручи (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_KNUCKLES_SET1",
+    "name": "T8 Перчатки крушителя (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_KNUCKLES_SET2",
+    "name": "T8 Боевые наручи (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_KNUCKLES_SET3",
+    "name": "T8 Шипастые рукавицы (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_LONGBOW",
+    "name": "T8 Длинный лук (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_MACE",
+    "name": "T8 Тяжелая булава (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_NATURESTAFF",
+    "name": "T8 Большой древесный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_POLEHAMMER",
+    "name": "T8 Чекан (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_QUARTERSTAFF",
+    "name": "T8 Боевой шест (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_SCYTHE_CRYSTAL",
+    "name": "T8 Хрустальный жнец (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_SHAPESHIFTER_CRYSTAL",
+    "name": "T8 Посох неподвижного взгляда (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_SHAPESHIFTER_SET1",
+    "name": "T8 Посох бродяги (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_SHAPESHIFTER_SET2",
+    "name": "T8 Непреодолимый посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_SHAPESHIFTER_SET3",
+    "name": "T8 Первобытный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_SPEAR",
+    "name": "T8 Пика (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_WARBOW",
+    "name": "T8 Боевой лук (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_2H_WILDSTAFF",
+    "name": "T8 Дикий посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "двуручное"
+  },
+  {
+    "id": "T8_MAIN_1HCROSSBOW",
+    "name": "T8 Легкий арбалет (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_ARCANESTAFF",
+    "name": "T8 Мистический посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_AXE",
+    "name": "T8 Боевой топор (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_CURSEDSTAFF",
+    "name": "T8 Проклятый посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_CURSEDSTAFF_CRYSTAL",
+    "name": "T8 Посох гниения (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_DAGGER",
+    "name": "T8 Кинжал (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_FIRESTAFF",
+    "name": "T8 Огненный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_FIRESTAFF_CRYSTAL",
+    "name": "T8 Посох пламенного странника (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_FROSTSTAFF",
+    "name": "T8 Морозный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_HAMMER",
+    "name": "T8 Молот (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_HOLYSTAFF",
+    "name": "T8 Священный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_MACE",
+    "name": "T8 Булава (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_MACE_CRYSTAL",
+    "name": "T8 Грозовой монарх (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_NATURESTAFF",
+    "name": "T8 Древесный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_NATURESTAFF_CRYSTAL",
+    "name": "T8 Кузнечный посох (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_SPEAR",
+    "name": "T8 Копье (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_SWORD",
+    "name": "T8 Палаш (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_MAIN_SWORD_CRYSTAL",
+    "name": "T8 Клинок бесконечности (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "осн. рука"
+  },
+  {
+    "id": "T8_OFF_BOOK",
+    "name": "T8 Дневник Розалии",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T8_OFF_SHIELD",
+    "name": "T8 Щит (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T8_OFF_SHIELD_CRYSTAL",
+    "name": "T8 Несокрушимый бастион (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T8_OFF_TOME_CRYSTAL",
+    "name": "T8 Гримуар сокрытого времени (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T8_OFF_TORCH",
+    "name": "T8 Факел (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T8_OFF_TORCH_CRYSTAL",
+    "name": "T8 Факел синего пламени (старейшина)",
+    "category": "weapon",
+    "tier": 8,
+    "slot": "левая рука"
+  },
+  {
+    "id": "T2_ARMOR_CLOTH_SET1",
+    "name": "T2 Мантия ученого (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T2_ARMOR_LEATHER_SET1",
+    "name": "T2 Куртка наемника (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T2_ARMOR_PLATE_SET1",
+    "name": "T2 Броня солдата (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T2_HEAD_CLOTH_SET1",
+    "name": "T2 Колпак ученого (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T2_HEAD_LEATHER_SET1",
+    "name": "T2 Капюшон наемника (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T2_HEAD_PLATE_SET1",
+    "name": "T2 Шлем солдата (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T2_SHOES_CLOTH_SET1",
+    "name": "T2 Сандалии ученого (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T2_SHOES_LEATHER_SET1",
+    "name": "T2 Ботинки наемника (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T2_SHOES_PLATE_SET1",
+    "name": "T2 Сапоги солдата (новичок)",
+    "category": "armor",
+    "tier": 2,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T3_ARMOR_CLOTH_SET1",
+    "name": "T3 Мантия ученого (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T3_ARMOR_LEATHER_SET1",
+    "name": "T3 Куртка наемника (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T3_ARMOR_PLATE_SET1",
+    "name": "T3 Броня солдата (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T3_HEAD_CLOTH_SET1",
+    "name": "T3 Колпак ученого (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T3_HEAD_LEATHER_SET1",
+    "name": "T3 Капюшон наемника (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T3_HEAD_PLATE_SET1",
+    "name": "T3 Шлем солдата (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T3_SHOES_CLOTH_SET1",
+    "name": "T3 Сандалии ученого (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T3_SHOES_LEATHER_SET1",
+    "name": "T3 Ботинки наемника (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T3_SHOES_PLATE_SET1",
+    "name": "T3 Сапоги солдата (странник)",
+    "category": "armor",
+    "tier": 3,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T4_ARMOR_CLOTH_SET1",
+    "name": "T4 Мантия ученого (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_ARMOR_CLOTH_SET2",
+    "name": "T4 Мантия клирика (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_ARMOR_CLOTH_SET3",
+    "name": "T4 Мантия чародея (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_ARMOR_LEATHER_SET1",
+    "name": "T4 Куртка наемника (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_ARMOR_LEATHER_SET2",
+    "name": "T4 Куртка охотника (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_ARMOR_LEATHER_SET3",
+    "name": "T4 Куртка убийцы (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_ARMOR_PLATE_SET1",
+    "name": "T4 Броня солдата (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T4_ARMOR_PLATE_SET2",
+    "name": "T4 Броня рыцаря (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T4_ARMOR_PLATE_SET3",
+    "name": "T4 Броня хранителя (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T4_HEAD_CLOTH_SET1",
+    "name": "T4 Колпак ученого (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_HEAD_CLOTH_SET2",
+    "name": "T4 Колпак клирика (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_HEAD_CLOTH_SET3",
+    "name": "T4 Колпак чародея (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_HEAD_LEATHER_SET1",
+    "name": "T4 Капюшон наемника (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_HEAD_LEATHER_SET2",
+    "name": "T4 Капюшон охотника (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_HEAD_LEATHER_SET3",
+    "name": "T4 Капюшон убийцы (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_HEAD_PLATE_SET1",
+    "name": "T4 Шлем солдата (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T4_HEAD_PLATE_SET2",
+    "name": "T4 Шлем рыцаря (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T4_HEAD_PLATE_SET3",
+    "name": "T4 Шлем хранителя (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T4_SHOES_CLOTH_SET1",
+    "name": "T4 Сандалии ученого (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_SHOES_CLOTH_SET2",
+    "name": "T4 Сандалии клирика (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_SHOES_CLOTH_SET3",
+    "name": "T4 Сандалии чародея (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T4_SHOES_LEATHER_SET1",
+    "name": "T4 Ботинки наемника (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_SHOES_LEATHER_SET2",
+    "name": "T4 Ботинки охотника (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_SHOES_LEATHER_SET3",
+    "name": "T4 Ботинки убийцы (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T4_SHOES_PLATE_SET1",
+    "name": "T4 Сапоги солдата (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T4_SHOES_PLATE_SET2",
+    "name": "T4 Сапоги рыцаря (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T4_SHOES_PLATE_SET3",
+    "name": "T4 Сапоги хранителя (знаток)",
+    "category": "armor",
+    "tier": 4,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T5_ARMOR_CLOTH_SET1",
+    "name": "T5 Мантия ученого (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_ARMOR_CLOTH_SET2",
+    "name": "T5 Мантия клирика (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_ARMOR_CLOTH_SET3",
+    "name": "T5 Мантия чародея (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_ARMOR_LEATHER_SET1",
+    "name": "T5 Куртка наемника (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_ARMOR_LEATHER_SET2",
+    "name": "T5 Куртка охотника (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_ARMOR_LEATHER_SET3",
+    "name": "T5 Куртка убийцы (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_ARMOR_PLATE_SET1",
+    "name": "T5 Броня солдата (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T5_ARMOR_PLATE_SET2",
+    "name": "T5 Броня рыцаря (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T5_ARMOR_PLATE_SET3",
+    "name": "T5 Броня хранителя (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T5_HEAD_CLOTH_SET1",
+    "name": "T5 Колпак ученого (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_HEAD_CLOTH_SET2",
+    "name": "T5 Колпак клирика (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_HEAD_CLOTH_SET3",
+    "name": "T5 Колпак чародея (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_HEAD_LEATHER_SET1",
+    "name": "T5 Капюшон наемника (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_HEAD_LEATHER_SET2",
+    "name": "T5 Капюшон охотника (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_HEAD_LEATHER_SET3",
+    "name": "T5 Капюшон убийцы (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_HEAD_PLATE_SET1",
+    "name": "T5 Шлем солдата (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T5_HEAD_PLATE_SET2",
+    "name": "T5 Шлем рыцаря (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T5_HEAD_PLATE_SET3",
+    "name": "T5 Шлем хранителя (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T5_SHOES_CLOTH_SET1",
+    "name": "T5 Сандалии ученого (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_SHOES_CLOTH_SET2",
+    "name": "T5 Сандалии клирика (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_SHOES_CLOTH_SET3",
+    "name": "T5 Сандалии чародея (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T5_SHOES_LEATHER_SET1",
+    "name": "T5 Ботинки наемника (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_SHOES_LEATHER_SET2",
+    "name": "T5 Ботинки охотника (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_SHOES_LEATHER_SET3",
+    "name": "T5 Ботинки убийцы (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T5_SHOES_PLATE_SET1",
+    "name": "T5 Сапоги солдата (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T5_SHOES_PLATE_SET2",
+    "name": "T5 Сапоги рыцаря (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T5_SHOES_PLATE_SET3",
+    "name": "T5 Сапоги хранителя (эксперт)",
+    "category": "armor",
+    "tier": 5,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T6_ARMOR_CLOTH_SET1",
+    "name": "T6 Мантия ученого (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_ARMOR_CLOTH_SET2",
+    "name": "T6 Мантия клирика (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_ARMOR_CLOTH_SET3",
+    "name": "T6 Мантия чародея (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_ARMOR_LEATHER_SET1",
+    "name": "T6 Куртка наемника (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_ARMOR_LEATHER_SET2",
+    "name": "T6 Куртка охотника (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_ARMOR_LEATHER_SET3",
+    "name": "T6 Куртка убийцы (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_ARMOR_PLATE_SET1",
+    "name": "T6 Броня солдата (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T6_ARMOR_PLATE_SET2",
+    "name": "T6 Броня рыцаря (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T6_ARMOR_PLATE_SET3",
+    "name": "T6 Броня хранителя (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T6_HEAD_CLOTH_SET1",
+    "name": "T6 Колпак ученого (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_HEAD_CLOTH_SET2",
+    "name": "T6 Колпак клирика (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_HEAD_CLOTH_SET3",
+    "name": "T6 Колпак чародея (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_HEAD_LEATHER_SET1",
+    "name": "T6 Капюшон наемника (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_HEAD_LEATHER_SET2",
+    "name": "T6 Капюшон охотника (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_HEAD_LEATHER_SET3",
+    "name": "T6 Капюшон убийцы (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_HEAD_PLATE_SET1",
+    "name": "T6 Шлем солдата (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T6_HEAD_PLATE_SET2",
+    "name": "T6 Шлем рыцаря (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T6_HEAD_PLATE_SET3",
+    "name": "T6 Шлем хранителя (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T6_SHOES_CLOTH_SET1",
+    "name": "T6 Сандалии ученого (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_SHOES_CLOTH_SET2",
+    "name": "T6 Сандалии клирика (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_SHOES_CLOTH_SET3",
+    "name": "T6 Сандалии чародея (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T6_SHOES_LEATHER_SET1",
+    "name": "T6 Ботинки наемника (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_SHOES_LEATHER_SET2",
+    "name": "T6 Ботинки охотника (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_SHOES_LEATHER_SET3",
+    "name": "T6 Ботинки убийцы (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T6_SHOES_PLATE_SET1",
+    "name": "T6 Сапоги солдата (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T6_SHOES_PLATE_SET2",
+    "name": "T6 Сапоги рыцаря (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T6_SHOES_PLATE_SET3",
+    "name": "T6 Сапоги хранителя (мастер)",
+    "category": "armor",
+    "tier": 6,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T7_ARMOR_CLOTH_SET1",
+    "name": "T7 Мантия ученого (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_ARMOR_CLOTH_SET2",
+    "name": "T7 Мантия клирика (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_ARMOR_CLOTH_SET3",
+    "name": "T7 Мантия чародея (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_ARMOR_LEATHER_SET1",
+    "name": "T7 Куртка наемника (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_ARMOR_LEATHER_SET2",
+    "name": "T7 Куртка охотника (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_ARMOR_LEATHER_SET3",
+    "name": "T7 Куртка убийцы (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_ARMOR_PLATE_SET1",
+    "name": "T7 Броня солдата (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T7_ARMOR_PLATE_SET2",
+    "name": "T7 Броня рыцаря (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T7_ARMOR_PLATE_SET3",
+    "name": "T7 Броня хранителя (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T7_HEAD_CLOTH_SET1",
+    "name": "T7 Колпак ученого (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_HEAD_CLOTH_SET2",
+    "name": "T7 Колпак клирика (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_HEAD_CLOTH_SET3",
+    "name": "T7 Колпак чародея (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_HEAD_LEATHER_SET1",
+    "name": "T7 Капюшон наемника (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_HEAD_LEATHER_SET2",
+    "name": "T7 Капюшон охотника (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_HEAD_LEATHER_SET3",
+    "name": "T7 Капюшон убийцы (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_HEAD_PLATE_SET1",
+    "name": "T7 Шлем солдата (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T7_HEAD_PLATE_SET2",
+    "name": "T7 Шлем рыцаря (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T7_HEAD_PLATE_SET3",
+    "name": "T7 Шлем хранителя (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T7_SHOES_CLOTH_SET1",
+    "name": "T7 Сандалии ученого (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_SHOES_CLOTH_SET2",
+    "name": "T7 Сандалии клирика (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_SHOES_CLOTH_SET3",
+    "name": "T7 Сандалии чародея (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T7_SHOES_LEATHER_SET1",
+    "name": "T7 Ботинки наемника (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_SHOES_LEATHER_SET2",
+    "name": "T7 Ботинки охотника (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_SHOES_LEATHER_SET3",
+    "name": "T7 Ботинки убийцы (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T7_SHOES_PLATE_SET1",
+    "name": "T7 Сапоги солдата (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T7_SHOES_PLATE_SET2",
+    "name": "T7 Сапоги рыцаря (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T7_SHOES_PLATE_SET3",
+    "name": "T7 Сапоги хранителя (магистр)",
+    "category": "armor",
+    "tier": 7,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T8_ARMOR_CLOTH_SET1",
+    "name": "T8 Мантия ученого (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_ARMOR_CLOTH_SET2",
+    "name": "T8 Мантия клирика (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_ARMOR_CLOTH_SET3",
+    "name": "T8 Мантия чародея (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_ARMOR_LEATHER_SET1",
+    "name": "T8 Куртка наемника (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_ARMOR_LEATHER_SET2",
+    "name": "T8 Куртка охотника (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_ARMOR_LEATHER_SET3",
+    "name": "T8 Куртка убийцы (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_ARMOR_PLATE_SET1",
+    "name": "T8 Броня солдата (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T8_ARMOR_PLATE_SET2",
+    "name": "T8 Броня рыцаря (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T8_ARMOR_PLATE_SET3",
+    "name": "T8 Броня хранителя (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "торс",
+    "material": "латы"
+  },
+  {
+    "id": "T8_HEAD_CLOTH_SET1",
+    "name": "T8 Колпак ученого (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_HEAD_CLOTH_SET2",
+    "name": "T8 Колпак клирика (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_HEAD_CLOTH_SET3",
+    "name": "T8 Колпак чародея (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_HEAD_LEATHER_SET1",
+    "name": "T8 Капюшон наемника (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_HEAD_LEATHER_SET2",
+    "name": "T8 Капюшон охотника (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_HEAD_LEATHER_SET3",
+    "name": "T8 Капюшон убийцы (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_HEAD_PLATE_SET1",
+    "name": "T8 Шлем солдата (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T8_HEAD_PLATE_SET2",
+    "name": "T8 Шлем рыцаря (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T8_HEAD_PLATE_SET3",
+    "name": "T8 Шлем хранителя (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "шлем",
+    "material": "латы"
+  },
+  {
+    "id": "T8_SHOES_CLOTH_SET1",
+    "name": "T8 Сандалии ученого (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_SHOES_CLOTH_SET2",
+    "name": "T8 Сандалии клирика (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_SHOES_CLOTH_SET3",
+    "name": "T8 Сандалии чародея (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "ткань"
+  },
+  {
+    "id": "T8_SHOES_LEATHER_SET1",
+    "name": "T8 Ботинки наемника (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_SHOES_LEATHER_SET2",
+    "name": "T8 Ботинки охотника (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_SHOES_LEATHER_SET3",
+    "name": "T8 Ботинки убийцы (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "кожа"
+  },
+  {
+    "id": "T8_SHOES_PLATE_SET1",
+    "name": "T8 Сапоги солдата (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T8_SHOES_PLATE_SET2",
+    "name": "T8 Сапоги рыцаря (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T8_SHOES_PLATE_SET3",
+    "name": "T8 Сапоги хранителя (старейшина)",
+    "category": "armor",
+    "tier": 8,
+    "slot": "обувь",
+    "material": "латы"
+  },
+  {
+    "id": "T2_CAPE",
+    "name": "T2 Плащ (новичок)",
+    "category": "cape",
+    "tier": 2,
+    "slot": "плащ"
+  },
+  {
+    "id": "T3_CAPE",
+    "name": "T3 Плащ (странник)",
+    "category": "cape",
+    "tier": 3,
+    "slot": "плащ"
+  },
+  {
+    "id": "T4_CAPE",
+    "name": "T4 Плащ (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ"
+  },
+  {
+    "id": "T5_CAPE",
+    "name": "T5 Плащ (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ"
+  },
+  {
+    "id": "T6_CAPE",
+    "name": "T6 Плащ (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ"
+  },
+  {
+    "id": "T7_CAPE",
+    "name": "T7 Плащ (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ"
+  },
+  {
+    "id": "T8_CAPE",
+    "name": "T8 Плащ (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ"
+  },
+  {
+    "id": "T4_CAPEITEM_FW_BRIDGEWATCH",
+    "name": "T4 Накидка города Bridgewatch (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T4_CAPEITEM_FW_CAERLEON",
+    "name": "T4 Плащ города Caerleon (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T4_CAPEITEM_FW_FORTSTERLING",
+    "name": "T4 Накидка города Fort Sterling (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T4_CAPEITEM_FW_LYMHURST",
+    "name": "T4 Накидка города Lymhurst (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T4_CAPEITEM_FW_MARTLOCK",
+    "name": "T4 Накидка города Martlock (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T4_CAPEITEM_FW_THETFORD",
+    "name": "T4 Накидка города Thetford (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T4_CAPEITEM_FW_BRECILIEN",
+    "name": "T4 Плащ города Brecilien (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T5_CAPEITEM_FW_BRIDGEWATCH",
+    "name": "T5 Накидка города Bridgewatch (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T5_CAPEITEM_FW_CAERLEON",
+    "name": "T5 Плащ города Caerleon (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T5_CAPEITEM_FW_FORTSTERLING",
+    "name": "T5 Накидка города Fort Sterling (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T5_CAPEITEM_FW_LYMHURST",
+    "name": "T5 Накидка города Lymhurst (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T5_CAPEITEM_FW_MARTLOCK",
+    "name": "T5 Накидка города Martlock (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T5_CAPEITEM_FW_THETFORD",
+    "name": "T5 Накидка города Thetford (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T5_CAPEITEM_FW_BRECILIEN",
+    "name": "T5 Плащ города Brecilien (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T6_CAPEITEM_FW_BRIDGEWATCH",
+    "name": "T6 Накидка города Bridgewatch (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T6_CAPEITEM_FW_CAERLEON",
+    "name": "T6 Плащ города Caerleon (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T6_CAPEITEM_FW_FORTSTERLING",
+    "name": "T6 Накидка города Fort Sterling (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T6_CAPEITEM_FW_LYMHURST",
+    "name": "T6 Накидка города Lymhurst (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T6_CAPEITEM_FW_MARTLOCK",
+    "name": "T6 Накидка города Martlock (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T6_CAPEITEM_FW_THETFORD",
+    "name": "T6 Накидка города Thetford (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T6_CAPEITEM_FW_BRECILIEN",
+    "name": "T6 Плащ города Brecilien (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T7_CAPEITEM_FW_BRIDGEWATCH",
+    "name": "T7 Накидка города Bridgewatch (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T7_CAPEITEM_FW_CAERLEON",
+    "name": "T7 Плащ города Caerleon (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T7_CAPEITEM_FW_FORTSTERLING",
+    "name": "T7 Накидка города Fort Sterling (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T7_CAPEITEM_FW_LYMHURST",
+    "name": "T7 Накидка города Lymhurst (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T7_CAPEITEM_FW_MARTLOCK",
+    "name": "T7 Накидка города Martlock (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T7_CAPEITEM_FW_THETFORD",
+    "name": "T7 Накидка города Thetford (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T7_CAPEITEM_FW_BRECILIEN",
+    "name": "T7 Плащ города Brecilien (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T8_CAPEITEM_FW_BRIDGEWATCH",
+    "name": "T8 Накидка города Bridgewatch (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T8_CAPEITEM_FW_CAERLEON",
+    "name": "T8 Плащ города Caerleon (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T8_CAPEITEM_FW_FORTSTERLING",
+    "name": "T8 Накидка города Fort Sterling (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T8_CAPEITEM_FW_LYMHURST",
+    "name": "T8 Накидка города Lymhurst (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T8_CAPEITEM_FW_MARTLOCK",
+    "name": "T8 Накидка города Martlock (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T8_CAPEITEM_FW_THETFORD",
+    "name": "T8 Накидка города Thetford (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T8_CAPEITEM_FW_BRECILIEN",
+    "name": "T8 Плащ города Brecilien (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (фракция)"
+  }
+]
