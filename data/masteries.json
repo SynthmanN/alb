@@ -1,0 +1,930 @@
+{
+ "masteries": [
+  {
+   "id": "COMBAT_LEATHER_ARMORS",
+   "name": "Боец в кожаной куртке"
+  },
+  {
+   "id": "COMBAT_LEATHER_HEADS",
+   "name": "Боец в кожаном капюшоне"
+  },
+  {
+   "id": "COMBAT_LEATHER_SHOES",
+   "name": "Боец в кожаных ботинках"
+  },
+  {
+   "id": "COMBAT_PLATE_ARMORS",
+   "name": "Боец в латной броне"
+  },
+  {
+   "id": "COMBAT_PLATE_HEADS",
+   "name": "Боец в латном шлеме"
+  },
+  {
+   "id": "COMBAT_PLATE_SHOES",
+   "name": "Боец в латных сапогах"
+  },
+  {
+   "id": "COMBAT_CLOTH_ARMORS",
+   "name": "Боец в тканевой мантии"
+  },
+  {
+   "id": "COMBAT_CLOTH_HEADS",
+   "name": "Боец в тканевом колпаке"
+  },
+  {
+   "id": "COMBAT_CLOTH_SHOES",
+   "name": "Боец в тканевых сандалиях"
+  },
+  {
+   "id": "COMBAT_CROSSBOWS",
+   "name": "Боец с арбалетом"
+  },
+  {
+   "id": "COMBAT_QUARTERSTAFFS",
+   "name": "Боец с боевым шестом"
+  },
+  {
+   "id": "COMBAT_MACES",
+   "name": "Боец с булавой"
+  },
+  {
+   "id": "COMBAT_NATURESTAFFS",
+   "name": "Боец с древесным посохом"
+  },
+  {
+   "id": "COMBAT_DAGGERS",
+   "name": "Боец с кинжалом"
+  },
+  {
+   "id": "COMBAT_BOOKS",
+   "name": "Боец с книгой"
+  },
+  {
+   "id": "COMBAT_SPEARS",
+   "name": "Боец с копьем"
+  },
+  {
+   "id": "COMBAT_BOWS",
+   "name": "Боец с луком"
+  },
+  {
+   "id": "COMBAT_SWORDS",
+   "name": "Боец с мечом"
+  },
+  {
+   "id": "COMBAT_HAMMERS",
+   "name": "Боец с молотом"
+  },
+  {
+   "id": "COMBAT_AXES",
+   "name": "Боец с топором"
+  },
+  {
+   "id": "COMBAT_TORCHES",
+   "name": "Боец с факелом"
+  },
+  {
+   "id": "COMBAT_SHIELDS",
+   "name": "Боец с щитом"
+  },
+  {
+   "id": "COMBAT_KNUCKLES",
+   "name": "Воитель в боевых перчатках"
+  },
+  {
+   "id": "COMBAT_HOLYSTAFFS",
+   "name": "Жрец"
+  },
+  {
+   "id": "COMBAT_FROSTSTAFFS",
+   "name": "Маг холода"
+  },
+  {
+   "id": "COMBAT_ARCANESTAFFS",
+   "name": "Мистик"
+  },
+  {
+   "id": "COMBAT_SHAPESHIFTER",
+   "name": "Оборотень"
+  },
+  {
+   "id": "COMBAT_FIRESTAFFS",
+   "name": "Пиромант"
+  },
+  {
+   "id": "COMBAT_CURSEDSTAFFS",
+   "name": "Чернокнижник"
+  }
+ ],
+ "specializations": [
+  {
+   "id": "COMBAT_ARCANESTAFFS_CRYSTAL",
+   "masteryId": "COMBAT_ARCANESTAFFS",
+   "name": "Мастер боя с Астральным посохом",
+   "families": [
+    "2H_ARCANESTAFF_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_ARCANESTAFFS_GREAT",
+   "masteryId": "COMBAT_ARCANESTAFFS",
+   "name": "Мастер боя с большим мистическим посохом",
+   "families": [
+    "2H_ARCANESTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_ARCANESTAFFS_ENIGMATIC",
+   "masteryId": "COMBAT_ARCANESTAFFS",
+   "name": "Мастер боя с загадочным посохом",
+   "families": [
+    "2H_ENIGMATICSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_ARCANESTAFFS_ARCANE",
+   "masteryId": "COMBAT_ARCANESTAFFS",
+   "name": "Мастер боя с мистическим посохом",
+   "families": [
+    "MAIN_ARCANESTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_AXES_HALBERD",
+   "masteryId": "COMBAT_AXES",
+   "name": "Мастер боя с алебардой",
+   "families": [
+    "2H_HALBERD"
+   ]
+  },
+  {
+   "id": "COMBAT_AXES_AXE",
+   "masteryId": "COMBAT_AXES",
+   "name": "Мастер боя с боевым топором",
+   "families": [
+    "MAIN_AXE"
+   ]
+  },
+  {
+   "id": "COMBAT_AXES_GREAT",
+   "masteryId": "COMBAT_AXES",
+   "name": "Мастер боя с большим топором",
+   "families": [
+    "2H_AXE"
+   ]
+  },
+  {
+   "id": "COMBAT_AXES_CRYSTAL",
+   "masteryId": "COMBAT_AXES",
+   "name": "Мастер боя с хрустальным жнецом",
+   "families": [
+    "2H_SCYTHE_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_BOOKS_CRYSTAL",
+   "masteryId": "COMBAT_BOOKS",
+   "name": "Мастер боя с Гримуаром сокрытого времени",
+   "families": [
+    "OFF_TOME_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_BOOKS_BOOK",
+   "masteryId": "COMBAT_BOOKS",
+   "name": "Мастер боя с книгой заклинаний",
+   "families": [
+    "OFF_BOOK"
+   ]
+  },
+  {
+   "id": "COMBAT_BOWS_WAR",
+   "masteryId": "COMBAT_BOWS",
+   "name": "Мастер боя с боевым луком",
+   "families": [
+    "2H_WARBOW"
+   ]
+  },
+  {
+   "id": "COMBAT_BOWS_LONG",
+   "masteryId": "COMBAT_BOWS",
+   "name": "Мастер боя с длинным луком",
+   "families": [
+    "2H_LONGBOW"
+   ]
+  },
+  {
+   "id": "COMBAT_BOWS_BOW",
+   "masteryId": "COMBAT_BOWS",
+   "name": "Мастер боя с луком",
+   "families": [
+    "2H_BOW"
+   ]
+  },
+  {
+   "id": "COMBAT_BOWS_CRYSTAL",
+   "masteryId": "COMBAT_BOWS",
+   "name": "Мастер боя с луком небесного странника",
+   "families": [
+    "2H_BOW_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_ARMORS_SET2",
+   "masteryId": "COMBAT_CLOTH_ARMORS",
+   "name": "Мастер боя в мантии клирика",
+   "families": [
+    "ARMOR_CLOTH_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_ARMORS_SET1",
+   "masteryId": "COMBAT_CLOTH_ARMORS",
+   "name": "Мастер боя в мантии ученого",
+   "families": [
+    "ARMOR_CLOTH_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_ARMORS_SET3",
+   "masteryId": "COMBAT_CLOTH_ARMORS",
+   "name": "Мастер боя в мантии чародея",
+   "families": [
+    "ARMOR_CLOTH_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_HEADS_SET2",
+   "masteryId": "COMBAT_CLOTH_HEADS",
+   "name": "Мастер боя в колпаке клирика",
+   "families": [
+    "HEAD_CLOTH_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_HEADS_SET1",
+   "masteryId": "COMBAT_CLOTH_HEADS",
+   "name": "Мастер боя в колпаке ученого",
+   "families": [
+    "HEAD_CLOTH_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_HEADS_SET3",
+   "masteryId": "COMBAT_CLOTH_HEADS",
+   "name": "Мастер боя в колпаке чародея",
+   "families": [
+    "HEAD_CLOTH_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_SHOES_SET2",
+   "masteryId": "COMBAT_CLOTH_SHOES",
+   "name": "Мастер боя в сандалиях клирика",
+   "families": [
+    "SHOES_CLOTH_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_SHOES_SET1",
+   "masteryId": "COMBAT_CLOTH_SHOES",
+   "name": "Мастер боя в сандалиях ученого",
+   "families": [
+    "SHOES_CLOTH_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_CLOTH_SHOES_SET3",
+   "masteryId": "COMBAT_CLOTH_SHOES",
+   "name": "Мастер боя в сандалиях чародея",
+   "families": [
+    "SHOES_CLOTH_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_CROSSBOWS_CROSSBOW",
+   "masteryId": "COMBAT_CROSSBOWS",
+   "name": "Мастер боя с арбалетом",
+   "families": [
+    "2H_CROSSBOW"
+   ]
+  },
+  {
+   "id": "COMBAT_CROSSBOWS_CRYSTAL",
+   "masteryId": "COMBAT_CROSSBOWS",
+   "name": "Мастер боя с искрящимися бластерами",
+   "families": [
+    "2H_DUALCROSSBOW_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_CROSSBOWS_ONEHAND",
+   "masteryId": "COMBAT_CROSSBOWS",
+   "name": "Мастер боя с легким арбалетом",
+   "families": [
+    "MAIN_1HCROSSBOW"
+   ]
+  },
+  {
+   "id": "COMBAT_CROSSBOWS_LARGE",
+   "masteryId": "COMBAT_CROSSBOWS",
+   "name": "Мастер боя с тяжелым арбалетом",
+   "families": [
+    "2H_CROSSBOWLARGE"
+   ]
+  },
+  {
+   "id": "COMBAT_CURSEDSTAFFS_GREAT",
+   "masteryId": "COMBAT_CURSEDSTAFFS",
+   "name": "Мастер боя с большим проклятым посохом",
+   "families": [
+    "2H_CURSEDSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_CURSEDSTAFFS_DEMONIC",
+   "masteryId": "COMBAT_CURSEDSTAFFS",
+   "name": "Мастер боя с демоническим посохом",
+   "families": [
+    "2H_DEMONICSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_CURSEDSTAFFS_CRYSTAL",
+   "masteryId": "COMBAT_CURSEDSTAFFS",
+   "name": "Мастер боя с посохом гниения",
+   "families": [
+    "MAIN_CURSEDSTAFF_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_CURSEDSTAFFS_CURSED",
+   "masteryId": "COMBAT_CURSEDSTAFFS",
+   "name": "Мастер боя с проклятым посохом",
+   "families": [
+    "MAIN_CURSEDSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_DAGGERS_CRYSTAL",
+   "masteryId": "COMBAT_DAGGERS",
+   "name": "Мастер боя с Парными истребителями",
+   "families": [
+    "2H_DAGGERPAIR_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_DAGGERS_DAGGER",
+   "masteryId": "COMBAT_DAGGERS",
+   "name": "Мастер боя с кинжалом",
+   "families": [
+    "MAIN_DAGGER"
+   ]
+  },
+  {
+   "id": "COMBAT_DAGGERS_CLAWS",
+   "masteryId": "COMBAT_DAGGERS",
+   "name": "Мастер боя с когтями",
+   "families": [
+    "2H_CLAWPAIR"
+   ]
+  },
+  {
+   "id": "COMBAT_DAGGERS_PAIR",
+   "masteryId": "COMBAT_DAGGERS",
+   "name": "Мастер боя с парными кинжалами",
+   "families": [
+    "2H_DAGGERPAIR"
+   ]
+  },
+  {
+   "id": "COMBAT_FIRESTAFFS_INFERNO",
+   "masteryId": "COMBAT_FIRESTAFFS",
+   "name": "Мастер боя с адским огненным посохом",
+   "families": [
+    "2H_INFERNOSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_FIRESTAFFS_GREAT",
+   "masteryId": "COMBAT_FIRESTAFFS",
+   "name": "Мастер боя с большим огненным посохом",
+   "families": [
+    "2H_FIRESTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_FIRESTAFFS_FIRE",
+   "masteryId": "COMBAT_FIRESTAFFS",
+   "name": "Мастер боя с огненным посохом",
+   "families": [
+    "MAIN_FIRESTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_FIRESTAFFS_CRYSTAL",
+   "masteryId": "COMBAT_FIRESTAFFS",
+   "name": "Мастер боя с посохом пламенного странника",
+   "families": [
+    "MAIN_FIRESTAFF_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_FROSTSTAFFS_GREAT",
+   "masteryId": "COMBAT_FROSTSTAFFS",
+   "name": "Мастер боя с большим морозным посохом",
+   "families": [
+    "2H_FROSTSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_FROSTSTAFFS_GLACIAL",
+   "masteryId": "COMBAT_FROSTSTAFFS",
+   "name": "Мастер боя с ледяным посохом",
+   "families": [
+    "2H_GLACIALSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_FROSTSTAFFS_FROST",
+   "masteryId": "COMBAT_FROSTSTAFFS",
+   "name": "Мастер боя с морозным посохом",
+   "families": [
+    "MAIN_FROSTSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_FROSTSTAFFS_CRYSTAL",
+   "masteryId": "COMBAT_FROSTSTAFFS",
+   "name": "Мастер боя со снежным посохом",
+   "families": [
+    "2H_FROSTSTAFF_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_HAMMERS_CRYSTAL",
+   "masteryId": "COMBAT_HAMMERS",
+   "name": "Мастер боя с Молотом истинных снарядов",
+   "families": [
+    "2H_HAMMER_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_HAMMERS_GREAT",
+   "masteryId": "COMBAT_HAMMERS",
+   "name": "Мастер боя с большим молотом",
+   "families": [
+    "2H_HAMMER"
+   ]
+  },
+  {
+   "id": "COMBAT_HAMMERS_HAMMER",
+   "masteryId": "COMBAT_HAMMERS",
+   "name": "Мастер боя с молотом",
+   "families": [
+    "MAIN_HAMMER"
+   ]
+  },
+  {
+   "id": "COMBAT_HAMMERS_POLE",
+   "masteryId": "COMBAT_HAMMERS",
+   "name": "Мастер боя с чеканом",
+   "families": [
+    "2H_POLEHAMMER"
+   ]
+  },
+  {
+   "id": "COMBAT_HOLYSTAFFS_CRYSTAL",
+   "masteryId": "COMBAT_HOLYSTAFFS",
+   "name": "Мастер боя с Посохом возвышения",
+   "families": [
+    "2H_HOLYSTAFF_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_HOLYSTAFFS_DIVINE",
+   "masteryId": "COMBAT_HOLYSTAFFS",
+   "name": "Мастер боя с божественным посохом",
+   "families": [
+    "2H_DIVINESTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_HOLYSTAFFS_GREAT",
+   "masteryId": "COMBAT_HOLYSTAFFS",
+   "name": "Мастер боя с большим священным посохом",
+   "families": [
+    "2H_HOLYSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_HOLYSTAFFS_HOLY",
+   "masteryId": "COMBAT_HOLYSTAFFS",
+   "name": "Мастер боя со священным посохом",
+   "families": [
+    "MAIN_HOLYSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_KNUCKLES_SET2",
+   "masteryId": "COMBAT_KNUCKLES",
+   "name": "Мастер боя в боевых наручах",
+   "families": [
+    "2H_KNUCKLES_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_KNUCKLES_SET1",
+   "masteryId": "COMBAT_KNUCKLES",
+   "name": "Мастер боя в перчатках крушителя",
+   "families": [
+    "2H_KNUCKLES_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_KNUCKLES_SET3",
+   "masteryId": "COMBAT_KNUCKLES",
+   "name": "Мастер боя в шипастых рукавицах",
+   "families": [
+    "2H_KNUCKLES_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_KNUCKLES_CRYSTAL",
+   "masteryId": "COMBAT_KNUCKLES",
+   "name": "Мастер боя с силовыми перчатками",
+   "families": [
+    "2H_KNUCKLES_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_ARMORS_SET1",
+   "masteryId": "COMBAT_LEATHER_ARMORS",
+   "name": "Мастер боя в куртке наемника",
+   "families": [
+    "ARMOR_LEATHER_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_ARMORS_SET2",
+   "masteryId": "COMBAT_LEATHER_ARMORS",
+   "name": "Мастер боя в куртке охотника",
+   "families": [
+    "ARMOR_LEATHER_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_ARMORS_SET3",
+   "masteryId": "COMBAT_LEATHER_ARMORS",
+   "name": "Мастер боя в куртке убийцы",
+   "families": [
+    "ARMOR_LEATHER_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_HEADS_SET1",
+   "masteryId": "COMBAT_LEATHER_HEADS",
+   "name": "Мастер боя в капюшоне наемника",
+   "families": [
+    "HEAD_LEATHER_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_HEADS_SET2",
+   "masteryId": "COMBAT_LEATHER_HEADS",
+   "name": "Мастер боя в капюшоне охотника",
+   "families": [
+    "HEAD_LEATHER_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_HEADS_SET3",
+   "masteryId": "COMBAT_LEATHER_HEADS",
+   "name": "Мастер боя в капюшоне убийцы",
+   "families": [
+    "HEAD_LEATHER_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_SHOES_SET1",
+   "masteryId": "COMBAT_LEATHER_SHOES",
+   "name": "Мастер боя в ботинках наемника",
+   "families": [
+    "SHOES_LEATHER_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_SHOES_SET2",
+   "masteryId": "COMBAT_LEATHER_SHOES",
+   "name": "Мастер боя в ботинках охотника",
+   "families": [
+    "SHOES_LEATHER_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_LEATHER_SHOES_SET3",
+   "masteryId": "COMBAT_LEATHER_SHOES",
+   "name": "Мастер боя в ботинках убийцы",
+   "families": [
+    "SHOES_LEATHER_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_MACES_CRYSTAL",
+   "masteryId": "COMBAT_MACES",
+   "name": "Мастер боя с Грозовым монархом",
+   "families": [
+    "MAIN_MACE_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_MACES_MACE",
+   "masteryId": "COMBAT_MACES",
+   "name": "Мастер боя с булавой",
+   "families": [
+    "MAIN_MACE"
+   ]
+  },
+  {
+   "id": "COMBAT_MACES_FLAIL",
+   "masteryId": "COMBAT_MACES",
+   "name": "Мастер боя с моргенштерном",
+   "families": [
+    "2H_FLAIL"
+   ]
+  },
+  {
+   "id": "COMBAT_MACES_HEAVY",
+   "masteryId": "COMBAT_MACES",
+   "name": "Мастер боя с тяжелой булавой",
+   "families": [
+    "2H_MACE"
+   ]
+  },
+  {
+   "id": "COMBAT_NATURESTAFFS_GREAT",
+   "masteryId": "COMBAT_NATURESTAFFS",
+   "name": "Мастер боя с большим древесным посохом",
+   "families": [
+    "2H_NATURESTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_NATURESTAFFS_WILD",
+   "masteryId": "COMBAT_NATURESTAFFS",
+   "name": "Мастер боя с диким посохом",
+   "families": [
+    "2H_WILDSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_NATURESTAFFS_NATURE",
+   "masteryId": "COMBAT_NATURESTAFFS",
+   "name": "Мастер боя с древесным посохом",
+   "families": [
+    "MAIN_NATURESTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_NATURESTAFFS_CRYSTAL",
+   "masteryId": "COMBAT_NATURESTAFFS",
+   "name": "Мастер боя с кузнечным посохом",
+   "families": [
+    "MAIN_NATURESTAFF_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_ARMORS_SET2",
+   "masteryId": "COMBAT_PLATE_ARMORS",
+   "name": "Мастер боя в броне рыцаря",
+   "families": [
+    "ARMOR_PLATE_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_ARMORS_SET1",
+   "masteryId": "COMBAT_PLATE_ARMORS",
+   "name": "Мастер боя в броне солдата",
+   "families": [
+    "ARMOR_PLATE_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_ARMORS_SET3",
+   "masteryId": "COMBAT_PLATE_ARMORS",
+   "name": "Мастер боя в броне хранителя",
+   "families": [
+    "ARMOR_PLATE_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_HEADS_SET2",
+   "masteryId": "COMBAT_PLATE_HEADS",
+   "name": "Мастер боя в шлеме рыцаря",
+   "families": [
+    "HEAD_PLATE_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_HEADS_SET1",
+   "masteryId": "COMBAT_PLATE_HEADS",
+   "name": "Мастер боя в шлеме солдата",
+   "families": [
+    "HEAD_PLATE_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_HEADS_SET3",
+   "masteryId": "COMBAT_PLATE_HEADS",
+   "name": "Мастер боя в шлеме хранителя",
+   "families": [
+    "HEAD_PLATE_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_SHOES_SET2",
+   "masteryId": "COMBAT_PLATE_SHOES",
+   "name": "Мастер боя в сапогах рыцаря",
+   "families": [
+    "SHOES_PLATE_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_SHOES_SET1",
+   "masteryId": "COMBAT_PLATE_SHOES",
+   "name": "Мастер боя в сапогах солдата",
+   "families": [
+    "SHOES_PLATE_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_PLATE_SHOES_SET3",
+   "masteryId": "COMBAT_PLATE_SHOES",
+   "name": "Мастер боя в сапогах хранителя",
+   "families": [
+    "SHOES_PLATE_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_QUARTERSTAFFS_QUARTERSTAFF",
+   "masteryId": "COMBAT_QUARTERSTAFFS",
+   "name": "Мастер боя с боевым шестом",
+   "families": [
+    "2H_QUARTERSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_QUARTERSTAFFS_IRONCLAD",
+   "masteryId": "COMBAT_QUARTERSTAFFS",
+   "name": "Мастер боя с железным посохом",
+   "families": [
+    "2H_IRONCLADEDSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_QUARTERSTAFFS_DOUBLEBLADED",
+   "masteryId": "COMBAT_QUARTERSTAFFS",
+   "name": "Мастер боя с острым шестом",
+   "families": [
+    "2H_DOUBLEBLADEDSTAFF"
+   ]
+  },
+  {
+   "id": "COMBAT_QUARTERSTAFFS_CRYSTAL",
+   "masteryId": "COMBAT_QUARTERSTAFFS",
+   "name": "Мастер боя с парным призрачным клинком",
+   "families": [
+    "2H_DOUBLEBLADEDSTAFF_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_SHAPESHIFTER_CRYSTAL",
+   "masteryId": "COMBAT_SHAPESHIFTER",
+   "name": "Мастер боя с Посохом неподвижного взгляда",
+   "families": [
+    "2H_SHAPESHIFTER_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_SHAPESHIFTER_SET2",
+   "masteryId": "COMBAT_SHAPESHIFTER",
+   "name": "Мастер боя с непреодолимым посохом",
+   "families": [
+    "2H_SHAPESHIFTER_SET2"
+   ]
+  },
+  {
+   "id": "COMBAT_SHAPESHIFTER_SET3",
+   "masteryId": "COMBAT_SHAPESHIFTER",
+   "name": "Мастер боя с первобытным посохом",
+   "families": [
+    "2H_SHAPESHIFTER_SET3"
+   ]
+  },
+  {
+   "id": "COMBAT_SHAPESHIFTER_SET1",
+   "masteryId": "COMBAT_SHAPESHIFTER",
+   "name": "Мастер боя с посохом бродяги",
+   "families": [
+    "2H_SHAPESHIFTER_SET1"
+   ]
+  },
+  {
+   "id": "COMBAT_SHIELDS_CRYSTAL",
+   "masteryId": "COMBAT_SHIELDS",
+   "name": "Мастер боя с Несокрушимым бастионом",
+   "families": [
+    "OFF_SHIELD_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_SHIELDS_SHIELD",
+   "masteryId": "COMBAT_SHIELDS",
+   "name": "Мастер боя с щитом",
+   "families": [
+    "OFF_SHIELD"
+   ]
+  },
+  {
+   "id": "COMBAT_SPEARS_CRYSTAL",
+   "masteryId": "COMBAT_SPEARS",
+   "name": "Мастер боя с Глефой разлома",
+   "families": [
+    "2H_GLAIVE_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_SPEARS_GLAIVE",
+   "masteryId": "COMBAT_SPEARS",
+   "name": "Мастер боя с глефой",
+   "families": [
+    "2H_GLAIVE"
+   ]
+  },
+  {
+   "id": "COMBAT_SPEARS_SPEAR",
+   "masteryId": "COMBAT_SPEARS",
+   "name": "Мастер боя с копьем",
+   "families": [
+    "MAIN_SPEAR"
+   ]
+  },
+  {
+   "id": "COMBAT_SPEARS_GREAT",
+   "masteryId": "COMBAT_SPEARS",
+   "name": "Мастер боя с пикой",
+   "families": [
+    "2H_SPEAR"
+   ]
+  },
+  {
+   "id": "COMBAT_SWORDS_CRYSTAL",
+   "masteryId": "COMBAT_SWORDS",
+   "name": "Мастер боя с Клинком бесконечности",
+   "families": [
+    "MAIN_SWORD_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_SWORDS_CLAYMORE",
+   "masteryId": "COMBAT_SWORDS",
+   "name": "Мастер боя с клеймором",
+   "families": [
+    "2H_CLAYMORE"
+   ]
+  },
+  {
+   "id": "COMBAT_SWORDS_SWORD",
+   "masteryId": "COMBAT_SWORDS",
+   "name": "Мастер боя с палашом",
+   "families": [
+    "MAIN_SWORD"
+   ]
+  },
+  {
+   "id": "COMBAT_SWORDS_DUAL",
+   "masteryId": "COMBAT_SWORDS",
+   "name": "Мастер боя с парными мечами",
+   "families": [
+    "2H_DUALSWORD"
+   ]
+  },
+  {
+   "id": "COMBAT_TORCHES_CRYSTAL",
+   "masteryId": "COMBAT_TORCHES",
+   "name": "Мастер боя с Факелом синего пламени",
+   "families": [
+    "OFF_TORCH_CRYSTAL"
+   ]
+  },
+  {
+   "id": "COMBAT_TORCHES_TORCH",
+   "masteryId": "COMBAT_TORCHES",
+   "name": "Мастер боя с факелом",
+   "families": [
+    "OFF_TORCH"
+   ]
+  }
+ ]
+}

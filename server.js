@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const { ITEMS } = require('./data/items');
 const { REFINING_RATIOS, RRR_PRESETS, rrrFromBonus, BONUS_CITY } = require('./data/refining');
 const RECIPES = require('./data/recipes.json');
 const EXTRA_ITEM_NAMES = require('./data/extra-item-names.json');
+const MASTERIES = require('./data/masteries.json');
 
 const GEAR_IDS = new Set(ITEMS.filter((i) => i.category === 'weapon' || i.category === 'armor' || i.category === 'cape').map((i) => i.id));
 const ITEM_TIER_BY_ID = new Map(ITEMS.map((i) => [i.id, i.tier]));
@@ -27,6 +29,52 @@ function itemIP(tier, enchant, quality) {
 }
 function maxEnchantForGear(tier) {
   return tier >= 4 ? 4 : 0; // T2/T3 гир никогда не зачаровывается — та же логика, что и на фронте
+}
+
+// --- Мастерки (Destiny Board) ---
+// Дерево категорий (Mastery) и специализаций (Specialization) извлечено из
+// achievements.xml того же репозитория игровых дампов, что и остальные данные
+// проекта — не по статьям (там разнобой), см. scripts/extract_masteries.py. Ставки из игровых файлов:
+// специализация конкретной вещи даёт +2 IP/уровень этой вещи, а категория (Mastery) и специализация
+// дают +0.2 IP/уровень на вещи своей ветки. Оба бонуса — только с T4 (mintier=4). Плащи в дереве
+// не участвуют. Надбавка по тиру (masterymodifier из items.xml): T4=0%, T5=5%, T6=10%, T7=15%, T8=20% —
+// множитель поверх бонуса (подтверждён по вторичному источнику, поэтому вынесен в константу).
+const MASTERY_MIN_TIER = 4;
+const MASTERY_CATEGORY_IP_PER_LEVEL = 0.2;
+const MASTERY_SPEC_IP_PER_LEVEL = 2;
+const MASTERY_TIER_MODIFIER = { 4: 0, 5: 0.05, 6: 0.1, 7: 0.15, 8: 0.2 };
+const MASTERY_MAX_LEVEL = 200; // 100 базовых + 100 элитных уровней, ставка за уровень одинакова
+
+const SPEC_BY_ID = new Map(MASTERIES.specializations.map((s) => [s.id, s]));
+const MASTERY_BY_ID = new Map(MASTERIES.masteries.map((m) => [m.id, m]));
+const SPEC_ID_BY_FAMILY = new Map();
+for (const spec of MASTERIES.specializations) for (const fam of spec.families) SPEC_ID_BY_FAMILY.set(fam, spec.id);
+
+// Уровни мастерок пользователя лежат в data/user-masteries.json ({ masteries: {id: lvl}, specializations: {id: lvl} }).
+const USER_MASTERIES_PATH = path.join(__dirname, 'data', 'user-masteries.json');
+function loadUserMasteryLevels() {
+  try {
+    const data = JSON.parse(fs.readFileSync(USER_MASTERIES_PATH, 'utf8'));
+    return { masteries: data.masteries || {}, specializations: data.specializations || {} };
+  } catch {
+    return { masteries: {}, specializations: {} };
+  }
+}
+function saveUserMasteryLevels(levels) {
+  fs.writeFileSync(USER_MASTERIES_PATH, JSON.stringify(levels, null, 2));
+}
+
+// Бонус IP от мастерок для конкретного семейства предмета на конкретном тире.
+// familyId — id без префикса тира (например "MAIN_SWORD"), как в masteries.json.
+function masteryIPBonus(familyId, tier, userLevels) {
+  if (tier < MASTERY_MIN_TIER) return 0;
+  const specId = SPEC_ID_BY_FAMILY.get(familyId);
+  if (!specId) return 0; // плащи и всё, чего нет в дереве специализаций
+  const spec = SPEC_BY_ID.get(specId);
+  const categoryLevel = (spec.masteryId && userLevels.masteries[spec.masteryId]) || 0;
+  const specLevel = userLevels.specializations[specId] || 0;
+  const raw = MASTERY_CATEGORY_IP_PER_LEVEL * (categoryLevel + specLevel) + MASTERY_SPEC_IP_PER_LEVEL * specLevel;
+  return raw * (1 + (MASTERY_TIER_MODIFIER[tier] || 0));
 }
 
 const RESOURCE_TYPES = ['WOOD', 'ORE', 'FIBER', 'HIDE', 'ROCK'];
@@ -1027,6 +1075,35 @@ app.get('/api/craft-bulk-opportunities', async (req, res) => {
   }
 });
 
+// --- Мастерки: дерево и сохранённые уровни ---
+app.get('/api/masteries', (req, res) => {
+  res.json({ ...MASTERIES, maxLevel: MASTERY_MAX_LEVEL, levels: loadUserMasteryLevels() });
+});
+
+// Принимает { masteries: { id: level }, specializations: { id: level } } — только изменённые поля;
+// уровень 0 удаляет запись. Неизвестные id игнорируются.
+app.post('/api/masteries', (req, res) => {
+  try {
+    const current = loadUserMasteryLevels();
+    const body = req.body || {};
+    const apply = (incoming, known, target) => {
+      for (const [id, level] of Object.entries(incoming || {})) {
+        if (!known.has(id)) continue;
+        const lvl = Math.min(Math.max(parseInt(level, 10) || 0, 0), MASTERY_MAX_LEVEL);
+        if (lvl === 0) delete target[id];
+        else target[id] = lvl;
+      }
+    };
+    apply(body.masteries, MASTERY_BY_ID, current.masteries);
+    apply(body.specializations, SPEC_BY_ID, current.specializations);
+    saveUserMasteryLevels(current);
+    res.json({ ok: true, ...current });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'failed to save mastery levels', details: err.message });
+  }
+});
+
 // --- Примерочная: самая дешёвая экипировка под целевой Item Power ---
 // Игрок выбирает по предмету (семейству) на каждый слот и целевой средний IP. Для каждого семейства
 // перебираются все тиры / зачарования / качества с реальными рыночными ценами, затем ищется K самых
@@ -1097,27 +1174,31 @@ function paretoFrontier(options) {
 // mult=2 у двуручного оружия (его IP считается дважды при одной цене). Динамика по сумме IP:
 // в каждой "корзине" суммы держим только K самых дешёвых частичных наборов.
 function findCheapestOutfits(slots, minTotalIP, maxTotalIP, k) {
-  let states = new Map([[0, [{ price: 0, picks: [] }]]]);
+  // IP с мастерками дробный, поэтому корзина — округлённая сумма, а точная сумма хранится в самом состоянии.
+  let states = new Map([[0, [{ ip: 0, price: 0, picks: [] }]]]);
   for (const slot of slots) {
     const next = new Map();
-    for (const [ip, list] of states) {
+    for (const list of states.values()) {
       for (const opt of slot.options) {
-        const total = ip + slot.mult * opt.ip;
-        if (total > maxTotalIP) continue; // IP только растёт — дальше это состояние уже не вернуть в окно
-        let bucket = next.get(total);
-        if (!bucket) { bucket = []; next.set(total, bucket); }
-        for (const st of list) bucket.push({ price: st.price + opt.price, picks: [...st.picks, { key: slot.key, opt }] });
+        for (const st of list) {
+          const total = st.ip + slot.mult * opt.ip;
+          if (total > maxTotalIP) continue; // IP только растёт — дальше это состояние уже не вернуть в окно
+          const bucketKey = Math.round(total);
+          let bucket = next.get(bucketKey);
+          if (!bucket) { bucket = []; next.set(bucketKey, bucket); }
+          bucket.push({ ip: total, price: st.price + opt.price, picks: [...st.picks, { key: slot.key, opt }] });
+        }
       }
     }
-    for (const [total, bucket] of next) {
+    for (const bucket of next.values()) {
       bucket.sort((a, b) => a.price - b.price);
       if (bucket.length > k) bucket.length = k;
     }
     states = next;
   }
   const all = [];
-  for (const [ip, list] of states) {
-    if (ip >= minTotalIP && ip <= maxTotalIP) for (const st of list) all.push({ totalIP: ip, price: st.price, picks: st.picks });
+  for (const list of states.values()) {
+    for (const st of list) if (st.ip >= minTotalIP && st.ip <= maxTotalIP) all.push({ totalIP: st.ip, price: st.price, picks: st.picks });
   }
   all.sort((a, b) => a.price - b.price);
   return all.slice(0, k);
@@ -1177,6 +1258,7 @@ app.get('/api/fitting-room', async (req, res) => {
       if (!cur || rec.sell_price_min < cur.price) cheapest.set(key, { price: rec.sell_price_min, city: rec.city });
     }
 
+    const userLevels = loadUserMasteryLevels();
     const slotDefs = [];
     const emptyFamilies = [];
     for (const [key, fam] of Object.entries(families)) {
@@ -1186,7 +1268,11 @@ app.get('/api/fitting-room', async (req, res) => {
         for (const q of ALL_QUALITIES) {
           const hit = cheapest.get(`${queryId}|${q}`);
           if (!hit) continue;
-          options.push({ itemId: m.itemId, tier: m.tier, enchant: m.enchant, quality: q, ip: itemIP(m.tier, m.enchant, q), price: hit.price, city: hit.city });
+          const masteryBonus = masteryIPBonus(fam, m.tier, userLevels);
+          options.push({
+            itemId: m.itemId, tier: m.tier, enchant: m.enchant, quality: q,
+            ip: itemIP(m.tier, m.enchant, q) + masteryBonus, masteryBonus, price: hit.price, city: hit.city,
+          });
         }
       }
       if (options.length === 0) emptyFamilies.push(fam);
