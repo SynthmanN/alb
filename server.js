@@ -51,7 +51,8 @@ const SPEC_ID_BY_FAMILY = new Map();
 for (const spec of MASTERIES.specializations) for (const fam of spec.families) SPEC_ID_BY_FAMILY.set(fam, spec.id);
 
 // Уровни мастерок пользователя лежат в data/user-masteries.json ({ masteries: {id: lvl}, specializations: {id: lvl} }).
-const USER_MASTERIES_PATH = path.join(__dirname, 'data', 'user-masteries.json');
+// USER_MASTERIES_PATH переопределяется в тестах, чтобы они не трогали реальные данные пользователя.
+const USER_MASTERIES_PATH = process.env.USER_MASTERIES_PATH || path.join(__dirname, 'data', 'user-masteries.json');
 function loadUserMasteryLevels() {
   try {
     const data = JSON.parse(fs.readFileSync(USER_MASTERIES_PATH, 'utf8'));
@@ -1305,6 +1306,32 @@ app.get('/api/fitting-room', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Albion market table running on http://localhost:${PORT}`);
-});
+// Порт занимаем только при прямом запуске (node server.js); при require() из тестов — нет.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Albion market table running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  itemIP,
+  baseIPForTier,
+  maxEnchantForGear,
+  masteryIPBonus,
+  familyIdOf,
+  paretoFrontier,
+  findCheapestOutfits,
+  freshnessDecay,
+  bulkCycleDecay,
+  opportunityScore,
+  scaledMinVolume,
+  getSalesTaxRate,
+  quoteAgeMinutes,
+  dealAgeMinutes,
+  normLocation,
+  totalVolume,
+  cityStats,
+  computeBulkPlan,
+  effectiveRecipeResourceId,
+};

@@ -1,0 +1,198 @@
+// Юнит-тесты чистой логики: формулы IP и мастерок, штрафы скора, налог, статистика истории, подбор экипировки.
+import { createRequire } from 'node:module';
+import { describe, it, expect } from 'vitest';
+
+const require = createRequire(import.meta.url);
+const {
+  itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate,
+  quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
+} = require('../server.js');
+const RECIPES = require('../data/recipes.json');
+const { RRR_PRESETS, rrrFromBonus } = require('../data/refining');
+
+describe('Item Power', () => {
+  it('база по тиру: T2=500, +100 за тир', () => {
+    expect(baseIPForTier(2)).toBe(500);
+    expect(baseIPForTier(4)).toBe(700);
+    expect(baseIPForTier(8)).toBe(1100);
+  });
+  it('зачарование +100 за уровень, качество 0/10/20/50/100', () => {
+    expect(itemIP(4, 0, 1)).toBe(700);
+    expect(itemIP(4, 1, 1)).toBe(800);
+    expect(itemIP(4, 0, 2)).toBe(710);
+    expect(itemIP(4, 0, 4)).toBe(750);
+    expect(itemIP(8, 4, 5)).toBe(1600);
+  });
+  it('T2/T3 не зачаровываются', () => {
+    expect(maxEnchantForGear(3)).toBe(0);
+    expect(maxEnchantForGear(4)).toBe(4);
+  });
+  it('семейство — id без тира', () => {
+    expect(familyIdOf('T4_MAIN_SWORD')).toBe('MAIN_SWORD');
+    expect(familyIdOf('T8_2H_CLAYMORE')).toBe('2H_CLAYMORE');
+  });
+});
+
+describe('бонус мастерок', () => {
+  const levels = { masteries: { COMBAT_SWORDS: 50 }, specializations: { COMBAT_SWORDS_SWORD: 100 } };
+  it('(0.2·(мастерство+спец) + 2·спец) на T4', () => {
+    expect(masteryIPBonus('MAIN_SWORD', 4, levels)).toBeCloseTo(0.2 * 150 + 2 * 100, 6); // 230
+  });
+  it('надбавка по тиру: T6 = +10%', () => {
+    expect(masteryIPBonus('MAIN_SWORD', 6, levels)).toBeCloseTo(230 * 1.1, 6);
+  });
+  it('до T4 бонуса нет; плащи и неизвестные вещи вне дерева', () => {
+    expect(masteryIPBonus('MAIN_SWORD', 3, levels)).toBe(0);
+    expect(masteryIPBonus('CAPE', 4, levels)).toBe(0);
+    expect(masteryIPBonus('MAIN_SWORD', 4, { masteries: {}, specializations: {} })).toBe(0);
+  });
+});
+
+describe('скор и штрафы', () => {
+  it('свежесть: до часа — без штрафа, от 3 часов — вдвое, между — линейно', () => {
+    expect(freshnessDecay(10)).toBe(1);
+    expect(freshnessDecay(60)).toBe(1);
+    expect(freshnessDecay(120)).toBeCloseTo(0.75, 6);
+    expect(freshnessDecay(180)).toBe(0.5);
+    expect(freshnessDecay(999)).toBe(0.5);
+    expect(freshnessDecay(null)).toBe(0.5);
+  });
+  it('длина цикла партии: ступени 1 / 0.8 / 0.5 / 0.2 / 0.05', () => {
+    expect([5, 10, 20, 60, 200].map(bulkCycleDecay)).toEqual([1, 0.8, 0.5, 0.2, 0.05]);
+    expect(bulkCycleDecay(null)).toBe(0);
+  });
+  it('opportunityScore: процент × log2(2 + объём)', () => {
+    expect(opportunityScore(100, 0)).toBeCloseTo(100, 6);
+    expect(opportunityScore(100, 6)).toBeCloseTo(300, 6);
+  });
+  it('минимальный объём растёт вместе с окном', () => {
+    expect(scaledMinVolume(24)).toBe(3);
+    expect(scaledMinVolume(168)).toBe(21);
+  });
+});
+
+describe('налог с продажи', () => {
+  it('8% без премиума, 4% с премиумом', () => {
+    expect(getSalesTaxRate({ query: {} })).toBe(0.08);
+    expect(getSalesTaxRate({ query: { premium: 'false' } })).toBe(0.08);
+    expect(getSalesTaxRate({ query: { premium: 'true' } })).toBe(0.04);
+  });
+});
+
+describe('котировки и история', () => {
+  const now = Date.parse('2026-01-01T12:00:00Z');
+  it('возраст котировки; 0001-01-01 = нет данных', () => {
+    expect(quoteAgeMinutes('2026-01-01T11:00:00', now)).toBeCloseTo(60, 6);
+    expect(quoteAgeMinutes('0001-01-01T00:00:00', now)).toBeNull();
+    expect(quoteAgeMinutes(undefined, now)).toBeNull();
+  });
+  it('возраст сделки — по самой старой котировке', () => {
+    expect(dealAgeMinutes(['2026-01-01T11:00:00', '2026-01-01T09:00:00'], now)).toBe(180);
+    expect(dealAgeMinutes(['2026-01-01T11:00:00', '0001-01-01T00:00:00'], now)).toBeNull();
+  });
+  const history = [
+    { item_id: 'X', location: 'Fort Sterling', data: [{ item_count: 10, avg_price: 100 }, { item_count: 30, avg_price: 200 }] },
+    { item_id: 'X', location: 'Black Market', data: [{ item_count: 5, avg_price: 50 }] },
+    { item_id: 'Y', location: 'Fort Sterling', data: [{ item_count: 99, avg_price: 1 }] },
+  ];
+  it('имена с пробелами сравниваются без пробелов', () => {
+    expect(normLocation('Fort Sterling')).toBe(normLocation('FortSterling'));
+  });
+  it('объём — по выбранным городам', () => {
+    expect(totalVolume(history, 'X')).toBe(45);
+    expect(totalVolume(history, 'X', ['FortSterling'])).toBe(40);
+    expect(totalVolume(history, 'X', ['BlackMarket'])).toBe(5);
+    expect(totalVolume(history, 'X', ['Martlock'])).toBe(0);
+  });
+  it('cityStats: средневзвешенная цена и объём в день', () => {
+    const st = cityStats(history, 'X', 2)['Fort Sterling'];
+    expect(st.avgPrice).toBeCloseTo((10 * 100 + 30 * 200) / 40, 6);
+    expect(st.totalVolume).toBe(40);
+    expect(st.avgDailyVolume).toBe(20);
+  });
+});
+
+describe('подбор экипировки', () => {
+  it('paretoFrontier убирает заведомо невыгодные варианты', () => {
+    const f = paretoFrontier([
+      { ip: 700, price: 100 }, { ip: 800, price: 90 }, { ip: 900, price: 200 }, { ip: 850, price: 250 },
+    ]);
+    expect(f.map((o) => [o.ip, o.price])).toEqual([[900, 200], [800, 90]]);
+  });
+
+  const slots = [
+    { key: 'a', mult: 1, options: [{ ip: 700, price: 100 }, { ip: 800, price: 300 }] },
+    { key: 'b', mult: 2, options: [{ ip: 700, price: 50 }, { ip: 900, price: 400 }] }, // двуручное: IP ×2
+  ];
+  it('окно [min, max]: только комбинации внутри, по возрастанию цены', () => {
+    const r = findCheapestOutfits(slots, 2150, 2550, 5);
+    expect(r.map((o) => [o.totalIP, o.price])).toEqual([[2200, 350], [2500, 500]]);
+  });
+  it('без ограничения — все 4 комбинации, самая дешёвая первая', () => {
+    const r = findCheapestOutfits(slots, 0, 1e9, 10);
+    expect(r.map((o) => o.price)).toEqual([150, 350, 500, 700]);
+  });
+  it('K обрезает результат', () => {
+    expect(findCheapestOutfits(slots, 0, 1e9, 2).map((o) => o.price)).toEqual([150, 350]);
+  });
+  it('недостижимое окно — пусто', () => {
+    expect(findCheapestOutfits(slots, 5000, 6000, 5)).toEqual([]);
+  });
+  it('дробный IP (мастерки) тоже укладывается в окно', () => {
+    const fractional = [{ key: 'a', mult: 1, options: [{ ip: 700.4, price: 10 }, { ip: 700.6, price: 20 }] }];
+    expect(findCheapestOutfits(fractional, 700.5, 701, 3).map((o) => o.price)).toEqual([20]);
+  });
+});
+
+describe('план крупной партии', () => {
+  const itemId = Object.keys(RECIPES).find((id) => id.startsWith('T4_') && RECIPES[id].resources.length >= 2);
+  const recipe = RECIPES[itemId];
+  const cities = ['Martlock', 'Lymhurst'];
+
+  // 70 сделок за 7 дней = 10 в день; цена материала #i = 1000·(i+1)
+  const materialHistory = recipe.resources.map((r, i) => ({
+    item_id: r.resource, location: 'Martlock', data: [{ item_count: 70, avg_price: 1000 * (i + 1) }],
+  }));
+  const finishedHistory = [{ item_id: itemId, location: 'Lymhurst', data: [{ item_count: 70, avg_price: 200000 }] }];
+  const base = {
+    itemId, enchant: 0, quality: 1, quantity: 100, days: 7, preset: RRR_PRESETS[0], rrr: 0,
+    taxRate: 0.08, costCeiling: null, sellLow: null, sellHigh: null, queryCities: cities,
+  };
+
+  it('себестоимость, сроки и профит после налога', () => {
+    const plan = computeBulkPlan(base, materialHistory, finishedHistory);
+    const expectedCost = recipe.resources.reduce((sum, r, i) => sum + r.count * 1000 * (i + 1), 0) + (recipe.silver || 0);
+    expect(plan.hasAllMaterialPrices).toBe(true);
+    expect(plan.effectiveCostPerUnit).toBeCloseTo(expectedCost, 6);
+    expect(plan.marketAvgSellPrice).toBeCloseTo(200000, 6);
+    expect(plan.avgDailySellVolume).toBe(10);
+    expect(plan.daysToSellBatch).toBeCloseTo(10, 6); // 100 шт при 10 в день
+    expect(plan.profitPerUnitLow).toBeCloseTo(200000 * 0.92 - expectedCost, 6);
+    expect(plan.totalDaysEstimate).toBeCloseTo(plan.daysToAcquireBatch + 10, 6);
+  });
+  it('узкое место — материал с максимальным сроком закупки', () => {
+    const plan = computeBulkPlan(base, materialHistory, finishedHistory);
+    const slowest = plan.recipe.reduce((a, b) => (b.daysToAcquire > a.daysToAcquire ? b : a));
+    expect(plan.bottleneckResource).toBe(slowest.resource);
+    expect(plan.daysToAcquireBatch).toBeCloseTo(slowest.daysToAcquire, 6);
+  });
+  it('RRR уменьшает и себестоимость, и закупаемое количество', () => {
+    const rrr = rrrFromBonus(58);
+    const withRrr = computeBulkPlan({ ...base, rrr }, materialHistory, finishedHistory);
+    const without = computeBulkPlan(base, materialHistory, finishedHistory);
+    expect(withRrr.effectiveCostPerUnit).toBeLessThan(without.effectiveCostPerUnit);
+    expect(withRrr.recipe[0].neededAfterRrr).toBeLessThan(without.recipe[0].neededAfterRrr);
+  });
+  it('потолок себестоимости и полоса продажи', () => {
+    const plan = computeBulkPlan({ ...base, costCeiling: 1, sellLow: 150000, sellHigh: 100000 }, materialHistory, finishedHistory);
+    expect(plan.withinCeiling).toBe(false);
+    expect([plan.sellLow, plan.sellHigh]).toEqual([100000, 150000]); // перепутанные границы меняются местами
+    expect(plan.netSellLow).toBeCloseTo(100000 * 0.92, 6);
+  });
+  it('нет истории по материалу — план посчитать нельзя', () => {
+    const plan = computeBulkPlan(base, materialHistory.slice(1), finishedHistory);
+    expect(plan.hasAllMaterialPrices).toBe(false);
+    expect(plan.profitPerUnitLow).toBeNull();
+  });
+});
