@@ -784,6 +784,17 @@ app.get('/api/refining-opportunities', async (req, res) => {
 // сколько дней уйдёт на закупку сырья и на распродажу партии, не обваливая рынок.
 const BULK_ALLOWED_DAYS = [3, 7];
 
+// Множитель скора за длину цикла (закупка + распродажа): чем дольше капитал заморожен, тем хуже.
+// Дольше 30 дней — предупреждение в интерфейсе, дольше 90 — скор почти обнуляется.
+function bulkCycleDecay(totalDays) {
+  if (totalDays === null || totalDays === undefined) return 0;
+  if (totalDays <= 7) return 1;
+  if (totalDays <= 14) return 0.8;
+  if (totalDays <= 30) return 0.5;
+  if (totalDays <= 90) return 0.2;
+  return 0.05;
+}
+
 // Статистика по городам за период: средневзвешенная цена и объём/день.
 function cityStats(historyData, itemId, days) {
   const out = {};
@@ -800,17 +811,121 @@ function cityStats(historyData, itemId, days) {
   return out;
 }
 
+// Чистый расчёт плана партии по уже загруженной истории — общий для одиночного плана и сканера,
+// чтобы цифры по одному предмету не могли разойтись между двумя режимами.
+function computeBulkPlan(opts, materialHistory, finishedHistory) {
+  const { itemId, enchant, quantity, days, preset, rrr, taxRate, costCeiling, queryCities } = opts;
+  let { sellLow, sellHigh } = opts;
+  const allowedCities = new Set(queryCities.map(normLocation));
+  const inScope = (stats) => Object.fromEntries(Object.entries(stats).filter(([city]) => allowedCities.has(normLocation(city))));
+
+  const recipe = RECIPES[itemId];
+  const resourceQueryIds = recipe.resources.map((r) => effectiveRecipeResourceId(r.resource, enchant));
+  const finishedQueryId = enchant > 0 ? `${itemId}@${enchant}` : itemId;
+
+  // Материалы: берём город с самой дешёвой средней ценой, где вообще идут торги.
+  let hasAllPrices = true;
+  let effectiveCostPerUnit = recipe.silver || 0;
+  const recipeBreakdown = recipe.resources.map((r, idx) => {
+    const queryId = resourceQueryIds[idx];
+    const stats = inScope(cityStats(materialHistory, queryId, days));
+    let source = null;
+    for (const [city, st] of Object.entries(stats)) {
+      if (!source || st.avgPrice < source.avgPrice) source = { city, ...st };
+    }
+    const neededRaw = r.count * quantity;
+    const neededAfterRrr = Math.ceil(neededRaw * (1 - rrr));
+    if (!source) hasAllPrices = false;
+    else effectiveCostPerUnit += r.count * (1 - rrr) * source.avgPrice;
+    return {
+      resource: r.resource,
+      resourceName: resolveItemName(r.resource),
+      queryId,
+      enchanted: queryId !== r.resource,
+      count: r.count,
+      neededRaw,
+      neededAfterRrr,
+      sourceCity: source ? source.city : null,
+      avgPrice: source ? source.avgPrice : null,
+      avgDailyVolume: source ? source.avgDailyVolume : null,
+      daysToAcquire: source ? neededAfterRrr / source.avgDailyVolume : null,
+    };
+  });
+
+  let bottleneck = null;
+  for (const r of recipeBreakdown) {
+    if (r.daysToAcquire !== null && (!bottleneck || r.daysToAcquire > bottleneck.daysToAcquire)) bottleneck = r;
+  }
+
+  // Готовый предмет: спрос суммируется по всем выбранным городам, цена — средневзвешенная по объёму.
+  const finishedStats = inScope(cityStats(finishedHistory, finishedQueryId, days));
+  let totalVol = 0;
+  let weighted = 0;
+  let bestSellCity = null;
+  for (const [city, st] of Object.entries(finishedStats)) {
+    totalVol += st.totalVolume;
+    weighted += st.avgPrice * st.totalVolume;
+    if (!bestSellCity || st.avgPrice > bestSellCity.avgPrice) bestSellCity = { city, avgPrice: st.avgPrice };
+  }
+  const marketAvgSellPrice = totalVol > 0 ? weighted / totalVol : null;
+  const avgDailySellVolume = totalVol / days;
+  const daysToSellBatch = avgDailySellVolume > 0 ? quantity / avgDailySellVolume : null;
+
+  // Полоса продажи: если не задана — считаем по рыночной средней.
+  if (sellLow === null && sellHigh === null) { sellLow = marketAvgSellPrice; sellHigh = marketAvgSellPrice; }
+  else if (sellLow === null) sellLow = sellHigh;
+  else if (sellHigh === null) sellHigh = sellLow;
+  if (sellLow !== null && sellHigh !== null && sellHigh < sellLow) [sellLow, sellHigh] = [sellHigh, sellLow];
+
+  const netSellLow = sellLow !== null ? sellLow * (1 - taxRate) : null;
+  const netSellHigh = sellHigh !== null ? sellHigh * (1 - taxRate) : null;
+  const profitPerUnitLow = hasAllPrices && netSellLow !== null ? netSellLow - effectiveCostPerUnit : null;
+  const profitPerUnitHigh = hasAllPrices && netSellHigh !== null ? netSellHigh - effectiveCostPerUnit : null;
+  const daysToAcquireBatch = bottleneck ? bottleneck.daysToAcquire : null;
+
+  return {
+    itemId, enchant, quality: opts.quality, quantity, days,
+    rrrPreset: { ...preset, rrr },
+    taxRate,
+    cities: queryCities,
+    recipe: recipeBreakdown,
+    hasAllMaterialPrices: hasAllPrices,
+    effectiveCostPerUnit,
+    costCeiling,
+    withinCeiling: costCeiling !== null ? effectiveCostPerUnit <= costCeiling : null,
+    bottleneckResource: bottleneck ? bottleneck.resource : null,
+    daysToAcquireBatch,
+    marketAvgSellPrice,
+    bestSellCity,
+    avgDailySellVolume,
+    daysToSellBatch,
+    sellLow,
+    sellHigh,
+    netSellLow,
+    netSellHigh,
+    profitPerUnitLow,
+    profitPerUnitHigh,
+    totalProfitLow: profitPerUnitLow !== null ? profitPerUnitLow * quantity : null,
+    totalProfitHigh: profitPerUnitHigh !== null ? profitPerUnitHigh * quantity : null,
+    totalDaysEstimate: daysToAcquireBatch !== null && daysToSellBatch !== null ? daysToAcquireBatch + daysToSellBatch : null,
+  };
+}
+
+function parseBulkDays(req) {
+  return BULK_ALLOWED_DAYS.includes(parseInt(req.query.days, 10)) ? parseInt(req.query.days, 10) : 7;
+}
+
 app.get('/api/craft-bulk-plan', async (req, res) => {
   try {
     const itemId = req.query.item;
     const enchant = Math.min(Math.max(parseInt(req.query.enchant, 10) || 0, 0), 4);
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1, 1), 100000);
-    const days = BULK_ALLOWED_DAYS.includes(parseInt(req.query.days, 10)) ? parseInt(req.query.days, 10) : 7;
+    const days = parseBulkDays(req);
     const rrrId = req.query.rrr || 'none';
     const costCeiling = parseFloat(req.query.ceiling) > 0 ? parseFloat(req.query.ceiling) : null;
-    let sellLow = parseFloat(req.query.sellLow) > 0 ? parseFloat(req.query.sellLow) : null;
-    let sellHigh = parseFloat(req.query.sellHigh) > 0 ? parseFloat(req.query.sellHigh) : null;
+    const sellLow = parseFloat(req.query.sellLow) > 0 ? parseFloat(req.query.sellLow) : null;
+    const sellHigh = parseFloat(req.query.sellHigh) > 0 ? parseFloat(req.query.sellHigh) : null;
     const citiesParam = req.query.cities;
 
     if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `no recipe found for item "${itemId}"` });
@@ -818,108 +933,80 @@ app.get('/api/craft-bulk-plan', async (req, res) => {
     const rrr = rrrFromBonus(preset.bonus);
     const taxRate = getSalesTaxRate(req);
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
-    const allowedCities = new Set(queryCities.map(normLocation));
     const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
 
-    const recipe = RECIPES[itemId];
-    const resourceQueryIds = recipe.resources.map((r) => effectiveRecipeResourceId(r.resource, enchant));
+    const resourceQueryIds = RECIPES[itemId].resources.map((r) => effectiveRecipeResourceId(r.resource, enchant));
     const finishedQueryId = enchant > 0 ? `${itemId}@${enchant}` : itemId;
-
     const [materialHistory, finishedHistory] = await Promise.all([
       fetchHistoryBatched([...new Set(resourceQueryIds)], days * 24, 1, locations),
       fetchHistoryBatched([finishedQueryId], days * 24, quality, locations),
     ]);
-    const inScope = (stats) => Object.fromEntries(Object.entries(stats).filter(([city]) => allowedCities.has(normLocation(city))));
 
-    // Материалы: берём город с самой дешёвой средней ценой, где вообще идут торги.
-    let hasAllPrices = true;
-    let effectiveCostPerUnit = recipe.silver || 0;
-    const recipeBreakdown = recipe.resources.map((r, idx) => {
-      const queryId = resourceQueryIds[idx];
-      const stats = inScope(cityStats(materialHistory, queryId, days));
-      let source = null;
-      for (const [city, st] of Object.entries(stats)) {
-        if (!source || st.avgPrice < source.avgPrice) source = { city, ...st };
-      }
-      const neededRaw = r.count * quantity;
-      const neededAfterRrr = Math.ceil(neededRaw * (1 - rrr));
-      if (!source) hasAllPrices = false;
-      else effectiveCostPerUnit += r.count * (1 - rrr) * source.avgPrice;
-      return {
-        resource: r.resource,
-        resourceName: resolveItemName(r.resource),
-        queryId,
-        enchanted: queryId !== r.resource,
-        count: r.count,
-        neededRaw,
-        neededAfterRrr,
-        sourceCity: source ? source.city : null,
-        avgPrice: source ? source.avgPrice : null,
-        avgDailyVolume: source ? source.avgDailyVolume : null,
-        daysToAcquire: source ? neededAfterRrr / source.avgDailyVolume : null,
-      };
-    });
-
-    let bottleneck = null;
-    for (const r of recipeBreakdown) {
-      if (r.daysToAcquire !== null && (!bottleneck || r.daysToAcquire > bottleneck.daysToAcquire)) bottleneck = r;
-    }
-
-    // Готовый предмет: спрос суммируется по всем выбранным городам, цена — средневзвешенная по объёму.
-    const finishedStats = inScope(cityStats(finishedHistory, finishedQueryId, days));
-    let totalVol = 0;
-    let weighted = 0;
-    let bestSellCity = null;
-    for (const [city, st] of Object.entries(finishedStats)) {
-      totalVol += st.totalVolume;
-      weighted += st.avgPrice * st.totalVolume;
-      if (!bestSellCity || st.avgPrice > bestSellCity.avgPrice) bestSellCity = { city, avgPrice: st.avgPrice };
-    }
-    const marketAvgSellPrice = totalVol > 0 ? weighted / totalVol : null;
-    const avgDailySellVolume = totalVol / days;
-    const daysToSellBatch = avgDailySellVolume > 0 ? quantity / avgDailySellVolume : null;
-
-    // Полоса продажи: если не задана — считаем по рыночной средней.
-    if (sellLow === null && sellHigh === null) { sellLow = marketAvgSellPrice; sellHigh = marketAvgSellPrice; }
-    else if (sellLow === null) sellLow = sellHigh;
-    else if (sellHigh === null) sellHigh = sellLow;
-    if (sellLow !== null && sellHigh !== null && sellHigh < sellLow) [sellLow, sellHigh] = [sellHigh, sellLow];
-
-    const netSellLow = sellLow !== null ? sellLow * (1 - taxRate) : null;
-    const netSellHigh = sellHigh !== null ? sellHigh * (1 - taxRate) : null;
-    const profitPerUnitLow = hasAllPrices && netSellLow !== null ? netSellLow - effectiveCostPerUnit : null;
-    const profitPerUnitHigh = hasAllPrices && netSellHigh !== null ? netSellHigh - effectiveCostPerUnit : null;
-    const daysToAcquireBatch = bottleneck ? bottleneck.daysToAcquire : null;
-
-    res.json({
-      itemId, enchant, quality, quantity, days,
-      rrrPreset: { ...preset, rrr },
-      taxRate,
-      cities: queryCities,
-      recipe: recipeBreakdown,
-      hasAllMaterialPrices: hasAllPrices,
-      effectiveCostPerUnit,
-      costCeiling,
-      withinCeiling: costCeiling !== null ? effectiveCostPerUnit <= costCeiling : null,
-      bottleneckResource: bottleneck ? bottleneck.resource : null,
-      daysToAcquireBatch,
-      marketAvgSellPrice,
-      bestSellCity,
-      avgDailySellVolume,
-      daysToSellBatch,
-      sellLow,
-      sellHigh,
-      netSellLow,
-      netSellHigh,
-      profitPerUnitLow,
-      profitPerUnitHigh,
-      totalProfitLow: profitPerUnitLow !== null ? profitPerUnitLow * quantity : null,
-      totalProfitHigh: profitPerUnitHigh !== null ? profitPerUnitHigh * quantity : null,
-      totalDaysEstimate: daysToAcquireBatch !== null && daysToSellBatch !== null ? daysToAcquireBatch + daysToSellBatch : null,
-    });
+    res.json(computeBulkPlan(
+      { itemId, enchant, quality, quantity, days, preset, rrr, taxRate, costCeiling, sellLow, sellHigh, queryCities },
+      materialHistory, finishedHistory,
+    ));
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'failed to compute bulk plan', details: err.message });
+  }
+});
+
+// Сканер партионных возможностей: та же модель, что и в плане партии, сразу по всем рецептам гира
+// (без зачарования, обычное качество). Показывает рецепты, прибыльные при цене продажи по рынку,
+// и штрафует длинные циклы закупка+распродажа.
+app.get('/api/craft-bulk-opportunities', async (req, res) => {
+  try {
+    const category = ['weapon', 'armor', 'cape'].includes(req.query.category) ? req.query.category : 'all';
+    const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1000, 1), 100000);
+    const days = parseBulkDays(req);
+    const rrrId = req.query.rrr || 'none';
+    const citiesParam = req.query.cities;
+    const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
+    const rrr = rrrFromBonus(preset.bonus);
+    const taxRate = getSalesTaxRate(req);
+    const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+
+    const categoryById = new Map(ITEMS.map((i) => [i.id, i.category]));
+    const itemIds = Object.keys(RECIPES).filter((id) => category === 'all' || categoryById.get(id) === category);
+    const materialIds = [...new Set(itemIds.flatMap((id) => RECIPES[id].resources.map((r) => r.resource)))];
+
+    const [materialHistory, finishedHistory] = await Promise.all([
+      fetchHistoryBatched(materialIds, days * 24, 1, locations),
+      fetchHistoryBatched(itemIds, days * 24, 1, locations),
+    ]);
+
+    const results = [];
+    for (const itemId of itemIds) {
+      const plan = computeBulkPlan(
+        { itemId, enchant: 0, quality: 1, quantity, days, preset, rrr, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
+        materialHistory, finishedHistory,
+      );
+      if (!plan.hasAllMaterialPrices || plan.profitPerUnitLow === null || plan.profitPerUnitLow <= 0) continue;
+      if (plan.totalDaysEstimate === null) continue;
+      const profitPct = (plan.profitPerUnitLow / plan.effectiveCostPerUnit) * 100;
+      results.push({
+        itemId,
+        cost: plan.effectiveCostPerUnit,
+        marketAvgSellPrice: plan.marketAvgSellPrice,
+        bestSellCity: plan.bestSellCity,
+        profit: plan.profitPerUnitLow,
+        profitPct,
+        bottleneckResource: plan.bottleneckResource,
+        daysToAcquireBatch: plan.daysToAcquireBatch,
+        daysToSellBatch: plan.daysToSellBatch,
+        totalDays: plan.totalDaysEstimate,
+        avgDailySellVolume: plan.avgDailySellVolume,
+        quantity,
+        score: opportunityScore(profitPct, plan.avgDailySellVolume) * bulkCycleDecay(plan.totalDaysEstimate),
+      });
+    }
+    results.sort((a, b) => b.score - a.score);
+    res.json(results.slice(0, 25));
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: 'failed to scan bulk craft opportunities', details: err.message });
   }
 });
 

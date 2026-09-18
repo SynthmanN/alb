@@ -1045,6 +1045,76 @@ function renderCraftScanResult(rows) {
   });
 }
 
+
+// --- Сканер партионных возможностей ---
+const bulkScanEl = {
+  category: document.getElementById('bulk-scan-category'),
+  quantity: document.getElementById('bulk-scan-quantity'),
+  days: document.getElementById('bulk-scan-days'),
+  run: document.getElementById('bulk-scan-run'),
+  result: document.getElementById('bulk-scan-result'),
+};
+bulkScanEl.run.addEventListener('click', runBulkScan);
+
+async function runBulkScan() {
+  bulkScanEl.run.disabled = true;
+  bulkScanEl.result.innerHTML = 'Считаю партионную модель по всем рецептам, это может занять несколько секунд...';
+  try {
+    const params = new URLSearchParams({
+      category: bulkScanEl.category.value, quantity: bulkScanEl.quantity.value || '1000', days: bulkScanEl.days.value,
+      rrr: craftEl.rrr.value, cities: activeCities().join(','), premium: premiumParam(),
+    });
+    const res = await fetch(`/api/craft-bulk-opportunities?${params}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderBulkScanResult(data);
+  } catch (err) {
+    bulkScanEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
+  } finally {
+    bulkScanEl.run.disabled = false;
+  }
+}
+
+function renderBulkScanResult(rows) {
+  if (rows.length === 0) {
+    bulkScanEl.result.innerHTML = '<div class="chart-empty">Ничего не нашлось — при партионной модели сейчас нет прибыльных рецептов в выбранных городах.</div>';
+    return;
+  }
+  const rowsHtml = rows.map((r) => {
+    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
+    const long = r.totalDays > 30;
+    return `
+      <tr>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
+        <td>${r.bestSellCity.city}: ${Math.round(r.bestSellCity.avgPrice).toLocaleString('ru-RU')}</td>
+        <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
+        <td>${itemName(r.bottleneckResource)}</td>
+        <td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.totalDays}">${r.totalDays.toFixed(1)} дн.${long ? ' ⚠' : ''}</td>
+        <td><button class="scan-add-btn" data-id="${item.id}" data-quantity="${r.quantity}">в план партии</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  bulkScanEl.result.innerHTML = `
+    <p class="calc-note">Цены — средневзвешенные за период, профит — после налога с продажи. «Дней» — закупка узкого материала + распродажа партии из ${rows[0].quantity.toLocaleString('ru-RU')} шт.</p>
+    <table class="scan-table">
+      <thead><tr><th>Предмет</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Узкое место</th><th>Дней</th><th></th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  `;
+  wireTableSort(bulkScanEl.result.querySelector('table'), 'bulk-scan');
+  bulkScanEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = findItem(btn.dataset.id);
+      if (!item) return;
+      selectCraftItem(item);
+      bulkEl.quantity.value = btn.dataset.quantity;
+      bulkEl.panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+}
+
 // --- Сканер выгодности рефайна ---
 const refineScanBtn = document.getElementById('refine-scan-run');
 const refineScanHours = document.getElementById('refine-scan-hours');

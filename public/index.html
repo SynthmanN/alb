@@ -149,6 +149,25 @@
         <button id="craft-scan-run">Сканировать</button>
       </div>
       <div id="craft-scan-result"></div>
+
+      <hr style="border-color:#2a2d33; margin:18px 0" />
+
+      <h3 style="font-size:14px; margin:0 0 8px">📦 Что выгодно крафтить партиями</h3>
+      <p class="calc-note">
+        Та же партионная модель, что и в плане крупной партии (средневзвешенные цены за период, дни на
+        закупку и распродажу), сразу по всем рецептам. Длинные циклы (больше 30 дней) помечены ⚠ и
+        уходят вниз списка.
+      </p>
+      <div class="calc-controls">
+        <select id="bulk-scan-category">
+          <option value="all">Всё</option><option value="weapon">Оружие</option>
+          <option value="armor">Броня</option><option value="cape">Плащи</option>
+        </select>
+        <label class="craft-field">Партия, шт<input id="bulk-scan-quantity" type="number" min="1" value="1000" /></label>
+        <select id="bulk-scan-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+        <button id="bulk-scan-run">Сканировать партии</button>
+      </div>
+      <div id="bulk-scan-result"></div>
     </section>
 
     <section class="calc-panel">
