@@ -9,12 +9,15 @@
   "scripts": {
     "start": "node server.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:all": "vitest run && playwright test"
   },
   "dependencies": {
     "express": "^4.19.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "supertest": "^7.2.2",
     "vitest": "^5.0.1"
   }

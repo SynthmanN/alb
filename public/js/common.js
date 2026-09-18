@@ -53,6 +53,7 @@ function applyTableSort(table, key) {
   const state = tableSortStates[key];
   const headers = [...table.querySelectorAll('thead th')];
   headers.forEach((th) => th.querySelectorAll('.sort-arrow').forEach((n) => n.remove()));
+  syncMobileSortBar(key);
   if (!state) return;
   const col = headers.findIndex((th) => sortHeaderLabel(th) === state.label);
   if (col === -1) return;
@@ -86,9 +87,52 @@ function labelTableCells(table) {
   });
 }
 
+// На телефоне заголовки таблицы скрыты (строки — карточки), поэтому клик по <th> недоступен.
+// Вместо него над таблицей появляется панель "Сортировка: [колонка] [▼/▲]" (видна только на узком экране).
+function buildMobileSortBar(table, key) {
+  const labels = [...table.querySelectorAll('thead th')].map((th) => sortHeaderLabel(th)).filter(Boolean);
+  if (labels.length === 0) return;
+  const anchor = table.closest('.table-scroll') || table;
+  let bar = anchor.previousElementSibling;
+  if (!(bar && bar.classList.contains('mobile-sort') && bar.dataset.tableKey === key)) {
+    bar = document.createElement('div');
+    bar.className = 'mobile-sort';
+    bar.dataset.tableKey = key;
+    anchor.parentNode.insertBefore(bar, anchor);
+  }
+  bar.innerHTML = `
+    <label>Сортировка
+      <select class="mobile-sort-col"><option value="">без сортировки</option>${labels.map((l) => `<option value="${l}">${l}</option>`).join('')}</select>
+    </label>
+    <button type="button" class="mobile-sort-dir" title="Направление сортировки">▼</button>
+  `;
+  const select = bar.querySelector('select');
+  const dirBtn = bar.querySelector('button');
+  select.addEventListener('change', () => {
+    if (select.value) tableSortStates[key] = { label: select.value, dir: (tableSortStates[key] && tableSortStates[key].dir) || 'desc' };
+    else delete tableSortStates[key];
+    applyTableSort(table, key);
+  });
+  dirBtn.addEventListener('click', () => {
+    const cur = tableSortStates[key];
+    if (!cur) return;
+    cur.dir = cur.dir === 'desc' ? 'asc' : 'desc';
+    applyTableSort(table, key);
+  });
+}
+
+function syncMobileSortBar(key) {
+  document.querySelectorAll(`.mobile-sort[data-table-key="${key}"]`).forEach((bar) => {
+    const state = tableSortStates[key];
+    bar.querySelector('select').value = state ? state.label : '';
+    bar.querySelector('button').textContent = state && state.dir === 'asc' ? '▲' : '▼';
+  });
+}
+
 function wireTableSort(table, key) {
   if (!table) return;
   labelTableCells(table);
+  buildMobileSortBar(table, key);
   table.querySelectorAll('thead th').forEach((th) => {
     const label = sortHeaderLabel(th);
     if (!label) return; // колонки-действия без названия не сортируем

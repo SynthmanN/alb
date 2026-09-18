@@ -9,3 +9,8 @@ export/
 
 # личные данные пользователя
 data/user-masteries.json
+
+# результаты Playwright
+test-results/
+playwright-report/
+blob-report/
