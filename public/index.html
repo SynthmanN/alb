@@ -171,6 +171,24 @@
     </section>
 
     <section class="calc-panel">
+      <h2>👗 Примерочная</h2>
+      <p class="calc-note">
+        Выбери предмет на каждый слот и целевой средний IP — подберём самые дешёвые комбинации
+        тира, зачарования и качества. Общий IP — среднее по 6 слотам (шлем, торс, обувь, плащ, две руки),
+        двуручное оружие считается за обе руки. Мастерство и специализации сюда не входят: это персональный бонус.
+      </p>
+      <div class="fit-slots" id="fit-slots"></div>
+      <div class="calc-controls">
+        <label class="craft-field">Целевой IP<input id="fit-target" type="number" min="1" value="1000" /></label>
+        <label class="craft-field">Вариантов
+          <select id="fit-variants"><option value="3" selected>3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option></select>
+        </label>
+        <button id="fit-run">Подобрать</button>
+      </div>
+      <div id="fit-result"></div>
+    </section>
+
+    <section class="calc-panel">
       <h2>📈 Что выгодно перерабатывать (рефайн)</h2>
       <p class="calc-note">
         По всем 5 типам ресурсов и 7 тирам разом (35 комбинаций), себестоимость с

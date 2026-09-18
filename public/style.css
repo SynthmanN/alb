@@ -126,3 +126,9 @@ tbody tr:hover { background: #1a1d22; }
 th.sortable { cursor: pointer; }
 th.sortable:hover { color: #e6e6e6; }
 .sort-arrow { color: #7ee787; font-size: 11px; }
+
+/* Примерочная */
+.fit-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.fit-slot-label { font-size: 12px; color: #9aa0aa; margin-bottom: 4px; }
+.fit-slot input { width: 100%; box-sizing: border-box; }
+.scan-table td small { color: #9aa0aa; }

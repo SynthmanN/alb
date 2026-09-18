@@ -7,9 +7,26 @@ const EXTRA_ITEM_NAMES = require('./data/extra-item-names.json');
 
 const GEAR_IDS = new Set(ITEMS.filter((i) => i.category === 'weapon' || i.category === 'armor' || i.category === 'cape').map((i) => i.id));
 const ITEM_TIER_BY_ID = new Map(ITEMS.map((i) => [i.id, i.tier]));
+const ITEM_SLOT_BY_ID = new Map(ITEMS.filter((i) => i.slot).map((i) => [i.id, i.slot]));
 const ITEM_NAME_BY_ID = new Map(ITEMS.map((i) => [i.id, i.name]));
 function resolveItemName(id) {
   return ITEM_NAME_BY_ID.get(id) || EXTRA_ITEM_NAMES[id] || id;
+}
+
+// Item Power — формула сверена напрямую с дампом игровых файлов (items.xml,
+// атрибут itempower и вложенные <enchantments>), не по статьям (там цифры часто
+// расходятся). База по тиру ОДИНАКОВА для оружия/брони/плащей: T2=500, +100 за тир.
+// Зачарование: +100 за уровень (0-4). Качество: Обычное+0/Хорошее+10/Выдающееся+20/
+// Отличное+50/Шедевр+100 — совпадает с уже существующей шкалой качества в проекте.
+const QUALITY_IP_BONUS = { 1: 0, 2: 10, 3: 20, 4: 50, 5: 100 };
+function baseIPForTier(tier) {
+  return 500 + (tier - 2) * 100;
+}
+function itemIP(tier, enchant, quality) {
+  return baseIPForTier(tier) + enchant * 100 + (QUALITY_IP_BONUS[quality] || 0);
+}
+function maxEnchantForGear(tier) {
+  return tier >= 4 ? 4 : 0; // T2/T3 гир никогда не зачаровывается — та же логика, что и на фронте
 }
 
 const RESOURCE_TYPES = ['WOOD', 'ORE', 'FIBER', 'HIDE', 'ROCK'];
@@ -1007,6 +1024,188 @@ app.get('/api/craft-bulk-opportunities', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'failed to scan bulk craft opportunities', details: err.message });
+  }
+});
+
+// --- Примерочная: самая дешёвая экипировка под целевой Item Power ---
+// Игрок выбирает по предмету (семейству) на каждый слот и целевой средний IP. Для каждого семейства
+// перебираются все тиры / зачарования / качества с реальными рыночными ценами, затем ищется K самых
+// дешёвых комбинаций, у которых средний IP по 6 слотам не ниже цели. Тир подбирается автоматически.
+// Общий IP персонажа — среднее по 6 слотам: голова, торс, обувь, плащ, осн. рука, левая рука.
+// Двуручное оружие занимает обе руки и считается дважды. Специализации/мастерство сюда не входят —
+// это персональный бонус, а не то, что покупается на рынке.
+const FIT_SLOT_LABELS = { weapon: 'оружие', offhand: 'левая рука', head: 'шлем', chest: 'торс', shoes: 'обувь', cape: 'плащ' };
+const FIT_ALLOWED_VARIANTS = [3, 5, 10, 15];
+const ALL_QUALITIES = [1, 2, 3, 4, 5];
+
+function familyIdOf(itemId) {
+  return itemId.replace(/^T\d+_/, '');
+}
+const ITEMS_BY_FAMILY = new Map();
+for (const item of ITEMS) {
+  if (!GEAR_IDS.has(item.id)) continue;
+  const fam = familyIdOf(item.id);
+  if (!ITEMS_BY_FAMILY.has(fam)) ITEMS_BY_FAMILY.set(fam, []);
+  ITEMS_BY_FAMILY.get(fam).push(item);
+}
+// К какому слоту относится семейство (по слоту любого его предмета).
+function familySlot(family) {
+  const items = ITEMS_BY_FAMILY.get(family);
+  return items && items.length ? items[0].slot : null;
+}
+const SLOT_ACCEPTS = {
+  weapon: ['осн. рука', 'двуручное'],
+  offhand: ['левая рука'],
+  head: ['шлем'],
+  chest: ['торс'],
+  shoes: ['обувь'],
+  cape: ['плащ', 'плащ (фракция)'],
+};
+
+// Цены гира сразу по нескольким качествам одним запросом (AODP принимает qualities=1,2,3,4,5).
+async function fetchGearPrices(queryIds, qualities) {
+  const CHUNK = 50;
+  const chunks = [];
+  for (let i = 0; i < queryIds.length; i += CHUNK) chunks.push(queryIds.slice(i, i + CHUNK));
+  const results = await Promise.all(chunks.map(async (chunk) => {
+    const key = `gear:${qualities.join('')}:${chunk.slice().sort().join(',')}`;
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+    const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${CITIES.join(',')}&qualities=${qualities.join(',')}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`AODP responded ${response.status}`);
+    const data = await response.json();
+    cache.set(key, { ts: Date.now(), data });
+    return data;
+  }));
+  return results.flat();
+}
+
+// Убираем заведомо невыгодные варианты: если есть вариант с не меньшим IP и не большей ценой,
+// покупать этот смысла нет. Остаётся "эффективная граница" цена/IP.
+function paretoFrontier(options) {
+  const sorted = options.slice().sort((a, b) => b.ip - a.ip || a.price - b.price);
+  const frontier = [];
+  let bestPrice = Infinity;
+  for (const o of sorted) {
+    if (o.price < bestPrice) { frontier.push(o); bestPrice = o.price; }
+  }
+  return frontier;
+}
+
+// K самых дешёвых комбинаций, чей суммарный IP >= minTotalIP. Слот — { key, mult, options }, где
+// mult=2 у двуручного оружия (его IP считается дважды при одной цене). Динамика по сумме IP:
+// в каждой "корзине" суммы держим только K самых дешёвых частичных наборов.
+function findCheapestOutfits(slots, minTotalIP, k) {
+  let states = new Map([[0, [{ price: 0, picks: [] }]]]);
+  for (const slot of slots) {
+    const next = new Map();
+    for (const [ip, list] of states) {
+      for (const opt of slot.options) {
+        const total = ip + slot.mult * opt.ip;
+        let bucket = next.get(total);
+        if (!bucket) { bucket = []; next.set(total, bucket); }
+        for (const st of list) bucket.push({ price: st.price + opt.price, picks: [...st.picks, { key: slot.key, opt }] });
+      }
+    }
+    for (const [total, bucket] of next) {
+      bucket.sort((a, b) => a.price - b.price);
+      if (bucket.length > k) bucket.length = k;
+    }
+    states = next;
+  }
+  const all = [];
+  for (const [ip, list] of states) {
+    if (ip >= minTotalIP) for (const st of list) all.push({ totalIP: ip, price: st.price, picks: st.picks });
+  }
+  all.sort((a, b) => a.price - b.price);
+  return all.slice(0, k);
+}
+
+app.get('/api/fitting-room', async (req, res) => {
+  try {
+    const targetIP = parseFloat(req.query.targetIP);
+    const variants = FIT_ALLOWED_VARIANTS.includes(parseInt(req.query.variants, 10)) ? parseInt(req.query.variants, 10) : 3;
+    const citiesParam = req.query.cities;
+    const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const allowedCities = new Set(queryCities.map(normLocation));
+
+    const { weapon, offhand, head, chest, shoes, cape } = req.query;
+    if (!weapon || !head || !chest || !shoes || !cape) {
+      return res.status(400).json({ error: 'нужно выбрать оружие, шлем, торс, обувь и плащ' });
+    }
+    if (!(targetIP > 0)) return res.status(400).json({ error: 'targetIP должен быть положительным числом' });
+
+    const families = { weapon, head, chest, shoes, cape };
+    for (const [key, fam] of Object.entries(families)) {
+      const slot = familySlot(fam);
+      if (!slot || !SLOT_ACCEPTS[key].includes(slot)) {
+        return res.status(400).json({ error: `"${fam}" не подходит для слота "${FIT_SLOT_LABELS[key]}"` });
+      }
+    }
+    const twoHanded = familySlot(weapon) === 'двуручное';
+    if (twoHanded && offhand) return res.status(400).json({ error: 'двуручное оружие уже занимает обе руки — левую руку выбирать не нужно' });
+    if (!twoHanded) {
+      if (!offhand) return res.status(400).json({ error: 'для одноручного оружия нужно выбрать предмет в левую руку' });
+      const slot = familySlot(offhand);
+      if (!slot || !SLOT_ACCEPTS.offhand.includes(slot)) return res.status(400).json({ error: `"${offhand}" не подходит для слота "${FIT_SLOT_LABELS.offhand}"` });
+      families.offhand = offhand;
+    }
+
+    // Все варианты (тир × зачарование) каждого семейства и их id для запроса цен.
+    const meta = new Map(); // queryId -> { itemId, tier, enchant }
+    for (const fam of Object.values(families)) {
+      for (const item of ITEMS_BY_FAMILY.get(fam)) {
+        for (let e = 0; e <= maxEnchantForGear(item.tier); e++) {
+          meta.set(e > 0 ? `${item.id}@${e}` : item.id, { itemId: item.id, tier: item.tier, enchant: e });
+        }
+      }
+    }
+    const prices = await fetchGearPrices([...meta.keys()], ALL_QUALITIES);
+
+    // Самая дешёвая цена покупки по каждому (id, качество) среди выбранных городов.
+    const cheapest = new Map();
+    for (const rec of prices) {
+      if (!rec.sell_price_min || !allowedCities.has(normLocation(rec.city))) continue;
+      const key = `${rec.item_id}|${rec.quality}`;
+      const cur = cheapest.get(key);
+      if (!cur || rec.sell_price_min < cur.price) cheapest.set(key, { price: rec.sell_price_min, city: rec.city });
+    }
+
+    const slotDefs = [];
+    const emptyFamilies = [];
+    for (const [key, fam] of Object.entries(families)) {
+      const options = [];
+      for (const [queryId, m] of meta) {
+        if (familyIdOf(m.itemId) !== fam) continue;
+        for (const q of ALL_QUALITIES) {
+          const hit = cheapest.get(`${queryId}|${q}`);
+          if (!hit) continue;
+          options.push({ itemId: m.itemId, tier: m.tier, enchant: m.enchant, quality: q, ip: itemIP(m.tier, m.enchant, q), price: hit.price, city: hit.city });
+        }
+      }
+      if (options.length === 0) emptyFamilies.push(fam);
+      slotDefs.push({ key, mult: key === 'weapon' && twoHanded ? 2 : 1, options: paretoFrontier(options) });
+    }
+    if (emptyFamilies.length) return res.status(502).json({ error: `нет рыночных цен ни на один вариант: ${emptyFamilies.join(', ')}` });
+
+    const maxTotal = slotDefs.reduce((sum, s) => sum + s.mult * Math.max(...s.options.map((o) => o.ip)), 0);
+    const outfits = findCheapestOutfits(slotDefs, targetIP * 6, variants);
+
+    res.json({
+      targetIP,
+      maxAchievableIP: maxTotal / 6,
+      unreachable: outfits.length === 0,
+      twoHanded,
+      variants: outfits.map((o) => ({
+        totalPrice: o.price,
+        avgIP: o.totalIP / 6,
+        slots: Object.fromEntries(o.picks.map((p) => [p.key, p.opt])),
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: 'failed to compute fitting room', details: err.message });
   }
 });
 
