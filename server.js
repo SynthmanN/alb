@@ -1093,16 +1093,17 @@ function paretoFrontier(options) {
   return frontier;
 }
 
-// K самых дешёвых комбинаций, чей суммарный IP >= minTotalIP. Слот — { key, mult, options }, где
+// K самых дешёвых комбинаций, чей суммарный IP лежит в окне [minTotalIP, maxTotalIP]. Слот — { key, mult, options }, где
 // mult=2 у двуручного оружия (его IP считается дважды при одной цене). Динамика по сумме IP:
 // в каждой "корзине" суммы держим только K самых дешёвых частичных наборов.
-function findCheapestOutfits(slots, minTotalIP, k) {
+function findCheapestOutfits(slots, minTotalIP, maxTotalIP, k) {
   let states = new Map([[0, [{ price: 0, picks: [] }]]]);
   for (const slot of slots) {
     const next = new Map();
     for (const [ip, list] of states) {
       for (const opt of slot.options) {
         const total = ip + slot.mult * opt.ip;
+        if (total > maxTotalIP) continue; // IP только растёт — дальше это состояние уже не вернуть в окно
         let bucket = next.get(total);
         if (!bucket) { bucket = []; next.set(total, bucket); }
         for (const st of list) bucket.push({ price: st.price + opt.price, picks: [...st.picks, { key: slot.key, opt }] });
@@ -1116,7 +1117,7 @@ function findCheapestOutfits(slots, minTotalIP, k) {
   }
   const all = [];
   for (const [ip, list] of states) {
-    if (ip >= minTotalIP) for (const st of list) all.push({ totalIP: ip, price: st.price, picks: st.picks });
+    if (ip >= minTotalIP && ip <= maxTotalIP) for (const st of list) all.push({ totalIP: ip, price: st.price, picks: st.picks });
   }
   all.sort((a, b) => a.price - b.price);
   return all.slice(0, k);
@@ -1125,6 +1126,10 @@ function findCheapestOutfits(slots, minTotalIP, k) {
 app.get('/api/fitting-room', async (req, res) => {
   try {
     const targetIP = parseFloat(req.query.targetIP);
+    // Гистерезис: IP скачет ступенями (тир/зачарование/качество), поэтому вместо точной цели берём окно
+    // [цель - допуск вниз; цель + допуск вверх]. Так примерочная не тянет слишком дорогую вещь ради пары IP.
+    const tolMinus = Math.max(parseFloat(req.query.tolMinus) || 0, 0);
+    const tolPlus = Math.max(parseFloat(req.query.tolPlus) || 0, 0);
     const variants = FIT_ALLOWED_VARIANTS.includes(parseInt(req.query.variants, 10)) ? parseInt(req.query.variants, 10) : 3;
     const citiesParam = req.query.cities;
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
@@ -1190,12 +1195,17 @@ app.get('/api/fitting-room', async (req, res) => {
     if (emptyFamilies.length) return res.status(502).json({ error: `нет рыночных цен ни на один вариант: ${emptyFamilies.join(', ')}` });
 
     const maxTotal = slotDefs.reduce((sum, s) => sum + s.mult * Math.max(...s.options.map((o) => o.ip)), 0);
-    const outfits = findCheapestOutfits(slotDefs, targetIP * 6, variants);
+    const minIP = targetIP - tolMinus;
+    const maxIP = targetIP + tolPlus;
+    const outfits = findCheapestOutfits(slotDefs, minIP * 6, maxIP * 6, variants);
 
     res.json({
       targetIP,
+      tolMinus,
+      tolPlus,
       maxAchievableIP: maxTotal / 6,
-      unreachable: outfits.length === 0,
+      unreachable: outfits.length === 0 && minIP > maxTotal / 6,
+      emptyWindow: outfits.length === 0 && minIP <= maxTotal / 6,
       twoHanded,
       variants: outfits.map((o) => ({
         totalPrice: o.price,

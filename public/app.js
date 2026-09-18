@@ -1150,6 +1150,8 @@ function buildFitFamilies() {
 const fitEl = {
   slots: document.getElementById('fit-slots'),
   target: document.getElementById('fit-target'),
+  tolMinus: document.getElementById('fit-tol-minus'),
+  tolPlus: document.getElementById('fit-tol-plus'),
   variants: document.getElementById('fit-variants'),
   run: document.getElementById('fit-run'),
   result: document.getElementById('fit-result'),
@@ -1226,7 +1228,8 @@ async function runFit() {
   fitEl.result.innerHTML = 'Подбираю комбинации по текущим ценам, это может занять несколько секунд...';
   try {
     const params = new URLSearchParams({
-      targetIP: fitEl.target.value, variants: fitEl.variants.value, cities: activeCities().join(','),
+      targetIP: fitEl.target.value, tolMinus: fitEl.tolMinus.value || '0', tolPlus: fitEl.tolPlus.value || '0',
+      variants: fitEl.variants.value, cities: activeCities().join(','),
     });
     for (const s of need) params.set(s.key, fitState[s.key].family);
     const res = await fetch(`/api/fitting-room?${params}`);
@@ -1249,7 +1252,11 @@ function fitSlotCell(o) {
 
 function renderFitResult(data) {
   if (data.unreachable) {
-    fitEl.result.innerHTML = `<div class="chart-empty">Цель ${data.targetIP} IP недостижима с выбранными предметами — максимум ${Math.round(data.maxAchievableIP)} IP.</div>`;
+    fitEl.result.innerHTML = `<div class="chart-empty">Цель ${data.targetIP} IP (с допуском вниз ${data.tolMinus}) недостижима с выбранными предметами — максимум ${Math.round(data.maxAchievableIP)} IP.</div>`;
+    return;
+  }
+  if (data.emptyWindow) {
+    fitEl.result.innerHTML = `<div class="chart-empty">В окне ${data.targetIP - data.tolMinus}–${data.targetIP + data.tolPlus} IP нет ни одной комбинации по текущим ценам (IP растёт ступенями) — расширь допуск.</div>`;
     return;
   }
   const rowsHtml = data.variants.map((v) => `
@@ -1261,7 +1268,7 @@ function renderFitResult(data) {
     </tr>
   `).join('');
   fitEl.result.innerHTML = `
-    <p class="calc-note">Максимум с выбранными предметами — ${Math.round(data.maxAchievableIP)} IP. Цена — суммарная покупка по самой дешёвой цене в выбранных городах.</p>
+    <p class="calc-note">Окно поиска ${data.targetIP - data.tolMinus}–${data.targetIP + data.tolPlus} IP. Максимум с выбранными предметами — ${Math.round(data.maxAchievableIP)} IP. Цена — суммарная покупка по самой дешёвой цене в выбранных городах.</p>
     <table class="scan-table">
       <thead><tr><th>Цена</th><th>IP</th><th>Оружие</th><th>Левая рука</th><th>Шлем</th><th>Торс</th><th>Обувь</th><th>Плащ</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
