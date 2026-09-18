@@ -109,6 +109,15 @@ function getSalesTaxRate(req) {
   return req.query.premium === 'true' ? SALES_TAX.premium : SALES_TAX.free;
 }
 
+// Чёрный Рынок: к налогу с продажи (4% с премиумом / 8% без) добавляется сбор за размещение ордера 2.5%,
+// итого 6.5% / 10.5% (подтверждено двумя независимыми источниками; конкурентный сервис считает по 0.935 = 1 − 6.5%).
+// Раньше на БМ налог не учитывался вовсе — это завышало прибыль сканера БМ на 6.5–10.5%.
+const SETUP_FEE_RATE = 0.025;
+const BM_TAX = { premium: SALES_TAX.premium + SETUP_FEE_RATE, free: SALES_TAX.free + SETUP_FEE_RATE };
+function getBmTaxRate(req) {
+  return req.query.premium === 'true' ? BM_TAX.premium : BM_TAX.free;
+}
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map();
 
@@ -545,7 +554,8 @@ app.get('/api/bm-opportunities', async (req, res) => {
     // Как и остальные сканеры — только активные города (без Brecilien/Caerleon, если они выключены).
     const citiesParam = req.query.cities;
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
-    const cacheKey = queryCities.slice().sort().join(',');
+    const bmTaxRate = getBmTaxRate(req);
+    const cacheKey = `${queryCities.slice().sort().join(',')}:${bmTaxRate}`;
     if (bmScanCache && bmScanCache.key === cacheKey && Date.now() - bmScanCache.ts < SCAN_CACHE_TTL_MS) return res.json(bmScanCache.data);
     const bmLocations = [...queryCities.map((c) => c.replace(/\s+/g, '')), BM_QUERY_LOCATION];
 
@@ -592,12 +602,14 @@ app.get('/api/bm-opportunities', async (req, res) => {
           bmSell = { price: rec.buy_price_max, date: rec.buy_price_max_date };
         }
       }
-      if (!bestBuy || !bmSell || bmSell.price <= bestBuy.price) continue;
-      const profit = bmSell.price - bestBuy.price;
+      if (!bestBuy || !bmSell) continue;
+      // Прибыль — после налога и сбора за размещение на БМ.
+      const profit = bmSell.price * (1 - bmTaxRate) - bestBuy.price;
+      if (profit <= 0) continue;
       const profitPct = (profit / bestBuy.price) * 100;
       // Свежесть — по двум котировкам самой сделки (покупка в городе + цена БМ), а не по всем записям предмета.
       const freshMinutes = dealAgeMinutes([bestBuy.date, bmSell.date], now);
-      results.push({ itemId, bestBuy, bmPrice: bmSell.price, profit, profitPct, freshMinutes });
+      results.push({ itemId, bestBuy, bmPrice: bmSell.price, bmTaxRate, profit, profitPct, freshMinutes });
     }
 
     results.sort((a, b) => b.profitPct - a.profitPct);
@@ -1327,6 +1339,7 @@ module.exports = {
   opportunityScore,
   scaledMinVolume,
   getSalesTaxRate,
+  getBmTaxRate,
   quoteAgeMinutes,
   dealAgeMinutes,
   normLocation,

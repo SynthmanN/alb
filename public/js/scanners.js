@@ -71,7 +71,7 @@ async function runBmScan() {
   bmScanBtn.disabled = true;
   bmScanResult.innerHTML = 'Сканирую оружие и броню, это может занять несколько секунд...';
   try {
-    const params = new URLSearchParams({ cities: activeCities().join(',') });
+    const params = new URLSearchParams({ cities: activeCities().join(','), premium: premiumParam() });
     const res = await fetch(`/api/bm-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -108,7 +108,7 @@ function renderBmScanResult(rows) {
   }).join('');
 
   bmScanResult.innerHTML = `
-    <p class="calc-note">Объём считается на Black Market за 24ч — меньше 3 продаж уже отфильтровано. Цена без комиссии (БМ покупает напрямую).</p>
+    <p class="calc-note">Объём считается на Black Market за 24ч — меньше 3 продаж уже отфильтровано. Профит — после налога с продажи и сбора за размещение на БМ (${rows[0] ? (rows[0].bmTaxRate * 100).toFixed(1) : '10.5'}%).</p>
     <div class="table-scroll"><table class="scan-table">
       <thead><tr><th>Предмет</th><th>Профит</th><th>Купить</th><th>Продать на БМ</th><th>Объём БМ 24ч</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>

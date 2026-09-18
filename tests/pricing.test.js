@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 const require = createRequire(import.meta.url);
 const {
   itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
-  freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate,
+  freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
 const RECIPES = require('../data/recipes.json');
@@ -77,6 +77,13 @@ describe('налог с продажи', () => {
     expect(getSalesTaxRate({ query: {} })).toBe(0.08);
     expect(getSalesTaxRate({ query: { premium: 'false' } })).toBe(0.08);
     expect(getSalesTaxRate({ query: { premium: 'true' } })).toBe(0.04);
+  });
+});
+
+describe('налог Чёрного Рынка', () => {
+  it('налог с продажи + сбор за размещение 2.5%: 10.5% без премиума, 6.5% с премиумом', () => {
+    expect(getBmTaxRate({ query: {} })).toBeCloseTo(0.105, 10);
+    expect(getBmTaxRate({ query: { premium: 'true' } })).toBeCloseTo(0.065, 10);
   });
 });
 

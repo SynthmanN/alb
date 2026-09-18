@@ -151,3 +151,33 @@ describe('расчёты с подменённым AODP', () => {
     expect(res.variants).toEqual([]);
   });
 });
+
+describe('Чёрный Рынок: налог', () => {
+  // Мок AODP: в городах продажа за 100, на БМ покупка за 1000 — прибыль зависит только от налога БМ.
+  function bmFake(url) {
+    const u = String(url);
+    const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+    const now = new Date().toISOString().slice(0, 19);
+    const records = [];
+    for (const id of ids) {
+      records.push({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: 100, sell_price_min_date: now, buy_price_max: 1, buy_price_max_date: now });
+      records.push({ item_id: id, city: 'Black Market', quality: 1, sell_price_min: 0, sell_price_min_date: '0001-01-01T00:00:00', buy_price_max: 1000, buy_price_max_date: now });
+    }
+    return records;
+  }
+  it('профит считается после 10.5% без премиума и 6.5% с премиумом', async () => {
+    const isHistory = (u) => String(u).includes('/history/');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({
+      ok: true, status: 200,
+      json: async () => (isHistory(url)
+        ? decodeURIComponent(String(url).split('/history/')[1].split('?')[0]).split(',').map((id) => ({ item_id: id, location: 'Black Market', data: [{ item_count: 50, avg_price: 1000 }] }))
+        : bmFake(url)),
+    }));
+    const free = (await request(app).get('/api/bm-opportunities?cities=Martlock&premium=false')).body;
+    const prem = (await request(app).get('/api/bm-opportunities?cities=Martlock&premium=true')).body;
+    expect(free[0].bmTaxRate).toBeCloseTo(0.105, 10);
+    expect(free[0].profit).toBeCloseTo(1000 * (1 - 0.105) - 100, 6);
+    expect(prem[0].bmTaxRate).toBeCloseTo(0.065, 10);
+    expect(prem[0].profit).toBeCloseTo(1000 * (1 - 0.065) - 100, 6);
+  });
+});
