@@ -472,12 +472,16 @@ app.get('/api/opportunities', async (req, res) => {
 // по аналогии с FortSterling — официально не подтверждено. Если колонка/сканер БМ
 // пустые после деплоя — возможно, нужно поправить это значение.
 const BM_QUERY_LOCATION = 'BlackMarket';
-const BM_LOCATIONS = [...CITIES, BM_QUERY_LOCATION];
 let bmScanCache = null;
 
 app.get('/api/bm-opportunities', async (req, res) => {
   try {
-    if (bmScanCache && Date.now() - bmScanCache.ts < SCAN_CACHE_TTL_MS) return res.json(bmScanCache.data);
+    // Как и остальные сканеры — только активные города (без Brecilien/Caerleon, если они выключены).
+    const citiesParam = req.query.cities;
+    const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const cacheKey = queryCities.slice().sort().join(',');
+    if (bmScanCache && bmScanCache.key === cacheKey && Date.now() - bmScanCache.ts < SCAN_CACHE_TTL_MS) return res.json(bmScanCache.data);
+    const bmLocations = [...queryCities.map((c) => c.replace(/\s+/g, '')), BM_QUERY_LOCATION];
 
     const gearIds = ITEMS.filter((i) => i.category === 'weapon' || i.category === 'armor' || i.category === 'cape').map((i) => i.id);
     const CHUNK = 50;
@@ -486,13 +490,13 @@ app.get('/api/bm-opportunities', async (req, res) => {
 
     const allRecords = [];
     for (const chunk of chunks) {
-      const key = `bm:1:${chunk.slice().sort().join(',')}`;
+      const key = `bm:1:${bmLocations.join(',')}:${chunk.slice().sort().join(',')}`;
       const cached = cache.get(key);
       let data;
       if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
         data = cached.data;
       } else {
-        const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${BM_LOCATIONS.join(',')}&qualities=1`;
+        const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${bmLocations.join(',')}&qualities=1`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`AODP responded ${response.status}`);
         data = await response.json();
@@ -548,7 +552,7 @@ app.get('/api/bm-opportunities', async (req, res) => {
     }
 
     const top = withVolume.slice(0, 25);
-    bmScanCache = { ts: Date.now(), data: top };
+    bmScanCache = { key: cacheKey, ts: Date.now(), data: top };
     res.json(top);
   } catch (err) {
     console.error(err);

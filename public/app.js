@@ -12,6 +12,82 @@ function premiumParam() {
   return premium ? 'true' : 'false';
 }
 
+// --- Сортировка таблиц по клику на заголовок ---
+// Первый клик — по убыванию (▼), второй — по возрастанию (▲). Работает одинаково во всех таблицах:
+// значение ячейки берётся из data-sort-value, иначе из текста (число в начале / после "город:").
+const tableSortStates = {}; // ключ таблицы -> { label, dir }
+
+function cellSortValue(td) {
+  if (!td) return null;
+  if (td.dataset.sortValue !== undefined) {
+    if (td.dataset.sortValue === '') return null;
+    const n = Number(td.dataset.sortValue);
+    return Number.isNaN(n) ? td.dataset.sortValue.toLowerCase() : n;
+  }
+  const text = td.textContent.trim();
+  if (!text || text === '—' || text === 'не проверено' || text === 'нет цены') return null;
+  const tail = text.includes(':') ? text.slice(text.lastIndexOf(':') + 1) : text;
+  const m = tail.replace(/\s+/g, '').replace(',', '.').match(/^[+-]?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : text.toLowerCase();
+}
+
+function compareSortValues(a, b) {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1; // пустые всегда внизу, в любом направлении
+  if (b === null) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  if (typeof a === 'number') return -1;
+  if (typeof b === 'number') return 1;
+  return a.localeCompare(b, 'ru');
+}
+
+function sortHeaderLabel(th) {
+  const clone = th.cloneNode(true);
+  clone.querySelectorAll('.sort-arrow').forEach((n) => n.remove());
+  return clone.textContent.trim();
+}
+
+function applyTableSort(table, key) {
+  const state = tableSortStates[key];
+  const headers = [...table.querySelectorAll('thead th')];
+  headers.forEach((th) => th.querySelectorAll('.sort-arrow').forEach((n) => n.remove()));
+  if (!state) return;
+  const col = headers.findIndex((th) => sortHeaderLabel(th) === state.label);
+  if (col === -1) return;
+
+  const tbody = table.querySelector('tbody');
+  tbody.querySelectorAll('.chart-row').forEach((r) => r.remove());
+  const rows = [...tbody.querySelectorAll(':scope > tr')];
+  const sign = state.dir === 'desc' ? -1 : 1;
+  const decorated = rows.map((row, i) => ({ row, i, v: cellSortValue(row.children[col]) }));
+  decorated.sort((x, y) => {
+    if (x.v === null || y.v === null) return compareSortValues(x.v, y.v) || x.i - y.i;
+    return sign * compareSortValues(x.v, y.v) || x.i - y.i;
+  });
+  for (const d of decorated) tbody.appendChild(d.row);
+
+  const arrow = document.createElement('span');
+  arrow.className = 'sort-arrow';
+  arrow.textContent = state.dir === 'desc' ? ' ▼' : ' ▲';
+  headers[col].appendChild(arrow);
+}
+
+function wireTableSort(table, key) {
+  if (!table) return;
+  table.querySelectorAll('thead th').forEach((th) => {
+    const label = sortHeaderLabel(th);
+    if (!label) return; // колонки-действия без названия не сортируем
+    th.classList.add('sortable');
+    th.addEventListener('click', () => {
+      const cur = tableSortStates[key];
+      const dir = cur && cur.label === label && cur.dir === 'desc' ? 'asc' : 'desc';
+      tableSortStates[key] = { label, dir };
+      applyTableSort(table, key);
+    });
+  });
+  applyTableSort(table, key);
+}
+
 const STORAGE_KEY = 'albion_tracked_items';
 let ALL_ITEMS = [];
 let selectedInSearch = new Set();
@@ -68,6 +144,7 @@ function buildHead() {
   spreadTh.textContent = 'Спред';
   el.tableHead.appendChild(spreadTh);
   el.tableHead.appendChild(document.createElement('th'));
+  wireTableSort(el.tableHead.closest('table'), 'main');
 }
 
 function findItem(id) {
@@ -200,6 +277,7 @@ function renderTable() {
         const isBestBuy = city === bestBuy.city;
         const isBestSell = city === bestSell.city;
         td.className = isBestBuy ? 'cell-best-buy' : isBestSell ? 'cell-best-sell' : '';
+        td.dataset.sortValue = d.sellMin || '';
         td.innerHTML = `
           <span class="cell-min">${d.sellMin ? d.sellMin.toLocaleString('ru-RU') : '—'}</span> /
           <span class="cell-max">${d.buyMax ? d.buyMax.toLocaleString('ru-RU') : '—'}</span>
@@ -239,6 +317,7 @@ function renderTable() {
 
     el.tableBody.appendChild(row);
   }
+  applyTableSort(el.tableHead.closest('table'), 'main');
 }
 
 const chartHoursByItem = {};
@@ -531,6 +610,7 @@ function renderCalcResult(data) {
       <tbody>${rowsHtml}</tbody>
     </table>
   `;
+  wireTableSort(calcEl.result.querySelector('table'), 'refine-calc');
 }
 
 // --- Сканер возможностей ---
@@ -570,8 +650,8 @@ function renderScanResult(rows) {
         <td class="scan-spread-hot">${r.spreadPct.toFixed(1)}%</td>
         <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
         <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
-        <td>${volumeText}</td>
-        <td class="${stale ? 'scan-stale' : ''}">${freshText}${stale ? ' ⚠' : ''}</td>
+        <td data-sort-value="${r.volume24h ?? ''}">${volumeText}</td>
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${freshText}${stale ? ' ⚠' : ''}</td>
         <td><button class="scan-add-btn" data-id="${item.id}" ${alreadyTracked ? 'disabled' : ''}>${alreadyTracked ? 'в таблице' : '+ добавить'}</button></td>
       </tr>
     `;
@@ -584,6 +664,7 @@ function renderScanResult(rows) {
       <tbody>${rowsHtml}</tbody>
     </table>
   `;
+  wireTableSort(scanResult.querySelector('table'), 'scan');
   scanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
@@ -603,7 +684,8 @@ async function runBmScan() {
   bmScanBtn.disabled = true;
   bmScanResult.innerHTML = 'Сканирую оружие и броню, это может занять несколько секунд...';
   try {
-    const res = await fetch('/api/bm-opportunities');
+    const params = new URLSearchParams({ cities: activeCities().join(',') });
+    const res = await fetch(`/api/bm-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderBmScanResult(data);
@@ -631,8 +713,8 @@ function renderBmScanResult(rows) {
         <td class="scan-spread-hot">+${r.profitPct.toFixed(1)}%</td>
         <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
         <td>БМ: ${r.bmPrice.toLocaleString('ru-RU')}</td>
-        <td>${volumeText}</td>
-        <td class="${stale ? 'scan-stale' : ''}">${freshText}${stale ? ' ⚠' : ''}</td>
+        <td data-sort-value="${r.bmVolume24h ?? ''}">${volumeText}</td>
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${freshText}${stale ? ' ⚠' : ''}</td>
         <td><button class="scan-add-btn" data-id="${item.id}" ${alreadyTracked ? 'disabled' : ''}>${alreadyTracked ? 'в таблице' : '+ добавить'}</button></td>
       </tr>
     `;
@@ -645,6 +727,7 @@ function renderBmScanResult(rows) {
       <tbody>${rowsHtml}</tbody>
     </table>
   `;
+  wireTableSort(bmScanResult.querySelector('table'), 'bm-scan');
   bmScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
@@ -793,6 +876,9 @@ function renderCraftResult(data) {
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
   `;
+  const craftTables = craftEl.result.querySelectorAll('table');
+  wireTableSort(craftTables[0], 'craft-recipe');
+  wireTableSort(craftTables[1], 'craft-sell');
 }
 
 // --- Сканер выгодности крафта ---
@@ -844,6 +930,7 @@ function renderCraftScanResult(rows) {
       <tbody>${rowsHtml}</tbody>
     </table>
   `;
+  wireTableSort(craftScanResult.querySelector('table'), 'craft-scan');
   craftScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const item = findItem(btn.dataset.id);
@@ -909,6 +996,7 @@ function renderRefineScanResult(rows) {
       <tbody>${rowsHtml}</tbody>
     </table>
   `;
+  wireTableSort(refineScanResult.querySelector('table'), 'refine-scan');
 }
 
 init();

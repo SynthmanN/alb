@@ -121,3 +121,8 @@ tbody tr:hover { background: #1a1d22; }
 .craft-summary .profit-pos { color: #7ee787; font-weight: 700; }
 .craft-summary .profit-neg { color: #ff6b6b; font-weight: 700; }
 .craft-summary-row { display: flex; justify-content: space-between; padding: 3px 0; }
+
+/* Сортировка по клику на заголовок */
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: #e6e6e6; }
+.sort-arrow { color: #7ee787; font-size: 11px; }
