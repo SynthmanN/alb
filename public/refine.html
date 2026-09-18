@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Рефайн — Albion Market Table</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="site-chrome"></div>
+  <main>
+    <section class="calc-panel">
+      <h2>📈 Что выгодно перерабатывать (рефайн)</h2>
+      <p class="calc-note">
+        По всем 5 типам ресурсов и 7 тирам разом (35 комбинаций), себестоимость с
+        учётом возврата ресурсов против цены готового переработанного материала.
+      </p>
+      <div class="calc-controls">
+        <select id="refine-scan-hours">
+          <option value="12">12ч</option><option value="24" selected>24ч</option>
+          <option value="72">3 дня</option><option value="168">7 дней</option>
+        </select>
+        <select id="refine-scan-rrr"></select>
+        <button id="refine-scan-run">Сканировать</button>
+      </div>
+      <div id="refine-scan-result"></div>
+    </section>
+
+    <section class="calc-panel">
+      <h2>Калькулятор себестоимости рефайна</h2>
+      <p class="calc-note">
+        Пропорции сырья сверены с дампом игровых файлов. RRR-формула подтверждена вики.
+      </p>
+      <div class="calc-controls">
+        <select id="calc-type"></select>
+        <select id="calc-tier"></select>
+        <select id="calc-enchant">
+          <option value="0">Без зачар.</option><option value="1">Зачар. 1</option>
+          <option value="2">Зачар. 2</option><option value="3">Зачар. 3</option><option value="4">Зачар. 4</option>
+        </select>
+        <select id="calc-rrr"></select>
+        <button id="calc-run">Посчитать</button>
+      </div>
+      <div id="calc-result"></div>
+    </section>
+  </main>
+
+  <script src="js/common.js"></script>
+  <script src="js/refine.js"></script>
+</body>
+</html>

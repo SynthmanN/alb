@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Albion Market Table</title>
+  <title>Цены — Albion Market Table</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>Albion Online — цены по городам</h1>
+  <div id="site-chrome"></div>
+  <header class="page-header">
+    <h1>💰 Цены по городам</h1>
     <div class="controls">
       <input id="search" type="text" placeholder="Поиск по названию или ID (T4_PLANKS)..." />
       <select id="category-filter">
@@ -43,204 +44,12 @@
         <input type="checkbox" id="auto-refresh-toggle" />
         авто-обновление (5 мин)
       </label>
-      <span class="city-toggles">
-        <label><input type="checkbox" id="city-caerleon" /> Caerleon</label>
-        <label><input type="checkbox" id="city-brecilien" /> Brecilien</label>
-      </span>
-      <label class="premium-toggle" title="Налог с продажи: 4% с премиумом, 8% без">
-        <input type="checkbox" id="premium-toggle" />
-        Премиум (налог 4% вместо 8%)
-      </label>
     </div>
     <div id="suggestions" class="suggestions"></div>
   </header>
-
   <main>
-    <section class="calc-panel scanner-panel">
-      <h2>🔍 Сканер возможностей</h2>
-      <p class="calc-note">
-        Пробегает по всем предметам каталога, находит спред между городами, а затем
-        отдельно проверяет объём сделок за 24ч у прибыльных позиций — предметы,
-        которые по факту не продаются, отсекаются. Без зачарования, обычное качество.
-      </p>
-      <button id="scan-run">Сканировать</button>
-      <div id="scan-result"></div>
-    </section>
-
-    <section class="calc-panel scanner-panel">
-      <h2>⚫ Чёрный Рынок</h2>
-      <p class="calc-note">
-        Сравнивает цену покупки в обычных городах с тем, что прямо сейчас платит
-        Black Market (Caerleon) за экипировку. Только оружие/броня/плащи.
-      </p>
-      <button id="bm-scan-run">Сканировать БМ</button>
-      <div id="bm-scan-result"></div>
-    </section>
-
-    <section class="calc-panel">
-      <h2>🛠 Калькулятор крафта</h2>
-      <p class="calc-note">
-        Себестоимость крафта любого оружия/брони/плаща с учётом самых выгодных цен сырья
-        по городам (использует те же галочки Caerleon/Brecilien, что и основная таблица)
-        и текущей цены продажи готового предмета.
-      </p>
-      <div class="calc-controls">
-        <input id="craft-search" type="text" placeholder="Найди предмет (например, плащ бресильена)..." />
-        <select id="craft-category-filter">
-          <option value="">Все категории</option>
-          <option value="weapon">Оружие</option>
-          <option value="armor">Броня</option>
-          <option value="cape">Плащи</option>
-        </select>
-        <select id="craft-tier-filter">
-          <option value="">Любой тир</option>
-          <option value="2">T2</option><option value="3">T3</option><option value="4">T4</option>
-          <option value="5">T5</option><option value="6">T6</option><option value="7">T7</option><option value="8">T8</option>
-        </select>
-      </div>
-      <div id="craft-suggestions" class="suggestions"></div>
-      <div id="craft-selected" class="craft-selected"></div>
-      <div class="craft-controls-row" style="display:none" id="craft-controls">
-        <label class="craft-field">Зачарование<select id="craft-enchant"></select></label>
-        <label class="craft-field">Качество
-          <select id="craft-quality">
-            <option value="1">Обычное</option><option value="2">Хорошее</option>
-            <option value="3">Выдающееся</option><option value="4">Отличное</option><option value="5">Шедевр</option>
-          </select>
-        </label>
-        <label class="craft-field">Возврат ресурсов<select id="craft-rrr"></select></label>
-        <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
-        <button id="craft-run">Посчитать</button>
-      </div>
-      <div id="craft-result"></div>
-
-      <div class="bulk-panel" id="bulk-panel" style="display:none">
-        <h3 style="font-size:14px; margin:18px 0 8px">📦 План крупной партии</h3>
-        <p class="calc-note">
-          Для схемы «закупаю бай-ордерами, продаю партией за несколько дней»: цены берутся не мгновенные,
-          а средневзвешенные по объёму за период истории. Показано, сколько дней уйдёт на закупку сырья
-          и на распродажу партии, не обваливая рынок.
-        </p>
-        <div class="craft-controls-row">
-          <label class="craft-field">Партия, шт<input id="bulk-quantity" type="number" min="1" value="1000" /></label>
-          <label class="craft-field">Потолок себестоимости/шт<input id="bulk-ceiling" type="number" min="0" placeholder="без потолка" /></label>
-          <label class="craft-field">Продажа от<input id="bulk-sell-low" type="number" min="0" placeholder="рынок" /></label>
-          <label class="craft-field">Продажа до<input id="bulk-sell-high" type="number" min="0" placeholder="рынок" /></label>
-          <label class="craft-field">История
-            <select id="bulk-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
-          </label>
-          <button id="bulk-run">Рассчитать план</button>
-        </div>
-        <div id="bulk-result"></div>
-      </div>
-
-      <hr style="border-color:#2a2d33; margin:18px 0" />
-
-      <h3 style="font-size:14px; margin:0 0 8px">📈 Что выгодно крафтить прямо сейчас</h3>
-      <p class="calc-note">
-        Себестоимость сырья (обычное качество, без зачарования) против текущей цены
-        продажи, плюс проверка реального объёма торгов готового предмета.
-      </p>
-      <div class="calc-controls">
-        <select id="craft-scan-hours">
-          <option value="12">12ч</option><option value="24" selected>24ч</option>
-          <option value="72">3 дня</option><option value="168">7 дней</option>
-        </select>
-        <button id="craft-scan-run">Сканировать</button>
-      </div>
-      <div id="craft-scan-result"></div>
-
-      <hr style="border-color:#2a2d33; margin:18px 0" />
-
-      <h3 style="font-size:14px; margin:0 0 8px">📦 Что выгодно крафтить партиями</h3>
-      <p class="calc-note">
-        Та же партионная модель, что и в плане крупной партии (средневзвешенные цены за период, дни на
-        закупку и распродажу), сразу по всем рецептам. Длинные циклы (больше 30 дней) помечены ⚠ и
-        уходят вниз списка.
-      </p>
-      <div class="calc-controls">
-        <select id="bulk-scan-category">
-          <option value="all">Всё</option><option value="weapon">Оружие</option>
-          <option value="armor">Броня</option><option value="cape">Плащи</option>
-        </select>
-        <label class="craft-field">Партия, шт<input id="bulk-scan-quantity" type="number" min="1" value="1000" /></label>
-        <select id="bulk-scan-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
-        <button id="bulk-scan-run">Сканировать партии</button>
-      </div>
-      <div id="bulk-scan-result"></div>
-    </section>
-
-    <section class="calc-panel">
-      <h2>🎖 Мастерки</h2>
-      <p class="calc-note">
-        Введи свои уровни мастерства (категория) и специализации (конкретная вещь) — они сохраняются на сервере
-        и автоматически учитываются в примерочной. Специализация даёт +2 IP за уровень самой вещи,
-        а мастерство и специализация — ещё +0.2 IP за уровень на всю ветку; бонус действует с T4 и растёт с тиром
-        (T5 +5% … T8 +20%). Плащи в дереве не участвуют.
-      </p>
-      <div class="calc-controls">
-        <input id="mastery-search" type="text" placeholder="Поиск по названию (например, меч)..." autocomplete="off" />
-        <span id="mastery-status" class="calc-note"></span>
-      </div>
-      <div id="mastery-list" class="mastery-list"></div>
-    </section>
-
-    <section class="calc-panel">
-      <h2>👗 Примерочная</h2>
-      <p class="calc-note">
-        Выбери предмет на каждый слот и целевой средний IP — подберём самые дешёвые комбинации
-        тира, зачарования и качества. Общий IP — среднее по 6 слотам (шлем, торс, обувь, плащ, две руки),
-        двуручное оружие считается за обе руки. Уровни из раздела «Мастерки» учитываются автоматически.
-      </p>
-      <div class="fit-slots" id="fit-slots"></div>
-      <div class="calc-controls">
-        <label class="craft-field">Целевой IP<input id="fit-target" type="number" min="1" value="1000" /></label>
-        <label class="craft-field" title="Насколько ниже цели можно опуститься, чтобы не покупать слишком дорогую вещь">Допуск вниз<input id="fit-tol-minus" type="number" min="0" value="30" style="width:80px" /></label>
-        <label class="craft-field" title="Насколько выше цели можно подняться">Допуск вверх<input id="fit-tol-plus" type="number" min="0" value="100" style="width:80px" /></label>
-        <label class="craft-field">Вариантов
-          <select id="fit-variants"><option value="3" selected>3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option></select>
-        </label>
-        <button id="fit-run">Подобрать</button>
-      </div>
-      <div id="fit-result"></div>
-    </section>
-
-    <section class="calc-panel">
-      <h2>📈 Что выгодно перерабатывать (рефайн)</h2>
-      <p class="calc-note">
-        По всем 5 типам ресурсов и 7 тирам разом (35 комбинаций), себестоимость с
-        учётом возврата ресурсов против цены готового переработанного материала.
-      </p>
-      <div class="calc-controls">
-        <select id="refine-scan-hours">
-          <option value="12">12ч</option><option value="24" selected>24ч</option>
-          <option value="72">3 дня</option><option value="168">7 дней</option>
-        </select>
-        <select id="refine-scan-rrr"></select>
-        <button id="refine-scan-run">Сканировать</button>
-      </div>
-      <div id="refine-scan-result"></div>
-    </section>
-
-    <section class="calc-panel">
-      <h2>Калькулятор себестоимости рефайна</h2>
-      <p class="calc-note">
-        Пропорции сырья сверены с дампом игровых файлов. RRR-формула подтверждена вики.
-      </p>
-      <div class="calc-controls">
-        <select id="calc-type"></select>
-        <select id="calc-tier"></select>
-        <select id="calc-enchant">
-          <option value="0">Без зачар.</option><option value="1">Зачар. 1</option>
-          <option value="2">Зачар. 2</option><option value="3">Зачар. 3</option><option value="4">Зачар. 4</option>
-        </select>
-        <select id="calc-rrr"></select>
-        <button id="calc-run">Посчитать</button>
-      </div>
-      <div id="calc-result"></div>
-    </section>
-
     <div id="status" class="status"></div>
+    <div class="table-scroll">
     <table id="price-table">
       <thead>
         <tr id="table-head">
@@ -251,8 +60,10 @@
       </thead>
       <tbody id="table-body"></tbody>
     </table>
+    </div>
   </main>
 
-  <script src="app.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/prices.js"></script>
 </body>
 </html>

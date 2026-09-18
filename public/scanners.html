@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Флиппинг — Albion Market Table</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="site-chrome"></div>
+  <main>
+    <section class="calc-panel scanner-panel">
+      <h2>🔍 Сканер возможностей</h2>
+      <p class="calc-note">
+        Пробегает по всем предметам каталога, находит спред между городами, а затем
+        отдельно проверяет объём сделок за 24ч у прибыльных позиций — предметы,
+        которые по факту не продаются, отсекаются. Без зачарования, обычное качество.
+      </p>
+      <button id="scan-run">Сканировать</button>
+      <div id="scan-result"></div>
+    </section>
+
+    <section class="calc-panel scanner-panel">
+      <h2>⚫ Чёрный Рынок</h2>
+      <p class="calc-note">
+        Сравнивает цену покупки в обычных городах с тем, что прямо сейчас платит
+        Black Market (Caerleon) за экипировку. Только оружие/броня/плащи.
+      </p>
+      <button id="bm-scan-run">Сканировать БМ</button>
+      <div id="bm-scan-result"></div>
+    </section>
+  </main>
+
+  <script src="js/common.js"></script>
+  <script src="js/scanners.js"></script>
+</body>
+</html>

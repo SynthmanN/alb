@@ -1,0 +1,126 @@
+// Страница «Флиппинг»: сканер возможностей и сканер Чёрного Рынка.
+
+// --- Сканер возможностей ---
+const scanBtn = document.getElementById('scan-run');
+const scanResult = document.getElementById('scan-result');
+scanBtn.addEventListener('click', runScan);
+
+async function runScan() {
+  scanBtn.disabled = true;
+  scanResult.innerHTML = 'Сканирую весь каталог, это может занять несколько секунд...';
+  try {
+    const res = await fetch(`/api/opportunities?premium=${premiumParam()}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderScanResult(data);
+  } catch (err) {
+    scanResult.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
+  } finally {
+    scanBtn.disabled = false;
+  }
+}
+
+function renderScanResult(rows) {
+  if (rows.length === 0) {
+    scanResult.innerHTML = '<div class="chart-empty">Ничего не нашлось — либо всё отфильтровано по низкой ликвидности, либо AODP недоступен.</div>';
+    return;
+  }
+  const rowsHtml = rows.slice(0, 25).map((r) => {
+    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
+    const stale = r.freshMinutes !== null && r.freshMinutes > 180;
+    const freshText = r.freshMinutes === null ? '—' : r.freshMinutes < 60 ? `${r.freshMinutes} мин назад` : `${Math.round(r.freshMinutes / 60)} ч назад`;
+    const alreadyTracked = tracked.includes(item.id);
+    const volumeText = r.volume24h === null ? 'не проверено' : `${r.volume24h} сделок/24ч`;
+    return `
+      <tr>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td class="scan-spread-hot">${r.spreadPct.toFixed(1)}%</td>
+        <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
+        <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
+        <td data-sort-value="${r.volume24h ?? ''}">${volumeText}</td>
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${freshText}${stale ? ' ⚠' : ''}</td>
+        <td><button class="scan-add-btn" data-id="${item.id}" ${alreadyTracked ? 'disabled' : ''}>${alreadyTracked ? 'в таблице' : '+ добавить'}</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  scanResult.innerHTML = `
+    <p class="calc-note">Спред — после налога с продажи (${rows[0] ? (rows[0].taxRate * 100).toFixed(0) : '8'}%). Объём — только по двум городам сделки; меньше 3 сделок за 24ч уже отфильтровано. Старые котировки понижают позицию в списке. ⚠ — данные старше 3 часов.</p>
+    <div class="table-scroll"><table class="scan-table">
+      <thead><tr><th>Предмет</th><th>Спред</th><th>Купить</th><th>Продать</th><th>Объём 24ч</th><th>Свежесть</th><th></th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>
+  `;
+  wireTableSort(scanResult.querySelector('table'), 'scan');
+  scanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      if (!tracked.includes(id)) { tracked.push(id); saveTracked(); }
+      btn.disabled = true;
+      btn.textContent = 'в таблице';
+    });
+  });
+}
+
+// --- Сканер Black Market ---
+const bmScanBtn = document.getElementById('bm-scan-run');
+const bmScanResult = document.getElementById('bm-scan-result');
+bmScanBtn.addEventListener('click', runBmScan);
+
+async function runBmScan() {
+  bmScanBtn.disabled = true;
+  bmScanResult.innerHTML = 'Сканирую оружие и броню, это может занять несколько секунд...';
+  try {
+    const params = new URLSearchParams({ cities: activeCities().join(',') });
+    const res = await fetch(`/api/bm-opportunities?${params}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderBmScanResult(data);
+  } catch (err) {
+    bmScanResult.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
+  } finally {
+    bmScanBtn.disabled = false;
+  }
+}
+
+function renderBmScanResult(rows) {
+  if (rows.length === 0) {
+    bmScanResult.innerHTML = '<div class="chart-empty">Ничего не нашлось — либо всё отфильтровано по низкой ликвидности на БМ, либо AODP недоступен.</div>';
+    return;
+  }
+  const rowsHtml = rows.slice(0, 25).map((r) => {
+    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
+    const stale = r.freshMinutes !== null && r.freshMinutes > 180;
+    const freshText = r.freshMinutes === null ? '—' : r.freshMinutes < 60 ? `${r.freshMinutes} мин назад` : `${Math.round(r.freshMinutes / 60)} ч назад`;
+    const alreadyTracked = tracked.includes(item.id);
+    const volumeText = r.bmVolume24h === null ? 'не проверено' : `${r.bmVolume24h} продаж/24ч`;
+    return `
+      <tr>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td class="scan-spread-hot">+${r.profitPct.toFixed(1)}%</td>
+        <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
+        <td>БМ: ${r.bmPrice.toLocaleString('ru-RU')}</td>
+        <td data-sort-value="${r.bmVolume24h ?? ''}">${volumeText}</td>
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${freshText}${stale ? ' ⚠' : ''}</td>
+        <td><button class="scan-add-btn" data-id="${item.id}" ${alreadyTracked ? 'disabled' : ''}>${alreadyTracked ? 'в таблице' : '+ добавить'}</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  bmScanResult.innerHTML = `
+    <p class="calc-note">Объём считается на Black Market за 24ч — меньше 3 продаж уже отфильтровано. Цена без комиссии (БМ покупает напрямую).</p>
+    <div class="table-scroll"><table class="scan-table">
+      <thead><tr><th>Предмет</th><th>Профит</th><th>Купить</th><th>Продать на БМ</th><th>Объём БМ 24ч</th><th>Свежесть</th><th></th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>
+  `;
+  wireTableSort(bmScanResult.querySelector('table'), 'bm-scan');
+  bmScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      if (!tracked.includes(id)) { tracked.push(id); saveTracked(); }
+      btn.disabled = true;
+      btn.textContent = 'в таблице';
+    });
+  });
+}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мастерки — Albion Market Table</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="site-chrome"></div>
+  <main>
+    <section class="calc-panel">
+      <h2>🎖 Мастерки</h2>
+      <p class="calc-note">
+        Введи свои уровни мастерства (категория) и специализации (конкретная вещь) — они сохраняются на сервере
+        и автоматически учитываются в примерочной. Специализация даёт +2 IP за уровень самой вещи,
+        а мастерство и специализация — ещё +0.2 IP за уровень на всю ветку; бонус действует с T4 и растёт с тиром
+        (T5 +5% … T8 +20%). Плащи в дереве не участвуют.
+      </p>
+      <div class="calc-controls">
+        <input id="mastery-search" type="text" placeholder="Поиск по названию (например, меч)..." autocomplete="off" />
+        <span id="mastery-status" class="calc-note"></span>
+      </div>
+      <div id="mastery-list" class="mastery-list"></div>
+    </section>
+  </main>
+
+  <script src="js/common.js"></script>
+  <script src="js/masteries.js"></script>
+</body>
+</html>

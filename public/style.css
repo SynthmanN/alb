@@ -141,3 +141,51 @@ th.sortable:hover { color: #e6e6e6; }
 .mastery-specs { padding: 4px 10px 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px 16px; }
 .mastery-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
 .mastery-row input { width: 70px; }
+
+/* --- Навигация и панель настроек (общие для всех страниц) --- */
+.site-nav {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 1px solid #2a2d33;
+}
+.site-title { font-size: 16px; font-weight: 700; color: #e6e6e6; text-decoration: none; margin-right: auto; }
+.nav-links { display: flex; gap: 4px; flex-wrap: wrap; }
+.nav-links a {
+  padding: 7px 12px; border-radius: 6px; color: #9aa0aa; text-decoration: none; font-size: 14px;
+}
+.nav-links a:hover { background: #1e2126; color: #e6e6e6; }
+.nav-links a.active { background: #244a2c; color: #7ee787; }
+.nav-toggle { display: none; padding: 6px 12px; font-size: 18px; background: #1e2126; border: 1px solid #333740; }
+.nav-toggle:hover { background: #2a2d33; }
+.settings-bar {
+  display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+  padding: 8px 0; font-size: 13px; color: #9aa0aa; border-bottom: 1px solid #23262b;
+}
+.premium-toggle { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+main { padding-top: 4px; }
+.page-header { position: static; border-bottom: none; padding-top: 12px; }
+.sub-title { font-size: 14px; margin: 22px 0 8px; padding-top: 14px; border-top: 1px solid #2a2d33; }
+.sub-title:first-of-type { border-top: none; padding-top: 0; }
+
+/* Таблицы прокручиваются внутри своей обёртки, а не всей страницей */
+.table-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+
+/* --- Смартфоны --- */
+@media (max-width: 720px) {
+  .nav-toggle { display: block; }
+  .nav-links { display: none; width: 100%; flex-direction: column; }
+  .nav-links.open { display: flex; }
+  .nav-links a { padding: 11px 12px; }
+}
+@media (max-width: 640px) {
+  body { padding: 0 10px 32px; }
+  .controls, .calc-controls, .craft-controls-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .controls input[type="text"], .controls select, .controls button,
+  .calc-controls select, .calc-controls button, .calc-controls input,
+  .craft-field, .craft-field input, .craft-field select { width: 100%; min-width: 0; }
+  button, select, input[type="text"], input[type="number"] { min-height: 40px; font-size: 15px; }
+  .calc-panel { padding: 10px; }
+  .fit-slots { grid-template-columns: 1fr; }
+  .mastery-specs { grid-template-columns: 1fr; }
+  .settings-bar { gap: 10px; }
+  th, td { padding: 8px 8px; }
+}

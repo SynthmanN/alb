@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Примерочная — Albion Market Table</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="site-chrome"></div>
+  <main>
+    <section class="calc-panel">
+      <h2>👗 Примерочная</h2>
+      <p class="calc-note">
+        Выбери предмет на каждый слот и целевой средний IP — подберём самые дешёвые комбинации
+        тира, зачарования и качества. Общий IP — среднее по 6 слотам (шлем, торс, обувь, плащ, две руки),
+        двуручное оружие считается за обе руки. Уровни из раздела «Мастерки» учитываются автоматически.
+      </p>
+      <div class="fit-slots" id="fit-slots"></div>
+      <div class="calc-controls">
+        <label class="craft-field">Целевой IP<input id="fit-target" type="number" min="1" value="1000" /></label>
+        <label class="craft-field" title="Насколько ниже цели можно опуститься, чтобы не покупать слишком дорогую вещь">Допуск вниз<input id="fit-tol-minus" type="number" min="0" value="30" style="width:80px" /></label>
+        <label class="craft-field" title="Насколько выше цели можно подняться">Допуск вверх<input id="fit-tol-plus" type="number" min="0" value="100" style="width:80px" /></label>
+        <label class="craft-field">Вариантов
+          <select id="fit-variants"><option value="3" selected>3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option></select>
+        </label>
+        <button id="fit-run">Подобрать</button>
+      </div>
+      <div id="fit-result"></div>
+    </section>
+  </main>
+
+  <script src="js/common.js"></script>
+  <script src="js/fitting-room.js"></script>
+</body>
+</html>
