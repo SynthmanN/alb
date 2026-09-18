@@ -25,8 +25,16 @@ Albion Online, флиппинга, крафт-калькулятора и ска
   `https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/items.xml` и
   `.../formatted/items.json` (для локализованных RU-названий).
   **НЕ используй форк `broderickhyman/ao-bin-dumps`** — он неполный (отсутствует Бресильен).
-- Данные извлечены одноразовыми Python-скриптами и сохранены как статические
-  файлы в `data/` — приложение НЕ ходит в GitHub на рантайме.
+- Данные извлечены Python-скриптами и сохранены как статические файлы в `data/` —
+  приложение НЕ ходит в GitHub на рантайме. Воспроизводимо сейчас только дерево мастерок:
+  `python3 scripts/extract_masteries.py [каталог_с_дампами]` (скачивает achievements.xml и
+  localization.json, если каталог не указан). Скрипты извлечения gear.json/recipes.json
+  в этой пересборке не сохранились — при обновлении данных их нужно писать заново.
+- **Проверка устаревания**: `python3 scripts/check_data_staleness.py` сверяет SHA последних коммитов
+  items.xml/achievements.xml в ao-data/ao-bin-dumps с `data/.extraction-state.json` (код выхода 1 —
+  апстрим изменился, 2 — нет сохранённого состояния; `--update` записывает текущее). На VPS её раз в неделю
+  запускает cron через `scripts/run_staleness_check.sh` (пишет в `logs/staleness-check.log`). Это сигнал,
+  а не автообновление: данные пересобираем и проверяем руками.
 
 ## Структура данных
 
@@ -36,6 +44,8 @@ Albion Online, флиппинга, крафт-калькулятора и ска
 - `data/recipes.json` — рецепты крафта, извлечены из `<craftingrequirements>` items.xml.
 - `data/extra-item-names.json` — RU-названия для предметов в рецептах, но вне каталога
   (гербы городов, жетоны фракций, "Сказочный огонь" для Бресильена).
+- `data/masteries.json` — дерево мастерок (29 категорий, 101 специализация, RU-названия), генерируется
+  `scripts/extract_masteries.py`. Личные уровни пользователя — `data/user-masteries.json` (в .gitignore).
 - `data/refining.js` — пропорции рефайна, СВЕРЕНЫ с items.xml (одинаковы для всех 5
   типов ресурсов): T2=1, T3=2, T4=2, T5=3, T6=4, T7=5, T8=5 сырья (+1 материал
   пред. тира кроме T2). RRR-пресеты по официальной формуле вики.
@@ -45,7 +55,7 @@ Albion Online, флиппинга, крафт-калькулятора и ска
 - Оружие/броня/плащи: суффикс `@N` (`T4_MAIN_SWORD@2`). Только T4+.
 - Ресурсы: суффикс `_LEVELn@n` (`T4_LEATHER_LEVEL2@2`, НЕ `T4_LEATHER@2`). Только T4+.
   Камень (ROCK) — максимум зачарование 3. Каменные блоки (STONEBLOCK) — никогда.
-- Логика: `effectiveRecipeResourceId()` (server.js), `effectiveId()`/`maxEnchantFor()` (app.js).
+- Логика: `effectiveRecipeResourceId()` (server.js), `effectiveId()`/`maxEnchantFor()` (public/js/common.js).
 
 ## Известные допущения
 
@@ -69,6 +79,20 @@ Albion Online, флиппинга, крафт-калькулятора и ска
    с учётом активных городов)
 7. Четыре сканера: общий (спред по каталогу), Black Market, крафт-выгодность,
    рефайн-выгодность — окна 12ч/24ч/3д/7д
+
+## Страницы и файлы фронтенда
+
+Шесть страниц (`public/*.html`): Цены (index), Флиппинг (scanners), Крафт (craft), Рефайн (refine),
+Примерочная (fitting-room), Мастерки (masteries). JS без сборки: `public/js/common.js` (шапка, настройки
+города/премиум в localStorage, сортировка таблиц, иконки) + по файлу на страницу. Таблицы на телефоне
+(≤640px) превращаются в карточки (data-label + панель «Сортировка»).
+
+## Тесты
+
+- `npm test` — Vitest: юнит-тесты чистой логики (`tests/pricing.test.js`) и API через supertest с подменённым
+  AODP (`tests/api.test.js`). `server.js` экспортирует `app` и чистые функции и не занимает порт при `require()`.
+- `npm run test:e2e` — Playwright в настоящем Chromium, два проекта (desktop 1280px и mobile 375px), тестовый сервер
+  на порту 4100 с временным файлом мастерок. `npm run test:all` — оба набора.
 
 ## Деплой
 

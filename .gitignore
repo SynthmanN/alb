@@ -14,3 +14,7 @@ data/user-masteries.json
 test-results/
 playwright-report/
 blob-report/
+
+# журналы проверок и состояние экстракции данных (локальные)
+logs/
+data/.extraction-state.json
