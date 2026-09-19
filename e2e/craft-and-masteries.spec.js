@@ -15,7 +15,7 @@ test('крафт-калькулятор: выбор предмета и расч
   await page.locator('#craft-run').click();
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('После налога с продажи (8%)');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('1 200');
-  await expect(page.locator('#craft-result .patient-sell')).toContainText('Терпеливая продажа');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('Продажа через Sell Order');
   await expect(page.locator('#craft-result .patient-sell')).toContainText('2 120');
 });
 

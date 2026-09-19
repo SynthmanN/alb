@@ -180,7 +180,7 @@ function renderCraftResult(data) {
     <div class="craft-summary">
       <div class="craft-summary-row"><span>Себестоимость материала / шт (сырое)</span><span>${Math.round(data.materialCostPerUnit).toLocaleString('ru-RU')}</span></div>
       <div class="craft-summary-row"><span>Себестоимость с учётом RRR (${(data.rrrPreset.rrr * 100).toFixed(1)}%) / шт</span><span>${Math.round(data.effectiveCostPerUnit).toLocaleString('ru-RU')}</span></div>
-      <div class="craft-summary-row"><span>Мгновенная продажа: лучшая цена (в чужой ордер на покупку)</span><span>${data.bestSell ? `${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
+      <div class="craft-summary-row"><span>Продажа в Buy Order: лучшая цена (мгновенно, в чужой ордер на покупку)</span><span>${data.bestSell ? `${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
       <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${data.netSellPrice !== null ? Math.round(data.netSellPrice).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
@@ -206,7 +206,7 @@ function cityPricesCell(cheapestCity, cheapestPrice, cityPrices) {
   return `<details class="city-prices"><summary>${main}</summary><ul>${list}</ul></details>`;
 }
 
-// Сравнение по тирам: себестоимость и лучшая мгновенная цена продажи для каждого тира того же предмета.
+// Сравнение по тирам: себестоимость и лучшая цена продажи в Buy Order для каждого тира того же предмета.
 function tierComparisonHtml(data) {
   const t = data.tierComparison;
   if (!t || t.length === 0) return '';
@@ -224,15 +224,15 @@ function tierComparisonHtml(data) {
   }).join('');
   return `
     <details open class="tier-comparison">
-      <summary>Сравнение по тирам (клик по строке — переключить тир; мгновенная продажа — в чужой ордер сейчас, терпеливая — свой ордер по средней цене истории; качество лучшее по каждому тиру)</summary>
+      <summary>Сравнение по тирам (клик по строке — переключить тир; Buy Order — мгновенная продажа в чужой ордер, Sell Order — свой ордер по средней цене истории; качество лучшее по каждому тиру)</summary>
       <div class="table-scroll"><table class="craft-recipe-table">
-        <thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать (мгновенно)</th><th>Профит / шт (мгновенно)</th><th>Профит / шт (терпеливо, по истории)</th></tr></thead>
+        <thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать (Buy Order)</th><th>Профит / шт (Buy Order)</th><th>Профит / шт (Sell Order, по истории)</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </details>`;
 }
 
-// Разбивка терпеливой продажи по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
+// Разбивка продажи через Sell Order по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
 function byCityHtml(p, data) {
   if (!p.byCity || p.byCity.length === 0) return '';
   const minPrice = p.threshold ? p.threshold.value : null;
@@ -243,7 +243,7 @@ function byCityHtml(p, data) {
   }).join('');
   return `
     <details open class="by-city">
-      <summary>Терпеливая продажа по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)})` : ''}</summary>
+      <summary>Продажа через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)})` : ''}</summary>
       <div class="table-scroll"><table class="craft-recipe-table">
         <thead><tr><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -274,7 +274,7 @@ function qualityComparisonHtml(data) {
     </details>`;
 }
 
-// Порог продажи: все города, где терпеливая цена не ниже порога, — партию можно развезти по нескольким рынкам.
+// Порог продажи: все города, где цена Sell Order не ниже порога, — партию можно развезти по нескольким рынкам.
 function thresholdHtml(p) {
   const t = p.threshold;
   if (!t) return '';
@@ -333,24 +333,24 @@ function teleportHtml(data) {
       </table></div>
       <div class="craft-summary-row"><span>Перевозка материалов, всего</span><span>${fmtNum(t.legsCost)}</span></div>
       <div class="craft-summary-row"><span>Себестоимость с логистикой / шт</span><span>${fmtNum(t.costPerUnit)}</span></div>
-      ${sellLine('Терпеливая продажа', t.patient)}
-      ${sellLine('Мгновенная продажа', t.instant)}
+      ${sellLine('Продажа через Sell Order', t.patient)}
+      ${sellLine('Продажа в Buy Order', t.instant)}
     </div>`;
 }
 
-// Терпеливая продажа: свой ордер на продажу по средней цене истории; объём и дни на распродажу защищают
+// Продажа через Sell Order: свой ордер на продажу по средней цене истории; объём и дни на распродажу защищают
 // от «прибыли» на предмете, который не продаётся.
 function patientSellHtml(data) {
   const p = data.patientSell;
   if (!p) {
-    return '<div class="craft-summary patient-sell"><div class="craft-summary-row"><span>Терпеливая продажа</span><span>нет истории сделок за период</span></div></div>';
+    return '<div class="craft-summary patient-sell"><div class="craft-summary-row"><span>Продажа через Sell Order</span><span>нет истории сделок за период</span></div></div>';
   }
   const cls = p.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
   const totalProfit = p.profitPerUnit * data.quantity;
   const slow = p.daysToSellBatch !== null && p.daysToSellBatch > 30;
   return `
     <div class="craft-summary patient-sell">
-      <div class="craft-summary-row"><strong>Терпеливая продажа (свой ордер, история за ${p.days} дн.)</strong><span></span></div>
+      <div class="craft-summary-row"><strong>Продажа через Sell Order (свой ордер, история за ${p.days} дн.)</strong><span></span></div>
       <div class="craft-summary-row"><span>Средняя цена сделок за период</span><span>${fmtNum(p.avgSellPrice)}</span></div>
       <div class="craft-summary-row"><span>Лучший город по цене</span><span>${p.bestCity.city}: ${fmtNum(p.bestCity.avgPrice)}</span></div>
       <div class="craft-summary-row"><span>Спрос: сделок в день (по выбранным городам)</span><span>${fmtNum(p.avgDailyVolume, 1)}</span></div>
