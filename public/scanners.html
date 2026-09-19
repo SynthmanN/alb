@@ -29,6 +29,24 @@
       <button id="bm-scan-run">Сканировать БМ</button>
       <div id="bm-scan-result"></div>
     </section>
+
+    <section class="calc-panel scanner-panel">
+      <h2>✨ Зачарование</h2>
+      <p class="calc-note">
+        Покупаем вещь уровнем ниже, докупаем руны (.0→.1), души (.1→.2) или реликвии (.2→.3), поднимаем
+        зачарование и продаём на ступень выше. Количество материалов зависит от слота (двуручное 384,
+        одноручное 288, торс 192, остальное 96 на шаг). Ликвидность проверяется по целевому уровню в городе продажи.
+        Зачарование .4 не входит — это отдельная механика.
+      </p>
+      <div class="calc-controls">
+        <select id="enchant-scan-hours">
+          <option value="12">12ч</option><option value="24" selected>24ч</option>
+          <option value="72">3 дня</option><option value="168">7 дней</option>
+        </select>
+        <button id="enchant-scan-run">Сканировать зачарование</button>
+      </div>
+      <div id="enchant-scan-result"></div>
+    </section>
   </main>
 
   <script src="js/common.js"></script>

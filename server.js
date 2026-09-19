@@ -27,6 +27,13 @@ function baseIPForTier(tier) {
 function itemIP(tier, enchant, quality) {
   return baseIPForTier(tier) + enchant * 100 + (QUALITY_IP_BONUS[quality] || 0);
 }
+// Зачарование гира (.1-.4) — часть самого item id в AODP (T4_MAIN_SWORD@1), а не отдельный
+// query-параметр, как качество: цена совсем другая, id другой, значит для сканеров это отдельные
+// строки в списке id запроса (тот же батчинг, что и для остальных id).
+function gearEnchantId(baseId, enchant) {
+  return enchant > 0 ? `${baseId}@${enchant}` : baseId;
+}
+
 function maxEnchantForGear(tier) {
   return tier >= 4 ? 4 : 0; // T2/T3 гир никогда не зачаровывается — та же логика, что и на фронте
 }
@@ -136,11 +143,27 @@ async function fetchPrices(itemIds, quality) {
   return data;
 }
 
+// Не больше AODP_CONCURRENCY одновременных запросов: сканер зачарования гонит ~2200 id разом (~44 чанка),
+// и полностью параллельная отправка ловила 429 от AODP.
+const AODP_CONCURRENCY = 6;
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function fetchPricesBatched(itemIds, quality) {
   const CHUNK = 50;
   const chunks = [];
   for (let i = 0; i < itemIds.length; i += CHUNK) chunks.push(itemIds.slice(i, i + CHUNK));
-  const results = await Promise.all(chunks.map((c) => fetchPrices(c, quality)));
+  const results = await mapLimit(chunks, AODP_CONCURRENCY, (c) => fetchPrices(c, quality));
   return results.flat();
 }
 
@@ -187,8 +210,10 @@ async function fetchHistoryBatched(itemIds, hours, quality, locations) {
   const chunks = [];
   for (let i = 0; i < itemIds.length; i += CHUNK) chunks.push(itemIds.slice(i, i + CHUNK));
 
-  const results = await Promise.all(
-    chunks.map(async (chunk) => {
+  const results = await mapLimit(
+    chunks,
+    AODP_CONCURRENCY,
+    async (chunk) => {
       const key = `batch:${quality}:${locKey}:${hours}:${chunk.slice().sort().join(',')}`;
       const cached = historyCache.get(key);
       if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL_MS) return cached.data;
@@ -198,7 +223,7 @@ async function fetchHistoryBatched(itemIds, hours, quality, locations) {
       const data = await response.json();
       historyCache.set(key, { ts: Date.now(), data });
       return data;
-    })
+    },
   );
   return results.flat();
 }
@@ -1186,6 +1211,123 @@ app.get('/api/lazy-crafter', async (req, res) => {
   }
 });
 
+// --- Зачарование: покупка предмета + руны/души/реликвии -> продажа на уровень выше ---
+
+// Количество материала на ОДИН шаг зачарования (.0->.1 руны, .1->.2 души, .2->.3 реликвии) —
+// фиксировано по типу слота, НЕ зависит от тира и не меняется между тремя шагами (сверено
+// по независимым гайдам сообщества, т.к. официальной документации с точными числами нет).
+// Зачарование .4 (Awakening) сюда намеренно не входит — это отдельная механика поверх
+// обычного крафта (Avalonian/Siphoned Energy, рандомные "пробуждённые" трейты), не сводится
+// к простому "купил материалы -> продал дороже".
+const ENCHANT_MATERIAL_COUNT = {
+  'двуручное': 384,
+  'осн. рука': 288,
+  'левая рука': 96,
+  торс: 192,
+  шлем: 96,
+  обувь: 96,
+  плащ: 96,
+  'плащ (фракция)': 96,
+};
+const ENCHANT_MATERIAL_BY_LEVEL = { 1: 'RUNE', 2: 'SOUL', 3: 'RELIC' };
+function enchantMaterialId(tier, level) {
+  return `T${tier}_${ENCHANT_MATERIAL_BY_LEVEL[level]}`;
+}
+
+let enchantScanCache = null;
+
+app.get('/api/enchant-opportunities', async (req, res) => {
+  try {
+    const ALLOWED_HOURS = [12, 24, 72, 168];
+    const hours = ALLOWED_HOURS.includes(parseInt(req.query.hours, 10)) ? parseInt(req.query.hours, 10) : 24;
+    const citiesParam = req.query.cities;
+    const taxRate = getSalesTaxRate(req);
+    const cacheKey = `${hours}:${citiesParam || 'default'}:${taxRate}`;
+    if (enchantScanCache && enchantScanCache.key === cacheKey && Date.now() - enchantScanCache.ts < SCAN_CACHE_TTL_MS) {
+      return res.json(enchantScanCache.data);
+    }
+    const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const allowedCities = new Set(queryCities.map(normLocation));
+    const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+
+    // Шаги зачарования каждой вещи T4+ : .0->.1, .1->.2, .2->.3
+    const baseItems = ITEMS.filter((i) => i.tier >= 4 && GEAR_IDS.has(i.id) && ENCHANT_MATERIAL_COUNT[i.slot]);
+    const gearIds = new Set();
+    const materialIds = new Set();
+    for (const item of baseItems) {
+      for (let lvl = 0; lvl <= 3; lvl++) gearIds.add(gearEnchantId(item.id, lvl));
+      for (let lvl = 1; lvl <= 3; lvl++) materialIds.add(enchantMaterialId(item.tier, lvl));
+    }
+    const data = await fetchPricesBatched([...gearIds, ...materialIds], 1);
+
+    const byItemCity = {};
+    for (const rec of data) {
+      if (!allowedCities.has(normLocation(rec.city))) continue;
+      if (!byItemCity[rec.item_id]) byItemCity[rec.item_id] = [];
+      byItemCity[rec.item_id].push(rec);
+    }
+    const cheapest = (id) => {
+      let best = null;
+      for (const rec of byItemCity[id] || []) {
+        if (rec.sell_price_min && (!best || rec.sell_price_min < best.price)) best = { city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date };
+      }
+      return best;
+    };
+    const bestSellOf = (id) => {
+      let best = null;
+      for (const rec of byItemCity[id] || []) {
+        if (rec.buy_price_max && (!best || rec.buy_price_max > best.price)) best = { city: rec.city, price: rec.buy_price_max, date: rec.buy_price_max_date };
+      }
+      return best;
+    };
+
+    const now = Date.now();
+    const candidates = [];
+    for (const item of baseItems) {
+      const count = ENCHANT_MATERIAL_COUNT[item.slot];
+      for (let to = 1; to <= 3; to++) {
+        const from = to - 1;
+        const buy = cheapest(gearEnchantId(item.id, from));
+        const material = cheapest(enchantMaterialId(item.tier, to));
+        const sell = bestSellOf(gearEnchantId(item.id, to));
+        if (!buy || !material || !sell) continue;
+        const materialCost = count * material.price;
+        const cost = buy.price + materialCost;
+        const profit = sell.price * (1 - taxRate) - cost;
+        if (profit <= 0) continue;
+        candidates.push({
+          itemId: item.id, fromLevel: from, toLevel: to, buy,
+          materialId: enchantMaterialId(item.tier, to), materialCount: count, materialPrice: material.price, materialCost,
+          bestSell: sell, taxRate, cost, profit, profitPct: (profit / cost) * 100,
+          freshMinutes: dealAgeMinutes([buy.date, material.date, sell.date], now),
+        });
+      }
+    }
+
+    // Честная проверка ликвидности целевого уровня: объём продаж именно .to в городе продажи.
+    const minVolume = scaledMinVolume(hours);
+    let result = candidates;
+    try {
+      const targetIds = [...new Set(candidates.map((c) => gearEnchantId(c.itemId, c.toLevel)))];
+      const history = await fetchHistoryBatched(targetIds, hours, 1, locations);
+      result = candidates
+        .map((c) => ({ ...c, volume: totalVolume(history, gearEnchantId(c.itemId, c.toLevel), [c.bestSell.city]) }))
+        .filter((c) => c.volume >= minVolume)
+        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
+        .sort((a, b) => b.score - a.score);
+    } catch (err) {
+      console.error('не удалось проверить историю для сканера зачарования:', err.message);
+      result = candidates.map((c) => ({ ...c, volume: null, score: 0 })).sort((a, b) => b.profitPct - a.profitPct);
+    }
+    const top = result.slice(0, 25);
+    enchantScanCache = { key: cacheKey, ts: Date.now(), data: top };
+    res.json(top);
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: 'не удалось выполнить скан зачарования', details: err.message });
+  }
+});
+
 // --- Мастерки: дерево и сохранённые уровни ---
 app.get('/api/masteries', (req, res) => {
   res.json({ ...MASTERIES, maxLevel: MASTERY_MAX_LEVEL, levels: loadUserMasteryLevels() });
@@ -1255,7 +1397,7 @@ async function fetchGearPrices(queryIds, qualities) {
   const CHUNK = 50;
   const chunks = [];
   for (let i = 0; i < queryIds.length; i += CHUNK) chunks.push(queryIds.slice(i, i + CHUNK));
-  const results = await Promise.all(chunks.map(async (chunk) => {
+  const results = await mapLimit(chunks, AODP_CONCURRENCY, async (chunk) => {
     const key = `gear:${qualities.join('')}:${chunk.slice().sort().join(',')}`;
     const cached = cache.get(key);
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
@@ -1265,7 +1407,7 @@ async function fetchGearPrices(queryIds, qualities) {
     const data = await response.json();
     cache.set(key, { ts: Date.now(), data });
     return data;
-  }));
+  });
   return results.flat();
 }
 
@@ -1444,6 +1586,10 @@ module.exports = {
   totalVolume,
   cityStats,
   computeBulkPlan,
+  enchantMaterialId,
+  ENCHANT_MATERIAL_COUNT,
+  gearEnchantId,
+  mapLimit,
   allocateBudget,
   lazyStrategyScore,
   effectiveRecipeResourceId,

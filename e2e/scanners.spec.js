@@ -55,3 +55,20 @@ test('сканер Чёрного рынка отправляет запрос �
   await expect.poll(() => url).not.toBeNull();
   expect(cities()).toContain('Brecilien');
 });
+
+test('сканер зачарования: шаг, материалы и профит показываются, сортировка по профиту работает', async ({ page }) => {
+  const row = (itemId, from, to, cost, profit, pct) => ({
+    itemId, fromLevel: from, toLevel: to, buy: { city: 'Martlock', price: 1000 }, materialId: 'T4_RUNE', materialCount: 96, materialPrice: 5,
+    materialCost: 480, bestSell: { city: 'Lymhurst', price: 3000 }, taxRate: 0.08, cost, profit, profitPct: pct, freshMinutes: 30, volume: 40, score: 100,
+  });
+  await page.route('**/api/enchant-opportunities*', (route) => route.fulfill({ json: [
+    row('T4_HEAD_PLATE_SET1', 0, 1, 1480, 500, 33.7), row('T4_ARMOR_PLATE_SET1', 1, 2, 2000, 900, 45), row('T4_SHOES_PLATE_SET1', 2, 3, 1800, 300, 16.6),
+  ] }));
+  await page.goto('/scanners.html');
+  await page.locator('#enchant-scan-run').click();
+  await expect(page.locator('#enchant-scan-result tbody tr')).toHaveCount(3);
+  await expect(page.locator('#enchant-scan-result tbody tr').first()).toContainText('.0 → .1');
+  await expect(page.locator('#enchant-scan-result tbody tr').first()).toContainText('96 ×');
+  await sortBy(page, '#enchant-scan-result', 'Профит');
+  await expect(page.locator('#enchant-scan-result tbody tr').first()).toContainText('.1 → .2');
+});

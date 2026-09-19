@@ -124,3 +124,59 @@ function renderBmScanResult(rows) {
     });
   });
 }
+
+// --- Сканер зачарования ---
+const enchantScanBtn = document.getElementById('enchant-scan-run');
+const enchantScanHours = document.getElementById('enchant-scan-hours');
+const enchantScanResult = document.getElementById('enchant-scan-result');
+enchantScanBtn.addEventListener('click', runEnchantScan);
+
+async function runEnchantScan() {
+  enchantScanBtn.disabled = true;
+  enchantScanResult.innerHTML = 'Считаю цепочки «купить → зачаровать → продать» по всему гиру, это может занять несколько секунд...';
+  try {
+    const params = new URLSearchParams({ hours: enchantScanHours.value, cities: activeCities().join(','), premium: premiumParam() });
+    const res = await fetch(`/api/enchant-opportunities?${params}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderEnchantScanResult(data);
+  } catch (err) {
+    enchantScanResult.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
+  } finally {
+    enchantScanBtn.disabled = false;
+  }
+}
+
+function renderEnchantScanResult(rows) {
+  if (rows.length === 0) {
+    enchantScanResult.innerHTML = '<div class="chart-empty">Ничего не нашлось — либо зачарование сейчас не окупается, либо всё отфильтровано по ликвидности целевого уровня.</div>';
+    return;
+  }
+  const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+  const rowsHtml = rows.map((r) => {
+    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
+    const stale = r.freshMinutes !== null && r.freshMinutes > 180;
+    const freshText = r.freshMinutes === null ? '—' : r.freshMinutes < 60 ? `${r.freshMinutes} мин назад` : `${Math.round(r.freshMinutes / 60)} ч назад`;
+    const volumeText = r.volume === null ? 'не проверено' : `${r.volume} сделок`;
+    return `
+      <tr>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td data-sort-value="${r.toLevel}">.${r.fromLevel} → .${r.toLevel}</td>
+        <td>${r.buy.city}: ${fmt(r.buy.price)}</td>
+        <td data-sort-value="${r.materialCost}">${r.materialCount} × ${itemName(r.materialId)} = ${fmt(r.materialCost)}</td>
+        <td>${r.bestSell.city}: ${fmt(r.bestSell.price)}</td>
+        <td class="scan-spread-hot">+${fmt(r.profit)} (${r.profitPct.toFixed(1)}%)</td>
+        <td data-sort-value="${r.volume ?? ''}">${volumeText}</td>
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${freshText}${stale ? ' ⚠' : ''}</td>
+      </tr>`;
+  }).join('');
+  enchantScanResult.innerHTML = `
+    <p class="calc-note">Профит — после налога с продажи (${(rows[0].taxRate * 100).toFixed(0)}%). Себестоимость = вещь уровнем ниже + материалы зачарования.</p>
+    <div class="table-scroll"><table class="scan-table">
+      <thead><tr><th>Предмет</th><th>Шаг</th><th>Купить</th><th>Материалы</th><th>Продать</th><th>Профит</th><th>Объём</th><th>Свежесть</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table></div>
+  `;
+  wireTableSort(enchantScanResult.querySelector('table'), 'enchant-scan');
+}
+

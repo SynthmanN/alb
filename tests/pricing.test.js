@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  allocateBudget, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  allocateBudget, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -243,5 +243,41 @@ describe('ленивый крафтер: распределение бюджет
     const plan = allocateBudget([], { ...opts, strategy: 'balanced' });
     expect(plan.items).toEqual([]);
     expect(plan.spent).toBe(0);
+  });
+});
+
+describe('зачарование: материалы', () => {
+  it('уровень 1/2/3 → RUNE/SOUL/RELIC того же тира, что и предмет', () => {
+    expect(enchantMaterialId(5, 1)).toBe('T5_RUNE');
+    expect(enchantMaterialId(5, 2)).toBe('T5_SOUL');
+    expect(enchantMaterialId(5, 3)).toBe('T5_RELIC');
+    expect(enchantMaterialId(8, 1)).toBe('T8_RUNE');
+  });
+  it('количество материала фиксировано по слоту (не зависит от тира и уровня)', () => {
+    expect(ENCHANT_MATERIAL_COUNT['двуручное']).toBe(384);
+    expect(ENCHANT_MATERIAL_COUNT['осн. рука']).toBe(288);
+    expect(ENCHANT_MATERIAL_COUNT['торс']).toBe(192);
+    expect(ENCHANT_MATERIAL_COUNT['шлем']).toBe(96);
+    expect(ENCHANT_MATERIAL_COUNT['плащ']).toBe(96);
+  });
+  it('id зачарованного гира: суффикс @N, для .0 — без суффикса', () => {
+    expect(gearEnchantId('T4_MAIN_SWORD', 0)).toBe('T4_MAIN_SWORD');
+    expect(gearEnchantId('T4_MAIN_SWORD', 2)).toBe('T4_MAIN_SWORD@2');
+  });
+});
+
+describe('ограничение параллелизма запросов', () => {
+  it('mapLimit не превышает лимит одновременных задач и сохраняет порядок результатов', async () => {
+    let active = 0;
+    let peak = 0;
+    const out = await mapLimit([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 3, async (n) => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((r) => setTimeout(r, 5));
+      active--;
+      return n * 2;
+    });
+    expect(out).toEqual([2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
+    expect(peak).toBeLessThanOrEqual(3);
   });
 });
