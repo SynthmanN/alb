@@ -21,6 +21,11 @@ const ITEM_NAME_BY_ID = new Map(ITEMS.map((i) => [i.id, i.name]));
 function resolveItemName(id) {
   return ITEM_NAME_BY_ID.get(id) || EXTRA_ITEM_NAMES[id] || id;
 }
+// Название с уровнем зачарования: T4_ORE_LEVEL1@1 → «T4 Руда (IV) .1» (в каталоге есть только базовые id).
+function resolveItemNameWithEnchant(id) {
+  const m = String(id).match(/^(.+?)_LEVEL(\d)@\d$/);
+  return m ? `${resolveItemName(m[1])} .${m[2]}` : resolveItemName(id);
+}
 
 // Item Power — формула сверена напрямую с дампом игровых файлов (items.xml,
 // атрибут itempower и вложенные <enchantments>), не по статьям (там цифры часто
@@ -153,12 +158,15 @@ function addRefineComponentIds(idSet, ids) {
   }
 }
 // priceOf(id) → { price, city, date } | null — минимальная рыночная цена компонента. Возвращает вариант «переработать самому» или null.
-function refineAlternative(queryId, priceOf, rate) {
+// units — сколько штук полуфабриката нужно закупить: цена компонентов считается за реально нужное количество (priceOf(id, qty) —
+// многогородовой план с комиссией); без units — цена одного самого дешёвого города.
+function refineAlternative(queryId, priceOf, rate, units) {
   const c = refineComponents(queryId);
   if (!c) return null;
-  const raw = priceOf(c.rawId);
+  const need = (count) => (units ? Math.ceil(units * count * (1 - rate)) : undefined);
+  const raw = priceOf(c.rawId, need(c.ratio.raw));
   if (!raw) return null;
-  const prev = c.prevId ? priceOf(c.prevId) : null;
+  const prev = c.prevId ? priceOf(c.prevId, need(c.ratio.prevRefined)) : null;
   if (c.prevId && !prev) return null;
   const rawCost = c.ratio.raw * raw.price + (prev ? c.ratio.prevRefined * prev.price : 0);
   const dates = [raw.date, prev ? prev.date : null].filter(Boolean).sort();
@@ -189,7 +197,7 @@ function bestMaterialQuote(quotes, resource, opts) {
   // Гир: сравниваем с «переработать самому» (если переданы цены компонентов); refineOption отдаём всегда, чтобы интерфейс мог пересчитать
   // выбор при другой ставке переработки без запроса.
   if (opts.refine && opts.gearRate !== undefined) {
-    const alt = refineAlternative(resource.queryId || resource.resource, opts.refine.priceOf, opts.refine.rate);
+    const alt = refineAlternative(resource.queryId || resource.resource, opts.refine.priceOf, opts.refine.rate, resource.units);
     if (alt) {
       if (best) best.refineOption = alt;
       const rrr = resource.noReturn ? 0 : opts.gearRate;
@@ -681,8 +689,9 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
     finishedIds.push(gearEnchantId(p.it.id, p.finalEnchant));
   }
   const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
-  const [materialData, finishedData, history] = await Promise.all([
-    fetchPricesBatched([...materialIds], 1),
+  // Материалы — из кувшина (как в основном расчёте), с комиссией 2.5% за свой Buy Order; ориентир по тирам — цена самого дешёвого города.
+  const materialData = readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] });
+  const [finishedData, history] = await Promise.all([
     fetchGearPrices([...new Set([...finishedIds, ...plan.filter((p) => p.recipeEnchant === 0).map((p) => p.it.id)])], ALL_QUALITIES),   // + готовая база .0 для «купить или скрафтить»
     // История — для терпеливой продажи по каждому тиру (без неё «мгновенный» профит в разы занижен)
     fetchHistoryBatched(finishedIds, days * 24, ALL_QUALITIES.join(','), locations).catch(() => []),
@@ -691,7 +700,7 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
   const quotesByItem = {}; // id -> [{ city, price }]: цену выбираем с учётом возврата в городе покупки (bestMaterialQuote)
   for (const rec of materialData) {
     if (!rec.sell_price_min || !allowed.has(normLocation(rec.city))) continue;
-    (quotesByItem[rec.item_id] || (quotesByItem[rec.item_id] = [])).push({ city: rec.city, price: rec.sell_price_min });
+    (quotesByItem[rec.item_id] || (quotesByItem[rec.item_id] = [])).push({ city: rec.city, price: rec.sell_price_min * (1 + SETUP_FEE_RATE) });
   }
   const cheapestByItem = {}; // без возврата — для рун/душ/реликвий зачарования (на них RRR не действует)
   for (const [id, quotes] of Object.entries(quotesByItem)) cheapestByItem[id] = Math.min(...quotes.map((q) => q.price));
@@ -803,7 +812,11 @@ app.get('/api/craft-calc', async (req, res) => {
     const materialIdSet = new Set([...resourceQueryIds, ...enchantStepIds]);
     addRefineComponentIds(materialIdSet, resourceQueryIds);   // сырьё и предыдущий тир — для сравнения «купить готовый vs переработать»
     const materialIds = [...materialIdSet];
-    const materialData = await fetchPricesBatched(materialIds, 1);
+    // Сырьё, полуфабрикаты и материалы зачарования — из кувшина (его непрерывно наполняет краулер): пересчёт дешёвый и не зависит от лимитов AODP.
+    // Готовый предмет (решающая цифра продажи) по-прежнему смотрим по живому AODP.
+    const jugNow = Date.now();
+    const jugLocations = queryCities.map((c) => c.replace(/\s+/g, ''));
+    const materialData = readPrices(jugDb, materialIds, { cities: queryCities, qualities: [1] });
     const finishedData = blackMarket
       ? await fetchPricesAt([finishedQueryId], quality, [...CITIES, BM_QUERY_LOCATION])
       : await fetchPricesBatched([finishedQueryId], quality);
@@ -819,7 +832,7 @@ app.get('/api/craft-calc', async (req, res) => {
     }
     // Цена сырья — среднее по сделкам за своё окно (materialHours, по умолчанию 24 ч), а не цена одного дешёвого лота.
     const materialHours = parseMaterialHours(req);
-    const materialHistory = await fetchHistoryBatched(materialIds, materialHours, 1, queryCities.map((c) => c.replace(/\s+/g, ''))).catch(() => []);
+    const materialHistory = readHistory(jugDb, materialIds, materialHours, { locations: jugLocations, qualities: [1], now: jugNow });
     const materialSeries = indexByItem(materialHistory);
     for (const id of materialIds) {
       const snapshot = Object.values(materialByCity[id] || {}).filter((rec) => rec.sell_price_min && queryCities.some((c) => normLocation(c) === normLocation(rec.city)))
@@ -833,16 +846,26 @@ app.get('/api/craft-calc', async (req, res) => {
       finishedByCity[rec.item_id][rec.city] = rec;
     }
 
-    // Минимальная цена компонента переработки среди активных городов (цена сырья — как у остальных материалов: средняя по сделкам за окно).
-    const refinePriceOf = (id) => {
-      let best = null;
-      for (const city of queryCities) {
-        const rec = materialByCity[id]?.[city];
-        if (rec && rec.sell_price_min && (!best || rec.sell_price_min < best.price)) best = { city, price: rec.sell_price_min, date: rec.sell_price_min_date };
+    // Цена материала за РЕАЛЬНО нужное количество: многогородовой план закупки (ценовой допуск, оборот городов, доля рынка) и комиссия 2.5% за
+    // свой Buy Order — ровно та же функция и те же цифры, что в плане закупки ниже, поэтому заголовок и план не расходятся.
+    // Цена города — средняя по сделкам за окно материала; оборот — из истории того же окна.
+    const materialWindowDays = materialHours / 24;
+    const unitPlan = (id, qty) => {
+      const cityPrices = materialByCity[id] || {};
+      const stats = cityStats(materialHistory, id, materialWindowDays, 1);
+      const offers = queryCities.filter((city) => cityPrices[city] && cityPrices[city].sell_price_min).map((city) => {
+        const st = Object.entries(stats).find(([c]) => normLocation(c) === normLocation(city));
+        return { city, avgPrice: cityPrices[city].sell_price_min * (1 + SETUP_FEE_RATE), avgDailyVolume: st ? st[1].avgDailyVolume : 0, date: cityPrices[city].sell_price_min_date };
+      });
+      if (offers.length === 0) return null;
+      const plan = qty > 0 ? planCityAllocation(offers, qty, { side: 'buy', priceTolerance, marketShare }) : null;
+      if (plan && plan.cities.length) {
+        const first = offers.find((o) => o.city === plan.cities[0].city);
+        return { city: plan.cities[0].city, price: plan.avgPrice, date: first ? first.date : null };
       }
-      return best;
+      const cheapest = offers.reduce((a, b) => (b.avgPrice < a.avgPrice ? b : a));     // оборота нет — цена самого дешёвого города, тоже с комиссией
+      return { city: cheapest.city, price: cheapest.avgPrice, date: cheapest.date };
     };
-    const refineOpts = { ...rrrOpts, refine: { priceOf: refinePriceOf, rate: refineParams.rate } };
 
     let materialCostPerUnit = 0;       // по номиналу рецепта (без возврата)
     let materialCostAfterReturn = 0;   // с возвратом только на возвращаемые материалы
@@ -853,9 +876,11 @@ app.get('/api/craft-calc', async (req, res) => {
       const queryId = effectiveRecipeResourceId(r.resource, recipeEnchant);
       const isEnchanted = queryId !== r.resource;
       const cityPrices = materialByCity[queryId] || {};
-      const quotes = queryCities.filter((city) => cityPrices[city] && cityPrices[city].sell_price_min).map((city) => ({ city, price: cityPrices[city].sell_price_min }));
-      // Город покупки выбираем по цене с учётом возврата именно в нём (а не просто самый дешёвый по ярлыку).
-      const cheapest = bestMaterialQuote(quotes, { ...r, queryId }, refineOpts);
+      // Сколько полуфабриката нужно закупить (после возврата при крафте гира) — от этого зависит, сколько городов войдёт в план.
+      const unitsNeeded = Math.ceil(r.count * quantity * returnFactor(r, rrrOpts.gearRate !== undefined ? rrrOpts.gearRate : 0));
+      const buyPlan = unitPlan(queryId, unitsNeeded);
+      const quotes = buyPlan ? [{ city: buyPlan.city, price: buyPlan.price, date: buyPlan.date }] : [];
+      const cheapest = bestMaterialQuote(quotes, { ...r, queryId, units: unitsNeeded }, { ...rrrOpts, refine: { priceOf: unitPlan, rate: refineParams.rate } });
       const factor = cheapest ? cheapest.factor : returnFactor(r, 0);
       const refineOption = cheapest ? cheapest.refineOption || null : null;
       const materialSource = cheapest && cheapest.source === 'refine' ? 'refine' : 'buy';
@@ -908,11 +933,9 @@ app.get('/api/craft-calc', async (req, res) => {
       const perUnitCount = ENCHANT_MATERIAL_COUNT[itemSlot];
       let stepsAllPriced = enchantStepIds.length === 0 || perUnitCount !== undefined;
       const steps = enchantStepIds.map((materialId, i) => {
-        let cheapest = null;
-        for (const city of queryCities) {
-          const price = materialByCity[materialId]?.[city]?.sell_price_min;
-          if (price && (!cheapest || price < cheapest.price)) cheapest = { city, price };
-        }
+        // Руны/души/реликвии: цена за нужное количество партии — многогородовой план с комиссией (возврат на них не действует)
+        const up = perUnitCount !== undefined ? unitPlan(materialId, perUnitCount * quantity) : null;
+        const cheapest = up ? { city: up.city, price: up.price } : null;
         if (!cheapest) stepsAllPriced = false;
         return {
           level: i + 1, materialId, materialName: resolveItemName(materialId), count: perUnitCount,
@@ -1016,8 +1039,9 @@ app.get('/api/craft-calc', async (req, res) => {
       const days = parseBulkDays(req);
       const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
       const rows = [];
+      // Цены городов — с комиссией 2.5% за свой Buy Order (как и в заголовочной цене материала)
       const pricesOf = (byCityRecords) => Object.fromEntries(
-        Object.entries(byCityRecords || {}).filter(([c, rec]) => queryCities.includes(c) && rec && rec.sell_price_min).map(([c, rec]) => [c, rec.sell_price_min]),
+        Object.entries(byCityRecords || {}).filter(([c, rec]) => queryCities.includes(c) && rec && rec.sell_price_min).map(([c, rec]) => [c, rec.sell_price_min * (1 + SETUP_FEE_RATE)]),
       );
       if (enchantAfterCraft && enchantAfterCraft.baseSource === 'buy') {
         rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city, priceByCity: baseBuyByCity });
@@ -1028,7 +1052,7 @@ app.get('/api/craft-calc', async (req, res) => {
             // возврата при переработке хватило ровно на нужное число материала (neededToBuy уже учитывает возврат при крафте гира).
             r.refineOption.components.forEach((comp, i) => rows.push({
               resource: `${r.resource}|${comp.id}`, parent: r.resource, source: 'refine', role: i === 0 ? 'raw' : 'prev',
-              resourceName: `${r.resourceName} — ${i === 0 ? 'сырьё' : 'материал пред. тира'} (переработка)`, queryId: comp.id,
+              resourceName: `${resolveItemNameWithEnchant(comp.id)} (${i === 0 ? 'сырьё' : 'полуфабрикат пред. тира'} → ${r.resourceName})`, queryId: comp.id,
               needed: Math.ceil(r.neededToBuy * comp.count * (1 - r.refineOption.rate)), city: comp.city,
               priceByCity: pricesOf(materialByCity[comp.id]),
             }));
@@ -1047,8 +1071,10 @@ app.get('/api/craft-calc', async (req, res) => {
         });
       }
       const ids = [...new Set(rows.map((r) => r.queryId))];
-      const matHistory = await fetchHistoryBatched(ids, days * 24, 1, locations);
-      acquire = computeAcquireTime({ rows, history: matHistory, days, marketShare, priceTolerance });
+      // Сырьё и полуфабрикаты — ОДНО окно (materialHours) и для выбора «купить или переработать», и для цен, и для оборота в плане закупки;
+      // «История» (days) отвечает только за продажу готового гира и его оборот.
+      const matHistory = readHistory(jugDb, ids, materialHours, { locations, qualities: [1], now: jugNow });
+      acquire = computeAcquireTime({ rows, history: matHistory, days: materialHours / 24, marketShare, priceTolerance });
       // Весь цикл: закупка по плану (узкое место) + продажа по плану (если плана нет — по общему обороту, как раньше)
       const sellDays = patientSell && patientSell.plan && patientSell.plan.totalDays !== null ? patientSell.plan.totalDays : (patientSell ? patientSell.daysToSellBatch : null);
       acquire.cycleDays = acquire.days !== null && sellDays !== null && sellDays !== undefined ? acquire.days + sellDays : null;
@@ -1115,6 +1141,14 @@ app.get('/api/craft-calc', async (req, res) => {
         itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, quality, marketShare,
         days: parseBulkDays(req),
       });
+      // Строка текущего тира совпадает с основным расчётом (там цена материалов — за реальное количество, многогородово), а не с ориентиром по одному городу
+      const cur = tierComparison.find((t) => t.isCurrent);
+      if (cur && cur.cost !== null && cur.cost !== undefined && hasAllPrices) {
+        const shift = effectiveCostPerUnit - cur.cost;
+        cur.cost = effectiveCostPerUnit;
+        if (typeof cur.profitPerUnit === 'number') { cur.profitPerUnit -= shift; cur.profitPct = cur.cost > 0 ? (cur.profitPerUnit / cur.cost) * 100 : null; }
+        if (cur.patient) { cur.patient.profitPerUnit -= shift; cur.patient.profitPct = cur.cost > 0 ? (cur.patient.profitPerUnit / cur.cost) * 100 : null; }
+      }
     } catch (err) {
       console.error('не удалось посчитать сравнение по тирам:', err.message);
     }
@@ -1667,7 +1701,7 @@ function computeAcquireTime({ rows, history, days, marketShare = 1, priceToleran
         });
       const plan = planCityAllocation(cityList, r.needed, { side: 'buy', priceTolerance, marketShare });
       if (plan.cities.length) {
-        return { resource: r.resource, parent: r.parent, source: r.source, role: r.role, queryId: r.queryId, resourceName: r.resourceName, needed: r.needed, city: plan.cities[0].city, avgDailyVolume: plan.cities.reduce((sum, c) => sum + c.avgDailyVolume, 0), daysToAcquire: plan.totalDays, plan };
+        return { resource: r.resource, parent: r.parent, source: r.source, role: r.role, queryId: r.queryId, resourceName: r.resourceName, needed: r.needed, unitPrice: plan.avgPrice, city: plan.cities[0].city, avgDailyVolume: plan.cities.reduce((sum, c) => sum + c.avgDailyVolume, 0), daysToAcquire: plan.totalDays, plan };
       }
     }
     // Оборот берём в городе покупки; если там сделок нет — по всем выбранным городам.
@@ -1675,6 +1709,7 @@ function computeAcquireTime({ rows, history, days, marketShare = 1, priceToleran
     const avgDailyVolume = cityStat ? cityStat[1].avgDailyVolume : Object.values(stats).reduce((sum, st) => sum + st.avgDailyVolume, 0);
     return {
       resource: r.resource, parent: r.parent, source: r.source, role: r.role, queryId: r.queryId, resourceName: r.resourceName, needed: r.needed, city: r.city, avgDailyVolume,
+      unitPrice: r.priceByCity && Object.keys(r.priceByCity).length ? Math.min(...Object.values(r.priceByCity)) : null,   // сделок нет — цена самого дешёвого города
       daysToAcquire: avgDailyVolume > 0 ? r.needed / (avgDailyVolume * marketShare) : null,
     };
   });
@@ -1717,15 +1752,15 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
     // Город закупки — по средней цене с учётом возврата именно в нём (у каждого материала свой RRR).
     let source = null;
     for (const [city, st] of Object.entries(stats)) {
-      const best = bestMaterialQuote([{ city, price: st.avgPrice }], r, rrrOpts);
-      if (!source || best.effective < source.effective) source = { city, ...st, factor: best.factor, rrr: best.rrr, effective: best.effective };
+      const best = bestMaterialQuote([{ city, price: st.avgPrice * (1 + SETUP_FEE_RATE) }], r, rrrOpts);   // комиссия 2.5% за свой Buy Order
+      if (!source || best.effective < source.effective) source = { city, ...st, avgPrice: st.avgPrice * (1 + SETUP_FEE_RATE), factor: best.factor, rrr: best.rrr, effective: best.effective };
     }
     // «Переработать самому»: сырьё + предыдущий тир по средней цене за период (минимум по городам), переработка возвращает refineRate.
     let refine = null;
     if (refineRate !== null && !r.noReturn) {
       const priceOf = (id) => {
         let best = null;
-        for (const [city, st] of Object.entries(inScope(cityStats(materialHistory, id, days)))) if (!best || st.avgPrice < best.price) best = { city, price: st.avgPrice, avgDailyVolume: st.avgDailyVolume };
+        for (const [city, st] of Object.entries(inScope(cityStats(materialHistory, id, days)))) if (!best || st.avgPrice < best.price) best = { city, price: st.avgPrice * (1 + SETUP_FEE_RATE), avgDailyVolume: st.avgDailyVolume };
         return best;
       };
       const alt = refineAlternative(queryId, priceOf, refineRate);
@@ -2244,7 +2279,7 @@ function volumeBreakdown(seriesOfItem, itemId, days, quality, cities, usedCities
 const MATERIAL_HOURS_DEFAULT = 24;
 function parseMaterialHours(req) {
   const v = parseFloat(req.query.materialHours);
-  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), 720) : MATERIAL_HOURS_DEFAULT;
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), 168) : MATERIAL_HOURS_DEFAULT   // кувшин хранит историю 7 дней;
 }
 // Возвращает [{ city, price, date, source }] по одному материалу. snapshotQuotes — [{ city, price, date }] текущих котировок.
 function materialPriceQuotes(seriesOfItem, itemId, hours, cities, snapshotQuotes) {
@@ -2371,12 +2406,15 @@ app.get('/api/unified-scan', (req, res) => {
     // Цена сырья — средняя по сделкам за окно materialHours (а не цена одного дешёвого лота); нет сделок — текущая котировка.
     const priceHistory = indexByItem(readHistory(jugDb, [...materialIds], materialHours, { locations, qualities: [1], now }));
     const materialQuotes = {};
-    for (const id of materialIds) materialQuotes[id] = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshotQuotes[id]);
+    // Материалы покупаются своим Buy Order — комиссия 2.5% (Setup Fee) входит в цену; на руны/души/реликвии тоже. Мультигород здесь не считаем:
+    // количество в скане выводится из себестоимости (капитал ÷ цена), а цена от количества — замкнутый круг; берётся самый дешёвый город.
+    for (const id of materialIds) materialQuotes[id] = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshotQuotes[id]).map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
     const refineOpts = { ...rrrOpts, refine: { priceOf: (id) => cheapestOf(materialQuotes[id]), rate: refineParams.rate } };
     const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations: blackMarket ? [...locations, BM_QUERY_LOCATION] : locations, qualities: ALL_QUALITIES, now }));
     const finishedHistory = indexByItem(cleaned.series);
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
-    const materialHistory = mode === 'patient' ? indexByItem(readHistory(jugDb, [...materialIds], days * 24, { locations, qualities: [1], now })) : null;
+    // Оборот сырья/полуфабрикатов для закупки — по тому же окну, что и их цены (materialHours), а не по «Истории» продажи гира.
+    const materialHistory = mode === 'patient' ? indexByItem(readHistory(jugDb, [...materialIds], materialHours, { locations, qualities: [1], now })) : null;
     const finishedPrices = new Map();
     if (mode === 'instant') {
       for (const rec of readPrices(jugDb, finishedIds, { cities: blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities })) {
@@ -2422,7 +2460,7 @@ app.get('/api/unified-scan', (req, res) => {
       let daysToAcquire = null;
       const daysToSell = quantity / dailyVolume;
       if (mode === 'patient') {
-        const acquire = unifiedAcquire(needs.map((n) => ({ id: n.id, total: Math.ceil(n.perUnit * quantity), perUnit: n.perUnit })), materialHistory, days, 1, queryCities);
+        const acquire = unifiedAcquire(needs.map((n) => ({ id: n.id, total: Math.ceil(n.perUnit * quantity), perUnit: n.perUnit })), materialHistory, materialHours / 24, 1, queryCities);
         if (!acquire) return null;      // у какого-то материала нет сделок за период — закупку честно оценить нельзя
         daysToAcquire = acquire.days;
       }
@@ -2623,6 +2661,27 @@ app.get('/api/refine-scan', (req, res) => {
 let refineScanCache = null;
 
 // --- Мастерки: дерево и сохранённые уровни ---
+// Группы оружия для выбора предмета: по настоящей игровой классификации (мастерки из data/masteries.json), а не по токену id —
+// «Лук», «Боевой лук», «Длинный лук» — одна группа «Луки». Семейство = id без тира (2H_WARBOW), группа = мастерка с этим семейством.
+const WEAPON_GROUP_TITLES = {
+  COMBAT_BOWS: 'Луки', COMBAT_CROSSBOWS: 'Арбалеты', COMBAT_SWORDS: 'Мечи', COMBAT_AXES: 'Топоры', COMBAT_MACES: 'Булавы', COMBAT_HAMMERS: 'Молоты',
+  COMBAT_SPEARS: 'Копья', COMBAT_DAGGERS: 'Кинжалы', COMBAT_QUARTERSTAFFS: 'Боевые шесты', COMBAT_KNUCKLES: 'Боевые перчатки', COMBAT_SHAPESHIFTER: 'Оборотни',
+  COMBAT_FIRESTAFFS: 'Огненные посохи', COMBAT_FROSTSTAFFS: 'Посохи холода', COMBAT_HOLYSTAFFS: 'Святые посохи', COMBAT_ARCANESTAFFS: 'Мистические посохи',
+  COMBAT_CURSEDSTAFFS: 'Проклятые посохи', COMBAT_NATURESTAFFS: 'Древесные посохи', COMBAT_BOOKS: 'Книги', COMBAT_TORCHES: 'Факелы', COMBAT_SHIELDS: 'Щиты',
+};
+function buildWeaponGroups() {
+  const weaponFamilies = new Set(ITEMS.filter((i) => i.category === 'weapon').map((i) => familyIdOf(i.id)));
+  const groups = [];
+  for (const mastery of MASTERIES.masteries) {
+    const families = [...new Set(MASTERIES.specializations.filter((s) => s.masteryId === mastery.id).flatMap((s) => s.families))].filter((f) => weaponFamilies.has(f));
+    if (families.length) groups.push({ id: mastery.id, title: WEAPON_GROUP_TITLES[mastery.id] || mastery.name, families });
+  }
+  return groups;
+}
+app.get('/api/item-groups', (req, res) => {
+  res.json({ weapon: buildWeaponGroups() });
+});
+
 app.get('/api/masteries', (req, res) => {
   res.json({ ...MASTERIES, maxLevel: MASTERY_MAX_LEVEL, levels: loadUserMasteryLevels(req.sessionId) });
 });

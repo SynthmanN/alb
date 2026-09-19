@@ -21,6 +21,7 @@ process.env.JUG_DB_PATH = ':memory:';
 process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не ждёт очереди в регуляторе бюджета
 const { app, resetCaches, returnFactor, jugDb } = require('../server.js');
 const { crawlPricesOnce, crawlHistoryOnce } = require('../lib/jugCrawler.js');
+const { upsertPriceSnapshots, upsertHistoryBatch } = require('../lib/jugStore.js');
 const RECIPES = require('../data/recipes.json');
 const TRAVEL_WEIGHTS = require('../data/travel-weights.json');
 
@@ -66,10 +67,28 @@ function marketHistory(market, ids, { materials = false } = {}) {
   return out;
 }
 
+// Материалы калькулятор читает из кувшина: тот же детерминированный рынок кладётся в кувшин синхронно (прогревать краулером — warmJug ниже).
+function seedJugMaterials(market) {
+  const ids = new Set();
+  for (const rec of Object.values(RECIPES)) for (const r of rec.resources) ids.add(r.resource);
+  const rows = [];
+  for (const id of ids) if (!RECIPES[id]) for (const city of CITIES) rows.push({ item_id: id, city, quality: 1, sell_price_min: market.materialPrice, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() });
+  for (const tier of [2, 3, 4, 5, 6, 7, 8]) for (const t of ['WOOD', 'ORE', 'FIBER', 'HIDE', 'ROCK', 'PLANKS', 'METALBAR', 'CLOTH', 'LEATHER', 'STONEBLOCK']) for (const city of CITIES) {
+    rows.push({ item_id: `T${tier}_${t}`, city, quality: 1, sell_price_min: market.materialPrice, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() });
+  }
+  upsertPriceSnapshots(jugDb, rows);
+  const series = [];
+  for (const id of ids) if (!RECIPES[id]) for (const city of CITIES) series.push({ item_id: id, location: city, quality: 1, data: [{ item_count: 7_000_000, avg_price: market.materialPrice, timestamp: new Date(Date.now() - 3600000).toISOString().slice(0, 19) }] });
+  upsertHistoryBatch(jugDb, series);
+}
+
 let currentMarket = { materialPrice: 100, finished: {} };
 // finished: { [itemId@ench]: { [city]: { price, dailyVolume } } } — сделки за 7 дней (объём/день × 7 в истории)
 function installMarket({ materialPrice = 100, finished = {} }) {
   currentMarket = { materialPrice, finished };
+  jugDb.exec('DELETE FROM prices');
+  jugDb.exec('DELETE FROM history');
+  seedJugMaterials(currentMarket);
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
     const u = String(url);
     if (u.includes('/history/')) {
@@ -95,18 +114,19 @@ beforeEach(() => resetCaches());
 
 const recipe = RECIPES[ITEM];
 // себестоимость меча вручную: Σ цена материала × количество (RRR 0, серебра в рецепте нет)
-const costByHand = (price) => recipe.resources.reduce((sum, r) => sum + price * r.count, 0) + (recipe.silver || 0);
+// (цена материала — с комиссией 2.5% за свой Buy Order)
+const costByHand = (price) => recipe.resources.reduce((sum, r) => sum + price * (1 + FEE) * r.count, 0) + (recipe.silver || 0);
 
 describe('1. золотые числа калькулятора (считаем на бумаге)', () => {
   it('себестоимость = Σ цена × количество; продажа в Sell Order — после налога 8% и сбора 2.5%', async () => {
     const cost = costByHand(100);                                                    // 24 материала × 100
-    expect(cost).toBe(2400);
+    expect(cost).toBeCloseTo(2400 * (1 + FEE), 6);
     installMarket({ materialPrice: 100, finished: { [ITEM]: { Lymhurst: { price: 4000, dailyVolume: 10 } } } });
     const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=100&cities=${CITIES.join(',')}`)).body;
     expect(d.effectiveCostPerUnit).toBeCloseTo(cost, 6);
     expect(d.patientSell.avgSellPrice).toBeCloseTo(4000, 6);
     expect(d.patientSell.netSellPrice).toBeCloseTo(4000 * (1 - TAX - FEE), 6);      // 3580
-    expect(d.patientSell.profitPerUnit).toBeCloseTo(3580 - 2400, 6);                 // 1180
+    expect(d.patientSell.profitPerUnit).toBeCloseTo(3580 - cost, 6);                 // 1120
     expect(d.patientSell.daysToSellBatch).toBeCloseTo(100 / (10 * 0.25), 6);         // 100 шт при 10 в день × доле рынка 25%
   });
   it('возврат RRR уменьшает закупку и цену только возвращаемых материалов', async () => {
@@ -148,14 +168,14 @@ describe('3. находка: скан маржи не завышает днев�
       finished: { [ITEM]: { Martlock: { price: 1500, dailyVolume: 200 }, Lymhurst: { price: 4000, dailyVolume: 10 } } },
     });
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?gearRrr=none&mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&minDays=0.1&capital=240000&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?gearRrr=none&mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&minDays=0.1&capital=246000&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
-    const netUnit = 4000 * (1 - TAX - FEE) - 2400;                      // прибыльный только Lymhurst
+    const netUnit = 4000 * (1 - TAX - FEE) - costByHand(100);                      // прибыльный только Lymhurst
     expect(row.profitPerUnit).toBeCloseTo(netUnit, 6);
     expect(row.dailyVolume).toBe(10);                                   // оборот прибыльных городов
     expect(row.marketDailyVolume).toBe(210);                            // весь оборот — только справочно
-    // позиция из капитала: 240 000 / 2400 = 100 мечей; срок — по обороту ПРИБЫЛЬНОГО города (10 в день), а не всех 210
+    // позиция из капитала: 246 000 / 2460 (2400 + комиссия на материалы) = 100 мечей; срок — по обороту ПРИБЫЛЬНОГО города (10 в день), а не всех 210
     expect(row.quantity).toBe(100);
     expect(row.daysToSell).toBeCloseTo(100 / 10, 6);
     expect(row.dailyProfit).toBeCloseTo((netUnit * 100) / row.effectiveDays, 6);
@@ -263,7 +283,7 @@ describe('8. стресс-кейсы', () => {
   it.each([1, 100000])('количество %i: срок и суммы масштабируются линейно, цена за штуку не меняется', async (qty) => {
     installMarket({ materialPrice: 100, finished: { [ITEM]: { Lymhurst: { price: 4000, dailyVolume: 10 } } } });
     const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=${qty}&cities=${CITIES.join(',')}`)).body;
-    expect(d.patientSell.profitPerUnit).toBeCloseTo(1180, 6);
+    expect(d.patientSell.profitPerUnit).toBeCloseTo(3580 - costByHand(100), 6);
     expect(d.patientSell.daysToSellBatch).toBeCloseTo(qty / (10 * 0.25), 6);
   });
   it('охотничий плащ .2: считается как «обычный плащ + герб + энергия, затем руны/души» — материалы рецепта без зачарования', async () => {

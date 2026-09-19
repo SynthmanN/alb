@@ -280,7 +280,7 @@ test('скан маржи: капитал и минимум дней вмест�
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
   expect(scanQuery.get('mode')).toBe('instant');
-  expect(scanQuery.get('capital')).toBe('500000');
+  expect(scanQuery.get('capital')).toBe('1000000');
   expect(scanQuery.get('minDays')).toBe('1');
   expect(scanQuery.has('marketShare')).toBe(false);
   expect(scanQuery.has('includeMaterials')).toBe(false);
@@ -392,11 +392,11 @@ test('многогородовой план: допуск цены уходит 
   await page.locator('#craft-price-tolerance').fill('8');
   await page.locator('#craft-run').click();
   expect(query.get('priceTolerance')).toBe('8');
-  const materials = page.locator('#craft-result .craft-recipe-table').first();
-  await expect(materials).toContainText('план закупки (2 гор., +4.8% к лучшей цене)');
-  await page.locator('#craft-result details.acquire-plan summary').click();
-  await expect(materials).toContainText('Martlock: 6 573 шт');
-  await expect(materials).toContainText('допуск 15%');
+  const plan = page.locator('#craft-acquire-table');
+  await expect(plan).toContainText('+4.8% к лучшей цене');
+  await expect(plan).toContainText('Martlock: 6 573 шт');
+  await expect(plan).toContainText('допуск 15%');
+  await expect(plan.locator('tfoot')).toContainText('Итого на план закупки');
   await expect(page.locator('#craft-result .by-city')).toContainText('Вне автоплана: Thetford');
 });
 
@@ -714,7 +714,7 @@ test('скан: капитал вводится с разделителями р
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
   const capital = page.locator('#margin-capital');
-  await expect(capital).toHaveValue(/^500\s000$/);                                   // по умолчанию — с разделителем
+  await expect(capital).toHaveValue(/^1\s000\s000$/);                                // по умолчанию — 1 000 000, с разделителем
   await capital.fill('');
   await capital.pressSequentially('1234567');
   await expect(capital).toHaveValue(/^1\s234\s567$/);
@@ -756,7 +756,7 @@ test('свои цены: вписал реальную цену сырья и п
   await expect(page.locator('#craft-result')).toContainText('котировка');                    // у кожи сделок нет — помечено
   await expect(page.locator('#craft-result li.craft-step:nth-child(2) .craft-summary').first()).toContainText('760');
   // слитки в игре стоят 150, а не 100: себестоимость 2000 + 16 × 50 = 2800, профит 2760 − 2800 = −40
-  await page.locator('input.manual-price[data-res="T4_METALBAR"]').fill('150');
+  await page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]').fill('150');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('2 800');
   await expect(page.locator('#craft-result')).toContainText('Сбросить свои цены');
   await expect(page.locator('#craft-result .patient-sell')).toContainText(/[−-]115/);        // терпеливый профит города тоже сдвинулся на +800 к себестоимости: 685 − 800
@@ -783,10 +783,10 @@ test('лог закупок по лотам: вписал купленные с�
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-gear-rrr').selectOption('none');                                 // без возврата — числа проще
   await page.locator('#craft-run').click();
-  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toBeVisible();      // по умолчанию — обычное поле «своя цена»
+  await expect(page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]')).toBeVisible();      // по умолчанию — обычное поле «своя цена»
   await page.locator('#craft-purchase-log').check();
-  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toHaveCount(0);      // вместо него — мини-список стаков
-  const log = page.locator('.lot-log');
+  await expect(page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]')).toHaveCount(0);      // вместо него — мини-список стаков
+  const log = page.locator('#craft-recipe-table .lot-log');
   await log.locator('.lot-add').click();
   await log.locator('input.lot-qty').nth(0).fill('999');
   await log.locator('input.lot-price').nth(0).fill('432');
@@ -802,7 +802,7 @@ test('лог закупок по лотам: вписал купленные с�
   await expect(log.locator('.lot-sum')).toContainText('средняя 432');                             // остался один стак 999 × 432
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('6 912');
   await page.locator('#craft-purchase-log').uncheck();
-  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toBeVisible();        // чекбокс выключен — таблица вернулась к обычному полю
+  await expect(page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]')).toBeVisible();        // чекбокс выключен — таблица вернулась к обычному полю
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('8 000');       // лоты в расчёт не идут
   expect(requests).toBe(1);
 });
@@ -834,13 +834,21 @@ test('купить готовый материал или переработат
   const row = page.locator('#craft-result .craft-recipe-table tbody tr').first();
   await expect(row).toContainText('выгоднее переработать в Thetford');
   await expect(row).toContainText('36.7% сырьё · 24.8% гир');                                            // две ставки отдельно, без общего процента
-  await expect(row).toContainText('сырьё — ');                                                  // план закупки: сырьё и материал пред. тира, а не готовый слиток
-  await expect(row).toContainText('материал пред. тира — ');
+  const plan = page.locator('#craft-acquire-table');
+  await expect(plan).toContainText('(сырьё → T4 Слитки (IV))');                                 // план закупки: сырьё и полуфабрикат пред. тира, а не готовый слиток
+  await expect(plan).toContainText('(полуфабрикат пред. тира → T4 Слитки (IV))');
+  await expect(plan.locator('tfoot')).toContainText('Итого на план закупки');
+  await expect(plan.locator('tfoot')).toContainText('46 200');                                // 154 × 250 (сырьё) + 77 × 100 (полуфабрикат пред. тира)
+  await plan.locator('input.manual-price[data-res="T4_ORE"]').fill('100');                     // своя цена сырья прямо в плане закупки
+  await expect(plan.locator('tfoot')).toContainText('23 100');                                 // 154 × 100 + 77 × 100
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('2 284');    // себестоимость пересчиталась: (2 × 100 + 100) × (1 − 36.7%) × 16 × (1 − 24.8%)
+  await plan.locator('input.manual-price[data-res="T4_ORE"]').fill('');
+  await expect(plan.locator('tfoot')).toContainText('46 200');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('4 568');   // 16 × 379.8 × (1 − 0.2481)
   // ставка переработки 0%: переработка стоит 600 против покупки 500 — берём готовый слиток; себестоимость 16 × 500 × (1 − 0.2481) = 6 015
   await page.locator('#craft-refine-rrr').selectOption('none');
   await expect(row).not.toContainText('выгоднее переработать');
-  await expect(row).not.toContainText('материал пред. тира');                                    // план строился под переработку — под покупку нужен новый расчёт
+  await expect(plan).not.toContainText('полуфабрикат пред. тира');                                    // источник сменился на «купить» — план строится под него на месте
   await expect(row).toContainText('24.8%');
   await expect(row).not.toContainText('сырьё · ');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('6 015');
@@ -873,7 +881,7 @@ test('скан гира: ставка переработки уходит в з�
   await expect(page.locator('#margin-result .calc-note')).toContainText('возвратом при переработке 50.0%');
 });
 
-test('любая правка параметров сама пересчитывает результат через сервер (с задержкой), свои цены при этом сохраняются; ставки возврата — на месте', async ({ page }) => {
+test('любая правка параметров сама пересчитывает результат через сервер (с задержкой), свои цены при этом сохраняются; ставка возврата — сразу на месте и следом на сервере', async ({ page }) => {
   const queries = [];
   await page.route('**/api/craft-calc*', (route) => {
     const q = new URL(route.request().url()).searchParams;
@@ -896,13 +904,64 @@ test('любая правка параметров сама пересчитыв
   await page.locator('#craft-run').click();
   await expect(page.locator('.craft-scoreboard')).toContainText('10 000');                       // деньги на весь цикл: 1000 × 10
   await expect(page.locator('.craft-scoreboard')).toContainText('3 800');                        // маржа всего: 380 × 10
-  await page.locator('input.manual-price[data-res="T4_METALBAR"]').fill('120');                  // своя цена сырья
+  await page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]').fill('120');                  // своя цена сырья
   await expect(page.locator('.craft-scoreboard')).toContainText('12 000');                       // 10 шт × (1000 + 10 слитков × 20) — пересчёт на месте
   await page.locator('#craft-quantity').fill('20');
   await expect.poll(() => queries.length).toBe(2);                                               // правка количества сама вызвала пересчёт
   expect(queries[1].get('quantity')).toBe('20');
-  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toHaveValue('120');    // своя цена пережила пересчёт
-  await page.locator('#craft-gear-rrr').selectOption('city');                                   // ставка возврата — только на месте
-  await page.waitForTimeout(800);
-  expect(queries.length).toBe(2);
+  await expect(page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]')).toHaveValue('120');    // своя цена пережила пересчёт
+  await page.locator('#craft-gear-rrr').selectOption('city');                                   // ставка возврата: на месте сразу, а следом честный пересчёт на сервере
+  await expect.poll(() => queries.length).toBe(3);
+  expect(queries[2].get('gearRrr')).toBe('city');
+  await expect(page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]')).toHaveValue('120');   // и свои цены на месте
+});
+
+test('выбор предмета по категории — ровные колонки: броня по материалу, оружие по игровой классификации (все луки в одной), плащи по городам и фракциям', async ({ page }) => {
+  await page.goto('/craft.html');
+  const columns = page.locator('#craft-suggestions .suggestion-column');
+  await page.locator('#craft-category-filter').selectOption('armor');
+  await expect(columns).toHaveCount(3);
+  await expect(columns.nth(0)).toContainText('Латная броня');
+  await expect(columns.nth(1)).toContainText('Кожаная броня');
+  await expect(columns.nth(2)).toContainText('Тканевая броня');
+  await page.locator('#craft-category-filter').selectOption('weapon');
+  await expect(columns).toHaveCount(20);
+  const bows = columns.filter({ hasText: 'Луки' });
+  await expect(bows).toHaveCount(1);
+  await expect(bows.locator('.suggestion-item', { hasText: 'Боевой лук' }).first()).toBeVisible();   // боевой лук — в той же колонке, что и лук
+  await expect(bows.locator('.suggestion-item', { hasText: 'Длинный лук' }).first()).toBeVisible();
+  await page.locator('#craft-tier-filter').selectOption('5');                                        // тир сужает колонки
+  await expect(bows.locator('.suggestion-item').first()).toContainText('T5');
+  await page.locator('#craft-tier-filter').selectOption('');
+  await page.locator('#craft-category-filter').selectOption('cape');
+  await expect(columns).toHaveCount(15);
+  await expect(columns.filter({ hasText: 'Хранителей' })).toHaveCount(1);
+  await columns.filter({ hasText: 'Хранителей' }).locator('.suggestion-item').first().click();       // клик по предмету в колонке выбирает его
+  await expect(page.locator('#craft-selected')).toContainText('Хранителей');
+  await page.locator('#craft-category-filter').selectOption('');
+  await page.locator('#craft-search').fill('меч');
+  await expect(page.locator('#craft-suggestions .suggestion-column')).toHaveCount(0);                // без категории — прежний плоский список
+});
+
+test('иконки: выбранный предмет и строки скана показывают тир, зачарование и качество; в скане по умолчанию 3 дня, капитал 1 000 000 и «зачаровать после крафта»', async ({ page }) => {
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', enchantMode: 'after', liquidity: 'best', days: 3, capital: 1000000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 1,
+    enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367,
+    jug: { lastPricePass: Date.now() - 120000, lastHistoryPass: Date.now() - 300000, lastFullPass: null, oldestPriceAgeMinutes: 5 }, results: [
+      { kind: 'gear', itemId: 'T5_CAPEITEM_HERETIC', enchant: 3, quality: 4, tier: 5, cost: 40000, avgSellPrice: 60000, dailyVolume: 12.5, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 47000, premiumDays: 147, daysToAcquire: 2, daysToSell: 8, cycleDays: 10, effectiveDays: 10, cappedByMinDays: false, positionCost: 1000000, quantity: 25, freshMinutes: 12, rankScore: 47000, tradeHours: 6, confidence: 0.2 },
+    ] } }));
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await expect(page.locator('#margin-days')).toHaveValue('3');
+  await expect(page.locator('#margin-capital')).toHaveValue(/1[\s ]?000[\s ]?000/);
+  await expect(page.locator('#margin-enchant-mode')).toHaveValue('after');
+  await page.locator('#margin-run').click();
+  const icon = page.locator('#margin-result tbody tr img.item-icon-lg').first();
+  await expect(icon).toHaveAttribute('src', /T5_CAPEITEM_HERETIC%40?@?3\.png\?quality=4|T5_CAPEITEM_HERETIC(%40|@)3\.png\?quality=4/);   // иконка честная: зачарование .3 и качество «Отличное»
+  await expect(page.locator('#margin-result tbody tr').first()).toContainText('T5 · .3 · Отличное');
+  // выбранный предмет в калькуляторе: иконка следует за зачарованием и качеством
+  await page.locator('#craft-search').fill('плащ еретиков');
+  await page.locator('#craft-suggestions .suggestion-item').filter({ hasText: 'T5' }).first().click();
+  await page.locator('#craft-enchant').selectOption('3');
+  await page.locator('#craft-quality').selectOption('4');
+  await expect(page.locator('#craft-selected-icon')).toHaveAttribute('src', /CAPEITEM_HERETIC(%40|@)3\.png\?quality=4/);
 });

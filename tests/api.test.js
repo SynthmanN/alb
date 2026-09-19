@@ -13,7 +13,9 @@ process.env.USER_MASTERIES_PATH = masteriesFile;
 process.env.DISABLE_RATE_LIMIT = 'true'; // десятки запросов с одного IP за секунды — норма для тестов
 process.env.JUG_DB_PATH = ':memory:'; // тесты не трогают реальную базу кувшина
 process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не должен ждать своей очереди в регуляторе бюджета
-const { app, resetCaches } = require('../server.js');
+const { app, resetCaches, jugDb } = require('../server.js');
+const { upsertPriceSnapshots, upsertHistoryBatch } = require('../lib/jugStore.js');
+const RECIPES_DATA = require('../data/recipes.json');
 
 const CITIES = ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford'];
 const NOW = () => new Date().toISOString().slice(0, 19);
@@ -42,9 +44,49 @@ function fakeAodp(url) {
   return records;
 }
 
+// Сырьё, полуфабрикаты и руны калькулятор читает из кувшина (а не из AODP): в тестах кувшин засеян тем же «миром», что и подменённый AODP.
+const RAW_TYPES = ['WOOD', 'ORE', 'FIBER', 'HIDE', 'ROCK'];
+const REFINED_TYPES = ['PLANKS', 'METALBAR', 'CLOTH', 'LEATHER', 'STONEBLOCK'];
+function materialWorldIds() {
+  const ids = new Set();
+  const addWithEnchants = (base) => {
+    ids.add(base);
+    const tier = Number(base.match(/^T(\d)_/)[1]);
+    if (tier >= 4) for (let e = 1; e <= (base.includes('ROCK') || base.includes('STONEBLOCK') ? 3 : 4); e++) ids.add(`${base}_LEVEL${e}@${e}`);
+  };
+  for (const rec of Object.values(RECIPES_DATA)) for (const r of rec.resources) ids.add(r.resource);
+  for (let tier = 2; tier <= 8; tier++) for (const t of [...RAW_TYPES, ...REFINED_TYPES]) addWithEnchants(`T${tier}_${t}`);
+  for (const id of [...ids]) if (/^T\d_(WOOD|ORE|FIBER|HIDE|ROCK|PLANKS|METALBAR|CLOTH|LEATHER|STONEBLOCK)$/.test(id)) addWithEnchants(id);
+  for (let tier = 4; tier <= 8; tier++) for (const k of ['RUNE', 'SOUL', 'RELIC']) ids.add(`T${tier}_${k}`);
+  return [...ids];
+}
+const worldPrice = (id) => 100 * (Number((id.match(/^T(\d)_/) || [])[1]) || 4) + 400 * (Number((id.match(/@(\d)$/) || [])[1]) || 0) + 30;
+function priceRow(id, price, city) {
+  return { item_id: id, city, quality: 1, sell_price_min: price, sell_price_min_date: NOW(), buy_price_max: 1, buy_price_max_date: NOW() };
+}
+function seedJugWorld() {
+  jugDb.exec('DELETE FROM prices');
+  jugDb.exec('DELETE FROM history');
+  const rows = [];
+  for (const id of materialWorldIds()) for (const city of CITIES) rows.push(priceRow(id, worldPrice(id), city));
+  upsertPriceSnapshots(jugDb, rows);
+}
+// Свои цены в кувшине: setJug({ T4_METALBAR: 400 }, { cities: ['Martlock'] }); history — { T4_METALBAR: { avg: 130, count: 600 } } — сделки за последний час.
+function setJug(prices, { cities = CITIES, history = {} } = {}) {
+  upsertPriceSnapshots(jugDb, Object.entries(prices).flatMap(([id, price]) => cities.map((city) => priceRow(id, price, city))));
+  for (const [id, h] of Object.entries(history)) {
+    upsertHistoryBatch(jugDb, cities.map((city) => ({ item_id: id, location: city.replace(/\s+/g, ''), quality: 1, data: [{ item_count: h.count, avg_price: h.avg, timestamp: new Date(Date.now() - 3600000).toISOString().slice(0, 19) }] })));
+  }
+}
+
+// Все материалы мира — по одной цене в выбранных городах (материалы «по 10»)
+function setJugAll(price, cities) { setJug(Object.fromEntries(materialWorldIds().map((id) => [id, price])), { cities }); }
+const FEE = 1.025;   // комиссия 2.5% за свой Buy Order — входит в цену материалов
+
 // Перед каждым тестом: чистые кэши сервера и «стандартный» подменённый AODP (отдельные тесты ниже подменяют его по-своему).
 beforeEach(() => {
   resetCaches();
+  seedJugWorld();
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({
     ok: true, status: 200, json: async () => fakeAodp(url),
   }));
@@ -369,26 +411,30 @@ describe('калькулятор крафта: возврат ресурсов �
 });
 
 describe('калькулятор крафта: цена сырья — средняя по сделкам за своё окно', () => {
-  const install = (historyForMaterials) => vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-    const u = String(url);
-    if (u.includes('/history/')) {
-      const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
-      return { ok: true, status: 200, json: async () => (historyForMaterials ? ids.filter((id) => id === 'T4_METALBAR').map((id) => ({ item_id: id, location: 'Martlock', quality: 1, data: [{ item_count: 600, avg_price: 130, timestamp: new Date().toISOString().slice(0, 19) }] })) : []) };
-    }
-    const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
-    return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() })) };
-  });
+  // Материалы — в кувшине: везде по 100, у слитков ещё и история сделок (600 шт по средней 130), если historyForMaterials.
+  const install = (historyForMaterials) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
+      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+      return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() })) };
+    });
+    setJugAll(100, ['Martlock']);
+    if (historyForMaterials) setJug({ T4_METALBAR: 100 }, { cities: ['Martlock'], history: { T4_METALBAR: { avg: 130, count: 600 } } });
+  };
   const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock&gearRrr=none${extra}`);
 
   it('сырьё с историей сделок — по средней цене за окно (priceSource: history), не по цене одного лота; окно возвращается в ответе', async () => {
     install(true);
     const d = (await get('&materialHours=48')).body;
     const bar = d.recipe.find((r) => r.resource === 'T4_METALBAR');
-    expect(bar).toMatchObject({ cheapestPrice: 130, priceSource: 'history' });
+    expect(bar.priceSource).toBe('history');
+    expect(bar.cheapestPrice).toBeCloseTo(130 * FEE, 6);                         // средняя по сделкам 130 + комиссия 2.5% за свой Buy Order
     expect(d.materialHours).toBe(48);
     const leather = d.recipe.find((r) => r.resource === 'T4_LEATHER');
-    expect(leather).toMatchObject({ cheapestPrice: 100, priceSource: 'quote' });       // сделок нет — текущая котировка, помечено
-    expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo(16 * 130 + 8 * 100, 6);
+    expect(leather.priceSource).toBe('quote');                                    // сделок нет — текущая котировка, помечено
+    expect(leather.cheapestPrice).toBeCloseTo(100 * FEE, 6);
+    expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo((16 * 130 + 8 * 100) * FEE, 6);
   });
 
   it('окно по умолчанию — 24 ч и не привязано к «Истории» продажи готового предмета', async () => {
@@ -489,6 +535,7 @@ describe('калькулятор крафта: Чёрный Рынок и инд
     return { ok: true, status: 200, json: async () => records };
   });
   const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=100&cities=Martlock${extra}`);
+  beforeEach(() => setJugAll(10, ['Martlock']));
 
   it('без галочки ЧР в плане нет; с ней — ещё один «город» со своим налогом 10.5% (налог + Setup Fee), без второго сбора', async () => {
     install();
@@ -540,6 +587,7 @@ describe('калькулятор крафта: мгновенная продаж
     return { ok: true, status: 200, json: async () => out };
   });
   const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock${extra}`);
+  beforeEach(() => setJugAll(10, ['Martlock']));
 
   it('без галочки ЧР мгновенная продажа — только обычные города; с галочкой — лучшая цена ПОСЛЕ налога, с пометкой и своей ставкой', async () => {
     install();
@@ -632,12 +680,16 @@ describe('свои значения: период истории и допуск
 
 describe('калькулятор крафта: купить готовый материал или переработать самому', () => {
   // Сырьё и предыдущий тир по 100; готовый слиток T4 — по параметру. Переработка: 2×руда + 1×слиток T3 = 300 × (1 − ставка).
-  const install = (barPrice) => vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-    const u = String(url);
-    if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
-    const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
-    return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : id === 'T4_METALBAR' ? barPrice : 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() })) };
-  });
+  const install = (barPrice) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
+      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+      return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() })) };
+    });
+    setJugAll(100, ['Martlock']);
+    setJug({ T4_METALBAR: barPrice }, { cities: ['Martlock'] });
+  };
   const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock&gearRrr=none${extra}`);
   const bar = (d) => d.recipe.find((r) => r.resource === 'T4_METALBAR');
 
@@ -645,16 +697,18 @@ describe('калькулятор крафта: купить готовый ма�
     install(400);
     const d = (await get()).body;
     expect(d.refineRate).toBeCloseTo(0.367, 3);
-    expect(bar(d)).toMatchObject({ materialSource: 'refine', buyPrice: 400, priceSource: 'refine' });
-    expect(bar(d).cheapestPrice).toBeCloseTo(300 * (1 - 0.367), 1);
+    expect(bar(d)).toMatchObject({ materialSource: 'refine', priceSource: 'refine' });
+    expect(bar(d).buyPrice).toBeCloseTo(400 * FEE, 6);
+    expect(bar(d).cheapestPrice).toBeCloseTo(300 * FEE * (1 - 0.367), 1);          // 2 × 100 + 1 × 100, комиссия 2.5%, возврат переработки
     expect(bar(d).refineOption.components.map((c) => c.id)).toEqual(['T4_ORE', 'T3_METALBAR']);
-    expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo(16 * 300 * (1 - 0.367) + 8 * 100, 0);
+    expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo((16 * 300 * (1 - 0.367) + 8 * 100) * FEE, 0);
   });
   it('слиток дешёвый (150) — покупаем готовый, но вариант переработки отдаётся для пересчёта в интерфейсе', async () => {
     install(150);
     const d = (await get()).body;
-    expect(bar(d)).toMatchObject({ materialSource: 'buy', cheapestPrice: 150, buyCity: 'Martlock' });
-    expect(bar(d).refineOption.price).toBeCloseTo(300 * (1 - 0.367), 1);
+    expect(bar(d)).toMatchObject({ materialSource: 'buy', buyCity: 'Martlock' });
+    expect(bar(d).cheapestPrice).toBeCloseTo(150 * FEE, 6);
+    expect(bar(d).refineOption.price).toBeCloseTo(300 * FEE * (1 - 0.367), 1);
   });
   it('своя ставка переработки меняет решение: 0% — переработка стоит 300 и проигрывает покупке за 250; 50% — 150 и выигрывает', async () => {
     install(250);
@@ -662,7 +716,7 @@ describe('калькулятор крафта: купить готовый ма�
     const half = (await get('&refineRrrCustom=50')).body;
     expect(half.refineRate).toBe(0.5);
     expect(bar(half)).toMatchObject({ materialSource: 'refine' });
-    expect(bar(half).cheapestPrice).toBeCloseTo(150, 6);
+    expect(bar(half).cheapestPrice).toBeCloseTo(150 * FEE, 6);
   });
   it('пресет ставки переработки: none — без возврата', async () => {
     install(250);
@@ -677,7 +731,8 @@ describe('калькулятор крафта: купить готовый ма�
     expect(rows.map((r) => [r.queryId, r.role, r.source])).toEqual([['T4_ORE', 'raw', 'refine'], ['T3_METALBAR', 'prev', 'refine']]);
     expect(rows[0].needed).toBe(Math.ceil(160 * 2 * (1 - d.refineRate)));      // 16 слитков × 10 шт, без возврата гира (gearRrr=none)
     expect(rows[1].needed).toBe(Math.ceil(160 * 1 * (1 - d.refineRate)));
-    expect(rows[0].resourceName).toContain('сырьё (переработка)');
+    expect(rows[0].resourceName).toBe('T4 Руда (IV) (сырьё → T4 Слитки (IV))');    // строка называется по тому, что реально покупается, а не по целевому полуфабрикату
+    expect(rows[1].resourceName).toBe('T3 Слитки (III) (полуфабрикат пред. тира → T4 Слитки (IV))');
     expect(d.acquire.byResource.some((r) => r.resource === 'T4_METALBAR')).toBe(false);   // готового слитка в плане нет
   });
   it('план закупки: если дешевле готовый — одна строка на сам материал', async () => {
@@ -690,5 +745,37 @@ describe('калькулятор крафта: купить готовый ма�
     install(400);
     const d = (await get()).body;
     expect(d.recipe.filter((r) => !/METALBAR|LEATHER|PLANKS|CLOTH|STONEBLOCK/.test(r.resource)).every((r) => r.refineOption === null || r.refineOption === undefined)).toBe(true);
+  });
+});
+
+describe('GET /api/item-groups — группы оружия по игровой классификации', () => {
+  it('«Лук», «Боевой лук» и «Длинный лук» — одна группа «Луки»; каждое семейство оружия ровно в одной группе', async () => {
+    const { weapon } = (await request(app).get('/api/item-groups')).body;
+    const bows = weapon.find((g) => g.id === 'COMBAT_BOWS');
+    expect(bows.title).toBe('Луки');
+    expect(bows.families).toEqual(expect.arrayContaining(['2H_BOW', '2H_WARBOW', '2H_LONGBOW']));
+    expect(weapon.find((g) => g.id === 'COMBAT_SWORDS').families).toEqual(expect.arrayContaining(['MAIN_SWORD', '2H_CLAYMORE', '2H_DUALSWORD']));
+    const all = weapon.flatMap((g) => g.families);
+    expect(new Set(all).size).toBe(all.length);                                         // семейство не лежит в двух группах
+    const { ITEMS } = require('../data/items');
+    const families = new Set(ITEMS.filter((i) => i.category === 'weapon').map((i) => i.id.replace(/^T\d+_/, '')));
+    expect(new Set(all)).toEqual(families);                                             // всё оружие каталога куда-то попало
+    expect(weapon).toHaveLength(20);
+  });
+});
+
+describe('калькулятор крафта: цена материала в заголовке = цена в плане закупки (многогород + комиссия)', () => {
+  it('партия больше оборота дешёвого города: заголовочная цена — средняя по плану из нескольких городов с комиссией, и она ровно совпадает с ценой плана закупки', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => (String(url).includes('/history/') ? [] : fakeAodp(url).map((r) => ({ ...r, sell_price_min: r.item_id === 'T4_MAIN_SWORD' ? 0 : r.sell_price_min }))) }));
+    setJugAll(50, ['Martlock', 'Lymhurst']);
+    setJug({ T4_METALBAR: 100 }, { cities: ['Martlock'], history: { T4_METALBAR: { avg: 100, count: 5000 } } });    // дёшево, но рынок втрое-вдесятеро тоньше
+    setJug({ T4_METALBAR: 108 }, { cities: ['Lymhurst'], history: { T4_METALBAR: { avg: 108, count: 60000 } } });   // чуть дороже, зато оборот огромный
+    const res = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=500&cities=Martlock,Lymhurst&gearRrr=none&refineRrr=none&marketShare=0.25&priceTolerance=10')).body;
+    const bar = res.recipe.find((r) => r.resource === 'T4_METALBAR');
+    const row = res.acquire.byResource.find((r) => r.resource === 'T4_METALBAR');
+    expect(bar.materialSource).toBe('buy');
+    expect(row.plan.cities.length).toBe(2);                                          // в один город партию не купить — план разносит по двум
+    expect(row.plan.avgPrice).toBeGreaterThan(100 * 1.025);                          // средняя дороже самого дешёвого города
+    expect(bar.cheapestPrice).toBeCloseTo(row.plan.avgPrice, 6);                     // заголовок и план — одна и та же цифра, не «близкая»
   });
 });

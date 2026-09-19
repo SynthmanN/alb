@@ -170,7 +170,8 @@ describe('план крупной партии', () => {
 
   it('себестоимость, сроки и профит после налога', () => {
     const plan = computeBulkPlan(base, materialHistory, finishedHistory);
-    const expectedCost = recipe.resources.reduce((sum, r, i) => sum + r.count * 1000 * (i + 1), 0) + (recipe.silver || 0);
+    // цены материалов в плане партии — с комиссией 2.5% за свой Buy Order
+    const expectedCost = recipe.resources.reduce((sum, r, i) => sum + r.count * 1000 * 1.025 * (i + 1), 0) + (recipe.silver || 0);
     expect(plan.hasAllMaterialPrices).toBe(true);
     expect(plan.effectiveCostPerUnit).toBeCloseTo(expectedCost, 6);
     expect(plan.marketAvgSellPrice).toBeCloseTo(200000, 6);
@@ -519,7 +520,7 @@ describe('возврат ресурсов: только на возвращае�
       const src = recipe.resources.find((x) => x.resource === r.resource);
       expect(r.neededAfterRrr).toBe(Math.ceil(src.count * 100 * (src.noReturn ? 1 : 1 - rrr)));
     }
-    const expected = recipe.resources.reduce((sum, r) => sum + r.count * 1000 * (r.noReturn ? 1 : 1 - rrr), 0);
+    const expected = recipe.resources.reduce((sum, r) => sum + r.count * 1000 * 1.025 * (r.noReturn ? 1 : 1 - rrr), 0);
     expect(plan.effectiveCostPerUnit).toBeCloseTo(expected, 6);
   });
 });

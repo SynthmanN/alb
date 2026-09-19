@@ -231,10 +231,11 @@ function effectiveId(baseId, enchantOverride) {
 }
 
 // enchantOverride — иконка конкретного зачарования (сканеры показывают .0–.4 как разные позиции)
-function iconUrl(baseId, size, enchantOverride) {
+// qualityOverride — качество конкретной позиции (1–5): в игре рамка и фон иконки зависят от тира, зачарования (.1–.4 — свой цвет) и качества
+function iconUrl(baseId, size, enchantOverride, qualityOverride) {
   const id = effectiveId(baseId, enchantOverride);
   const item = findItem(baseId);
-  const quality = effectiveQualityFor(item);
+  const quality = qualityOverride !== undefined ? qualityOverride : effectiveQualityFor(item);
   return `https://render.albiononline.com/v1/item/${encodeURIComponent(id)}.png?quality=${quality}&size=${size || 40}`;
 }
 
