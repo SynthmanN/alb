@@ -19,6 +19,7 @@ const craftEl = {
 let craftSelectedItem = null;
 let lastCraftData = null;          // последний результат калькулятора — для пересчёта плана продажи без запроса к серверу
 const manualSalePlan = new Map();  // город -> штук, введённых вручную в плане продажи (сбрасывается при новом расчёте)
+const saleCityToggles = new Map(); // город -> true/false: включён/выключен в плане чекбоксом (пусто — автоплан)
 
 async function initCraft() {
   const res = await fetch('/api/refining-meta');
@@ -131,6 +132,7 @@ async function runCraftCalc() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     manualSalePlan.clear();
+    saleCityToggles.clear();
     lastCraftData = data;
     renderCraftResult(data);
   } catch (err) {
@@ -233,6 +235,7 @@ function bindSalePlanEditing() {
     inp.addEventListener('input', () => {
       // значение запоминаем сразу (иначе быстрый ввод в два города потеряет первый), а перерисовку откладываем
       manualSalePlan.set(inp.dataset.city, Math.max(Math.floor(Number(inp.value) || 0), 0));
+      if (saleCityToggles.size > 0) saleCityToggles.set(inp.dataset.city, true); // вписанное количество включает город в план
       const city = inp.dataset.city;
       const caret = inp.selectionStart;
       clearTimeout(timer);
@@ -243,8 +246,20 @@ function bindSalePlanEditing() {
       }, 250);
     });
   });
+  craftEl.result.querySelectorAll('input.plan-toggle').forEach((box) => {
+    box.addEventListener('change', () => {
+      // первое включение/выключение фиксирует набор городов автоплана, дальше набор ведёт пользователь
+      if (saleCityToggles.size === 0) {
+        const auto = lastCraftData.patientSell && lastCraftData.patientSell.plan ? lastCraftData.patientSell.plan.cities.map((c) => c.city) : [];
+        for (const c of lastCraftData.patientSell.byCity) saleCityToggles.set(c.city, auto.includes(c.city));
+      }
+      saleCityToggles.set(box.dataset.city, box.checked);
+      if (!box.checked) manualSalePlan.delete(box.dataset.city);
+      renderCraftResult(lastCraftData);
+    });
+  });
   const reset = craftEl.result.querySelector('.plan-reset');
-  if (reset) reset.addEventListener('click', () => { manualSalePlan.clear(); renderCraftResult(lastCraftData); });
+  if (reset) reset.addEventListener('click', () => { manualSalePlan.clear(); saleCityToggles.clear(); renderCraftResult(lastCraftData); });
 }
 
 // Сравнение по тирам: себестоимость и лучшая цена продажи в Buy Order для каждого тира того же предмета.
@@ -323,26 +338,46 @@ function byCityHtml(p, data) {
     ? { rows: new Map(serverPlan.cities.map((c) => [c.city, { qty: c.qty, days: c.days, tolerance: c.tolerance }])), days: serverPlan.totalDays }
     : salePlanByCity(p.byCity, data.quantity, marketShare, minPrice);
 
-  // Итоговый план = автоплан, поверх которого — вручную введённые количества (город -> штук). Всё считается на лету.
+  // Итоговый план: города включаются чекбоксом («В плане»), партия делится между включёнными пропорционально обороту;
+  // поверх этого можно вписать своё количество в любой город (он фиксируется, остальные делят остаток). Всё считается на лету.
+  const anyToggle = saleCityToggles.size > 0;
+  const enabledOf = (c) => (saleCityToggles.has(c.city) ? saleCityToggles.get(c.city) : auto.rows.has(c.city));
+  const enabled = p.byCity.filter((c) => c.avgDailyVolume > 0 && enabledOf(c));
+  let baseQty = new Map();
+  if (anyToggle) {
+    const fixed = enabled.filter((c) => manualSalePlan.has(c.city));
+    const free = enabled.filter((c) => !manualSalePlan.has(c.city));
+    const remaining = Math.max(data.quantity - fixed.reduce((sum, c) => sum + manualSalePlan.get(c.city), 0), 0);
+    const freeVolume = free.reduce((sum, c) => sum + c.avgDailyVolume, 0);
+    let assigned = 0;
+    free.forEach((c) => { const q = Math.floor((remaining * c.avgDailyVolume) / freeVolume); baseQty.set(c.city, q); assigned += q; });
+    if (free.length) {
+      const top = free.reduce((a, b) => (b.avgDailyVolume > a.avgDailyVolume ? b : a));
+      baseQty.set(top.city, baseQty.get(top.city) + remaining - assigned);
+    }
+  } else {
+    baseQty = new Map([...auto.rows].map(([city, r]) => [city, r.qty]));
+  }
   const rowsData = p.byCity.map((c) => {
     const a = auto.rows.get(c.city);
-    const manual = manualSalePlan.has(c.city);
-    const qty = manual ? manualSalePlan.get(c.city) : (a ? a.qty : 0);
+    const isEnabled = enabledOf(c) && (c.avgDailyVolume > 0 || manualSalePlan.has(c.city));
+    const manual = manualSalePlan.has(c.city) && isEnabled;
+    const qty = !isEnabled ? 0 : manual ? manualSalePlan.get(c.city) : (baseQty.get(c.city) || 0);
     const days = qty > 0 && c.avgDailyVolume > 0 ? qty / (c.avgDailyVolume * marketShare) : 0;
-    return { c, qty, days, manual, tolerance: a ? a.tolerance : null, inPlan: !!a };
+    return { c, qty, days, manual, tolerance: a ? a.tolerance : null, inPlan: !!a, enabled: isEnabled };
   });
   const totalQty = rowsData.reduce((sum, r) => sum + r.qty, 0);
   const planDays = rowsData.reduce((m, r) => Math.max(m, r.days), 0);       // города продают параллельно — срок по самому медленному
   const avgPrice = totalQty > 0 ? rowsData.reduce((sum, r) => sum + r.c.avgSellPrice * r.qty, 0) / totalQty : null;
   const netPrice = avgPrice === null ? null : avgPrice * (1 - data.taxRate);
   const profitUnit = netPrice === null ? null : netPrice - data.effectiveCostPerUnit;
-  const anyManual = rowsData.some((r) => r.manual);
+  const anyManual = rowsData.some((r) => r.manual) || anyToggle;
   const noVolume = rowsData.some((r) => r.qty > 0 && !(r.c.avgDailyVolume > 0));
 
-  const rows = rowsData.map(({ c, qty, days, manual, tolerance, inPlan }) => {
-    const dim = minPrice !== null && c.avgSellPrice < minPrice && !manual;
+  const rows = rowsData.map(({ c, qty, days, manual, tolerance, inPlan, enabled: isOn }) => {
+    const dim = (minPrice !== null && c.avgSellPrice < minPrice && !manual) || !isOn;
     const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
-    return `<tr class="${dim ? 'below-threshold' : ''}"><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
+    return `<tr class="${dim ? 'below-threshold' : ''}"><td class="plan-check"><input type="checkbox" class="plan-toggle" data-city="${c.city}" ${isOn ? 'checked' : ''} ${c.avgDailyVolume > 0 ? '' : 'disabled'} title="${c.avgDailyVolume > 0 ? 'Включить/выключить город в плане продажи — партия пересчитается' : 'В этом городе нет сделок за период'}" /></td><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
       <td data-sort-value="${qty}"><input class="plan-qty ${manual ? 'is-manual' : ''}" type="number" min="0" step="1" value="${qty}" data-city="${c.city}" title="Сколько штук планируешь продать в этом городе (введи своё — остальное пересчитается)" /></td>
       <td data-sort-value="${days}">${qty > 0 ? fmtDays(days) : '—'}${inPlan && tolerance && !manual ? ` <small>(допуск ${(tolerance * 100).toFixed(0)}%)</small>` : ''}</td></tr>`;
   }).join('');
@@ -353,7 +388,7 @@ function byCityHtml(p, data) {
     <details open class="by-city">
       <summary>План продажи через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)}, в автоплан не входят)` : ''}</summary>
       <div class="table-scroll"><table class="craft-recipe-table">
-        <thead><tr><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th></tr></thead>
+        <thead><tr><th>В плане</th><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
       <div class="plan-summary">
@@ -363,7 +398,7 @@ function byCityHtml(p, data) {
         <div>Средняя цена: <strong>${avgPrice !== null ? fmtNum(avgPrice) : '—'}</strong> · после налога ${netPrice !== null ? fmtNum(netPrice) : '—'} · профит / шт: <strong class="${profitUnit !== null && profitUnit > 0 ? 'profit-pos' : 'profit-neg'}">${profitUnit !== null ? fmtNum(profitUnit) : '—'}</strong> · итого: <strong class="${profitUnit !== null && profitUnit > 0 ? 'profit-pos' : 'profit-neg'}">${profitUnit !== null ? fmtNum(profitUnit * totalQty) : '—'}</strong></div>
         ${noVolume ? '<div class="scan-stale">⚠ В одном из городов нет сделок за период — срок продажи там посчитать нельзя.</div>' : ''}
       </div>
-      <p class="calc-note">Партия делится между городами пропорционально дневному обороту; при доле рынка ${(marketShare * 100).toFixed(0)}% автоплан занимает ${fmtDays(auto.days)}.${serverPlan ? ` В автоплан вошли города с ценой не хуже лучшей больше чем на допуск (у ликвидных он динамически больше).${serverPlan.excluded.length ? ` Вне автоплана: ${serverPlan.excluded.map((e) => `${e.city} — ${e.reason}`).join('; ')}.` : ''}` : ''} Введи своё количество в любой город — всё пересчитается сразу.</p>
+      <p class="calc-note">Партия делится между городами пропорционально дневному обороту; при доле рынка ${(marketShare * 100).toFixed(0)}% автоплан занимает ${fmtDays(auto.days)}.${serverPlan ? ` В автоплан вошли города с ценой не хуже лучшей больше чем на допуск (у ликвидных он динамически больше).${serverPlan.excluded.length ? ` Вне автоплана: ${serverPlan.excluded.map((e) => `${e.city} — ${e.reason}`).join('; ')}.` : ''}` : ''} Включай и выключай города галочкой «В плане» или впиши своё количество — всё пересчитается сразу.</p>
     </details>`;
 }
 

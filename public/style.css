@@ -306,3 +306,6 @@ input.plan-qty:hover, input.plan-qty:focus { background: #1e2126; border-style: 
 input.plan-qty.is-manual { border-color: #cc8844; color: #ffd8a8; }
 .plan-summary { margin-top: 8px; font-size: 13px; display: grid; gap: 4px; }
 .plan-reset { margin-left: 10px; padding: 3px 10px; font-size: 12px; background: #2a2d33; }
+
+td.plan-check { width: 1%; text-align: center; }
+td.plan-check input { width: auto; }
