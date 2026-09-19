@@ -440,7 +440,7 @@ test('доля рынка и период истории: можно вписа�
   await page.locator('#craft-market-share ~ .custom-value input').fill('15');
   await page.locator('#craft-extra summary').click();
   await page.locator('#craft-days').selectOption('__custom__');
-  await page.locator('#craft-days ~ .custom-value input').fill('10');
+  await page.locator('#craft-days ~ .custom-value input').fill('10д');
   await expect(page.locator('#craft-price-tolerance')).toHaveValue('2');   // допуск по умолчанию 2%
   await page.locator('#craft-run').click();
   await expect.poll(() => query).not.toBeNull();
@@ -623,4 +623,35 @@ test('Чёрный Рынок в скане: галочка видна толь�
   expect(scanQuery.get('blackMarket')).toBe('true');
   await expect(page.locator('#margin-result tbody')).toContainText('⚫ Black Market (налог 10.5%)');
   await expect(page.locator('#margin-result')).toContainText('Чёрный Рынок учтён');
+});
+
+
+test('своё время вписывается с единицей: 12ч / 2д переводятся в дни списка «История», голое число не принимается', async ({ page }) => {
+  const queries = [];
+  await page.route('**/api/craft-calc*', (route) => { queries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('меч');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-extra summary').click();
+  await page.locator('#craft-days').selectOption('__custom__');
+  const input = page.locator('#craft-days ~ .custom-value input');
+  await expect(input).toHaveAttribute('placeholder', '12ч или 2д');
+  await input.fill('12ч');
+  await page.locator('#craft-run').click();
+  await expect.poll(() => queries.length).toBe(1);
+  expect(queries[0].get('days')).toBe('0.5');                                     // 12 часов = 0.5 дня
+  await input.fill('2д');
+  await page.locator('#craft-run').click();
+  await expect.poll(() => queries.length).toBe(2);
+  expect(queries[1].get('days')).toBe('2');
+  await input.fill('1');                                                          // без единицы — час это или день, не гадаем
+  await expect(input).toHaveClass(/invalid/);
+  await page.locator('#craft-run').click();
+  await expect.poll(() => queries.length).toBe(3);
+  expect(queries[2].get('days')).toBe('3');                                       // значение по умолчанию из списка
+  await expect(page.locator('.toast-error')).toContainText('Укажи единицу');
+  await input.fill('90д');                                                        // больше максимума (30 дней) — обрезается
+  await page.locator('#craft-run').click();
+  await expect.poll(() => queries.length).toBe(4);
+  expect(queries[3].get('days')).toBe('30');
 });

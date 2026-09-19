@@ -257,8 +257,21 @@ const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдаю
 
 // Выпадающий список с возможностью вписать своё значение (доля рынка в %, период истории в днях/часах):
 // последний пункт «Своё…» показывает поле ввода. Читать значение — readCustomizable(select): готовая строка для запроса
-// (доля — доля 0..1, дни — дни, часы — часы). Включается атрибутом data-custom="percent|days|hours".
-const CUSTOM_LIMITS = { percent: { min: 1, max: 100, step: 1, suffix: '%', placeholder: 'например, 15' }, days: { min: 0.5, max: 30, step: 0.5, suffix: 'дн.', placeholder: 'дней' }, hours: { min: 1, max: 720, step: 1, suffix: 'ч', placeholder: 'часов' } };
+// (доля — доля 0..1, дни — дни, часы — часы; время вписывается с единицей: 12ч / 2д). Включается атрибутом data-custom="percent|days|hours".
+const CUSTOM_LIMITS = { percent: { min: 1, max: 100, step: 1, suffix: '%', placeholder: 'например, 15' }, days: { min: 0.5, max: 30 }, hours: { min: 1, max: 720 } };
+
+// Время («дни» и «часы») вписывается С ЕДИНИЦЕЙ: «12ч» или «2д». Голое число «1» ничего не говорит — час это или день, а в одних
+// списках варианты идут в часах (24ч), в других в днях (3/7 дней). Значение переводится в базовую единицу конкретного списка:
+// для kind=hours — часы, для kind=days — дни (сервер ждёт именно их).
+const TIME_KINDS = new Set(['days', 'hours']);
+const TIME_INPUT_HINT = 'Укажи единицу: ч — часы, д — дни (например, 12ч или 2д)';
+// Возвращает часы или null, если ввод не разобрать (нет числа или единицы).
+function parseTimeToHours(text) {
+  const m = String(text || '').trim().toLowerCase().replace(',', '.').match(/^(\d+(?:\.\d+)?)\s*(ч|час|часа|часов|h|д|дн|дня|дней|день|d)$/);
+  if (!m) return null;
+  const hoursPerUnit = /^(ч|h)/.test(m[2]) ? 1 : 24;
+  return parseFloat(m[1]) * hoursPerUnit;
+}
 function makeCustomizable(select) {
   const kind = select.dataset.custom;
   const lim = CUSTOM_LIMITS[kind];
@@ -271,21 +284,45 @@ function makeCustomizable(select) {
   const wrap = document.createElement('span');
   wrap.className = 'custom-value';
   wrap.hidden = true;
-  wrap.innerHTML = `<input type="number" min="${lim.min}" max="${lim.max}" step="${lim.step}" placeholder="${lim.placeholder}" /><span>${lim.suffix}</span>`;
+  wrap.innerHTML = TIME_KINDS.has(kind)
+    ? `<input type="text" autocomplete="off" placeholder="12ч или 2д" title="${TIME_INPUT_HINT}" />`
+    : `<input type="number" min="${lim.min}" max="${lim.max}" step="${lim.step}" placeholder="${lim.placeholder}" /><span>${lim.suffix}</span>`;
   select.after(wrap);
+  const input = wrap.querySelector('input');
   select.addEventListener('change', () => {
     wrap.hidden = select.value !== '__custom__';
-    if (!wrap.hidden) wrap.querySelector('input').focus();
+    if (!wrap.hidden) input.focus();
   });
-  select._customInput = wrap.querySelector('input');
+  if (TIME_KINDS.has(kind)) {
+    // Ошибку ввода видно сразу, а не после запроса: красная рамка и подсказка, пока нет числа с единицей.
+    input.addEventListener('input', () => {
+      const bad = input.value.trim() !== '' && parseTimeToHours(input.value) === null;
+      input.classList.toggle('invalid', bad);
+      input.setCustomValidity(bad ? TIME_INPUT_HINT : '');
+    });
+  }
+  select._customInput = input;
 }
 function readCustomizable(select) {
   if (select.value !== '__custom__') return select.value;
-  const lim = CUSTOM_LIMITS[select.dataset.custom];
+  const kind = select.dataset.custom;
+  const lim = CUSTOM_LIMITS[kind];
+  const fallback = parseFloat(select.querySelector('option:not([value="__custom__"])').value);
+  if (TIME_KINDS.has(kind)) {
+    const hours = parseTimeToHours(select._customInput.value);
+    if (hours === null) {
+      // Нет единицы (или пусто) — не гадаем «час это или день»: говорим об этом и берём значение по умолчанию из списка.
+      select._customInput.classList.add('invalid');
+      showToast(`${TIME_INPUT_HINT}. Пока взято значение из списка.`, 'error');
+      return String(fallback);
+    }
+    const value = kind === 'days' ? hours / 24 : hours;
+    return String(Math.min(Math.max(value, lim.min), lim.max));
+  }
   let v = parseFloat(select._customInput.value);
-  if (!Number.isFinite(v)) v = parseFloat(select.querySelector('option:not([value="__custom__"])').value) * (select.dataset.custom === 'percent' ? 100 : 1);
+  if (!Number.isFinite(v)) v = fallback * 100;
   v = Math.min(Math.max(v, lim.min), lim.max);
-  return String(select.dataset.custom === 'percent' ? v / 100 : v);
+  return String(v / 100);
 }
 document.querySelectorAll('select[data-custom]').forEach(makeCustomizable);
 

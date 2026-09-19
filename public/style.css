@@ -312,3 +312,4 @@ td.plan-check input { width: auto; }
 
 /* Атрибут hidden должен скрывать и flex/grid-элементы (поля формы скана прячутся в зависимости от режима) */
 [hidden] { display: none !important; }
+.custom-value input.invalid { border-color: #ff6b6b; outline: none; }

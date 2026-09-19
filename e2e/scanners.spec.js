@@ -110,3 +110,20 @@ test('порог минимальной прибыли уходит в запр�
   await expect.poll(() => query).not.toBeNull();
   expect(query.get('minProfit')).toBe('5000');
 });
+
+
+test('сканер зачарования: своё время в часах-списке тоже с единицей (2д → 48 часов, 36ч → 36 часов)', async ({ page }) => {
+  const queries = [];
+  await page.route('**/api/enchant-opportunities*', (route) => { queries.push(new URL(route.request().url()).searchParams); route.fulfill({ json: [] }); });
+  await page.goto('/scanners.html');
+  await page.locator('#enchant-scan-hours').selectOption('__custom__');
+  const input = page.locator('#enchant-scan-hours ~ .custom-value input');
+  await input.fill('2д');
+  await page.locator('#enchant-scan-run').click();
+  await expect.poll(() => queries.length).toBe(1);
+  expect(queries[0].get('hours')).toBe('48');
+  await input.fill('36ч');
+  await page.locator('#enchant-scan-run').click();
+  await expect.poll(() => queries.length).toBe(2);
+  expect(queries[1].get('hours')).toBe('36');
+});
