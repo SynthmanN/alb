@@ -1865,7 +1865,7 @@ function parseMarketShare(req) {
 // Период истории можно вписать свой: дни 0.5–30 (по умолчанию 7) и часы 1–720 (по умолчанию 24) — не только 3/7 дней.
 function parseBulkDays(req) {
   const v = parseFloat(req.query.days);
-  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 0.5), 30) : 7;
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1 / 24), 30) : 7;   // от часа до 30 дней
 }
 function parseHistoryHours(req) {
   const v = parseFloat(req.query.hours);

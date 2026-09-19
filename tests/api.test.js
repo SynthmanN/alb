@@ -678,7 +678,7 @@ describe('калькулятор крафта: многогородовой пл
 });
 
 describe('свои значения: период истории и допуск цены', () => {
-  it('период истории можно задать своим (дни 0.5–30), допуск по умолчанию 2%', async () => {
+  it('период истории можно задать своим (от часа до 30 дней), допуск по умолчанию 2%', async () => {
     const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&days=10')).body;
     expect(d.patientSell === null || d.patientSell.days === 10).toBe(true);
     expect(d.priceTolerance).toBeCloseTo(0.02, 6);
@@ -835,5 +835,17 @@ describe('API всегда отвечает JSON', () => {
     expect(res.status).toBe(404);
     expect(res.headers['content-type']).toContain('json');
     expect(res.body.error).toContain('/no-such-thing');
+  });
+});
+
+describe('история гира — от часа до 30 дней', () => {
+  it('days=0.0833 (2 ч) не округляется до 12 ч; меньше часа поднимается до часа; больше 30 дней — 30', async () => {
+    const get = async (d) => (await request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&days=${d}`)).body.patientSell;
+    const two = await get(2 / 24);
+    expect(two === null || Math.abs(two.days - 2 / 24) < 1e-9).toBe(true);
+    const tiny = await get(0.001);
+    expect(tiny === null || Math.abs(tiny.days - 1 / 24) < 1e-9).toBe(true);
+    const big = await get(999);
+    expect(big === null || big.days === 30).toBe(true);
   });
 });

@@ -258,7 +258,7 @@ const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдаю
 // Выпадающий список с возможностью вписать своё значение (доля рынка в %, период истории в днях/часах):
 // последний пункт «Своё…» показывает поле ввода. Читать значение — readCustomizable(select): готовая строка для запроса
 // (доля — доля 0..1, дни — дни, часы — часы; время вписывается с единицей: 12ч / 2д). Включается атрибутом data-custom="percent|days|hours".
-const CUSTOM_LIMITS = { percent: { min: 1, max: 100, step: 1, suffix: '%', placeholder: 'например, 15' }, days: { min: 0.5, max: 30 }, hours: { min: 1, max: 720 } };
+const CUSTOM_LIMITS = { percent: { min: 1, max: 100, step: 1, suffix: '%', placeholder: 'например, 15' }, days: { min: 1 / 24, max: 30 }, hours: { min: 1, max: 720 } };
 
 // Время («дни» и «часы») вписывается С ЕДИНИЦЕЙ: «12ч» или «2д». Голое число «1» ничего не говорит — час это или день, а в одних
 // списках варианты идут в часах (24ч), в других в днях (3/7 дней). Значение переводится в базовую единицу конкретного списка:
@@ -307,7 +307,8 @@ function readCustomizable(select) {
   if (select.value !== '__custom__') return select.value;
   const kind = select.dataset.custom;
   const lim = CUSTOM_LIMITS[kind];
-  const fallback = parseFloat(select.querySelector('option:not([value="__custom__"])').value);
+  // при ошибке ввода — значение списка по умолчанию (option selected), а не просто первое
+  const fallback = parseFloat((select.querySelector('option[selected]') || select.querySelector('option:not([value="__custom__"])')).value);
   if (TIME_KINDS.has(kind)) {
     const hours = parseTimeToHours(select._customInput.value);
     if (hours === null) {

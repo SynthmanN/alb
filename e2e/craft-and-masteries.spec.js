@@ -652,7 +652,6 @@ test('своё время вписывается с единицей: 12ч / 2д
   await page.goto('/craft.html');
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
-  await page.locator('#craft-extra summary').click();
   await page.locator('#craft-days').selectOption('__custom__');
   const input = page.locator('#craft-days ~ .custom-value input');
   await expect(input).toHaveAttribute('placeholder', '12ч или 2д');
@@ -1063,4 +1062,29 @@ test('скан гира: по умолчанию «Учитывать ЧР» с�
   await expect(page.locator('#margin-black-market')).not.toBeChecked();
   await expect(page.locator('#margin-gear-rrr')).toHaveValue('city_bonus');
   await expect(page.locator('#margin-gear-rrr option:checked')).toContainText('24.8%');
+});
+
+test('история в настройках калькулятора: «История сырья» 24ч и «История гира» 3 дня на виду, свои значения (2ч, 5д) уходят в запрос', async ({ page }) => {
+  const queries = [];
+  await page.route('**/api/craft-calc*', (route) => { queries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await expect(page.locator('#craft-material-hours')).toBeVisible();                             // не спрятаны в «Дополнительно»
+  await expect(page.locator('#craft-days')).toBeVisible();
+  await expect(page.locator('#craft-material-hours')).toHaveValue('24');
+  await expect(page.locator('#craft-days')).toHaveValue('3');
+  await page.locator('#craft-run').click();
+  await expect.poll(() => queries.length).toBe(1);
+  expect(queries[0].get('materialHours')).toBe('24');
+  expect(queries[0].get('days')).toBe('3');
+  await page.locator('#craft-material-hours').selectOption('__custom__');
+  await page.locator('#craft-material-hours + .custom-value input').fill('2ч');
+  await page.locator('#craft-days').selectOption('__custom__');
+  await page.locator('#craft-days + .custom-value input').fill('5д');
+  await page.locator('#craft-run').click();
+  await expect.poll(() => queries.length).toBeGreaterThan(1);
+  const last = queries[queries.length - 1];
+  expect(last.get('materialHours')).toBe('2');
+  expect(last.get('days')).toBe('5');
 });
