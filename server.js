@@ -2061,6 +2061,16 @@ function quotesById(records) {
   }
   return out;
 }
+// Разбивка оборота по городам для строки скана: где сколько торгуется и какие города вошли в расчёт (used) — чтобы цифра «оборот/день»
+// не была чёрным ящиком. Города без сделок за период не показываем.
+function volumeBreakdown(seriesOfItem, itemId, days, quality, cities, usedCities) {
+  const allowed = new Set(cities.map(normLocation));
+  const used = new Set(usedCities.map(normLocation));
+  return Object.entries(cityStats(seriesOfItem || [], itemId, days, quality))
+    .filter(([city]) => allowed.has(normLocation(city)))
+    .map(([city, st]) => ({ city, dailyVolume: st.avgDailyVolume, avgPrice: st.avgPrice, inPlan: used.has(normLocation(city)) }))
+    .sort((a, b) => b.dailyVolume - a.dailyVolume);
+}
 const cheapestOf = (quotes) => (quotes && quotes.length ? quotes.reduce((a, b) => (b.price < a.price ? b : a)) : null);
 
 // Достоверность цифры: сколько РАЗНЫХ часов за период вообще шли сделки по предмету в городах продажи (не штук: одна оптовая
@@ -2227,7 +2237,7 @@ app.get('/api/unified-scan', (req, res) => {
       const tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
       return {
         kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
-        dailyVolume, marketDailyVolume, profitPerUnit, profitPct, dailyProfit,
+        dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, dailyProfit,
         quantity, batchProfit: adjusted.batchProfit, positionCost: quantity * cost,
         daysToAcquire, daysToSell, cycleDays, effectiveDays: adjusted.effectiveDays, cappedByMinDays: cycleDays < minDays,
         premiumDays: premiumPaybackDays(dailyProfit, 1),

@@ -28,7 +28,7 @@ async function runRefineScan() {
   refineScan.result.innerHTML = 'Считаю по данным кувшина: 5 типов × 7 тиров...';
   try {
     const params = new URLSearchParams({
-      mode: refineScan.mode.value, capital: refineScan.capital.value || '500000', minDays: refineScan.minDays.value || '1',
+      mode: refineScan.mode.value, capital: readGroupedNumber(refineScan.capital) || '500000', minDays: refineScan.minDays.value || '1',
       minDaily: refineScan.minDaily.value || '0', days: readCustomizable(refineScan.days),
       royalBonus: String(refineScan.royalBonus.checked), focus: String(refineScan.focus.checked),
       cities: activeCities().join(','), premium: premiumParam(),

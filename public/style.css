@@ -314,3 +314,4 @@ td.plan-check input { width: auto; }
 [hidden] { display: none !important; }
 .custom-value input.invalid { border-color: #ff6b6b; outline: none; }
 .city-bonus { color: #7ee787; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.city-prices .city-out { color: #7d8791; }

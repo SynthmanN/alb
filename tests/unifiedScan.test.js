@@ -242,5 +242,16 @@ describe('GET /api/unified-scan', () => {
     expect(res.blackMarket).toBe(false);
     expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD').sellCities).toEqual([CITY]);
   });
+
+  it('разбивка оборота по городам: список городов с оборотом и пометкой «в расчёте / вне расчёта»', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 60, city: 'Martlock' });
+    seedSales('T4_MAIN_SWORD', { avg: 2000, perDay: 300, city: 'Thetford' });      // убыточный город — вне расчёта, но оборот виден
+    const row = (await scan({ mode: 'patient', cities: 'Martlock,Thetford' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(row.byCity.map((c) => c.city)).toEqual(['Thetford', 'Martlock']);          // по убыванию оборота
+    expect(row.byCity.find((c) => c.city === 'Martlock')).toMatchObject({ inPlan: true });
+    expect(row.byCity.find((c) => c.city === 'Thetford')).toMatchObject({ inPlan: false });
+    expect(row.byCity.find((c) => c.city === 'Thetford').dailyVolume).toBeCloseTo(1800 / 7, 6);
+    expect(row.dailyVolume).toBeCloseTo(360 / 7, 6);                                   // в сумме — только город в расчёте
+  });
 });
 

@@ -684,3 +684,41 @@ test('«в калькулятор» у строки, найденной чере
   expect(calcQuery.get('blackMarket')).toBe('true');
   await expect(page.locator('#craft-black-market')).toBeChecked();
 });
+
+
+test('скан: капитал вводится с разделителями разрядов («1 000 000»), уходит на сервер цифрами; оборот раскрывается списком городов; «часов в день» пересчитывает профит/час без запроса', async ({ page }) => {
+  let requests = 0;
+  let scanQuery = null;
+  await page.route('**/api/unified-scan*', (route) => {
+    requests++;
+    scanQuery = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 1000000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 5,
+      enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { royalBonus: true, focus: false },
+      jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
+      { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 1000, avgSellPrice: 1300, dailyVolume: 80, marketDailyVolume: 380, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 250, profitPct: 25, dailyProfit: 100000, premiumDays: 280, quantity: 1000, positionCost: 1000000, daysToAcquire: 1, daysToSell: 3, cycleDays: 4, effectiveDays: 4, cappedByMinDays: false, freshMinutes: 5, rankScore: 100000, tradeHours: 90, confidence: 90 / 110,
+        byCity: [{ city: 'Thetford', dailyVolume: 300, avgPrice: 900, inPlan: false }, { city: 'Martlock', dailyVolume: 50, avgPrice: 1300, inPlan: true }, { city: 'Lymhurst', dailyVolume: 30, avgPrice: 1290, inPlan: true }] },
+    ] } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  const capital = page.locator('#margin-capital');
+  await expect(capital).toHaveValue(/^500\s000$/);                                   // по умолчанию — с разделителем
+  await capital.fill('');
+  await capital.pressSequentially('1234567');
+  await expect(capital).toHaveValue(/^1\s234\s567$/);
+  await capital.fill('1000000');
+  await capital.dispatchEvent('input');
+  await expect(capital).toHaveValue(/^1\s000\s000$/);
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
+  expect(scanQuery.get('capital')).toBe('1000000');                                  // на сервер — чистые цифры
+  await expect(page.locator('#margin-result details.city-prices summary')).toContainText('80');
+  await page.locator('#margin-result details.city-prices summary').click();
+  await expect(page.locator('#margin-result details.city-prices li').first()).toContainText('Thetford: 300');
+  await expect(page.locator('#margin-result details.city-prices li').first()).toContainText('вне расчёта');
+  const perHour = page.locator('#margin-result tbody td[title*="ч в день"]');
+  await expect(perHour).toContainText('50');                                         // 100 000 ÷ 2 ч
+  await page.locator('#margin-hours-per-day').fill('4');
+  await expect(perHour).toContainText('25');                                         // 100 000 ÷ 4 ч, без нового запроса
+  expect(requests).toBe(1);
+});

@@ -326,6 +326,34 @@ function readCustomizable(select) {
 }
 document.querySelectorAll('select[data-custom]').forEach(makeCustomizable);
 
+// Поле суммы с разделителями разрядов: «1 000 000» вместо «1000000» — не приходится считать нули. Включается атрибутом data-grouped.
+// Вводить можно только цифры (пробелы и мусор отбрасываются), курсор остаётся на месте; читать — readGroupedNumber(input) → строка цифр.
+function formatGrouped(digits) {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+}
+function readGroupedNumber(input) {
+  return String(input.value).replace(/\D/g, '');
+}
+function makeGroupedInput(input) {
+  if (input.dataset.groupedReady) return;
+  input.dataset.groupedReady = '1';
+  input.type = 'text';
+  input.inputMode = 'numeric';
+  input.autocomplete = 'off';
+  const render = (digits) => { input.value = formatGrouped(digits); };
+  render(readGroupedNumber(input));
+  input.addEventListener('input', () => {
+    // курсор считаем по числу цифр слева от него: пробелы при переформатировании сдвигают позицию
+    const before = input.value.slice(0, input.selectionStart ?? input.value.length).replace(/\D/g, '').length;
+    render(readGroupedNumber(input));
+    let pos = 0;
+    let seen = 0;
+    while (pos < input.value.length && seen < before) { if (/\d/.test(input.value[pos])) seen++; pos++; }
+    try { input.setSelectionRange(pos, pos); } catch (e) { /* поле без выделения */ }
+  });
+}
+document.querySelectorAll('input[data-grouped]').forEach(makeGroupedInput);
+
 // Стилизованные замены нативным alert()/confirm(): не выбиваются из общего стиля и не блокируют страницу.
 function showToast(message, kind = 'info') {
   let box = document.getElementById('toast-box');
