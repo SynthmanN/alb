@@ -82,6 +82,9 @@ async function runCraftCalc() {
       premium: premiumParam(),
     });
     if (document.getElementById('craft-teleport').checked) params.set('teleport', 'true');
+    if (document.getElementById('craft-enchant-after').checked) params.set('enchantAfterCraft', 'true');
+    const threshold = document.getElementById('craft-sell-threshold').value;
+    if (threshold) params.set('sellThreshold', threshold);
     const res = await fetch(`/api/craft-calc?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -140,6 +143,7 @@ function renderCraftResult(data) {
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
+    ${enchantAfterHtml(data)}
     ${patientSellHtml(data)}
     ${teleportHtml(data)}
   `;
@@ -148,6 +152,44 @@ function renderCraftResult(data) {
   wireTableSort(craftTables[1], 'craft-sell');
 }
 
+
+// Порог продажи: все города, где терпеливая цена не ниже порога, — партию можно развезти по нескольким рынкам.
+function thresholdHtml(p) {
+  const t = p.threshold;
+  if (!t) return '';
+  if (t.cities.length === 0) {
+    return `<div class="craft-summary-row"><span>Города с ценой не ниже ${fmtNum(t.value)}</span><span>нет ни одного</span></div>`;
+  }
+  const list = t.cities.map((c) => `${c.city}: ${fmtNum(c.avgPrice)} (${fmtNum(c.avgDailyVolume, 1)}/день)`).join('; ');
+  const slow = t.daysToSellBatch !== null && t.daysToSellBatch > 30;
+  return `
+    <div class="craft-summary-row"><span>Города с ценой не ниже ${fmtNum(t.value)}</span><span>${list}</span></div>
+    <div class="craft-summary-row"><span>Суммарный спрос: ${fmtNum(t.totalDailyVolume, 1)} в день → дней на распродажу партии</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(t.daysToSellBatch)}${slow ? ' ⚠' : ''}</span></div>`;
+}
+
+// «Зачаровать после крафта»: откуда берём базу .0 и сколько стоят руны/души/реликвии по шагам.
+function enchantAfterHtml(data) {
+  const e = data.enchantAfterCraft;
+  if (!e) return '';
+  const base = e.baseSource === 'buy'
+    ? `покупка дешевле крафта: ${e.baseBuy.city}, ${fmtNum(e.baseBuy.price)}`
+    : `крафт из материалов: ${fmtNum(e.baseCraftCostPerUnit)}`;
+  const rows = e.steps.map((st) => `
+    <tr><td>.${st.level - 1} → .${st.level}</td><td>${st.materialName}</td><td>${fmtNum(st.count)}</td>
+    <td>${st.cheapestCity ? `${st.cheapestCity}: ${fmtNum(st.cheapestPrice)}` : 'нет цены'}</td><td>${st.cost !== null ? fmtNum(st.cost) : '—'}</td></tr>`).join('');
+  return `
+    <div class="craft-summary enchant-after">
+      <div class="craft-summary-row"><strong>Зачарование после крафта: до .${e.targetLevel}</strong><span></span></div>
+      ${e.capped ? '<div class="craft-summary-row"><span class="scan-stale">⚠ Зачарование .4 (Awakening) не поддерживается — посчитано до .3</span><span></span></div>' : ''}
+      <div class="craft-summary-row"><span>База .0 / шт</span><span>${base}</span></div>
+      <div class="table-scroll"><table class="craft-recipe-table">
+        <thead><tr><th>Шаг</th><th>Материал</th><th>Штук на 1 вещь</th><th>Где дешевле</th><th>Стоимость</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div class="craft-summary-row"><span>Зачарование / шт</span><span>${fmtNum(e.stepsCostPerUnit)}</span></div>
+      <div class="craft-summary-row"><strong>Итого себестоимость с зачарованием / шт</strong><strong>${fmtNum(data.effectiveCostPerUnit)}</strong></div>
+    </div>`;
+}
 
 // Логистика по телепорту: где собирать, откуда везти материалы, куда везти готовый предмет и как это меняет профит.
 function teleportHtml(data) {
@@ -198,6 +240,7 @@ function patientSellHtml(data) {
       <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(p.netSellPrice)}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(p.profitPerUnit)}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${fmtNum(data.quantity)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
+      ${thresholdHtml(p)}
     </div>`;
 }
 

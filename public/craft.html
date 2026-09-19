@@ -43,6 +43,11 @@
         </label>
         <label class="craft-field">Возврат ресурсов<select id="craft-rrr"></select></label>
         <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
+        <label class="craft-field craft-check" title="Крафтим (или покупаем, если дешевле) базовый предмет .0, дальше поднимаем зачарование рунами/душами/реликвиями до выбранного уровня. Без галочки — крафт сразу из зачарованных материалов">
+          <span>Зачарование</span>
+          <span class="check-inline"><input id="craft-enchant-after" type="checkbox" /> Зачаровать после крафта</span>
+        </label>
+        <label class="craft-field" title="Терпеливая продажа: показать все города, где средняя цена не ниже порога, с суммарным спросом. Для больших партий, которые один город не переварит">Порог продажи<input id="craft-sell-threshold" type="number" min="0" placeholder="нет" /></label>
         <label class="craft-field craft-check" title="Материалы покупаются в разных городах и едут в город сборки, готовый предмет — в город продажи. Считается по весу и дистанции (кольцо из 5 городов, Бресильен ×2, Каэрлеон исключён)">
           <span>Логистика</span>
           <span class="check-inline"><input id="craft-teleport" type="checkbox" /> Учитывать телепорт</span>

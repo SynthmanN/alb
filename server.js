@@ -408,13 +408,28 @@ app.get('/api/craft-calc', async (req, res) => {
     const rrr = rrrFromBonus(preset.bonus);
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
 
-    const recipe = RECIPES[itemId];
-    const resourceQueryIds = recipe.resources.map((r) => effectiveRecipeResourceId(r.resource, enchant));
-    const finishedQueryId = enchant > 0 ? `${itemId}@${enchant}` : itemId;
+    // «Зачаровать после крафта»: делаем (или покупаем, если дешевле) базовый предмет .0 и поднимаем зачарование
+    // рунами/душами/реликвиями до целевого уровня — так работает схема «чарю, а не крафчу сразу зачарованное».
+    // Зачарование .4 (Awakening) не поддерживается: считаем до .3 и помечаем enchantCapped, чтобы цена продажи
+    // не оказалась на .4 при стоимости материалов только до .3.
+    const enchantAfterRequested = req.query.enchantAfterCraft === 'true' && enchant > 0;
+    const targetEnchant = enchantAfterRequested ? Math.min(enchant, 3) : enchant;
+    const enchantCapped = enchantAfterRequested && enchant > 3;
+    const recipeEnchant = enchantAfterRequested ? 0 : enchant;
+    const sellThreshold = parseFloat(req.query.sellThreshold) > 0 ? parseFloat(req.query.sellThreshold) : null;
+    const itemSlot = ITEM_SLOT_BY_ID.get(itemId);
+    const itemTier = ITEM_TIER_BY_ID.get(itemId);
+    const enchantStepIds = enchantAfterRequested && ENCHANT_MATERIAL_COUNT[itemSlot]
+      ? Array.from({ length: targetEnchant }, (_, i) => enchantMaterialId(itemTier, i + 1)) : [];
 
-    const materialIds = [...new Set(resourceQueryIds)];
+    const recipe = RECIPES[itemId];
+    const resourceQueryIds = recipe.resources.map((r) => effectiveRecipeResourceId(r.resource, recipeEnchant));
+    const finishedQueryId = targetEnchant > 0 ? `${itemId}@${targetEnchant}` : itemId;
+
+    const materialIds = [...new Set([...resourceQueryIds, ...enchantStepIds])];
     const materialData = await fetchPricesBatched(materialIds, 1);
     const finishedData = await fetchPricesBatched([finishedQueryId], quality);
+    const baseData = enchantAfterRequested ? await fetchPricesBatched([itemId], quality) : [];
 
     const materialByCity = {};
     for (const rec of materialData) {
@@ -430,7 +445,7 @@ app.get('/api/craft-calc', async (req, res) => {
     let materialCostPerUnit = 0;
     let hasAllPrices = true;
     const recipeBreakdown = recipe.resources.map((r) => {
-      const queryId = effectiveRecipeResourceId(r.resource, enchant);
+      const queryId = effectiveRecipeResourceId(r.resource, recipeEnchant);
       const isEnchanted = queryId !== r.resource;
       const cityPrices = materialByCity[queryId] || {};
       let cheapest = null;
@@ -454,7 +469,44 @@ app.get('/api/craft-calc', async (req, res) => {
       };
     });
 
-    const effectiveCostPerUnit = materialCostPerUnit * (1 - rrr) + (recipe.silver || 0);
+    const craftCostPerUnit = hasAllPrices ? materialCostPerUnit * (1 - rrr) + (recipe.silver || 0) : null;
+    let effectiveCostPerUnit = materialCostPerUnit * (1 - rrr) + (recipe.silver || 0);
+
+    let enchantAfterCraft = null;
+    let baseBuyByCity = {};
+    if (enchantAfterRequested) {
+      // База .0: крафтим сами или покупаем готовую — берём дешевле (без жёсткого порога вроде «дороже 2к — крафчу»).
+      let baseBuy = null;
+      for (const rec of baseData) {
+        if (!queryCities.includes(rec.city) || !rec.sell_price_min) continue;
+        baseBuyByCity[rec.city] = rec.sell_price_min;
+        if (!baseBuy || rec.sell_price_min < baseBuy.price) baseBuy = { city: rec.city, price: rec.sell_price_min };
+      }
+      const baseSource = baseBuy && (craftCostPerUnit === null || baseBuy.price < craftCostPerUnit) ? 'buy' : 'craft';
+      const baseCostPerUnit = baseSource === 'buy' ? baseBuy.price : craftCostPerUnit;
+      const perUnitCount = ENCHANT_MATERIAL_COUNT[itemSlot];
+      let stepsAllPriced = perUnitCount !== undefined;
+      const steps = enchantStepIds.map((materialId, i) => {
+        let cheapest = null;
+        for (const city of queryCities) {
+          const price = materialByCity[materialId]?.[city]?.sell_price_min;
+          if (price && (!cheapest || price < cheapest.price)) cheapest = { city, price };
+        }
+        if (!cheapest) stepsAllPriced = false;
+        return {
+          level: i + 1, materialId, materialName: resolveItemName(materialId), count: perUnitCount,
+          cheapestCity: cheapest ? cheapest.city : null, cheapestPrice: cheapest ? cheapest.price : null,
+          cost: cheapest ? cheapest.price * perUnitCount : null,
+        };
+      });
+      const stepsCostPerUnit = steps.reduce((sum, st) => sum + (st.cost || 0), 0);
+      hasAllPrices = baseCostPerUnit !== null && stepsAllPriced;
+      effectiveCostPerUnit = (baseCostPerUnit || 0) + stepsCostPerUnit;
+      enchantAfterCraft = {
+        targetLevel: targetEnchant, capped: enchantCapped, baseSource, baseBuy, baseCraftCostPerUnit: craftCostPerUnit,
+        baseCostPerUnit, steps, stepsCostPerUnit,
+      };
+    }
     const finishedCityData = finishedByCity[finishedQueryId] || {};
     const sellPrices = queryCities.map((city) => {
       const rec = finishedCityData[city];
@@ -476,6 +528,7 @@ app.get('/api/craft-calc', async (req, res) => {
       const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
       const history = await fetchHistoryBatched([finishedQueryId], days * 24, quality, locations);
       patientSell = computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities });
+      if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity);
     } catch (err) {
       console.error('не удалось загрузить историю для терпеливой продажи:', err.message);
     }
@@ -485,8 +538,8 @@ app.get('/api/craft-calc', async (req, res) => {
     let teleport = null;
     if (req.query.teleport === 'true') {
       const travelCities = queryCities.filter((c) => normLocation(c) !== 'caerleon');
-      const materials = recipe.resources.map((r) => {
-        const queryId = effectiveRecipeResourceId(r.resource, enchant);
+      let materials = recipe.resources.map((r) => {
+        const queryId = effectiveRecipeResourceId(r.resource, recipeEnchant);
         const priceByCity = {};
         for (const city of travelCities) {
           const price = materialByCity[queryId]?.[city]?.sell_price_min;
@@ -497,6 +550,21 @@ app.get('/api/craft-calc', async (req, res) => {
           needed: Math.ceil(r.count * quantity * (1 - rrr)),
         };
       });
+      if (enchantAfterCraft) {
+        // Схема «чарю»: если базу купили — везём саму вещь, а не сырьё рецепта; руны/души — из своих дешёвых городов.
+        if (enchantAfterCraft.baseSource === 'buy') {
+          const priceByCity = Object.fromEntries(Object.entries(baseBuyByCity).filter(([c]) => travelCities.includes(c)));
+          materials = [{ resource: itemId, resourceName: resolveItemName(itemId), priceByCity, needed: quantity }];
+        }
+        for (const st of enchantAfterCraft.steps) {
+          const priceByCity = {};
+          for (const city of travelCities) {
+            const price = materialByCity[st.materialId]?.[city]?.sell_price_min;
+            if (price) priceByCity[city] = price;
+          }
+          materials.push({ resource: st.materialId, resourceName: st.materialName, priceByCity, needed: st.count * quantity });
+        }
+      }
       const instantByCity = {};
       for (const sp of sellPrices) if (sp.buyMax && travelCities.includes(sp.city)) instantByCity[sp.city] = sp.buyMax;
       const patientByCity = patientSell
@@ -522,6 +590,7 @@ app.get('/api/craft-calc', async (req, res) => {
       netSellPrice,
       profitPerUnit,
       patientSell,
+      enchantAfterCraft,
       teleport,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
     });
@@ -1072,6 +1141,19 @@ function planCraftTeleport({ materials, finished, homes, taxRate, silverPerUnit 
     if (!best || score(candidate) > score(best)) best = candidate;
   }
   return best;
+}
+
+// Порог терпеливой продажи: вместо одного лучшего города — все города, где средняя цена не ниже порога
+// (при крупных партиях один город не переварит объём без обвала цены). Показываем суммарный спрос и срок.
+function computeSellThreshold(cities, threshold, quantity) {
+  const above = cities.filter((c) => c.avgPrice >= threshold).sort((a, b) => b.avgPrice - a.avgPrice);
+  const totalDailyVolume = above.reduce((sum, c) => sum + c.avgDailyVolume, 0);
+  return {
+    value: threshold,
+    cities: above,
+    totalDailyVolume,
+    daysToSellBatch: totalDailyVolume > 0 ? quantity / totalDailyVolume : null,
+  };
 }
 
 // Чистый расчёт плана партии по уже загруженной истории — общий для одиночного плана и сканера,
@@ -1748,6 +1830,7 @@ module.exports = {
   cityStats,
   computeBulkPlan,
   computePatientSell,
+  computeSellThreshold,
   teleportDistance,
   teleportStackCost,
   planCraftTeleport,

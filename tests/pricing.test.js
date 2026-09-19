@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -360,5 +360,24 @@ describe('стоимость телепорта', () => {
       finished, homes: ['Martlock'], taxRate: 0.08,
     });
     expect(plan).toBeNull();
+  });
+});
+
+describe('порог терпеливой продажи', () => {
+  const cities = [
+    { city: 'Martlock', avgPrice: 120000, avgDailyVolume: 2 },
+    { city: 'Lymhurst', avgPrice: 100000, avgDailyVolume: 10 },
+    { city: 'Thetford', avgPrice: 115000, avgDailyVolume: 3 },
+  ];
+  it('берёт только города не ниже порога, по убыванию цены, спрос суммируется', () => {
+    const t = computeSellThreshold(cities, 110000, 100);
+    expect(t.cities.map((c) => c.city)).toEqual(['Martlock', 'Thetford']);
+    expect(t.totalDailyVolume).toBe(5);
+    expect(t.daysToSellBatch).toBeCloseTo(20, 6); // 100 шт при 5 в день
+  });
+  it('нет городов выше порога — пусто и без срока', () => {
+    const t = computeSellThreshold(cities, 999999, 100);
+    expect(t.cities).toEqual([]);
+    expect(t.daysToSellBatch).toBeNull();
   });
 });

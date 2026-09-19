@@ -107,3 +107,32 @@ test('телепорт: галочка добавляет параметр в з
   await expect(page.locator('#craft-result .teleport-plan')).toContainText('30 600');
   expect(query.get('teleport')).toBe('true');
 });
+
+test('зачарование после крафта и порог продажи: параметры уходят в запрос, блоки показываются', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/craft-calc*', (route) => {
+    query = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: {
+      itemId: 'T4_CAPEITEM_AVALON', enchant: 2, quality: 1, quantity: 5000, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+      cities: ['Brecilien'], hasAllMaterialPrices: true, materialCostPerUnit: 90000, effectiveCostPerUnit: 106903, totalCost: 534515000,
+      recipe: [], sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null,
+      patientSell: { days: 7, avgSellPrice: 121070, bestCity: { city: 'Fort Sterling', avgPrice: 125000 }, avgDailyVolume: 5, daysToSellBatch: 1000, netSellPrice: 111384, profitPerUnit: 4481,
+        threshold: { value: 110000, cities: [{ city: 'Fort Sterling', avgPrice: 125000, avgDailyVolume: 1.6 }, { city: 'Martlock', avgPrice: 118000, avgDailyVolume: 1 }], totalDailyVolume: 2.6, daysToSellBatch: 1923 } },
+      enchantAfterCraft: { targetLevel: 2, capped: false, baseSource: 'buy', baseBuy: { city: 'Brecilien', price: 99991 }, baseCraftCostPerUnit: 120000, baseCostPerUnit: 99991, stepsCostPerUnit: 6912,
+        steps: [{ level: 1, materialId: 'T4_RUNE', materialName: 'Руна (знаток)', count: 96, cheapestCity: 'Brecilien', cheapestPrice: 5, cost: 480 }, { level: 2, materialId: 'T4_SOUL', materialName: 'Душа (знаток)', count: 96, cheapestCity: 'Brecilien', cheapestPrice: 67, cost: 6432 }] },
+      teleport: null,
+    } });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('авалонский плащ');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-enchant').selectOption('2');
+  await page.locator('#craft-enchant-after').check();
+  await page.locator('#craft-sell-threshold').fill('110000');
+  await page.locator('#craft-run').click();
+  await expect(page.locator('#craft-result .enchant-after')).toContainText('Руна (знаток)');
+  await expect(page.locator('#craft-result .enchant-after')).toContainText('покупка дешевле крафта');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('Города с ценой не ниже 110 000');
+  expect(query.get('enchantAfterCraft')).toBe('true');
+  expect(query.get('sellThreshold')).toBe('110000');
+});

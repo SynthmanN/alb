@@ -204,3 +204,27 @@ describe('охотничьи плащи', () => {
     expect(res.body.variants.length).toBeGreaterThan(0);
   });
 });
+
+describe('калькулятор крафта: зачарование после крафта', () => {
+  const get = (q) => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&${q}`);
+  it('шаги зачарования: руна и душа, по 288 на вещь для одноручного, себестоимость = база + материалы', async () => {
+    const d = (await get('enchant=2&enchantAfterCraft=true')).body;
+    const e = d.enchantAfterCraft;
+    expect(e.targetLevel).toBe(2);
+    expect(e.capped).toBe(false);
+    expect(e.steps.map((st) => st.materialId)).toEqual(['T4_RUNE', 'T4_SOUL']);
+    expect(e.steps.every((st) => st.count === 288)).toBe(true);
+    expect(e.stepsCostPerUnit).toBeCloseTo(e.steps.reduce((sum, st) => sum + st.cheapestPrice * 288, 0), 6);
+    expect(d.effectiveCostPerUnit).toBeCloseTo(e.baseCostPerUnit + e.stepsCostPerUnit, 6);
+    expect(['craft', 'buy']).toContain(e.baseSource);
+  });
+  it('.4 не поддерживается: считаем до .3 и помечаем capped', async () => {
+    const e = (await get('enchant=4&enchantAfterCraft=true')).body.enchantAfterCraft;
+    expect(e.capped).toBe(true);
+    expect(e.targetLevel).toBe(3);
+    expect(e.steps).toHaveLength(3);
+  });
+  it('без галочки блока зачарования нет', async () => {
+    expect((await get('enchant=2')).body.enchantAfterCraft).toBeNull();
+  });
+});
