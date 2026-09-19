@@ -165,22 +165,21 @@ describe('GET /api/unified-scan', () => {
     expect(row.sellCities).toEqual([CITY]);
   });
 
-  it('.4 по умолчанию не ищется, но это явный выбор: с includeAwakened строка .4 появляется, диапазон сообщается в ответе', async () => {
+  it('.4 — обычная, просто более дорогая комбинация: всегда в общем переборе наравне с .0–.3, отдельной галочки нет', async () => {
     seedMaterial('T4_METALBAR_LEVEL4@4', 100);
     seedMaterial('T4_LEATHER_LEVEL4@4', 100);
     seedSales('T4_MAIN_SWORD@4', { avg: 20000, perDay: 30 });
-    const off = await scan({ mode: 'patient' });
-    expect(off.enchantRange).toBe('.0–.3');
-    expect(off.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
-    const on = await scan({ mode: 'patient', includeAwakened: 'true' });
-    expect(on.enchantRange).toBe('.0–.4');
-    expect(on.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toMatchObject({ enchant: 4 });
+    const res = await scan({ mode: 'patient' });
+    expect(res.enchantRange).toBe('.0–.4');
+    expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toMatchObject({ enchant: 4 });
+    expect(res).not.toHaveProperty('includeAwakened');
   });
 
-  it('.4 не берётся при «зачаровать после крафта»: рунами .4 не получить', async () => {
+  it('.4 не берётся при «зачаровать после крафта»: рунами .4 не получить, диапазон .0–.3', async () => {
     seedMaterial('T4_RUNE', 100); seedMaterial('T4_SOUL', 100); seedMaterial('T4_RELIC', 100);
     seedSales('T4_MAIN_SWORD@4', { avg: 90000, perDay: 30 });
-    const res = await scan({ mode: 'patient', includeAwakened: 'true', enchantMode: 'after' });
+    const res = await scan({ mode: 'patient', enchantMode: 'after' });
+    expect(res.enchantRange).toBe('.0–.3');
     expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
   });
 
@@ -239,12 +238,20 @@ describe('GET /api/unified-scan', () => {
     expect(row.sellCities).toEqual([CITY]);
   });
 
-  it('в терпеливом режиме Чёрный Рынок игнорируется даже с флагом (терпеливой модели у него нет)', async () => {
-    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
-    seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 40, buyOrder: 9000, city: 'Black Market' });
-    const res = await scan({ mode: 'patient', cities: 'Martlock', blackMarket: 'true' });
-    expect(res.blackMarket).toBe(false);
-    expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD').sellCities).toEqual([CITY]);
+  it('Чёрный Рынок и в терпеливом режиме: по средней цене сделок ЧР, налог свой (10.5%), без второго сбора за размещение; строка помечена', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });                                        // Martlock: 4000 × (1 − 0.08 − 0.025) − 2400 = 1180
+    seedSales('T4_MAIN_SWORD', { avg: 4600, perDay: 40, city: 'Black Market' });                  // ЧР: 4600 × (1 − 0.105) − 2400 = 1717
+    const without = (await scan({ mode: 'patient', cities: 'Martlock' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(without.sellCities).toEqual([CITY]);
+    expect(without.blackMarket).toBe(false);
+    const withBm = await scan({ mode: 'patient', cities: 'Martlock', blackMarket: 'true', liquidity: 'best' });
+    const best = withBm.results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(best).toMatchObject({ blackMarket: true, sellCities: ['Black Market'] });
+    expect(best.profitPerUnit).toBeCloseTo(4600 * 0.895 - 2400, 6);
+    expect(best.sellTaxRate).toBeCloseTo(0.105, 9);
+    const summed = (await scan({ mode: 'patient', cities: 'Martlock', blackMarket: 'true', liquidity: 'sum' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(summed.sellCities.sort()).toEqual(['Black Market', 'Martlock']);
+    expect(summed.profitPerUnit).toBeCloseTo((1180 + 1717) / 2, 6);                                // города одинакового оборота: чистая цена — по налогу каждого
   });
 
   it('разбивка оборота по городам: список городов с оборотом и пометкой «в расчёте / вне расчёта»', async () => {

@@ -233,7 +233,7 @@ test('скан маржи и ликвидности: параметры в за�
   await page.route('**/api/unified-scan*', (route) => {
     scanQuery = new URL(route.request().url()).searchParams;
     route.fulfill({ json: { mode: 'patient', includeMaterials: false, enchantMode: 'after', liquidity: 'best', days: 7, capital: 500000, minDays: 1, quantity: 1000, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 2365,
-      enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
+      enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
       jug: { lastPricePass: Date.now() - 120000, lastHistoryPass: Date.now() - 300000, lastFullPass: null, oldestPriceAgeMinutes: 5 }, results: [
       { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 2, quality: 4, tier: 4, cost: 40000, avgSellPrice: 60000, dailyVolume: 12.5, yourDailyVolume: 3.1, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 47000, premiumDays: 147, daysToAcquire: 2, daysToSell: 8, totalDays: 10, cycleDays: 10, effectiveDays: 10, cappedByMinDays: false, positionCost: 500000, quantity: 1000, freshMinutes: 12, rankScore: 47000, tradeHours: 6, confidence: 6 / 26 },
       { kind: 'gear', itemId: 'T4_CAPE', enchant: 0, quality: 1, tier: 4, cost: 2700, avgSellPrice: 22000, dailyVolume: 300, yourDailyVolume: 75, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 17000, profitPct: 600, dailyProfit: 1275000, premiumDays: 22, daysToAcquire: 1, daysToSell: 13, totalDays: 14, cycleDays: 14, effectiveDays: 14, cappedByMinDays: false, positionCost: 500000, quantity: 1000, freshMinutes: 30, rankScore: 900000, tradeHours: 300, confidence: 300 / 320 },
@@ -264,7 +264,7 @@ test('скан маржи: капитал и минимум дней вмест�
   await page.route('**/api/unified-scan*', (route) => {
     scanQuery = new URL(route.request().url()).searchParams;
     route.fulfill({ json: { mode: 'instant', enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 500000, minDays: 1, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 40,
-      enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
+      enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
       jug: { lastPricePass: Date.now() - 60000, lastHistoryPass: null, lastFullPass: null, oldestPriceAgeMinutes: 1 }, results: [
       { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 900, avgSellPrice: 1300, dailyVolume: 400, yourDailyVolume: 100, sellCities: ['Martlock'], profitPerUnit: 250, profitPct: 28, dailyProfit: 25000, premiumDays: 1120, daysToAcquire: null, daysToSell: null, totalDays: null, cycleDays: 1, effectiveDays: 1, cappedByMinDays: true, positionCost: 500000, quantity: 400, freshMinutes: 20, rankScore: 25000, tradeHours: 80, confidence: 0.8 },
     ] } });
@@ -553,12 +553,12 @@ test('стратегия распределения: по умолчанию м�
 
 
 
-test('честность скана: «Искать и .4» и возврат уходят в запрос, диапазон и индекс доверия видны в таблице (шаткая цифра — оранжевая)', async ({ page }) => {
+test('честность скана: возврат уходит в запрос, диапазон и индекс доверия видны в таблице (шаткая цифра — оранжевая)', async ({ page }) => {
   let scanQuery = null;
   await page.route('**/api/unified-scan*', (route) => {
     scanQuery = new URL(route.request().url()).searchParams;
     route.fulfill({ json: { mode: 'patient', includeMaterials: false, enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 500000, minDays: 1, quantity: 1000, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 10,
-      enchantRange: '.0–.4', includeAwakened: true, rrrOptions: { gearRate: 0.479, gearRrr: 'city_bonus_focus', gearRrrCustom: null },
+      enchantRange: '.0–.4', rrrOptions: { gearRate: 0.479, gearRrr: 'city_bonus_focus', gearRrrCustom: null },
       jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
       { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 4, quality: 1, tier: 4, cost: 40000, avgSellPrice: 60000, dailyVolume: 12, yourDailyVolume: 3, sellCities: ['Martlock'], profitPerUnit: 15000, profitPct: 38, dailyProfit: 45000, premiumDays: 150, daysToAcquire: 2, daysToSell: 8, totalDays: 10, cycleDays: 10, effectiveDays: 10, cappedByMinDays: false, positionCost: 500000, quantity: 1000, freshMinutes: 12, rankScore: 45000, tradeHours: 3, confidence: 3 / 23 },
       { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: 2400, avgSellPrice: 4000, dailyVolume: 300, yourDailyVolume: 75, sellCities: ['Martlock'], profitPerUnit: 1100, profitPct: 45, dailyProfit: 82000, premiumDays: 300, daysToAcquire: 1, daysToSell: 13, totalDays: 14, cycleDays: 14, effectiveDays: 14, cappedByMinDays: false, positionCost: 500000, quantity: 1000, freshMinutes: 30, rankScore: 80000, tradeHours: 300, confidence: 300 / 320 },
@@ -566,11 +566,10 @@ test('честность скана: «Искать и .4» и возврат у
   });
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
-  await page.locator('#margin-include-awakened').check();
   await page.locator('#margin-gear-rrr').selectOption('city_bonus_focus');
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
-  expect(scanQuery.get('includeAwakened')).toBe('true');
+  await expect(page.locator('#margin-include-awakened')).toHaveCount(0);               // отдельной галочки .4 нет: .4 всегда в переборе
   expect(scanQuery.get('gearRrr')).toBe('city_bonus_focus');
   await expect(page.locator('#margin-result')).toContainText('проверенный диапазон зачарования: .0–.4');
   await expect(page.locator('#margin-result')).toContainText('Возврат при крафте: 47.9%');
@@ -624,21 +623,21 @@ test('возврат при крафте гира: список ставок (24
 });
 
 
-test('Чёрный Рынок в скане: галочка видна только в мгновенном режиме, уходит в запрос, строка ЧР помечена ⚫ с налогом', async ({ page }) => {
+test('Чёрный Рынок в скане: галочка есть в обоих режимах, уходит в запрос, строка ЧР помечена ⚫ с налогом', async ({ page }) => {
   let scanQuery = null;
   await page.route('**/api/unified-scan*', (route) => {
     scanQuery = new URL(route.request().url()).searchParams;
     route.fulfill({ json: { mode: 'instant', includeMaterials: false, enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 500000, minDays: 1, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 5,
-      blackMarket: true, bmTaxRate: 0.105, enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
+      blackMarket: true, bmTaxRate: 0.105, enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
       jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
       { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: 2400, avgSellPrice: 4300, sellCities: ['Black Market'], blackMarket: true, sellTaxRate: 0.105, dailyVolume: 40, yourDailyVolume: 10, profitPerUnit: 1448, profitPct: 60, dailyProfit: 14480, premiumDays: 1900, daysToAcquire: null, daysToSell: null, totalDays: null, cycleDays: 1, effectiveDays: 1, cappedByMinDays: true, positionCost: 500000, quantity: 400, freshMinutes: 5, rankScore: 14000, tradeHours: 100, confidence: 100 / 120 },
     ] } });
   });
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
-  await expect(page.locator('#margin-black-market')).toBeHidden();                 // по умолчанию терпеливо — ЧР недоступен
+  await expect(page.locator('#margin-black-market')).toBeVisible();                // терпеливо (по умолчанию): ЧР — по средней цене его сделок
   await page.locator('#margin-mode').selectOption('instant');
-  await expect(page.locator('#margin-black-market')).toBeVisible();
+  await expect(page.locator('#margin-black-market')).toBeVisible();                // мгновенно: в его Buy Order
   await page.locator('#margin-black-market').check();
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
@@ -682,7 +681,7 @@ test('своё время вписывается с единицей: 12ч / 2д
 test('«в калькулятор» у строки, найденной через Чёрный Рынок, сам включает ЧР в калькуляторе — иначе профита там не видно', async ({ page }) => {
   let calcQuery = null;
   await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'instant', includeMaterials: false, enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 500000, minDays: 1, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 3,
-    blackMarket: true, bmTaxRate: 0.105, enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
+    blackMarket: true, bmTaxRate: 0.105, enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
     jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
     { kind: 'gear', itemId: 'T4_CAPEITEM_AVALON', enchant: 0, quality: 2, tier: 4, cost: 72786, avgSellPrice: 161000, sellCities: ['Black Market'], blackMarket: true, sellTaxRate: 0.105, dailyVolume: 9, yourDailyVolume: 2, profitPerUnit: 8621, profitPct: 11.8, dailyProfit: 138793, premiumDays: 200, daysToAcquire: null, daysToSell: null, totalDays: null, cycleDays: 1, effectiveDays: 1, cappedByMinDays: true, positionCost: 500000, quantity: 400, freshMinutes: 5, rankScore: 138000, tradeHours: 40, confidence: 40 / 60 },
   ] } }));
@@ -706,7 +705,7 @@ test('скан: капитал вводится с разделителями р
     requests++;
     scanQuery = new URL(route.request().url()).searchParams;
     route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 1000000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 5,
-      enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
+      enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
       jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
       { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 1000, avgSellPrice: 1300, dailyVolume: 80, marketDailyVolume: 380, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 250, profitPct: 25, dailyProfit: 100000, premiumDays: 280, quantity: 1000, positionCost: 1000000, daysToAcquire: 1, daysToSell: 3, cycleDays: 4, effectiveDays: 4, cappedByMinDays: false, freshMinutes: 5, rankScore: 100000, tradeHours: 90, confidence: 90 / 110,
         byCity: [{ city: 'Thetford', dailyVolume: 300, avgPrice: 900, inPlan: false }, { city: 'Martlock', dailyVolume: 50, avgPrice: 1300, inPlan: true }, { city: 'Lymhurst', dailyVolume: 30, avgPrice: 1290, inPlan: true }] },

@@ -827,7 +827,6 @@ function renderLazyCrafter(data) {
 // --- Скан маржи и ликвидности (гир — по данным кувшина; сырьё и рефайн — отдельный скан на странице «Рефайн») ---
 const marginEl = {
   mode: document.getElementById('margin-mode'),
-  includeAwakened: document.getElementById('margin-include-awakened'),
   blackMarket: document.getElementById('margin-black-market'),
   blackMarketField: document.getElementById('margin-black-market-field'),
   gearRrr: document.getElementById('margin-gear-rrr'),
@@ -849,7 +848,6 @@ marginEl.run.addEventListener('click', runMarginScan);
 function syncMarginMode() {
   const patient = marginEl.mode.value === 'patient';
   marginEl.liquidity.closest('label').hidden = !patient;
-  marginEl.blackMarketField.hidden = patient;                       // Чёрный Рынок — только мгновенная продажа
 }
 marginEl.mode.addEventListener('change', syncMarginMode);
 let marginLastData = null;
@@ -862,7 +860,7 @@ async function runMarginScan() {
   marginEl.result.innerHTML = 'Считаю по данным кувшина: весь гир × зачарование × качество, это может занять несколько секунд...';
   try {
     const params = new URLSearchParams({
-      mode: marginEl.mode.value, includeAwakened: String(marginEl.includeAwakened.checked), blackMarket: String(marginEl.blackMarket.checked && marginEl.mode.value === 'instant'),
+      mode: marginEl.mode.value, blackMarket: String(marginEl.blackMarket.checked),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
       capital: readGroupedNumber(marginEl.capital) || '500000', minDays: marginEl.minDays.value || '1', materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
@@ -931,7 +929,7 @@ function renderMarginScan(data) {
     ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней цикла» — закупка узкого материала + распродажа позиции`
     : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
     <div class="table-scroll"><table class="scan-table">
       <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит/день</th><th title="Эксперимент">Профит/час ★</th><th>Дней цикла</th><th>Дней на премиум</th><th title="Эксперимент">Часов на премиум ★</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>

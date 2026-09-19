@@ -1990,6 +1990,11 @@ const PREMIUM_PRICE_SILVER = 28_000_000;
 // mode 'sum' — цена средневзвешенная по всем городам, оборот суммируется; 'best' — город с лучшей ценой.
 function marginSellStats(history, finishedId, days, quality, queryCities, mode, econ) {
   const allowed = new Set(queryCities.map(normLocation));
+  // Чёрный Рынок (econ.bmTaxRate задан): ещё одно место терпеливой продажи по средней цене сделок ЧР; налог у него свой (налог +
+  // Setup Fee уже внутри), у обычных городов — налог + сбор за размещение. Чистая цена считается по налогу КАЖДОГО города.
+  const bm = econ && econ.bmTaxRate !== undefined && econ.bmTaxRate !== null;
+  if (bm) allowed.add('blackmarket');
+  const netFactorOf = (city) => (bm && normLocation(city) === 'blackmarket' ? 1 - econ.bmTaxRate : 1 - (econ ? econ.taxRate + (econ.setupFee ?? 0) : 0));
   let stats = Object.entries(cityStats(history, finishedId, days, quality)).filter(([city]) => allowed.has(normLocation(city)));
   if (stats.length === 0) return null;
   const marketVolume = stats.reduce((sum, [, st]) => sum + st.totalVolume, 0) / days; // оборот всех городов — для справки
@@ -1997,8 +2002,7 @@ function marginSellStats(history, finishedId, days, quality, queryCities, mode, 
   // даёт прибыль после налога и сбора за размещение. Иначе маржа лучшего города применялась бы ко ВСЕМУ рыночному объёму
   // (на сете брони T5 82% оборота шло в убыток, а dailyProfit считался по прибыльному городу на весь объём — завышение в 5.5 раза).
   if (econ) {
-    const netFactor = 1 - econ.taxRate - (econ.setupFee ?? 0);
-    stats = stats.filter(([, st]) => st.avgPrice * netFactor - econ.cost > 0);
+    stats = stats.filter(([city, st]) => st.avgPrice * netFactorOf(city) - econ.cost > 0);
     // Шумный город (оборот ничтожен по сравнению с самым ликвидным ПРИБЫЛЬНЫМ) не считается ценовым сигналом — та же защита, что в
     // плане продажи. Сравниваем только среди прибыльных: огромный убыточный рынок не должен объявлять шумом маленький прибыльный.
     if (econ.minShareOfMax && stats.length > 0) {
@@ -2008,13 +2012,14 @@ function marginSellStats(history, finishedId, days, quality, queryCities, mode, 
     if (stats.length === 0) return null;
   }
   if (mode === 'best') {
-    const [city, st] = stats.reduce((a, b) => (b[1].avgPrice > a[1].avgPrice ? b : a));
-    return { avgPrice: st.avgPrice, dailyVolume: st.avgDailyVolume, cities: [city], marketDailyVolume: marketVolume };
+    const [city, st] = stats.reduce((a, b) => (b[1].avgPrice * netFactorOf(b[0]) > a[1].avgPrice * netFactorOf(a[0]) ? b : a));
+    return { avgPrice: st.avgPrice, netPrice: st.avgPrice * netFactorOf(city), dailyVolume: st.avgDailyVolume, cities: [city], marketDailyVolume: marketVolume };
   }
   let vol = 0;
   let weighted = 0;
-  for (const [, st] of stats) { vol += st.totalVolume; weighted += st.avgPrice * st.totalVolume; }
-  return { avgPrice: weighted / vol, dailyVolume: vol / days, cities: stats.map(([c]) => c), marketDailyVolume: marketVolume };
+  let netWeighted = 0;
+  for (const [city, st] of stats) { vol += st.totalVolume; weighted += st.avgPrice * st.totalVolume; netWeighted += st.avgPrice * netFactorOf(city) * st.totalVolume; }
+  return { avgPrice: weighted / vol, netPrice: netWeighted / vol, dailyVolume: vol / days, cities: stats.map(([c]) => c), marketDailyVolume: marketVolume };
 }
 
 // Дней, за которые профит с оборота окупил бы премиум: чем меньше — тем масштабнее находка.
@@ -2187,10 +2192,8 @@ app.get('/api/unified-scan', (req, res) => {
     const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
     const materialHours = parseMaterialHours(req);            // окно цен сырья (по умолчанию 24 ч), отдельное от «Истории» продажи
     const rrrOpts = parseGearRrrOptions(req);
-    // Зачарование .4 (Awakening): по умолчанию не ищем, но это явный выбор игрока (галочка), а не молчаливое умолчание движка.
-    const includeAwakened = req.query.includeAwakened === 'true';
-    // Чёрный Рынок — только в мгновенном режиме (терпеливой модели у него нет: ордер туда «выставить и ждать» нельзя).
-    const blackMarket = mode === 'instant' && req.query.blackMarket === 'true';
+    // Чёрный Рынок — в обоих режимах: мгновенно — в его Buy Order, терпеливо — по средней цене сделок ЧР; налог свой (налог + Setup Fee).
+    const blackMarket = req.query.blackMarket === 'true';
     const taxRate = getSalesTaxRate(req);
     const bmTaxRate = getBmTaxRate(req);
     const queryCities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
@@ -2198,7 +2201,7 @@ app.get('/api/unified-scan', (req, res) => {
     const now = Date.now();
 
     const fresh = jugFreshness(jugDb, now);
-    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, includeAwakened, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2210,8 +2213,9 @@ app.get('/api/unified-scan', (req, res) => {
       const item = itemById.get(itemId);
       const after = enchantMode === 'after' || requiresEnchantAfterCraft(itemId);
       if (after && !ENCHANT_MATERIAL_COUNT[item.slot]) continue;
-      // .4 рунами не чарится: при «зачаровать после крафта» потолок .3 даже с галочкой; из зачарованного сырья .4 крафтится напрямую.
-      const maxE = item.tier >= 4 ? (includeAwakened && !after ? 4 : 3) : 0;
+      // .4 (Awakening) — обычная, просто более дорогая комбинация: крафтится напрямую из .4-сырья и торгуется как любой лот, поэтому в общем
+      // переборе наравне с .0–.3. Рунами до .4 не дойти — при «зачаровать после крафта» потолок .3.
+      const maxE = item.tier >= 4 ? (after ? 3 : 4) : 0;
       for (let e = 0; e <= maxE; e++) combos.push({ itemId, item, enchant: e, after });
     }
 
@@ -2263,11 +2267,13 @@ app.get('/api/unified-scan', (req, res) => {
         blackMarketRow = choice.blackMarket;
         sellTax = choice.taxRate;
       } else {
-        const sell = marginSellStats(seriesOfItem, finishedId, days, quality, queryCities, liquidity, { taxRate, setupFee: SETUP_FEE_RATE, cost, minShareOfMax: UNIFIED_MIN_CITY_SHARE });
+        const sell = marginSellStats(seriesOfItem, finishedId, days, quality, queryCities, liquidity, { taxRate, setupFee: SETUP_FEE_RATE, cost, minShareOfMax: UNIFIED_MIN_CITY_SHARE, bmTaxRate: blackMarket ? bmTaxRate : null });
         if (!sell || sell.dailyVolume < minDaily) return null;
         sellPrice = sell.avgPrice; dailyVolume = sell.dailyVolume; sellCities = sell.cities; marketDailyVolume = sell.marketDailyVolume;
-        profitPerUnit = sell.avgPrice * (1 - taxRate - SETUP_FEE_RATE) - cost;
+        profitPerUnit = sell.netPrice - cost;                    // по налогу каждого города (у ЧР свой)
         if (profitPerUnit <= 0) return null;
+        blackMarketRow = sell.cities.some((c) => normLocation(c) === 'blackmarket');
+        sellTax = null;
       }
       // Размер позиции — из КАПИТАЛА: штук = капитал / себестоимость (дешёвый предмет — много штук, дорогой — мало; один параметр на весь
       // список вместо угадывания партии для каждой позиции и вместо «доли рынка»). Сроки — по ПОЛНОМУ обороту прибыльных городов.
@@ -2287,7 +2293,7 @@ app.get('/api/unified-scan', (req, res) => {
       const profitPct = (profitPerUnit / cost) * 100;
       const tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
       return {
-        kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
+        kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
         dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, dailyProfit,
         quantity, batchProfit: adjusted.batchProfit, positionCost: quantity * cost,
         daysToAcquire, daysToSell, cycleDays, effectiveDays: adjusted.effectiveDays, cappedByMinDays: cycleDays < minDays,
@@ -2338,7 +2344,7 @@ app.get('/api/unified-scan', (req, res) => {
       mode, enchantMode, liquidity, days, materialHours, capital, minDays, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
-      rrrOptions: rrrOpts, enchantRange: includeAwakened ? '.0–.4' : '.0–.3', includeAwakened,
+      rrrOptions: rrrOpts, enchantRange: enchantMode === 'after' ? '.0–.3' : '.0–.4',
       scanned: combos.length, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
     };
     unifiedScanCache = { key: cacheKey, ts: now, data };
