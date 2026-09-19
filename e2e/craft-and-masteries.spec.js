@@ -7,13 +7,16 @@ test('крафт-калькулятор: выбор предмета и расч
     recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, cheapestCity: 'Martlock', cheapestPrice: 500 }],
     sellPrices: [{ city: 'Martlock', sellMin: 12000, buyMax: 10000 }], bestSell: { city: 'Martlock', price: 10000 },
     taxRate: 0.08, netSellPrice: 9200, profitPerUnit: 1200, totalProfit: 1200,
+    patientSell: { days: 7, avgSellPrice: 11000, bestCity: { city: 'Lymhurst', avgPrice: 12000 }, avgDailyVolume: 20, daysToSellBatch: 0.05, netSellPrice: 10120, profitPerUnit: 2120 },
   } }));
   await page.goto('/craft.html');
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
-  await expect(page.locator('#craft-result .craft-summary')).toContainText('После налога с продажи (8%)');
-  await expect(page.locator('#craft-result .craft-summary')).toContainText('1 200');
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('После налога с продажи (8%)');
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('1 200');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('Терпеливая продажа');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('2 120');
 });
 
 test('уровень специализации сохраняется на сервере и переживает перезагрузку', async ({ page }) => {

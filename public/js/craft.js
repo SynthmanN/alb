@@ -134,17 +134,41 @@ function renderCraftResult(data) {
     <div class="craft-summary">
       <div class="craft-summary-row"><span>Себестоимость материала / шт (сырое)</span><span>${Math.round(data.materialCostPerUnit).toLocaleString('ru-RU')}</span></div>
       <div class="craft-summary-row"><span>Себестоимость с учётом RRR (${(data.rrrPreset.rrr * 100).toFixed(1)}%) / шт</span><span>${Math.round(data.effectiveCostPerUnit).toLocaleString('ru-RU')}</span></div>
-      <div class="craft-summary-row"><span>Лучшая цена продажи</span><span>${data.bestSell ? `${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
+      <div class="craft-summary-row"><span>Мгновенная продажа: лучшая цена (в чужой ордер на покупку)</span><span>${data.bestSell ? `${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
       <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${data.netSellPrice !== null ? Math.round(data.netSellPrice).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
+    ${patientSellHtml(data)}
   `;
   const craftTables = craftEl.result.querySelectorAll('table');
   wireTableSort(craftTables[0], 'craft-recipe');
   wireTableSort(craftTables[1], 'craft-sell');
 }
 
+
+// Терпеливая продажа: свой ордер на продажу по средней цене истории; объём и дни на распродажу защищают
+// от «прибыли» на предмете, который не продаётся.
+function patientSellHtml(data) {
+  const p = data.patientSell;
+  if (!p) {
+    return '<div class="craft-summary patient-sell"><div class="craft-summary-row"><span>Терпеливая продажа</span><span>нет истории сделок за период</span></div></div>';
+  }
+  const cls = p.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
+  const totalProfit = p.profitPerUnit * data.quantity;
+  const slow = p.daysToSellBatch !== null && p.daysToSellBatch > 30;
+  return `
+    <div class="craft-summary patient-sell">
+      <div class="craft-summary-row"><strong>Терпеливая продажа (свой ордер, история за ${p.days} дн.)</strong><span></span></div>
+      <div class="craft-summary-row"><span>Средняя цена сделок за период</span><span>${fmtNum(p.avgSellPrice)}</span></div>
+      <div class="craft-summary-row"><span>Лучший город по цене</span><span>${p.bestCity.city}: ${fmtNum(p.bestCity.avgPrice)}</span></div>
+      <div class="craft-summary-row"><span>Спрос: сделок в день (по выбранным городам)</span><span>${fmtNum(p.avgDailyVolume, 1)}</span></div>
+      <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(data.quantity)} шт</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(p.daysToSellBatch)}${slow ? ' ⚠' : ''}</span></div>
+      <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(p.netSellPrice)}</span></div>
+      <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(p.profitPerUnit)}</span></div>
+      <div class="craft-summary-row"><strong>Итого на ${fmtNum(data.quantity)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
+    </div>`;
+}
 
 // --- План крупной партии ---
 const bulkEl = {

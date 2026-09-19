@@ -468,6 +468,18 @@ app.get('/api/craft-calc', async (req, res) => {
     const netSellPrice = bestSell ? bestSell.price * (1 - taxRate) : null;
     const profitPerUnit = netSellPrice !== null ? netSellPrice - effectiveCostPerUnit : null;
 
+    // Вторая цифра рядом с мгновенной: терпеливая продажа по истории сделок. Не роняем весь расчёт,
+    // если история не загрузилась — тогда просто нет блока терпеливой продажи.
+    let patientSell = null;
+    try {
+      const days = parseBulkDays(req);
+      const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+      const history = await fetchHistoryBatched([finishedQueryId], days * 24, quality, locations);
+      patientSell = computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities });
+    } catch (err) {
+      console.error('не удалось загрузить историю для терпеливой продажи:', err.message);
+    }
+
     res.json({
       itemId, enchant, quality, quantity,
       rrrPreset: { ...preset, rrr },
@@ -482,6 +494,7 @@ app.get('/api/craft-calc', async (req, res) => {
       taxRate,
       netSellPrice,
       profitPerUnit,
+      patientSell,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
     });
   } catch (err) {
@@ -912,6 +925,36 @@ function cityStats(historyData, itemId, days) {
     if (volume > 0) out[series.location] = { avgPrice: weightedSum / volume, totalVolume: volume, avgDailyVolume: volume / days };
   }
   return out;
+}
+
+// Терпеливая продажа готового предмета: не бьём по чужому ордеру на покупку (мгновенная продажа), а выставляем
+// свой ордер на продажу и ждём. Цену берём по истории сделок (средневзвешенная по объёму за период),
+// а не по текущему sell_price_min — иначе получится красивая маржа на предмете, который висит неделями
+// («стать инвестором предмета»). Объём/день и дни на распродажу партии показывают, насколько это реально.
+function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities }) {
+  const allowed = new Set(queryCities.map(normLocation));
+  const stats = Object.entries(cityStats(history, itemId, days)).filter(([city]) => allowed.has(normLocation(city)));
+  if (stats.length === 0) return null;
+  let totalVol = 0;
+  let weighted = 0;
+  let bestCity = null;
+  for (const [city, st] of stats) {
+    totalVol += st.totalVolume;
+    weighted += st.avgPrice * st.totalVolume;
+    if (!bestCity || st.avgPrice > bestCity.avgPrice) bestCity = { city, avgPrice: st.avgPrice };
+  }
+  const avgSellPrice = weighted / totalVol;
+  const avgDailyVolume = totalVol / days;
+  const netSellPrice = avgSellPrice * (1 - taxRate);
+  return {
+    days,
+    avgSellPrice,
+    bestCity,
+    avgDailyVolume,
+    daysToSellBatch: avgDailyVolume > 0 ? quantity / avgDailyVolume : null,
+    netSellPrice,
+    profitPerUnit: netSellPrice - costPerUnit,
+  };
 }
 
 // Чистый расчёт плана партии по уже загруженной истории — общий для одиночного плана и сканера,
@@ -1586,6 +1629,7 @@ module.exports = {
   totalVolume,
   cityStats,
   computeBulkPlan,
+  computePatientSell,
   enchantMaterialId,
   ENCHANT_MATERIAL_COUNT,
   gearEnchantId,

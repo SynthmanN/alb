@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  allocateBudget, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -279,5 +279,33 @@ describe('ограничение параллелизма запросов', () 
     });
     expect(out).toEqual([2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
     expect(peak).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('терпеливая продажа', () => {
+  const history = [
+    { item_id: 'X', location: 'Martlock', data: [{ item_count: 30, avg_price: 1000 }, { item_count: 40, avg_price: 1200 }] },
+    { item_id: 'X', location: 'Lymhurst', data: [{ item_count: 70, avg_price: 1500 }] },
+    { item_id: 'X', location: 'Caerleon', data: [{ item_count: 500, avg_price: 9999 }] },
+  ];
+  const base = { history, itemId: 'X', days: 7, quantity: 140, taxRate: 0.08, costPerUnit: 1000, queryCities: ['Martlock', 'Lymhurst'] };
+
+  it('цена — средневзвешенная по объёму выбранных городов, объём — в день', () => {
+    const p = computePatientSell(base);
+    expect(p.avgSellPrice).toBeCloseTo((30 * 1000 + 40 * 1200 + 70 * 1500) / 140, 6);
+    expect(p.avgDailyVolume).toBe(20); // 140 сделок за 7 дней; Caerleon не выбран
+    expect(p.bestCity).toEqual({ city: 'Lymhurst', avgPrice: 1500 });
+  });
+  it('дни на распродажу партии = количество / объём в день', () => {
+    expect(computePatientSell(base).daysToSellBatch).toBeCloseTo(7, 6);
+    expect(computePatientSell({ ...base, quantity: 20 }).daysToSellBatch).toBeCloseTo(1, 6);
+  });
+  it('профит — после налога и за вычетом себестоимости', () => {
+    const p = computePatientSell(base);
+    expect(p.netSellPrice).toBeCloseTo(p.avgSellPrice * 0.92, 6);
+    expect(p.profitPerUnit).toBeCloseTo(p.netSellPrice - 1000, 6);
+  });
+  it('нет сделок в выбранных городах — null (блок терпеливой продажи не показывается)', () => {
+    expect(computePatientSell({ ...base, queryCities: ['Bridgewatch'] })).toBeNull();
   });
 });
