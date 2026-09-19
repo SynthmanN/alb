@@ -351,18 +351,47 @@ describe('калькулятор крафта: возврат ресурсов �
   const get = (item, extra = '') => request(app).get(`/api/craft-calc?item=${item}&quantity=100&rrr=city_bonus${extra}`);
   it('количество к закупке уменьшено на возврат у обычных материалов и не уменьшено у герба/жетона/плаща', async () => {
     const d = (await get('T4_CAPEITEM_AVALON')).body;
-    const rrr = d.rrrPreset.rrr;
-    expect(rrr).toBeGreaterThan(0.3);
     for (const r of d.recipe) expect(r.neededToBuy).toBe(r.count * 100);             // у охотничьего плаща возвращаемых материалов нет
     expect(d.recipe.every((r) => r.returnable === false)).toBe(true);
     const sword = (await get('T4_MAIN_SWORD')).body;
-    for (const r of sword.recipe) expect(r.neededToBuy).toBe(Math.ceil(r.count * 100 * (1 - rrr)));
+    for (const r of sword.recipe) {
+      expect(r.rrr).toBeGreaterThan(0.15);                                           // у каждого материала своя ставка (город покупки × тип ресурса)
+      expect(r.neededToBuy).toBe(Math.ceil(r.count * 100 * (1 - r.rrr)));
+    }
     expect(sword.recipe.every((r) => r.returnable === true)).toBe(true);
   });
   it('себестоимость с возвратом = сумма цены × количество × (1 − RRR) по возвращаемым и × 1 по невозвращаемым', async () => {
     const d = (await get('T4_MAIN_SWORD')).body;
-    const expected = d.recipe.reduce((sum, r) => sum + r.cheapestPrice * r.count * (1 - d.rrrPreset.rrr), 0);
+    const expected = d.recipe.reduce((sum, r) => sum + r.cheapestPrice * r.count * (1 - r.rrr), 0);
     expect(d.effectiveCostPerUnit).toBeCloseTo(expected, 6);
+  });
+});
+
+describe('калькулятор крафта: возврат по городу и типу ресурса, Фокус', () => {
+  const get = (extra) => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=100${extra}`);
+  it('без параметров возврата нет; бонус города даёт каждому материалу СВОЮ ставку; Фокус добавляет 59% всем', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
+    const none = (await get('&royalBonus=false&focus=false')).body;
+    expect(none.recipe.every((r) => r.rrr === 0)).toBe(true);
+    const royal = (await get('&royalBonus=true&focus=false')).body;
+    const byRes = Object.fromEntries(royal.recipe.map((r) => [r.resource, r]));
+    // цены во всех городах одинаковы → выбирается город со спец-бонусом ресурса: слитки — Thetford (58%), кожа — Martlock (58%)
+    expect(byRes.T4_METALBAR.cheapestCity).toBe('Thetford');
+    expect(byRes.T4_LEATHER.cheapestCity).toBe('Martlock');
+    expect(byRes.T4_METALBAR.rrr).toBeCloseTo(1 - 1 / 1.58, 9);
+    const both = (await get('&royalBonus=true&focus=true')).body;
+    expect(both.recipe[0].rrr).toBeCloseTo(1 - 1 / 2.17, 9);
+    expect(both.effectiveCostPerUnit).toBeLessThan(royal.effectiveCostPerUnit);
+    expect(royal.effectiveCostPerUnit).toBeLessThan(none.effectiveCostPerUnit);
+    expect(both.rrrPreset.label).toContain('Фокус: да');
+  });
+  it('refining-calc: возврат считается в каждом городе отдельно — спец-бонус только в городе своего ресурса', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
+    const d = (await request(app).get('/api/refining-calc?type=ORE&tier=4&royalBonus=true&focus=false&cities=Thetford,Martlock')).body;
+    const rate = (city) => d.perCity.find((c) => c.city === city).rrr;
+    expect(rate('Thetford')).toBeCloseTo(1 - 1 / 1.58, 9);       // Thetford — город руды
+    expect(rate('Martlock')).toBeCloseTo(1 - 1 / 1.18, 9);       // в Martlock руда получает только базу
+    expect(d.rrrLabel).toContain('бонус города: да');
   });
 });
 

@@ -74,6 +74,51 @@ function returnFactor(resource, rrr) {
   return resource.noReturn ? 1 : 1 - rrr;
 }
 
+// --- Возврат ресурсов (RRR) по каждому материалу и городу закупки ---
+// Бонус к переработке зависит от города И типа ресурса одновременно: в любом royal-городе базовые 18%, плюс 40%, если город
+// даёт спец-бонус именно этому типу ресурса (дерево — Fort Sterling, руда — Thetford, волокно — Lymhurst, шкура — Martlock,
+// камень — Bridgewatch); Фокус добавляет ещё 59%. Раньше одна общая ставка применялась ко всем материалам рецепта сразу, а в игре,
+// стоя в одном городе, спец-бонус получает максимум один тип ресурса. Формула: RRR = 1 − 1/(1 + бонус/100).
+const RRR_ROYAL_BASE = 18;
+const RRR_CITY_SPECIAL = 40;
+const RRR_FOCUS = 59;
+const RESOURCE_TYPE_BY_TOKEN = { WOOD: 'WOOD', PLANKS: 'WOOD', ORE: 'ORE', METALBAR: 'ORE', FIBER: 'FIBER', CLOTH: 'FIBER', HIDE: 'HIDE', LEATHER: 'HIDE', ROCK: 'ROCK', STONEBLOCK: 'ROCK' };
+function resourceTypeOf(resourceId) {
+  const m = String(resourceId).match(/^T\d_([A-Z]+)/);
+  return m ? RESOURCE_TYPE_BY_TOKEN[m[1]] || null : null;
+}
+// opts = { royalBonus, focus }: royalBonus — «крафчу в royal-городе» (база 18% + спец-бонус города для «своего» ресурса), focus — тратится Фокус.
+function materialRrr(resourceId, city, opts) {
+  let bonus = 0;
+  if (opts.royalBonus) {
+    bonus += RRR_ROYAL_BASE;
+    const type = resourceTypeOf(resourceId);
+    if (type && BONUS_CITY[type] && normLocation(BONUS_CITY[type]) === normLocation(city)) bonus += RRR_CITY_SPECIAL;
+  }
+  if (opts.focus) bonus += RRR_FOCUS;
+  return rrrFromBonus(bonus);
+}
+// Параметры запроса: royalBonus / focus (true|false); прежний параметр rrr=<пресет> понимается как запасной вариант.
+function parseRrrOptions(req, defaultPresetId = 'none') {
+  const q = req.query;
+  if (q.royalBonus !== undefined || q.focus !== undefined) return { royalBonus: q.royalBonus === 'true', focus: q.focus === 'true' };
+  const preset = RRR_PRESETS.find((p) => p.id === (q.rrr || defaultPresetId)) || RRR_PRESETS[0];
+  return { royalBonus: preset.bonus > 0, focus: preset.id.includes('focus') };
+}
+function rrrOptionsLabel(opts) {
+  return `бонус города: ${opts.royalBonus ? 'да' : 'нет'} · Фокус: ${opts.focus ? 'да' : 'нет'}`;
+}
+// Лучшая котировка материала с учётом возврата в городе покупки: минимум цена × (1 − RRR города). quotes = [{ city, price }].
+function bestMaterialQuote(quotes, resource, opts) {
+  let best = null;
+  for (const q of quotes) {
+    const rrr = resource.noReturn ? 0 : materialRrr(resource.resource, q.city, opts);
+    const effective = q.price * (1 - rrr);
+    if (!best || effective < best.effective) best = { ...q, rrr, factor: 1 - rrr, effective };
+  }
+  return best;
+}
+
 function maxEnchantForGear(tier) {
   return tier >= 4 ? 4 : 0; // T2/T3 гир никогда не зачаровывается — та же логика, что и на фронте
 }
@@ -432,6 +477,7 @@ app.get('/api/refining-meta', (req, res) => {
   res.json({
     resourceTypes: RESOURCE_TYPES.map((t) => ({ id: t, name: RESOURCE_NAME_RU[t], bonusCity: BONUS_CITY[t] })),
     rrrPresets: RRR_PRESETS.map((p) => ({ ...p, rrr: rrrFromBonus(p.bonus) })),
+    rrrBonuses: { royalBase: RRR_ROYAL_BASE, citySpecial: RRR_CITY_SPECIAL, focus: RRR_FOCUS },
   });
 });
 
@@ -439,14 +485,15 @@ app.get('/api/refining-calc', async (req, res) => {
   try {
     const type = req.query.type;
     const tier = parseInt(req.query.tier, 10);
-    const rrrId = req.query.rrr || 'city_bonus';
+    const rrrOpts = parseRrrOptions(req, 'city_bonus');
     const enchant = Math.min(Math.max(parseInt(req.query.enchant, 10) || 0, 0), 4);
     const citiesParam = req.query.cities;
 
     if (!RESOURCE_TYPES.includes(type)) return res.status(400).json({ error: `type должен быть одним из: ${RESOURCE_TYPES.join(', ')}` });
     if (!REFINING_RATIOS[tier]) return res.status(400).json({ error: 'tier должен быть от 2 до 8' });
-    const preset = RRR_PRESETS.find((p) => p.id === rrrId);
-    if (!preset) return res.status(400).json({ error: `rrr должен быть одним из: ${RRR_PRESETS.map((p) => p.id).join(', ')}` });
+    if (req.query.rrr && req.query.royalBonus === undefined && req.query.focus === undefined && !RRR_PRESETS.some((p) => p.id === req.query.rrr)) {
+      return res.status(400).json({ error: `rrr должен быть одним из: ${RRR_PRESETS.map((p) => p.id).join(', ')}` });
+    }
     const maxEnchant = tier < 4 ? 0 : type === 'ROCK' ? 3 : 4;
     if (enchant > maxEnchant) return res.status(400).json({ error: `зачарование ${enchant} недоступно для T${tier} ${type} (максимум ${maxEnchant})` });
 
@@ -467,11 +514,13 @@ app.get('/api/refining-calc', async (req, res) => {
       byItemCity[rec.item_id][rec.city] = rec;
     }
 
-    const rrr = rrrFromBonus(preset.bonus);
     const taxRate = getSalesTaxRate(req);
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
 
+    // Возврат считается в КАЖДОМ городе отдельно: и сырьё, и материал предыдущего тира покупаются там же, где перерабатываются,
+    // а спец-бонус города достаётся только «своему» типу ресурса (у остальных типов в этом городе — базовые 18%).
     const perCity = queryCities.map((city) => {
+      const rrr = materialRrr(rawId, city, rrrOpts);
       const rawPrice = byItemCity[rawId]?.[city]?.sell_price_min || null;
       const prevPrice = prevId ? byItemCity[prevId]?.[city]?.sell_price_min || null : null;
       const outputSell = byItemCity[refinedId]?.[city]?.buy_price_max || null;
@@ -483,10 +532,10 @@ app.get('/api/refining-calc', async (req, res) => {
       }
       const effectiveCost = baseCost !== null ? baseCost * (1 - rrr) : null;
       const profit = effectiveCost !== null && netOutputSell !== null ? netOutputSell - effectiveCost : null;
-      return { city, rawPrice, prevPrice, outputSell, outputBuy, netOutputSell, baseCost, effectiveCost, profit };
+      return { city, rawPrice, prevPrice, outputSell, outputBuy, netOutputSell, baseCost, rrr, effectiveCost, profit };
     });
 
-    res.json({ itemId: refinedId, tier, type, enchant, ratio, taxRate, rrrPreset: { ...preset, rrr }, bonusCity: BONUS_CITY[type], perCity });
+    res.json({ itemId: refinedId, tier, type, enchant, ratio, taxRate, rrrOptions: rrrOpts, rrrLabel: rrrOptionsLabel(rrrOpts), bonusCity: BONUS_CITY[type], perCity });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось посчитать переработку', details: err.message });
@@ -513,7 +562,7 @@ function effectiveRecipeResourceId(resourceId, enchant) {
 }
 
 // Себестоимость (крафт) и лучшая мгновенная цена продажи для каждого тира семейства предмета.
-async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities, days = 7, marketShare = 1 }) {
+async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, days = 7, marketShare = 1 }) {
   const family = familyIdOf(itemId);
   const items = ITEMS.filter((i) => GEAR_IDS.has(i.id) && familyIdOf(i.id) === family && RECIPES[i.id]).sort((a, b) => a.tier - b.tier);
   if (items.length < 2) return null;
@@ -544,12 +593,13 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
     fetchHistoryBatched(finishedIds, days * 24, ALL_QUALITIES.join(','), locations).catch(() => []),
   ]);
   const allowed = new Set(queryCities.map(normLocation));
-  const cheapestByItem = {};
+  const quotesByItem = {}; // id -> [{ city, price }]: цену выбираем с учётом возврата в городе покупки (bestMaterialQuote)
   for (const rec of materialData) {
     if (!rec.sell_price_min || !allowed.has(normLocation(rec.city))) continue;
-    const cur = cheapestByItem[rec.item_id];
-    if (!cur || rec.sell_price_min < cur) cheapestByItem[rec.item_id] = rec.sell_price_min;
+    (quotesByItem[rec.item_id] || (quotesByItem[rec.item_id] = [])).push({ city: rec.city, price: rec.sell_price_min });
   }
+  const cheapestByItem = {}; // без возврата — для рун/душ/реликвий зачарования (на них RRR не действует)
+  for (const [id, quotes] of Object.entries(quotesByItem)) cheapestByItem[id] = Math.min(...quotes.map((q) => q.price));
   const bestSellByQuality = {}; // `${id}|${quality}` -> { city, price }
   for (const rec of finishedData) {
     if (!rec.buy_price_max || !allowed.has(normLocation(rec.city))) continue;
@@ -562,9 +612,9 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
     let materials = 0;
     let complete = true;
     for (const r of recipe.resources) {
-      const price = cheapestByItem[effectiveRecipeResourceId(r.resource, p.recipeEnchant)];
-      if (!price) { complete = false; break; }
-      materials += price * r.count * returnFactor(r, rrr);
+      const best = bestMaterialQuote(quotesByItem[effectiveRecipeResourceId(r.resource, p.recipeEnchant)] || [], r, rrrOpts);
+      if (!best) { complete = false; break; }
+      materials += best.price * r.count * best.factor;
     }
     let cost = complete ? materials + (recipe.silver || 0) : null;
     if (cost !== null && p.stepIds.length) {
@@ -615,11 +665,9 @@ app.get('/api/craft-calc', async (req, res) => {
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1, 1), 100000);
     const citiesParam = req.query.cities;
-    const rrrId = req.query.rrr || 'none';
+    const rrrOpts = parseRrrOptions(req, 'none');
 
     if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `не найден рецепт для предмета "${itemId}"` });
-    const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
-    const rrr = rrrFromBonus(preset.bonus);
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
 
     // «Зачаровать после крафта»: делаем (или покупаем, если дешевле) базовый предмет .0 и поднимаем зачарование
@@ -661,28 +709,29 @@ app.get('/api/craft-calc', async (req, res) => {
 
     let materialCostPerUnit = 0;       // по номиналу рецепта (без возврата)
     let materialCostAfterReturn = 0;   // с возвратом только на возвращаемые материалы
+    let returnableNominal = 0;         // номинал возвращаемых материалов и сколько на них возвращается — для средней ставки в подписи
+    let returnableSaved = 0;
     let hasAllPrices = true;
     const recipeBreakdown = recipe.resources.map((r) => {
       const queryId = effectiveRecipeResourceId(r.resource, recipeEnchant);
       const isEnchanted = queryId !== r.resource;
       const cityPrices = materialByCity[queryId] || {};
-      let cheapest = null;
-      for (const city of queryCities) {
-        const rec = cityPrices[city];
-        if (rec && rec.sell_price_min && (!cheapest || rec.sell_price_min < cheapest.price)) {
-          cheapest = { city, price: rec.sell_price_min };
-        }
-      }
+      const quotes = queryCities.filter((city) => cityPrices[city] && cityPrices[city].sell_price_min).map((city) => ({ city, price: cityPrices[city].sell_price_min }));
+      // Город покупки выбираем по цене с учётом возврата именно в нём (а не просто самый дешёвый по ярлыку).
+      const cheapest = bestMaterialQuote(quotes, r, rrrOpts);
+      const factor = cheapest ? cheapest.factor : returnFactor(r, 0);
       if (!cheapest) hasAllPrices = false;
       else {
         materialCostPerUnit += cheapest.price * r.count;
-        materialCostAfterReturn += cheapest.price * r.count * returnFactor(r, rrr);
+        materialCostAfterReturn += cheapest.price * r.count * cheapest.factor;
+        if (!r.noReturn) { returnableNominal += cheapest.price * r.count; returnableSaved += cheapest.price * r.count * cheapest.rrr; }
       }
 
       return {
         returnable: !r.noReturn,
         // Сколько реально закупать: после возврата (RRR) остаток от крафта не нужен, но невозвращаемое берётся по номиналу
-        neededToBuy: Math.ceil(r.count * quantity * returnFactor(r, rrr)),
+        neededToBuy: Math.ceil(r.count * quantity * factor),
+        rrr: cheapest ? cheapest.rrr : 0,                    // ставка возврата в городе покупки именно для этого материала
         resource: r.resource,
         resourceName: resolveItemName(r.resource),
         queryId,
@@ -853,7 +902,7 @@ app.get('/api/craft-calc', async (req, res) => {
         }
         return {
           resource: r.resource, resourceName: resolveItemName(r.resource), priceByCity,
-          needed: Math.ceil(r.count * quantity * returnFactor(r, rrr)),
+          needed: recipeBreakdown.find((b) => b.resource === r.resource).neededToBuy,
         };
       });
       if (enchantAfterCraft) {
@@ -892,7 +941,7 @@ app.get('/api/craft-calc', async (req, res) => {
     let tierComparison = null;
     try {
       tierComparison = await computeTierComparison({
-        itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities, quality, marketShare,
+        itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, quality, marketShare,
         days: parseBulkDays(req),
       });
     } catch (err) {
@@ -901,7 +950,9 @@ app.get('/api/craft-calc', async (req, res) => {
 
     res.json({
       itemId, enchant, quality, quantity, marketShare, priceTolerance, setupFeeRate: SETUP_FEE_RATE,
-      rrrPreset: { ...preset, rrr },
+      // rrr — средняя ставка возврата по возвращаемым материалам (у каждого материала своя, см. recipe[].rrr)
+      rrrPreset: { id: 'custom', label: rrrOptionsLabel(rrrOpts), ...rrrOpts, rrr: returnableNominal > 0 ? returnableSaved / returnableNominal : 0 },
+      rrrOptions: rrrOpts,
       cities: queryCities,
       recipe: recipeBreakdown,
       hasAllMaterialPrices: hasAllPrices,
@@ -1409,7 +1460,7 @@ function computeSellThreshold(cities, threshold, quantity, marketShare = 1) {
 // Чистый расчёт плана партии по уже загруженной истории — общий для одиночного плана и сканера,
 // чтобы цифры по одному предмету не могли разойтись между двумя режимами.
 function computeBulkPlan(opts, materialHistory, finishedHistory) {
-  const { itemId, enchant, quantity, days, preset, rrr, taxRate, costCeiling, queryCities } = opts;
+  const { itemId, enchant, quantity, days, rrrOpts, taxRate, costCeiling, queryCities } = opts;
   let { sellLow, sellHigh } = opts;
   const allowedCities = new Set(queryCities.map(normLocation));
   const inScope = (stats) => Object.fromEntries(Object.entries(stats).filter(([city]) => allowedCities.has(normLocation(city))));
@@ -1424,14 +1475,16 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
   const recipeBreakdown = recipe.resources.map((r, idx) => {
     const queryId = resourceQueryIds[idx];
     const stats = inScope(cityStats(materialHistory, queryId, days));
+    // Город закупки — по средней цене с учётом возврата именно в нём (у каждого материала свой RRR).
     let source = null;
     for (const [city, st] of Object.entries(stats)) {
-      if (!source || st.avgPrice < source.avgPrice) source = { city, ...st };
+      const best = bestMaterialQuote([{ city, price: st.avgPrice }], r, rrrOpts);
+      if (!source || best.effective < source.effective) source = { city, ...st, factor: best.factor, rrr: best.rrr, effective: best.effective };
     }
     const neededRaw = r.count * quantity;
-    const neededAfterRrr = Math.ceil(neededRaw * returnFactor(r, rrr));
+    const neededAfterRrr = Math.ceil(neededRaw * (source ? source.factor : returnFactor(r, 0)));
     if (!source) hasAllPrices = false;
-    else effectiveCostPerUnit += r.count * returnFactor(r, rrr) * source.avgPrice;
+    else effectiveCostPerUnit += r.count * source.factor * source.avgPrice;
     return {
       resource: r.resource,
       resourceName: resolveItemName(r.resource),
@@ -1481,7 +1534,7 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
 
   return {
     itemId, enchant, quality: opts.quality, quantity, days,
-    rrrPreset: { ...preset, rrr },
+    rrrPreset: { id: 'custom', label: rrrOptionsLabel(rrrOpts), ...rrrOpts },
     taxRate,
     cities: queryCities,
     recipe: recipeBreakdown,
@@ -1529,15 +1582,13 @@ app.get('/api/craft-bulk-plan', async (req, res) => {
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1, 1), 100000);
     const days = parseBulkDays(req);
-    const rrrId = req.query.rrr || 'none';
+    const rrrOpts = parseRrrOptions(req, 'none');
     const costCeiling = parseFloat(req.query.ceiling) > 0 ? parseFloat(req.query.ceiling) : null;
     const sellLow = parseFloat(req.query.sellLow) > 0 ? parseFloat(req.query.sellLow) : null;
     const sellHigh = parseFloat(req.query.sellHigh) > 0 ? parseFloat(req.query.sellHigh) : null;
     const citiesParam = req.query.cities;
 
     if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `не найден рецепт для предмета "${itemId}"` });
-    const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
-    const rrr = rrrFromBonus(preset.bonus);
     const taxRate = getSalesTaxRate(req);
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
     const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
@@ -1550,7 +1601,7 @@ app.get('/api/craft-bulk-plan', async (req, res) => {
     ]);
 
     res.json(computeBulkPlan(
-      { itemId, enchant, quality, quantity, days, preset, rrr, taxRate, costCeiling, sellLow, sellHigh, queryCities },
+      { itemId, enchant, quality, quantity, days, rrrOpts, taxRate, costCeiling, sellLow, sellHigh, queryCities },
       materialHistory, finishedHistory,
     ));
   } catch (err) {
@@ -1610,9 +1661,7 @@ app.get('/api/lazy-crafter', async (req, res) => {
     const strategy = LAZY_STRATEGIES.includes(req.query.strategy) ? req.query.strategy : 'balanced';
     const days = parseBulkDays(req);
     const category = ['weapon', 'armor', 'cape'].includes(req.query.category) ? req.query.category : 'all';
-    const rrrId = req.query.rrr || 'none';
-    const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
-    const rrr = rrrFromBonus(preset.bonus);
+    const rrrOpts = parseRrrOptions(req, 'none');
     const taxRate = getSalesTaxRate(req);
     const citiesParam = req.query.cities;
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
@@ -1630,7 +1679,7 @@ app.get('/api/lazy-crafter', async (req, res) => {
     const candidates = [];
     for (const itemId of itemIds) {
       const plan = computeBulkPlan(
-        { itemId, enchant: 0, quality: 1, quantity: 1, days, preset, rrr, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
+        { itemId, enchant: 0, quality: 1, quantity: 1, days, rrrOpts, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
         materialHistory, finishedHistory,
       );
       if (!plan.hasAllMaterialPrices || plan.profitPerUnitLow === null || plan.profitPerUnitLow <= 0) continue;
@@ -1648,7 +1697,7 @@ app.get('/api/lazy-crafter', async (req, res) => {
     // Сроки закупки и распродажи пересчитываем уже для выбранного количества.
     for (const it of plan.items) {
       const full = computeBulkPlan(
-        { itemId: it.itemId, enchant: 0, quality: 1, quantity: it.qty, days, preset, rrr, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
+        { itemId: it.itemId, enchant: 0, quality: 1, quantity: it.qty, days, rrrOpts, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
         materialHistory, finishedHistory,
       );
       it.bottleneckResource = full.bottleneckResource;
@@ -1886,15 +1935,31 @@ function indexByItem(series) {
   return map;
 }
 
-// Самая дешёвая текущая цена продажи и возраст её котировки по id (среди выбранных городов).
-function cheapestQuotes(records) {
-  const best = {};
+// Текущие котировки продажи по id во всех выбранных городах: id -> [{ city, price, date }]. Город закупки потом выбирается
+// с учётом возврата в нём (bestMaterialQuote), поэтому «самую дешёвую» здесь не выбираем.
+function quotesById(records) {
+  const out = {};
   for (const rec of records) {
     if (!rec.sell_price_min) continue;
-    if (!best[rec.item_id] || rec.sell_price_min < best[rec.item_id].price) best[rec.item_id] = { price: rec.sell_price_min, date: rec.sell_price_min_date, city: rec.city };
+    (out[rec.item_id] || (out[rec.item_id] = [])).push({ city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date });
   }
-  return best;
+  return out;
 }
+const cheapestOf = (quotes) => (quotes && quotes.length ? quotes.reduce((a, b) => (b.price < a.price ? b : a)) : null);
+
+// Достоверность цифры: сколько РАЗНЫХ часов за период вообще шли сделки по предмету в городах продажи (не штук: одна оптовая
+// сделка на 500 штук — это один час, а не 500 подтверждений рынка). Индекс доверия = n / (n + K): при n = 3 это 13%, при n = 300 — 94%.
+const CONFIDENCE_K = 20;
+function tradeHoursOf(seriesOfItem, quality, sellCities) {
+  const cities = new Set(sellCities.map(normLocation));
+  const hours = new Set();
+  for (const s of seriesOfItem || []) {
+    if (s.quality !== quality || !cities.has(normLocation(s.location))) continue;
+    for (const p of s.data) if (p.item_count > 0) hours.add(p.timestamp);
+  }
+  return hours.size;
+}
+const confidenceOf = (tradeHours) => tradeHours / (tradeHours + CONFIDENCE_K);
 
 // Лучший город мгновенной продажи (в Buy Order): максимум дневного профита, а не цены — иначе побеждал бы город без спроса.
 function instantSellChoice(priceRecords, seriesOfItem, itemId, quality, days, cost, taxRate, medianPrice) {
@@ -1943,15 +2008,16 @@ app.get('/api/unified-scan', (req, res) => {
     const minDaily = Math.max(parseFloat(req.query.minDaily) || 1, 0);
     const marketShare = parseMarketShare(req);
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1000, 1), 100000);
-    const preset = RRR_PRESETS.find((p) => p.id === (req.query.rrr || 'none')) || RRR_PRESETS[0];
-    const rrr = rrrFromBonus(preset.bonus);
+    const rrrOpts = parseRrrOptions(req, 'none');
+    // Зачарование .4 (Awakening): по умолчанию не ищем, но это явный выбор игрока (галочка), а не молчаливое умолчание движка.
+    const includeAwakened = req.query.includeAwakened === 'true';
     const taxRate = getSalesTaxRate(req);
     const queryCities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
     const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
     const now = Date.now();
 
     const fresh = jugFreshness(jugDb, now);
-    const cacheKey = JSON.stringify([mode, includeMaterials, category, days, enchantMode, liquidity, minDaily, marketShare, quantity, rrr, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, includeMaterials, category, days, enchantMode, liquidity, minDaily, marketShare, quantity, rrrOpts, includeAwakened, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -1961,9 +2027,10 @@ app.get('/api/unified-scan', (req, res) => {
     const combos = [];
     for (const itemId of gearIds) {
       const item = itemById.get(itemId);
-      const maxE = item.tier >= 4 ? 3 : 0;
       const after = enchantMode === 'after' || requiresEnchantAfterCraft(itemId);
       if (after && !ENCHANT_MATERIAL_COUNT[item.slot]) continue;
+      // .4 рунами не чарится: при «зачаровать после крафта» потолок .3 даже с галочкой; из зачарованного сырья .4 крафтится напрямую.
+      const maxE = item.tier >= 4 ? (includeAwakened && !after ? 4 : 3) : 0;
       for (let e = 0; e <= maxE; e++) combos.push({ itemId, item, enchant: e, after });
     }
 
@@ -1984,7 +2051,7 @@ app.get('/api/unified-scan', (req, res) => {
     for (const c of refineCombos) { materialIds.add(c.rawId); if (c.prevId) materialIds.add(c.prevId); }
     const finishedIds = [...new Set([...combos.map((c) => gearEnchantId(c.itemId, c.enchant)), ...refineCombos.map((c) => c.refinedId)])];
 
-    const materialQuotes = cheapestQuotes(readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] }));
+    const materialQuotes = quotesById(readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] }));
     const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations, qualities: ALL_QUALITIES, now }));
     const finishedHistory = indexByItem(cleaned.series);
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
@@ -2039,8 +2106,9 @@ app.get('/api/unified-scan', (req, res) => {
       const freshMinutes = dealAgeMinutes([...quoteDates, ...(sellDate ? [sellDate] : [])], now);
       const rankScore = dailyProfit * freshnessDecay(freshMinutes) * (mode === 'patient' ? bulkCycleDecay(totalDays) : 1);
       const profitPct = (profitPerUnit / cost) * 100;
+      const tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
       return {
-        kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities,
+        kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, tradeHours, confidence: confidenceOf(tradeHours),
         dailyVolume, yourDailyVolume, marketDailyVolume, profitPerUnit, profitPct, dailyProfit,
         premiumDays: premiumPaybackDays(profitPerUnit, throughput),
         daysToAcquire, daysToSell, totalDays, quantity: mode === 'patient' ? quantity : null,
@@ -2059,17 +2127,17 @@ app.get('/api/unified-scan', (req, res) => {
       let complete = true;
       for (const r of recipe.resources) {
         const id = effectiveRecipeResourceId(r.resource, matEnchant);
-        const q = materialQuotes[id];
+        const q = bestMaterialQuote(materialQuotes[id] || [], r, rrrOpts);   // город покупки — с учётом возврата в нём
         if (!q) { complete = false; break; }
-        cost += q.price * r.count * returnFactor(r, rrr);
-        needs.push({ id, perUnit: r.count * returnFactor(r, rrr) });
+        cost += q.price * r.count * q.factor;
+        needs.push({ id, perUnit: r.count * q.factor });
         quoteDates.push(q.date);
       }
       if (!complete) continue;
       if (c.after) {
         for (let lvl = 1; lvl <= c.enchant && complete; lvl++) {
           const id = enchantMaterialId(c.item.tier, lvl);
-          const q = materialQuotes[id];
+          const q = cheapestOf(materialQuotes[id]);                         // на руны/души/реликвии возврат не действует
           if (!q) { complete = false; break; }
           cost += q.price * ENCHANT_MATERIAL_COUNT[c.item.slot];
           needs.push({ id, perUnit: ENCHANT_MATERIAL_COUNT[c.item.slot] });
@@ -2088,12 +2156,12 @@ app.get('/api/unified-scan', (req, res) => {
     // Сырьё → переработанный материал
     for (const c of refineCombos) {
       const ratio = REFINING_RATIOS[c.tier];
-      const rawQuote = materialQuotes[c.rawId];
-      const prevQuote = c.prevId ? materialQuotes[c.prevId] : null;
+      const rawQuote = bestMaterialQuote(materialQuotes[c.rawId] || [], { resource: c.rawId }, rrrOpts);
+      const prevQuote = c.prevId ? bestMaterialQuote(materialQuotes[c.prevId] || [], { resource: c.prevId }, rrrOpts) : null;
       if (!rawQuote || (c.prevId && !prevQuote)) continue;
-      const cost = (ratio.raw * rawQuote.price + (c.prevId ? ratio.prevRefined * prevQuote.price : 0)) * (1 - rrr);
-      const needs = [{ id: c.rawId, perUnit: ratio.raw * (1 - rrr) }];
-      if (c.prevId) needs.push({ id: c.prevId, perUnit: ratio.prevRefined * (1 - rrr) });
+      const cost = ratio.raw * rawQuote.price * rawQuote.factor + (c.prevId ? ratio.prevRefined * prevQuote.price * prevQuote.factor : 0);
+      const needs = [{ id: c.rawId, perUnit: ratio.raw * rawQuote.factor }];
+      if (c.prevId) needs.push({ id: c.prevId, perUnit: ratio.prevRefined * prevQuote.factor });
       const row = buildRow({
         kind: 'material', itemId: c.refinedId, finishedId: c.refinedId, enchant: 0, quality: 1, tier: c.tier, type: c.type, cost,
         quoteDates: [rawQuote.date, ...(prevQuote ? [prevQuote.date] : [])], needs,
@@ -2105,6 +2173,7 @@ app.get('/api/unified-scan', (req, res) => {
     const data = {
       mode, includeMaterials, enchantMode, liquidity, days, marketShare, quantity: mode === 'patient' ? quantity : null, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
+      rrrOptions: rrrOpts, enchantRange: includeAwakened ? '.0–.4' : '.0–.3', includeAwakened,
       scanned: combos.length + refineCombos.length, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
     };
     unifiedScanCache = { key: cacheKey, ts: now, data };
@@ -2479,4 +2548,9 @@ module.exports = {
   buildJugCatalog,
   aodpBudget,
   jugDb,
+  materialRrr,
+  resourceTypeOf,
+  bestMaterialQuote,
+  tradeHoursOf,
+  confidenceOf,
 };

@@ -163,4 +163,40 @@ describe('GET /api/unified-scan', () => {
     expect(row.avgSellPrice).toBe(3000);
     expect(row.sellCities).toEqual([CITY]);
   });
+
+  it('.4 по умолчанию не ищется, но это явный выбор: с includeAwakened строка .4 появляется, диапазон сообщается в ответе', async () => {
+    seedMaterial('T4_METALBAR_LEVEL4@4', 100);
+    seedMaterial('T4_LEATHER_LEVEL4@4', 100);
+    seedSales('T4_MAIN_SWORD@4', { avg: 20000, perDay: 30 });
+    const off = await scan({ mode: 'patient', quantity: 100 });
+    expect(off.enchantRange).toBe('.0–.3');
+    expect(off.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
+    const on = await scan({ mode: 'patient', quantity: 100, includeAwakened: 'true' });
+    expect(on.enchantRange).toBe('.0–.4');
+    expect(on.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toMatchObject({ enchant: 4 });
+  });
+
+  it('.4 не берётся при «зачаровать после крафта»: рунами .4 не получить', async () => {
+    seedMaterial('T4_RUNE', 100); seedMaterial('T4_SOUL', 100); seedMaterial('T4_RELIC', 100);
+    seedSales('T4_MAIN_SWORD@4', { avg: 90000, perDay: 30 });
+    const res = await scan({ mode: 'patient', quantity: 100, includeAwakened: 'true', enchantMode: 'after' });
+    expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
+  });
+
+  it('индекс доверия: 6 часов торговли — 23%, а не «уверенные» 100%; в ответе есть tradeHours', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });          // seedSales кладёт по одной точке в день, 6 дней
+    const row = (await scan({ mode: 'patient', quantity: 100 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(row.tradeHours).toBe(6);
+    expect(row.confidence).toBeCloseTo(6 / 26, 9);
+  });
+
+  it('возврат по городу покупки: с бонусом города себестоимость меньше, чем без него', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
+    const without = (await scan({ mode: 'patient', quantity: 100, royalBonus: 'false', focus: 'false' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    const withBonus = (await scan({ mode: 'patient', quantity: 100, royalBonus: 'true', focus: 'false' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    // в тестовом кувшине единственный город — Martlock: кожа получает спец-бонус (58%), слитки — только базу (18%)
+    expect(withBonus.cost).toBeCloseTo(16 * 100 * (1 - 0.18 / 1.18) + 8 * 100 * (1 - 0.58 / 1.58), 0);
+    expect(withBonus.cost).toBeLessThan(without.cost);
+  });
 });
+

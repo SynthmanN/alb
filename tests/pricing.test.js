@@ -10,6 +10,7 @@ const {
 } = require('../server.js');
 const RECIPES = require('../data/recipes.json');
 const { RRR_PRESETS, rrrFromBonus } = require('../data/refining');
+const NO_RRR = { royalBonus: false, focus: false };
 
 describe('Item Power', () => {
   it('база по тиру: T2=500, +100 за тир', () => {
@@ -163,7 +164,7 @@ describe('план крупной партии', () => {
   }));
   const finishedHistory = [{ item_id: itemId, location: 'Lymhurst', data: [{ item_count: 70, avg_price: 200000 }] }];
   const base = {
-    itemId, enchant: 0, quality: 1, quantity: 100, days: 7, preset: RRR_PRESETS[0], rrr: 0,
+    itemId, enchant: 0, quality: 1, quantity: 100, days: 7, rrrOpts: NO_RRR,
     taxRate: 0.08, costCeiling: null, sellLow: null, sellHigh: null, queryCities: cities,
   };
 
@@ -185,8 +186,7 @@ describe('план крупной партии', () => {
     expect(plan.daysToAcquireBatch).toBeCloseTo(slowest.daysToAcquire, 6);
   });
   it('RRR уменьшает и себестоимость, и закупаемое количество', () => {
-    const rrr = rrrFromBonus(58);
-    const withRrr = computeBulkPlan({ ...base, rrr }, materialHistory, finishedHistory);
+    const withRrr = computeBulkPlan({ ...base, rrrOpts: { royalBonus: true, focus: true } }, materialHistory, finishedHistory);
     const without = computeBulkPlan(base, materialHistory, finishedHistory);
     expect(withRrr.effectiveCostPerUnit).toBeLessThan(without.effectiveCostPerUnit);
     expect(withRrr.recipe[0].neededAfterRrr).toBeLessThan(without.recipe[0].neededAfterRrr);
@@ -367,7 +367,7 @@ describe('план партии: фильтр качества для скане
     { item_id: itemId, location: 'Martlock', quality: 4, data: [{ item_count: 700, avg_price: 300000 }] },
   ];
   const base = {
-    itemId, enchant: 0, quantity: 100, days: 7, preset: RRR_PRESETS[0], rrr: 0, taxRate: 0, costCeiling: null,
+    itemId, enchant: 0, quantity: 100, days: 7, rrrOpts: NO_RRR, taxRate: 0, costCeiling: null,
     sellLow: null, sellHigh: null, queryCities: ['Martlock'], filterQuality: true,
   };
   it('с filterQuality берутся только ряды нужного качества: спрос и цена у Отличного и Обычного разные', () => {
@@ -511,15 +511,15 @@ describe('возврат ресурсов: только на возвращае�
   const recipe = RECIPES[itemId];
   const materialHistory = recipe.resources.map((r) => ({ item_id: r.resource, location: 'Martlock', data: [{ item_count: 700, avg_price: 1000 }] }));
   const finishedHistory = [{ item_id: itemId, location: 'Martlock', data: [{ item_count: 700, avg_price: 100000 }] }];
-  const base = { itemId, enchant: 0, quality: 1, quantity: 100, days: 7, preset: RRR_PRESETS[0], taxRate: 0, costCeiling: null, sellLow: null, sellHigh: null, queryCities: ['Martlock'] };
+  const base = { itemId, enchant: 0, quality: 1, quantity: 100, days: 7, rrrOpts: NO_RRR, taxRate: 0, costCeiling: null, sellLow: null, sellHigh: null, queryCities: ['Martlock'] };
   it('план партии: возврат уменьшает закупку и цену только возвращаемых материалов', () => {
-    const rrr = 0.5;
-    const plan = computeBulkPlan({ ...base, rrr }, materialHistory, finishedHistory);
+    const rrr = rrrFromBonus(59);                                          // только Фокус: одна ставка на все материалы, город без спец-бонуса
+    const plan = computeBulkPlan({ ...base, rrrOpts: { royalBonus: false, focus: true } }, materialHistory, finishedHistory);
     for (const r of plan.recipe) {
       const src = recipe.resources.find((x) => x.resource === r.resource);
-      expect(r.neededAfterRrr).toBe(Math.ceil(src.count * 100 * (src.noReturn ? 1 : 0.5)));
+      expect(r.neededAfterRrr).toBe(Math.ceil(src.count * 100 * (src.noReturn ? 1 : 1 - rrr)));
     }
-    const expected = recipe.resources.reduce((sum, r) => sum + r.count * 1000 * (r.noReturn ? 1 : 0.5), 0);
+    const expected = recipe.resources.reduce((sum, r) => sum + r.count * 1000 * (r.noReturn ? 1 : 1 - rrr), 0);
     expect(plan.effectiveCostPerUnit).toBeCloseTo(expected, 6);
   });
 });
@@ -578,3 +578,51 @@ describe('многогородовой план: ценовой допуск и 
     expect(planCityAllocation([], 10, { side: 'sell' }).cities).toEqual([]);
   });
 });
+
+describe('возврат ресурсов (RRR) по материалу и городу закупки', () => {
+  const { materialRrr, resourceTypeOf, bestMaterialQuote, tradeHoursOf, confidenceOf } = require('../server.js');
+  const ROYAL = { royalBonus: true, focus: false };
+  it('тип ресурса определяется и по сырью, и по переработанному материалу; зачарованные версии — тоже', () => {
+    expect(resourceTypeOf('T4_ORE')).toBe('ORE');
+    expect(resourceTypeOf('T5_METALBAR')).toBe('ORE');
+    expect(resourceTypeOf('T6_LEATHER_LEVEL2@2')).toBe('HIDE');
+    expect(resourceTypeOf('T4_PLANKS')).toBe('WOOD');
+    expect(resourceTypeOf('T4_CAPEITEM_AVALON_BP')).toBeNull();
+  });
+  it('спец-бонус города достаётся только «своему» типу ресурса: руда в Thetford — 58%, кожа в Thetford — базовые 18%', () => {
+    expect(materialRrr('T4_METALBAR', 'Thetford', ROYAL)).toBeCloseTo(rrrFromBonus(58), 9);
+    expect(materialRrr('T4_LEATHER', 'Thetford', ROYAL)).toBeCloseTo(rrrFromBonus(18), 9);
+    expect(materialRrr('T4_LEATHER', 'Martlock', ROYAL)).toBeCloseTo(rrrFromBonus(58), 9);
+    expect(materialRrr('T4_PLANKS', 'Fort Sterling', ROYAL)).toBeCloseTo(rrrFromBonus(58), 9);
+    expect(materialRrr('T4_PLANKS', 'FortSterling', ROYAL)).toBeCloseTo(rrrFromBonus(58), 9);   // город без пробела из запроса
+  });
+  it('Фокус добавляет 59%, без бонуса города возврата нет, с обоими — 117%', () => {
+    expect(materialRrr('T4_METALBAR', 'Thetford', { royalBonus: false, focus: false })).toBe(0);
+    expect(materialRrr('T4_METALBAR', 'Lymhurst', { royalBonus: false, focus: true })).toBeCloseTo(rrrFromBonus(59), 9);
+    expect(materialRrr('T4_METALBAR', 'Thetford', { royalBonus: true, focus: true })).toBeCloseTo(rrrFromBonus(117), 9);
+  });
+  it('город закупки выбирается по цене с учётом возврата: дороже на 10%, но со спец-бонусом — выгоднее', () => {
+    const quotes = [{ city: 'Lymhurst', price: 100 }, { city: 'Thetford', price: 110 }];
+    const best = bestMaterialQuote(quotes, { resource: 'T4_METALBAR' }, ROYAL);
+    expect(best.city).toBe('Thetford');
+    expect(best.effective).toBeCloseTo(110 * (1 - rrrFromBonus(58)), 9);
+    expect(bestMaterialQuote(quotes, { resource: 'T4_METALBAR' }, { royalBonus: false, focus: false }).city).toBe('Lymhurst');
+  });
+  it('невозвращаемый материал (герб, жетон) выбирается по номиналу и возврата не получает', () => {
+    const best = bestMaterialQuote([{ city: 'Lymhurst', price: 100 }, { city: 'Thetford', price: 95 }], { resource: 'T4_METALBAR', noReturn: true }, ROYAL);
+    expect(best).toMatchObject({ city: 'Thetford', rrr: 0, factor: 1 });
+  });
+  it('индекс доверия считается по числу разных часов торговли, а не штук: 3 часа — 13%, 300 — 94%', () => {
+    expect(confidenceOf(3)).toBeCloseTo(3 / 23, 9);
+    expect(confidenceOf(300)).toBeCloseTo(300 / 320, 9);
+    const series = [
+      { quality: 1, location: 'Martlock', data: [{ timestamp: 'a', item_count: 500 }, { timestamp: 'b', item_count: 1 }] },
+      { quality: 1, location: 'Thetford', data: [{ timestamp: 'a', item_count: 2 }, { timestamp: 'c', item_count: 0 }] },
+      { quality: 2, location: 'Martlock', data: [{ timestamp: 'z', item_count: 9 }] },
+    ];
+    expect(tradeHoursOf(series, 1, ['Martlock', 'Thetford'])).toBe(2);       // часы a и b; c без сделок, качество 2 не считается, 500 штук — это один час
+    expect(tradeHoursOf(series, 1, ['Martlock'])).toBe(2);
+    expect(tradeHoursOf(series, 1, ['Lymhurst'])).toBe(0);
+  });
+});
+

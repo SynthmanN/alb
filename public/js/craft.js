@@ -10,7 +10,8 @@ const craftEl = {
   controls: document.getElementById('craft-controls'),
   enchant: document.getElementById('craft-enchant'),
   quality: document.getElementById('craft-quality'),
-  rrr: document.getElementById('craft-rrr'),
+  royalBonus: document.getElementById('craft-royal-bonus'),
+  focus: document.getElementById('craft-focus'),
   quantity: document.getElementById('craft-quantity'),
   run: document.getElementById('craft-run'),
   result: document.getElementById('craft-result'),
@@ -26,8 +27,6 @@ const PROFIT_STRATEGY_HORIZON = 1.5; // «в пределах разумного
 async function initCraft() {
   const res = await fetch('/api/refining-meta');
   const meta = await res.json();
-  craftEl.rrr.innerHTML = meta.rrrPresets.map((p) => `<option value="${p.id}">${p.label} (${(p.rrr * 100).toFixed(1)}%)</option>`).join('');
-  craftEl.rrr.value = 'city_bonus';
 
   craftEl.search.addEventListener('input', (e) => renderCraftSuggestions(e.target.value));
   craftEl.categoryFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
@@ -116,7 +115,7 @@ async function runCraftCalc() {
   try {
     const params = new URLSearchParams({
       item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
-      quantity: craftEl.quantity.value || '1', rrr: craftEl.rrr.value, cities: activeCities().join(','),
+      quantity: craftEl.quantity.value || '1', royalBonus: String(craftEl.royalBonus.checked), focus: String(craftEl.focus.checked), cities: activeCities().join(','),
       premium: premiumParam(),
     });
     params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
@@ -166,7 +165,7 @@ function renderCraftResult(data) {
     const subtotal = missing ? null : r.cheapestPrice * needed;
     return `
       <tr>
-        <td>${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
+        <td>${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : r.rrr > 0 ? `<br><small title="Ставка возврата в городе покупки для этого материала">возврат ${(r.rrr * 100).toFixed(1)}%</small>` : ''}</td>
         <td>${needed.toLocaleString('ru-RU')}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU')}</small>` : ''}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
@@ -202,7 +201,7 @@ function renderCraftResult(data) {
     </details>
     <div class="craft-summary">
       <div class="craft-summary-row"><span>Себестоимость материала / шт (сырое)</span><span>${Math.round(data.materialCostPerUnit).toLocaleString('ru-RU')}</span></div>
-      <div class="craft-summary-row"><span>Себестоимость с учётом RRR (${(data.rrrPreset.rrr * 100).toFixed(1)}%) / шт</span><span>${Math.round(data.effectiveCostPerUnit).toLocaleString('ru-RU')}</span></div>
+      <div class="craft-summary-row"><span title="${data.rrrPreset.label}; у каждого материала своя ставка (см. таблицу материалов)">Себестоимость с учётом RRR (в среднем ${(data.rrrPreset.rrr * 100).toFixed(1)}%) / шт</span><span>${Math.round(data.effectiveCostPerUnit).toLocaleString('ru-RU')}</span></div>
       <div class="craft-summary-row"><span>Продажа в Buy Order: лучшая цена (мгновенно, в чужой ордер на покупку)</span><span>${data.bestSell ? `${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
       <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${data.netSellPrice !== null ? Math.round(data.netSellPrice).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
@@ -606,7 +605,7 @@ async function runLazyCrafter() {
   try {
     const params = new URLSearchParams({
       budget: lazyEl.budget.value || '0', share: lazyEl.share.value || '25', sellDays: lazyEl.sellDays.value || '1',
-      strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), rrr: craftEl.rrr.value,
+      strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), royalBonus: String(craftEl.royalBonus.checked), focus: String(craftEl.focus.checked),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/lazy-crafter?${params}`);
@@ -659,6 +658,9 @@ function renderLazyCrafter(data) {
 const marginEl = {
   mode: document.getElementById('margin-mode'),
   includeMaterials: document.getElementById('margin-include-materials'),
+  includeAwakened: document.getElementById('margin-include-awakened'),
+  royalBonus: document.getElementById('margin-royal-bonus'),
+  focus: document.getElementById('margin-focus'),
   category: document.getElementById('margin-category'),
   enchantMode: document.getElementById('margin-enchant-mode'),
   liquidity: document.getElementById('margin-liquidity'),
@@ -684,9 +686,9 @@ async function runMarginScan() {
   marginEl.result.innerHTML = 'Считаю по данным кувшина: весь гир × зачарование × качество, это может занять несколько секунд...';
   try {
     const params = new URLSearchParams({
-      mode: marginEl.mode.value, includeMaterials: String(marginEl.includeMaterials.checked),
+      mode: marginEl.mode.value, includeMaterials: String(marginEl.includeMaterials.checked), includeAwakened: String(marginEl.includeAwakened.checked),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
-      quantity: marginEl.quantity.value || '1000', minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), rrr: craftEl.rrr.value,
+      quantity: marginEl.quantity.value || '1000', minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), royalBonus: String(marginEl.royalBonus.checked), focus: String(marginEl.focus.checked),
       marketShare: readCustomizable(document.getElementById('margin-market-share')),
       cities: activeCities().join(','), premium: premiumParam(),
     });
@@ -699,6 +701,11 @@ async function runMarginScan() {
   } finally {
     marginEl.run.disabled = false;
   }
+}
+
+// Цвет индекса доверия: меньше 50% — цифра шаткая (мало часов торговли), от 80% — надёжная.
+function confidenceClass(confidence) {
+  return confidence < 0.5 ? 'scan-stale' : confidence >= 0.8 ? 'scan-spread-hot' : '';
 }
 
 // Возраст данных кувшина человеческим языком: «3 мин назад», «2 ч назад».
@@ -738,6 +745,7 @@ function renderMarginScan(data) {
         <td data-sort-value="${r.dailyProfit}">${fmtNum(r.dailyProfit)}</td>
         ${patient ? `<td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.totalDays}" title="закупка узкого материала ${fmtDays(r.daysToAcquire)} + распродажа ${fmtDays(r.daysToSell)}">${fmtDays(r.totalDays)}${long ? ' ⚠' : ''}</td>` : ''}
         <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит — только шкала масштаба">${premiumDays}</td>
+        <td class="${confidenceClass(r.confidence)}" data-sort-value="${r.confidence}" title="Цифры стоят на ${r.tradeHours} разных часах торговли за период (индекс доверия = n / (n + 20))">${Math.round(r.confidence * 100)}%<br><small>${r.tradeHours} ч</small></td>
         <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${fmtAgeMinutes(r.freshMinutes)}${stale ? ' ⚠' : ''}</td>
         <td>${action}</td>
       </tr>`;
@@ -746,9 +754,9 @@ function renderMarginScan(data) {
     ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней» — закупка узкого материала + распродажа партии из ${fmtNum(data.quantity)} шт`
     : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Доля рынка ${(data.marketShare * 100).toFixed(0)}% — профит в день и «дней на премиум» по твоей доле, а не по всему обороту. Список отсортирован по дневному профиту с поправкой на свежесть котировок${patient ? ' и длину цикла' : ''}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}. ${jugNote}</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Доля рынка ${(data.marketShare * 100).toFixed(0)}% — профит в день и «дней на премиум» по твоей доле, а не по всему обороту. Список отсортирован по дневному профиту с поправкой на свежесть котировок${patient ? ' и длину цикла' : ''}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. Возврат ресурсов: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит/день (твоя доля)</th>${patient ? '<th>Дней (закупка+продажа)</th>' : ''}<th>Дней на премиум</th><th>Свежесть</th><th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит/день (твоя доля)</th>${patient ? '<th>Дней (закупка+продажа)</th>' : ''}<th>Дней на премиум</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');

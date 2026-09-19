@@ -5,7 +5,8 @@ const calcEl = {
   type: document.getElementById('calc-type'),
   tier: document.getElementById('calc-tier'),
   enchant: document.getElementById('calc-enchant'),
-  rrr: document.getElementById('calc-rrr'),
+  royalBonus: document.getElementById('calc-royal-bonus'),
+  focus: document.getElementById('calc-focus'),
   run: document.getElementById('calc-run'),
   result: document.getElementById('calc-result'),
 };
@@ -16,8 +17,6 @@ async function initCalc() {
   calcEl.type.innerHTML = meta.resourceTypes.map((t) => `<option value="${t.id}">${t.name} (бонус: ${t.bonusCity})</option>`).join('');
   calcEl.tier.innerHTML = [2, 3, 4, 5, 6, 7, 8].map((t) => `<option value="${t}">T${t}</option>`).join('');
   calcEl.tier.value = 5;
-  calcEl.rrr.innerHTML = meta.rrrPresets.map((p) => `<option value="${p.id}">${p.label} (${(p.rrr * 100).toFixed(1)}%)</option>`).join('');
-  calcEl.rrr.value = 'city_bonus';
   calcEl.run.addEventListener('click', runCalc);
   // Переход из общего сканера («в калькулятор» у строки сырья): ?type=ORE&tier=5 — подставляем и сразу считаем.
   const query = new URLSearchParams(window.location.search);
@@ -35,7 +34,7 @@ async function runCalc() {
   try {
     const params = new URLSearchParams({
       type: calcEl.type.value, tier: calcEl.tier.value, enchant: calcEl.enchant.value,
-      rrr: calcEl.rrr.value, cities: activeCities().join(','), premium: premiumParam(),
+      royalBonus: String(calcEl.royalBonus.checked), focus: String(calcEl.focus.checked), cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/refining-calc?${params}`);
     const data = await res.json();
@@ -60,6 +59,7 @@ function renderCalcResult(data) {
         <td>${r.rawPrice ?? '—'}</td>
         <td>${r.prevPrice ?? '—'}</td>
         <td>${r.baseCost ? Math.round(r.baseCost).toLocaleString('ru-RU') : '—'}</td>
+        <td>${r.rrr !== undefined ? `${(r.rrr * 100).toFixed(1)}%` : '—'}</td>
         <td>${r.effectiveCost ? Math.round(r.effectiveCost).toLocaleString('ru-RU') : '—'}</td>
         <td>${r.outputSell ?? '—'}</td>
         <td class="${profitClass}">${r.profit !== null ? Math.round(r.profit).toLocaleString('ru-RU') : '—'}</td>
@@ -71,12 +71,12 @@ function renderCalcResult(data) {
     <p>
       Рецепт: ${data.ratio.raw} × сырьё T${data.tier}
       ${data.ratio.prevRefined ? `+ ${data.ratio.prevRefined} × материал T${data.tier - 1}` : ''}
-      → 1 × ${data.itemId}. RRR: ${(data.rrrPreset.rrr * 100).toFixed(1)}% (${data.rrrPreset.label}).
+      → 1 × ${data.itemId}. Возврат (RRR) считается в каждом городе отдельно: ${data.rrrLabel}.
       Профит считается после налога с продажи (${(data.taxRate * 100).toFixed(0)}%).
       ⭐ — город со спец-бонусом переработки этого ресурса.
     </p>
     <div class="table-scroll"><table class="calc-table">
-      <thead><tr><th>Город</th><th>Сырьё</th><th>Пред. тир</th><th>Себест. (сырое)</th><th>Себест. (с RRR)</th><th>Продажа</th><th>Профит/ед.</th></tr></thead>
+      <thead><tr><th>Город</th><th>Сырьё</th><th>Пред. тир</th><th>Себест. (сырое)</th><th>Возврат</th><th>Себест. (с RRR)</th><th>Продажа</th><th>Профит/ед.</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>
   `;

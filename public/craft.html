@@ -41,7 +41,11 @@
             <option value="3">Выдающееся</option><option value="4">Отличное</option><option value="5">Шедевр</option>
           </select>
         </label>
-        <label class="craft-field">Возврат ресурсов<select id="craft-rrr"></select></label>
+        <label class="craft-field craft-check" title="Возврат ресурсов считается по каждому материалу и городу закупки отдельно: в royal-городе база 18%, ещё +40% — если город даёт спец-бонус именно этому типу ресурса (дерево — Fort Sterling, руда — Thetford, волокно — Lymhurst, шкура — Martlock, камень — Bridgewatch). Фокус добавляет +59%">
+          <span>Возврат ресурсов</span>
+          <span class="check-inline"><input id="craft-royal-bonus" type="checkbox" checked /> Бонус города</span>
+          <span class="check-inline"><input id="craft-focus" type="checkbox" /> Фокус</span>
+        </label>
         <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
         <label class="craft-field" title="Какую долю дневного оборота рынка ты реально сможешь продать: другие игроки тоже торгуют и перевыставляют ордера, чтобы быть первыми. Влияет на срок распродажи">Доля рынка
           <select id="craft-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
@@ -76,11 +80,11 @@
       <details class="tool-accordion">
         <summary>🎯 Скан маржи и ликвидности</summary>
       <p class="calc-note">
-        Ищет, что выгодно делать прямо сейчас: перебирает весь гир × зачарование .0–.3 × качество (и по желанию сырьё для рефайна),
+        Ищет, что выгодно делать прямо сейчас: перебирает весь гир × зачарование (по умолчанию .0–.3, с галочкой «Искать и .4» — до .4) × качество (и по желанию сырьё для рефайна),
         для каждой комбинации считает себестоимость, цену продажи и оборот, а лучшую комбинацию предмета выбирает по дневному профиту
         в серебре — а не по голому проценту маржи. Читает локальную базу («кувшин»), которую фоном обновляет сервер, поэтому считает
         мгновенно; финальную проверку любой находки делает калькулятор по живым ценам. «Дней на премиум» — просто шкала масштаба
-        (28 млн серебра ÷ дневной профит), а не цель. Зачарование .4 не входит — оно не чарится рунами.
+        (28 млн серебра ÷ дневной профит), а не цель. «Доверие» — на скольких разных часах торговли стоят цифры: n / (n + 20). Зачарование .4 руной не получить, поэтому при «зачаровать после крафта» потолок остаётся .3.
       </p>
       <div class="craft-controls-row">
         <label class="craft-field" title="Терпеливо: свой Sell Order по средней цене сделок в прибыльных городах, с закупкой и распродажей партии. Мгновенно: продажа в текущий Buy Order лучшего города">Режим
@@ -92,6 +96,15 @@
         <label class="craft-field craft-check" title="Добавить в список сырьё и переработку (рефайн): тир × тип ресурса. Считается по той же модели, что и гир">
           <span>Рефайн</span>
           <span class="check-inline"><input id="margin-include-materials" type="checkbox" /> Включить сырьё и рефайн</span>
+        </label>
+        <label class="craft-field craft-check" title="Возврат ресурсов при крафте — по каждому материалу и городу закупки (спец-бонус города только «своему» типу ресурса; Фокус +59%). Свои галочки скана, независимые от калькулятора">
+          <span>Возврат ресурсов</span>
+          <span class="check-inline"><input id="margin-royal-bonus" type="checkbox" checked /> Бонус города</span>
+          <span class="check-inline"><input id="margin-focus" type="checkbox" /> Фокус</span>
+        </label>
+        <label class="craft-field craft-check" title="Зачарование .4 (Awakening) — самый дорогой диапазон. По умолчанию не ищем; включи, чтобы скан проверил и его">
+          <span>Диапазон</span>
+          <span class="check-inline"><input id="margin-include-awakened" type="checkbox" /> Искать и .4</span>
         </label>
         <label class="craft-field">Категория
           <select id="margin-category"><option value="all">Всё</option><option value="weapon">Оружие</option><option value="armor">Броня</option><option value="cape">Плащи</option></select>
