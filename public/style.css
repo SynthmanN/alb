@@ -228,7 +228,7 @@ main { padding-top: 4px; }
 }
 
 /* Компактная ширина: на широких экранах контент не растягивается на весь монитор */
-#site-chrome, main, .page-header { max-width: 1100px; margin-left: auto; margin-right: auto; }
+#site-chrome, main, .page-header { max-width: 1400px; margin-left: auto; margin-right: auto; }
 .mastery-cat summary input, .mastery-row input { width: 76px; padding: 5px 8px; }
 
 /* Галочка внутри строки полей калькулятора */
@@ -279,3 +279,8 @@ details.tool-accordion[open] { padding-bottom: 14px; }
 tr.top-find td { background: rgba(126, 231, 135, 0.08); }
 tr.top-find td:first-child { box-shadow: inset 3px 0 0 #7ee787; }
 .top-badge { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; color: #14161a; background: #7ee787; border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
+
+/* Широкие таблицы сканеров (7–9 колонок) помещаются без вечной горизонтальной прокрутки */
+.calc-panel { max-width: 100%; }
+.fit-slot .craft-selected img { width: 40px; height: 40px; }
+#fit-result .item-icon-sm { width: 32px; height: 32px; }

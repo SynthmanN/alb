@@ -48,7 +48,7 @@ function renderFitSelected(key) {
   const st = fitState[key];
   const box = document.getElementById(`fit-selected-${key}`);
   box.innerHTML = st
-    ? `<img src="${iconUrl(st.iconId, 32)}" alt="" onerror="this.style.visibility='hidden'" /><strong>${st.name}</strong>`
+    ? `<img src="${iconUrl(st.iconId, 64)}" alt="" onerror="this.style.visibility='hidden'" /><strong>${st.name}</strong>`
     : '<span class="missing">не выбрано</span>';
 }
 
@@ -130,7 +130,7 @@ function fitSlotCell(o) {
   if (!o) return '<td data-sort-value="">—</td>';
   const item = findItem(o.itemId) || { id: o.itemId, name: o.itemId };
   const tag = `T${o.tier}.${o.enchant}`;
-  return `<td data-sort-value="${o.price}" title="${item.name}"><img class="item-icon-sm" src="${iconUrl(o.itemId, 24)}" alt="" onerror="this.style.visibility='hidden'" /> ${tag} ${QUALITY_NAMES[o.quality]}<br><small>${o.price.toLocaleString('ru-RU')} · ${o.city}</small></td>`;
+  return `<td data-sort-value="${o.price}" title="${item.name}"><img class="item-icon-sm" src="${iconUrl(o.itemId, 64, o.enchant)}" alt="" onerror="this.style.visibility='hidden'" /> ${tag} ${QUALITY_NAMES[o.quality]}<br><small>${o.price.toLocaleString('ru-RU')} · ${o.city}</small></td>`;
 }
 
 function renderFitResult(data) {
