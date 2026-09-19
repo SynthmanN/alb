@@ -3043,6 +3043,15 @@ function startJug() {
       return data;
     },
     // История — один раз на самое широкое окно (7 дней): короткие окна (12ч/24ч/72ч) агрегируются из тех же точек локально.
+    // Дневные точки дней 8–10: почасовая история AODP короче, чем окно кувшина (диапазон не пересекается с почасовой — сделки не задваиваются)
+    fetchHistoryDaily: async (chunk, cities = CITIES) => {
+      const from = new Date(Date.now() - HISTORY_WINDOW_HOURS * 3600 * 1000);
+      const to = new Date(Date.now() - 8 * 24 * 3600 * 1000);
+      const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(chunk.join(','))}?date=${fmtDate(from)}&end_date=${fmtDate(to)}&locations=${cities.join(',')}&qualities=${ALL_QUALITIES.join(',')}&time-scale=24`;
+      const response = await aodpFetch(url, 0);
+      if (!response.ok) throw new Error(`AODP history (daily) responded ${response.status}`);
+      return tagFetchedAt(await response.json(), Date.now());
+    },
     fetchHistory: async (chunk, cities = CITIES) => {
       const key = `jug:history:${cities.join(',')}:${chunk.join(',')}`;
       const cached = historyCache.get(key);

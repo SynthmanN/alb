@@ -112,3 +112,27 @@ describe('кувшин: краулер', () => {
     expect(jugStats(db).historyRows).toBe(2);
   });
 });
+
+describe('кувшин: дневные точки за пределами почасовой истории AODP', () => {
+  it('дневная история для дней 8–10 берётся раз в 6 часов, а не на каждом обходе; сбой не отмечает проход', async () => {
+    const { crawlHistoryDailyOnce, DAILY_EVERY_MS } = require('../lib/jugCrawler.js');
+    expect(DAILY_EVERY_MS).toBe(6 * 60 * 60 * 1000);
+    const db = openJug();
+    let calls = 0;
+    const ok = await crawlHistoryDailyOnce({ db, ids: ids(30), fetchHistoryDaily: async (chunk) => { calls++; return chunk.map(historyFor); }, now: () => 5 });
+    expect(calls).toBe(2);                                                                   // 30 id → 2 чанка по 25
+    expect(ok.failed).toBe(0);
+    let clock = 1_000_000_000;
+    let dailyCalls = 0;
+    const crawler = startJugCrawler({
+      db: openJug(), ids: ids(5), log: () => {}, now: () => clock,
+      fetchPrices: async (chunk) => chunk.map(priceFor), fetchHistory: async (chunk) => chunk.map(historyFor),
+      fetchHistoryDaily: async (chunk) => { dailyCalls++; return chunk.map(historyFor); },
+      sleep: async () => { crawler.stop(); },
+    });
+    await crawler.done;
+    expect(dailyCalls).toBe(1);
+    const failing = await crawlHistoryDailyOnce({ db, ids: ids(5), fetchHistoryDaily: async () => { throw new Error('boom'); }, log: () => {}, now: () => 9 });
+    expect(failing.failed).toBe(1);
+  });
+});
