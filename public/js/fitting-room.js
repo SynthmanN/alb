@@ -7,7 +7,7 @@ const FIT_SLOTS = [
   { key: 'head', label: 'Шлем', accepts: ['шлем'] },
   { key: 'chest', label: 'Торс', accepts: ['торс'] },
   { key: 'shoes', label: 'Обувь', accepts: ['обувь'] },
-  { key: 'cape', label: 'Плащ', accepts: ['плащ', 'плащ (фракция)'] },
+  { key: 'cape', label: 'Плащ', accepts: ['плащ', 'плащ (фракция)', 'плащ (охотник)'] },
 ];
 const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
 const fitState = {}; // слот -> { family, name, iconId, slot }

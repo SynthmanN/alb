@@ -1388,6 +1388,7 @@ const ENCHANT_MATERIAL_COUNT = {
   обувь: 96,
   плащ: 96,
   'плащ (фракция)': 96,
+  'плащ (охотник)': 96,
 };
 const ENCHANT_MATERIAL_BY_LEVEL = { 1: 'RUNE', 2: 'SOUL', 3: 'RELIC' };
 function enchantMaterialId(tier, level) {
@@ -1549,7 +1550,7 @@ const SLOT_ACCEPTS = {
   head: ['шлем'],
   chest: ['торс'],
   shoes: ['обувь'],
-  cape: ['плащ', 'плащ (фракция)'],
+  cape: ['плащ', 'плащ (фракция)', 'плащ (охотник)'],
 };
 
 // Цены гира сразу по нескольким качествам одним запросом (AODP принимает qualities=1,2,3,4,5).

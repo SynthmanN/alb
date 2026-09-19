@@ -181,3 +181,26 @@ describe('Чёрный Рынок: налог', () => {
     expect(prem[0].profit).toBeCloseTo(1000 * (1 - 0.065) - 100, 6);
   });
 });
+
+describe('охотничьи плащи', () => {
+  const families = ['AVALON', 'DEMON', 'HERETIC', 'KEEPER', 'MORGANA', 'SMUGGLER', 'UNDEAD'];
+  it('в каталоге все 7 семейств × T4–T8 со слотом «плащ (охотник)»', async () => {
+    const items = (await request(app).get('/api/items')).body;
+    const hunter = items.filter((i) => i.slot === 'плащ (охотник)');
+    expect(hunter).toHaveLength(35);
+    for (const fam of families) {
+      expect(hunter.filter((i) => i.id.endsWith(`_CAPEITEM_${fam}`)).map((i) => i.tier).sort()).toEqual([4, 5, 6, 7, 8]);
+    }
+  });
+  it('у Авалонского плаща есть рецепт: обычный плащ + герб + жетон', async () => {
+    const res = (await request(app).get('/api/craft-calc?item=T8_CAPEITEM_AVALON')).body;
+    expect(res.recipe.map((r) => r.resource)).toEqual(['T8_CAPE', 'T8_CAPEITEM_AVALON_BP', 'QUESTITEM_TOKEN_AVALON']);
+    expect(res.recipe.every((r) => r.resourceName && r.resourceName !== r.resource)).toBe(true); // названия есть у всех материалов
+  });
+  it('примерочная принимает охотничий плащ в слоте плаща', async () => {
+    const q = 'weapon=MAIN_SWORD&offhand=OFF_SHIELD&head=HEAD_PLATE_SET1&chest=ARMOR_PLATE_SET1&shoes=SHOES_PLATE_SET1&cape=CAPEITEM_AVALON&targetIP=900&tolMinus=30&tolPlus=100';
+    const res = await request(app).get(`/api/fitting-room?${q}`);
+    expect(res.status).toBe(200);
+    expect(res.body.variants.length).toBeGreaterThan(0);
+  });
+});

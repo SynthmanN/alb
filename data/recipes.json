@@ -7548,5 +7548,600 @@
    }
   ],
   "silver": 0
+ },
+ "T4_CAPEITEM_AVALON": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_AVALON_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_AVALON",
+    "count": 15
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_AVALON": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_AVALON_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_AVALON",
+    "count": 15
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_AVALON": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_AVALON_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_AVALON",
+    "count": 45
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_AVALON": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_AVALON_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_AVALON",
+    "count": 75
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_AVALON": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_AVALON_BP",
+    "count": 1
+   },
+   {
+    "resource": "QUESTITEM_TOKEN_AVALON",
+    "count": 150
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_DEMON": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_DEMON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_DEMON": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_DEMON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_DEMON": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_DEMON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_DEMON": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_DEMON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_DEMON": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_DEMON_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_STEPPE_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_HERETIC": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_HERETIC_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_HERETIC": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_HERETIC_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_HERETIC": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_HERETIC_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_HERETIC": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_HERETIC_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_HERETIC": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_HERETIC_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_FOREST_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_KEEPER": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_KEEPER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_KEEPER": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_KEEPER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_KEEPER": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_KEEPER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_KEEPER": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_KEEPER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_KEEPER": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_KEEPER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_MORGANA": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_MORGANA_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_MORGANA": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_MORGANA_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_MORGANA": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_MORGANA_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_MORGANA": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_MORGANA_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_MORGANA": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_MORGANA_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_SWAMP_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_SMUGGLER": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_SMUGGLER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_SMUGGLER": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_SMUGGLER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_SMUGGLER": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_SMUGGLER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_SMUGGLER": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_SMUGGLER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_SMUGGLER": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_SMUGGLER_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_CAERLEON_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
+ },
+ "T4_CAPEITEM_UNDEAD": {
+  "resources": [
+   {
+    "resource": "T4_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T4_CAPEITEM_UNDEAD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T5_CAPEITEM_UNDEAD": {
+  "resources": [
+   {
+    "resource": "T5_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T5_CAPEITEM_UNDEAD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 1
+   }
+  ],
+  "silver": 0
+ },
+ "T6_CAPEITEM_UNDEAD": {
+  "resources": [
+   {
+    "resource": "T6_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T6_CAPEITEM_UNDEAD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 3
+   }
+  ],
+  "silver": 0
+ },
+ "T7_CAPEITEM_UNDEAD": {
+  "resources": [
+   {
+    "resource": "T7_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T7_CAPEITEM_UNDEAD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 5
+   }
+  ],
+  "silver": 0
+ },
+ "T8_CAPEITEM_UNDEAD": {
+  "resources": [
+   {
+    "resource": "T8_CAPE",
+    "count": 1
+   },
+   {
+    "resource": "T8_CAPEITEM_UNDEAD_BP",
+    "count": 1
+   },
+   {
+    "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
+    "count": 10
+   }
+  ],
+  "silver": 0
  }
 }

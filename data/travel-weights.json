@@ -1,4 +1,8 @@
 {
+ "QUESTITEM_TOKEN_AVALON": {
+  "fastTravelFactor": 16.0,
+  "weight": 0.01
+ },
  "QUESTITEM_TOKEN_MISTS": {
   "fastTravelFactor": 1.0,
   "weight": 2.56
@@ -623,6 +627,22 @@
   "fastTravelFactor": 1.0,
   "weight": 1.7
  },
+ "T4_CAPEITEM_AVALON": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_AVALON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_DEMON": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_DEMON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
  "T4_CAPEITEM_FW_BRECILIEN": {
   "fastTravelFactor": 1.0,
   "weight": 1.7
@@ -676,6 +696,46 @@
   "weight": 1.7
  },
  "T4_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_HERETIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_HERETIC_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_KEEPER": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_KEEPER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_MORGANA": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_MORGANA_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_SMUGGLER": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_SMUGGLER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_UNDEAD": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_UNDEAD_BP": {
   "fastTravelFactor": 1.0,
   "weight": 0.51
  },
@@ -1231,6 +1291,22 @@
   "fastTravelFactor": 1.0,
   "weight": 2.5
  },
+ "T5_CAPEITEM_AVALON": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_AVALON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_DEMON": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_DEMON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
  "T5_CAPEITEM_FW_BRECILIEN": {
   "fastTravelFactor": 1.0,
   "weight": 2.5
@@ -1284,6 +1360,46 @@
   "weight": 2.5
  },
  "T5_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_HERETIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_HERETIC_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_KEEPER": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_KEEPER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_MORGANA": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_MORGANA_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_SMUGGLER": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_SMUGGLER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_UNDEAD": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_UNDEAD_BP": {
   "fastTravelFactor": 1.0,
   "weight": 0.51
  },
@@ -1827,6 +1943,22 @@
   "fastTravelFactor": 1.0,
   "weight": 3.8
  },
+ "T6_CAPEITEM_AVALON": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_AVALON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_DEMON": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_DEMON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
  "T6_CAPEITEM_FW_BRECILIEN": {
   "fastTravelFactor": 1.0,
   "weight": 3.8
@@ -1880,6 +2012,46 @@
   "weight": 3.8
  },
  "T6_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_HERETIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_HERETIC_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_KEEPER": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_KEEPER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_MORGANA": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_MORGANA_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_SMUGGLER": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_SMUGGLER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_UNDEAD": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_UNDEAD_BP": {
   "fastTravelFactor": 1.0,
   "weight": 0.51
  },
@@ -2435,6 +2607,22 @@
   "fastTravelFactor": 1.0,
   "weight": 5.7
  },
+ "T7_CAPEITEM_AVALON": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_AVALON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_DEMON": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_DEMON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
  "T7_CAPEITEM_FW_BRECILIEN": {
   "fastTravelFactor": 1.0,
   "weight": 5.7
@@ -2488,6 +2676,46 @@
   "weight": 5.7
  },
  "T7_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_HERETIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_HERETIC_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_KEEPER": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_KEEPER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_MORGANA": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_MORGANA_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_SMUGGLER": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_SMUGGLER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_UNDEAD": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_UNDEAD_BP": {
   "fastTravelFactor": 1.0,
   "weight": 0.51
  },
@@ -3031,6 +3259,22 @@
   "fastTravelFactor": 1.0,
   "weight": 8.5
  },
+ "T8_CAPEITEM_AVALON": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_AVALON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_DEMON": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_DEMON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
  "T8_CAPEITEM_FW_BRECILIEN": {
   "fastTravelFactor": 1.0,
   "weight": 8.5
@@ -3084,6 +3328,46 @@
   "weight": 8.5
  },
  "T8_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_HERETIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_HERETIC_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_KEEPER": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_KEEPER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_MORGANA": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_MORGANA_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_SMUGGLER": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_SMUGGLER_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_UNDEAD": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_UNDEAD_BP": {
   "fastTravelFactor": 1.0,
   "weight": 0.51
  },

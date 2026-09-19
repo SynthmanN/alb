@@ -4281,5 +4281,250 @@
     "category": "cape",
     "tier": 8,
     "slot": "плащ (фракция)"
+  },
+  {
+    "id": "T4_CAPEITEM_AVALON",
+    "name": "T4 Авалонский плащ (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T5_CAPEITEM_AVALON",
+    "name": "T5 Авалонский плащ (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T6_CAPEITEM_AVALON",
+    "name": "T6 Авалонский плащ (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T7_CAPEITEM_AVALON",
+    "name": "T7 Авалонский плащ (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T8_CAPEITEM_AVALON",
+    "name": "T8 Авалонский плащ (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T4_CAPEITEM_DEMON",
+    "name": "T4 Плащ Демонов (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T5_CAPEITEM_DEMON",
+    "name": "T5 Плащ Демонов (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T6_CAPEITEM_DEMON",
+    "name": "T6 Плащ Демонов (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T7_CAPEITEM_DEMON",
+    "name": "T7 Плащ Демонов (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T8_CAPEITEM_DEMON",
+    "name": "T8 Плащ Демонов (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T4_CAPEITEM_HERETIC",
+    "name": "T4 Плащ Еретиков (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T5_CAPEITEM_HERETIC",
+    "name": "T5 Плащ Еретиков (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T6_CAPEITEM_HERETIC",
+    "name": "T6 Плащ Еретиков (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T7_CAPEITEM_HERETIC",
+    "name": "T7 Плащ Еретиков (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T8_CAPEITEM_HERETIC",
+    "name": "T8 Плащ Еретиков (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T4_CAPEITEM_KEEPER",
+    "name": "T4 Плащ Хранителей (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T5_CAPEITEM_KEEPER",
+    "name": "T5 Плащ Хранителей (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T6_CAPEITEM_KEEPER",
+    "name": "T6 Плащ Хранителей (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T7_CAPEITEM_KEEPER",
+    "name": "T7 Плащ Хранителей (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T8_CAPEITEM_KEEPER",
+    "name": "T8 Плащ Хранителей (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T4_CAPEITEM_MORGANA",
+    "name": "T4 Плащ Морганы (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T5_CAPEITEM_MORGANA",
+    "name": "T5 Плащ Морганы (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T6_CAPEITEM_MORGANA",
+    "name": "T6 Плащ Морганы (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T7_CAPEITEM_MORGANA",
+    "name": "T7 Плащ Морганы (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T8_CAPEITEM_MORGANA",
+    "name": "T8 Плащ Морганы (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T4_CAPEITEM_SMUGGLER",
+    "name": "T4 Плащ контрабандиста (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T5_CAPEITEM_SMUGGLER",
+    "name": "T5 Плащ контрабандиста (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T6_CAPEITEM_SMUGGLER",
+    "name": "T6 Плащ контрабандиста (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T7_CAPEITEM_SMUGGLER",
+    "name": "T7 Плащ контрабандиста (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T8_CAPEITEM_SMUGGLER",
+    "name": "T8 Плащ контрабандиста (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T4_CAPEITEM_UNDEAD",
+    "name": "T4 Плащ Нежити (знаток)",
+    "category": "cape",
+    "tier": 4,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T5_CAPEITEM_UNDEAD",
+    "name": "T5 Плащ Нежити (эксперт)",
+    "category": "cape",
+    "tier": 5,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T6_CAPEITEM_UNDEAD",
+    "name": "T6 Плащ Нежити (мастер)",
+    "category": "cape",
+    "tier": 6,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T7_CAPEITEM_UNDEAD",
+    "name": "T7 Плащ Нежити (магистр)",
+    "category": "cape",
+    "tier": 7,
+    "slot": "плащ (охотник)"
+  },
+  {
+    "id": "T8_CAPEITEM_UNDEAD",
+    "name": "T8 Плащ Нежити (старейшина)",
+    "category": "cape",
+    "tier": 8,
+    "slot": "плащ (охотник)"
   }
 ]

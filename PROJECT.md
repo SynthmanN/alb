@@ -40,7 +40,9 @@ Albion Online, флиппинга, крафт-калькулятора и ска
 
 - `data/items.js` — сырьё и переработанные ресурсы, T2-T8.
 - `data/gear.json` — оружие/броня/плащи, T2-T8. category: `weapon` / `armor` / `cape`
-  (плащи — ОТДЕЛЬНАЯ категория, не путать с armor). 660 предметов всего.
+  (плащи — ОТДЕЛЬНАЯ категория, не путать с armor). Слоты плащей: `плащ`, `плащ (фракция)` (CAPEITEM_FW_*) и
+  `плащ (охотник)` — боевые плащи Avalon/Demon/Heretic/Keeper/Morgana/Smuggler/Undead T4–T8
+  (`scripts/extract_hunter_capes.py`; T8 Авалонский торгуется по ~600–800 тыс.).
 - `data/recipes.json` — рецепты крафта, извлечены из `<craftingrequirements>` items.xml.
 - `data/extra-item-names.json` — RU-названия для предметов в рецептах, но вне каталога
   (гербы городов, жетоны фракций, "Сказочный огонь" для Бресильена).
