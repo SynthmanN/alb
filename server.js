@@ -2204,7 +2204,11 @@ function premiumPaybackDays(profitPerUnit, dailyVolume, premiumPrice = PREMIUM_P
 //  • «сырьё/рефайн» — просто ещё один вид себестоимости (коэффициенты переработки вместо рецепта), скор и отбор те же.
 // dailyProfit = профит/шт × штук/день, которые реально удастся продать (доля рынка × оборот); в терпеливом режиме ещё не больше,
 // чем позволяет закупка самого узкого материала. Ранг = dailyProfit × поправка на свежесть котировок (× штраф за длинный цикл партии).
-const UNIFIED_MAX_ROWS = 60;
+const UNIFIED_MAX_ROWS = 300;
+// Ликвидность относительно цены: чем дороже гир, тем реже он торгуется — это нормально. Комбинация «ликвидна», если оборот её рынка не ниже
+// доли от медианного оборота комбинаций той же ценовой полосы (полоса — степень двойки по себестоимости). Дорогой гир сравнивается с дорогим.
+const UNIFIED_LIQUIDITY_SHARE = 0.25;
+const UNIFIED_MIN_BAND_SAMPLES = 5;
 const UNIFIED_MIN_CITY_SHARE = 0.02; // «шумный» город: оборот меньше 2% от самого ликвидного не считается ценовым сигналом
 let unifiedScanCache = null;
 
@@ -2419,9 +2423,28 @@ app.get('/api/unified-scan', (req, res) => {
     }
 
     const rows = [];
+    // Обороты рынков ВСЕХ рассмотренных комбинаций по ценовым полосам — для «ликвидность относительно цены»
+    const bandSamples = new Map();
+    const bandOf = (cost) => Math.floor(Math.log2(Math.max(cost, 1)));
+    const sampleVolume = (cost, volume) => { const b = bandOf(cost); (bandSamples.get(b) || bandSamples.set(b, []).get(b)).push(volume || 0); };
+    const bandMedian = (cost) => {
+      const list = bandSamples.get(bandOf(cost)) || [];
+      if (list.length < UNIFIED_MIN_BAND_SAMPLES) return null;
+      const sorted = [...list].sort((a, b) => a - b);
+      return sorted[Math.floor(sorted.length / 2)];
+    };
+    // Из всех комбинаций предмета (зачарование × качество) остаётся ОДНА: с максимальной маржой за штуку среди прибыльных и достаточно
+    // ликвидных для своей цены. Нет ни одной ликвидной — предмет для крафта интереса не представляет (мусор), в список не попадает.
     const pushBest = (candidates) => {
       let best = null;
-      for (const c of candidates) if (!best || c.rankScore > best.rankScore) best = c;
+      for (const c of candidates) {
+        const median = bandMedian(c.cost);
+        const ratio = median ? c.marketDailyVolume / median : null;
+        c.liquidityBandMedian = median;
+        c.liquidityRatio = ratio;
+        if (ratio !== null && ratio < UNIFIED_LIQUIDITY_SHARE) continue;
+        if (!best || c.profitPerUnit > best.profitPerUnit) best = c;
+      }
       if (best) rows.push(best);
     };
 
@@ -2436,6 +2459,7 @@ app.get('/api/unified-scan', (req, res) => {
         if (!choice || choice.dailyVolume < minDaily) return null;
         sellPrice = choice.price; dailyVolume = choice.dailyVolume; sellCities = [choice.city]; profitPerUnit = choice.profitPerUnit;
         marketDailyVolume = Object.values(cityStats(seriesOfItem, finishedId, days, quality)).reduce((sum, st) => sum + st.avgDailyVolume, 0);
+        sampleVolume(cost, marketDailyVolume);
         sellDate = choice.date;
         blackMarketRow = choice.blackMarket;
         sellTax = choice.taxRate;
@@ -2443,6 +2467,7 @@ app.get('/api/unified-scan', (req, res) => {
         const sell = marginSellStats(seriesOfItem, finishedId, days, quality, queryCities, liquidity, { taxRate, setupFee: SETUP_FEE_RATE, cost, minShareOfMax: UNIFIED_MIN_CITY_SHARE, bmTaxRate: blackMarket ? bmTaxRate : null });
         if (!sell || sell.dailyVolume < minDaily) return null;
         sellPrice = sell.avgPrice; dailyVolume = sell.dailyVolume; sellCities = sell.cities; marketDailyVolume = sell.marketDailyVolume;
+        sampleVolume(cost, marketDailyVolume);
         profitPerUnit = sell.netPrice - cost;                    // по налогу каждого города (у ЧР свой)
         if (profitPerUnit <= 0) return null;
         blackMarketRow = sell.cities.some((c) => normLocation(c) === 'blackmarket');
@@ -2513,7 +2538,7 @@ app.get('/api/unified-scan', (req, res) => {
     }
     for (const candidates of byItem.values()) pushBest(candidates);
 
-    rows.sort((a, b) => b.rankScore - a.rankScore);
+    rows.sort((a, b) => b.profitPerUnit - a.profitPerUnit);   // по умолчанию — по марже за штуку (в серебре) по убыванию
     const data = {
       mode, enchantMode, liquidity, days, materialHours, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0,

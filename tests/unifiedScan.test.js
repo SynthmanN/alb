@@ -68,14 +68,22 @@ describe('GET /api/unified-scan', () => {
     expect(rows.every((r, i) => i === 0 || rows[i - 1].rankScore >= r.rankScore)).toBe(true);
   });
 
-  it('ликвидность взвешивается: при той же марже впереди тот, что торгуется быстрее (мёртвая позиция с раздутым % внизу)', async () => {
-    seedSales('T4_MAIN_SWORD', { avg: 5000, perDay: 3 });
-    seedSales('T4_2H_BOW', { avg: 5000 * 1640 / 2460, perDay: 300 });     // тот же % маржи, оборот ×100
+  it('по умолчанию список отсортирован по марже за штуку (в серебре) по убыванию; на предмет — одна строка', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 5000, perDay: 30 });
+    seedSales('T4_2H_BOW', { avg: 3000, perDay: 30 });
     const rows = (await scan({ mode: 'patient' })).results;
-    const sword = rows.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    const bow = rows.find((r) => r.itemId === 'T4_2H_BOW');
-    expect(bow.profitPct).toBeCloseTo(sword.profitPct, -1);
-    expect(rows.indexOf(bow)).toBeLessThan(rows.indexOf(sword));
+    expect(rows.every((r, i) => i === 0 || rows[i - 1].profitPerUnit >= r.profitPerUnit)).toBe(true);
+    expect(new Set(rows.map((r) => r.itemId)).size).toBe(rows.length);
+  });
+
+  it('ликвидность относительно цены: из комбинаций предмета берётся с лучшей маржой среди достаточно ликвидных для своей ценовой полосы; мёртвая с раздутой ценой — мусор', async () => {
+    for (const q of [1, 2, 3, 4]) seedSales('T4_MAIN_SWORD', { quality: q, avg: 4000 + q * 10, perDay: 100 });   // ликвидные качества
+    seedSales('T4_MAIN_SWORD', { quality: 5, avg: 9000, perDay: 3 });                                          // огромная маржа, но оборот в 30 раз ниже, чем у соседей по цене
+    const row = (await scan({ mode: 'patient' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(row.quality).toBe(4);                                                                                 // не «шедевр» с раздутой маржой
+    expect(row.liquidityRatio).toBeGreaterThan(0.25);
+    const junk = await scan({ mode: 'patient', cities: CITY });
+    expect(junk.results.filter((r) => r.itemId === 'T4_MAIN_SWORD')).toHaveLength(1);
   });
 
   it('«Профит рынка/день» = профит/шт × оборот/день (масштаб в серебре без выдуманного капитала); в ответе нет капитала и минимума дней', async () => {

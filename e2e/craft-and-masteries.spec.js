@@ -250,7 +250,7 @@ test('скан маржи и ликвидности: параметры в за�
   expect(scanQuery.get('enchantMode')).toBe('after');
   expect(scanQuery.get('liquidity')).toBe('sum');                                  // оборот — всегда сумма по всем городам
   await expect(page.locator('#margin-result')).toContainText('Кувшин: цены обновлены');
-  await page.locator('#margin-result .scan-add-btn').first().click();
+  await page.locator('#margin-result .scan-add-btn[data-id="T4_2H_BOW"]').click();
   await expect.poll(() => calcQuery).not.toBeNull();
   expect(calcQuery.get('item')).toBe('T4_2H_BOW');
   expect(calcQuery.get('enchant')).toBe('2');
@@ -697,7 +697,7 @@ test('«в калькулятор» у строки, найденной чере
 });
 
 
-test('скан гира: оборот раскрывается списком городов с ценой; таблица сразу отсортирована по «Профиту рынка/день» по убыванию, дешёвый гир с раздутым % — ниже', async ({ page }) => {
+test('скан гира: оборот раскрывается списком городов с ценой; таблица сразу отсортирована по «Марже/шт» по убыванию, дешёвый гир — ниже', async ({ page }) => {
   await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', liquidity: 'sum', days: 3, taxRate: 0.08, setupFeeRate: 0.025, scanned: 5,
     enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367,
     jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
@@ -710,11 +710,13 @@ test('скан гира: оборот раскрывается списком г
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
-  await expect(page.locator('#margin-result tbody tr').first()).toContainText('480 000');         // по «Профиту рынка/день» первым — солидный T5, а не T2
+  await expect(page.locator('#margin-result tbody tr').first()).toContainText('480 000');         // по «Марже/шт» первым — солидный T5, а не T2
   await expect(page.locator('#margin-result thead')).not.toContainText('Профит/день ');
   await expect(page.locator('#margin-result thead')).not.toContainText('Штук');
   await expect(page.locator('#margin-result thead')).not.toContainText('премиум');
   await expect(page.locator('#margin-result thead')).toContainText('Свежесть');
+  await expect(page.locator('#margin-result thead')).toContainText('Маржа/шт');
+  await expect(page.locator('#margin-result thead')).not.toContainText('Рейтинг');
   const first = page.locator('#margin-result tbody tr').first();
   await first.locator('details.city-prices summary').click();
   await expect(first.locator('details.city-prices li').first()).toContainText('Thetford: 300,0/день · цена 900');   // рядом с оборотом города — его цена
