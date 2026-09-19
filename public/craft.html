@@ -93,8 +93,8 @@
         <div class="craft-card">
           <h3>История сделок</h3>
           <div class="craft-controls-row">
-            <label class="craft-field" title="За какое время усреднять цену СЫРЬЯ и полуфабрикатов и считать их оборот: одно окно и для выбора «купить или переработать», и для плана закупки. По умолчанию 24ч. «Своё…» — впиши, например, 2ч или 5д (кувшин хранит 7 дней)">История сырья
-              <select id="craft-material-hours" data-custom="hours" data-custom-max="168"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
+            <label class="craft-field" title="За какое время усреднять цену СЫРЬЯ и полуфабрикатов и считать их оборот: одно окно и для выбора «купить или переработать», и для плана закупки. По умолчанию 24ч. «Своё…» — впиши, например, 2ч или 5д (кувшин хранит 10 дней)">История сырья
+              <select id="craft-material-hours" data-custom="hours" data-custom-max="240"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option><option value="240">10 дней</option></select>
             </label>
             <label class="craft-field" title="За какое время брать сделки ГОТОВОГО гира: средняя цена продажи и оборот. По умолчанию 3 дня. «Своё…» — впиши, например, 2ч или 5д">История гира
               <select id="craft-days" data-custom="days"><option value="1">1 день</option><option value="3" selected>3 дня</option><option value="7">7 дней</option></select>
@@ -153,8 +153,8 @@
         <label class="craft-field">История
           <select id="margin-days" data-custom="days"><option value="3" selected>3 дня</option><option value="7">7 дней</option></select>
         </label>
-        <label class="craft-field" title="За какое время усреднять цену СЫРЬЯ: средняя цена сделок за окно, а не цена одного самого дешёвого лота. Свежее окно честнее: 7 дней цен — старые. Одно окно на сырьё и полуфабрикаты: по нему выбирается «купить или переработать», считаются цены и оборот в плане закупки. «История» — только продажа готового предмета. Кувшин хранит 7 дней, поэтому окно до 7 дней. Нет сделок за окно — берётся текущая котировка">Окно цен сырья
-          <select id="margin-material-hours" data-custom="hours" data-custom-max="168"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
+        <label class="craft-field" title="За какое время усреднять цену СЫРЬЯ: средняя цена сделок за окно, а не цена одного самого дешёвого лота. Свежее окно честнее: 7 дней цен — старые. Одно окно на сырьё и полуфабрикаты: по нему выбирается «купить или переработать», считаются цены и оборот в плане закупки. «История» — только продажа готового предмета. Кувшин хранит 10 дней, поэтому окно до 10 дней. Нет сделок за окно — берётся текущая котировка">Окно цен сырья
+          <select id="margin-material-hours" data-custom="hours" data-custom-max="240"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option><option value="240">10 дней</option></select>
         </label>
         <button id="margin-run">Сканировать</button>
       </div>

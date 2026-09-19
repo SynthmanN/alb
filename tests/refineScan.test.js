@@ -136,7 +136,7 @@ describe('GET /api/refining-calc', () => {
 
   it('окно истории — своё (часы), ставка — пресет или своя %; неверные тип/тир/зачарование — 400', async () => {
     expect((await calc({ hours: 48 })).hours).toBe(48);
-    expect((await calc({ hours: 9999 })).hours).toBe(168);                              // кувшин хранит 7 дней
+    expect((await calc({ hours: 9999 })).hours).toBe(240);                              // кувшин хранит 10 дней
     expect((await calc({ refineRrrCustom: 20 })).refineRate).toBe(0.2);
     expect((await request(app).get('/api/refining-calc?type=NOPE&tier=4')).status).toBe(400);
     expect((await request(app).get('/api/refining-calc?type=ORE&tier=9')).status).toBe(400);

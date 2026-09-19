@@ -554,10 +554,15 @@ function renderCraftResult(rawData) {
 // по нескольким городам и быстрее собрать сырьё).
 // Оборот/день строки скана: сумма по городам продажи и раскрывающийся список «город — сколько торгуется» (как «Где дешевле» у материалов).
 function volumeCell(r, showCount) {
+  // «Данные устарели на N дней»: возраст последней сделки в городах продажи; от 2 дней — жёлтым (данные старые — оборот сегодня мог быть другим)
+  const age = r.dataAgeDays;
+  const ageNote = age !== null && age !== undefined && age >= 2
+    ? `<br><small class="scan-stale" title="Последняя сделка в городах продажи была ${age.toFixed(1)} дн. назад — оборот считан по старым данным">данные устарели на ${age.toFixed(1)} дн.</small>` : '';
+  const filledNote = r.filledCities ? `<br><small class="scan-stale" title="В окне скана в ${r.filledCities} г. сделок нет — взят средний оборот прошлых дней (до 10 дней). Основная оценка идёт по окну скана">${r.filledCities} г. — из прошлых дней</small>` : '';
   const main = `${fmtNum(r.dailyVolume, 1)}${showCount ? ` <small>(${r.sellCities.length} гор.)</small>` : ''}`;
-  if (!r.byCity || r.byCity.length < 2) return main;
-  const list = r.byCity.map((c) => `<li class="${c.inPlan ? '' : 'city-out'}">${c.city}: ${fmtNum(c.dailyVolume, 1)}/день · цена ${fmtNum(c.avgPrice)} <small>${c.inPlan ? 'в расчёте' : 'вне расчёта'}</small></li>`).join('');
-  return `<details class="city-prices"><summary>${main}</summary><ul>${list}</ul></details>`;
+  if (!r.byCity || r.byCity.length < 2) return main + ageNote + filledNote;
+  const list = r.byCity.map((c) => `<li class="${c.inPlan ? '' : 'city-out'}">${c.city}: ${fmtNum(c.dailyVolume, 1)}/день · цена ${fmtNum(c.avgPrice)} <small>${c.inPlan ? 'в расчёте' : 'вне расчёта'}</small>${c.filled ? ' <small class="scan-stale" title="В окне скана сделок нет — оборот из прошлых дней">за прошлые дни</small>' : ''}</li>`).join('');
+  return `<details class="city-prices"><summary>${main}</summary><ul>${list}</ul></details>${ageNote}${filledNote}`;
 }
 
 // Название материала по id (в т.ч. зачарованного T4_ORE_LEVEL1@1 → «… .1»).

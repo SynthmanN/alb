@@ -3,9 +3,9 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { AodpBudget } = require('./lib/aodpBudget');
 const { GEAR_RRR_PRESETS, resolveGearRrrRate } = require('./data/gear-rrr');
-const { openJug, jugStats, pruneToCatalog } = require('./lib/jugStore');
+const { openJug, jugStats, pruneToCatalog, HISTORY_WINDOW_HOURS } = require('./lib/jugStore');
 const { readPrices, readHistory, jugFreshness } = require('./lib/jugQuery');
-const { startJugCrawler } = require('./lib/jugCrawler');
+const { startJugCrawler, CYCLE_MS } = require('./lib/jugCrawler');
 const path = require('path');
 const fs = require('fs');
 const { ITEMS } = require('./data/items');
@@ -2234,6 +2234,39 @@ function dropPriceOutliers(series) {
   return { series: out, medians };
 }
 
+// Пустые ячейки «город × комбинация»: в окне скана (days) у города нет ни одной сделки, но в более старой части истории кувшина (до 10 дней) есть.
+// Основная оценка идёт по окну скана (где сделки есть — берём их и только их: расширенная история ничего не раздувает); для пустой ячейки добавляется
+// средний дневной оборот и цена из более старых дней (синтетический ряд с пометкой synthetic) — чтобы отсутствие данных не превращалось в нулевую
+// ликвидность. Города, по которым нет ничего за все 10 дней, остаются «нет данных».
+function windowWithGapFill(series, days, now) {
+  const cutoff = new Date(now - days * 24 * 3600 * 1000).toISOString().slice(0, 19);
+  const olderDays = Math.max((HISTORY_WINDOW_HOURS - days * 24) / 24, 0);
+  const out = [];
+  for (const s of series) {
+    const inWindow = s.data.filter((p) => p.timestamp >= cutoff);
+    const older = s.data.filter((p) => p.timestamp < cutoff);
+    if (inWindow.length) out.push({ ...s, data: inWindow });
+    else if (older.length && olderDays > 0) {
+      const total = older.reduce((sum, p) => sum + p.item_count, 0);
+      const weighted = older.reduce((sum, p) => sum + p.avg_price * p.item_count, 0);
+      const last = older[older.length - 1].timestamp;
+      if (total > 0) out.push({ ...s, synthetic: true, lastTradeTs: last, data: [{ timestamp: last, item_count: (total / olderDays) * days, avg_price: weighted / total }] });
+    }
+  }
+  return out;
+}
+// Возраст последней настоящей сделки (дни) среди указанных городов: freshest — самая свежая (по городам плана), для подписи «данные устарели на N дней».
+function lastTradeAgeDays(seriesOfItem, quality, cities, now) {
+  const allowed = new Set(cities.map(normLocation));
+  let latest = null;
+  for (const s of seriesOfItem || []) {
+    if (s.quality !== quality || !allowed.has(normLocation(s.location))) continue;
+    const ts = s.synthetic ? s.lastTradeTs : s.data.reduce((m, p) => (p.item_count > 0 && p.timestamp > m ? p.timestamp : m), '');
+    if (ts && (latest === null || ts > latest)) latest = ts;
+  }
+  return latest === null ? null : Math.max((now - new Date(`${latest}Z`).getTime()) / 86400000, 0);
+}
+
 function indexByItem(series) {
   const map = new Map();
   for (const s of series) {
@@ -2261,7 +2294,10 @@ function volumeBreakdown(seriesOfItem, itemId, days, quality, cities, usedCities
   const used = new Set(usedCities.map(normLocation));
   return Object.entries(cityStats(seriesOfItem || [], itemId, days, quality))
     .filter(([city]) => allowed.has(normLocation(city)))
-    .map(([city, st]) => ({ city, dailyVolume: st.avgDailyVolume, avgPrice: st.avgPrice, inPlan: used.has(normLocation(city)) }))
+    .map(([city, st]) => {
+      const filled = (seriesOfItem || []).find((s) => s.synthetic && s.item_id === itemId && s.quality === quality && normLocation(s.location) === normLocation(city));
+      return { city, dailyVolume: st.avgDailyVolume, avgPrice: st.avgPrice, inPlan: used.has(normLocation(city)), filled: !!filled, lastTradeTs: filled ? filled.lastTradeTs : null };
+    })
     .sort((a, b) => b.dailyVolume - a.dailyVolume);
 }
 // Цена сырья: ОДНА честная цена — средняя по сделкам за окно `hours` (по умолчанию 24 ч), а не цена одного самого дешёвого лота
@@ -2272,7 +2308,7 @@ function volumeBreakdown(seriesOfItem, itemId, days, quality, cities, usedCities
 const MATERIAL_HOURS_DEFAULT = 24;
 function parseMaterialHours(req) {
   const v = parseFloat(req.query.materialHours);
-  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), 168) : MATERIAL_HOURS_DEFAULT   // кувшин хранит историю 7 дней;
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), HISTORY_WINDOW_HOURS) : MATERIAL_HOURS_DEFAULT   // кувшин хранит историю 10 дней;
 }
 // Возвращает [{ city, price, date, source }] по одному материалу. snapshotQuotes — [{ city, price, date }] текущих котировок.
 function materialPriceQuotes(seriesOfItem, itemId, hours, cities, snapshotQuotes) {
@@ -2297,7 +2333,7 @@ function tradeHoursOf(seriesOfItem, quality, sellCities) {
   const cities = new Set(sellCities.map(normLocation));
   const hours = new Set();
   for (const s of seriesOfItem || []) {
-    if (s.quality !== quality || !cities.has(normLocation(s.location))) continue;
+    if (s.synthetic || s.quality !== quality || !cities.has(normLocation(s.location))) continue;   // заполненные ячейки — не настоящие часы торговли
     for (const p of s.data) if (p.item_count > 0) hours.add(p.timestamp);
   }
   return hours.size;
@@ -2403,8 +2439,9 @@ app.get('/api/unified-scan', (req, res) => {
       materialQuotes[id] = quotes.map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
     }
     const refineOpts = { ...rrrOpts, refine: { priceOf: (id) => cheapestOf(materialQuotes[id]), rate: refineParams.rate }, subcraft: { priceOf: (id) => cheapestOf(materialQuotes[id]) } };
-    const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations: blackMarket ? [...locations, BM_QUERY_LOCATION] : locations, qualities: ALL_QUALITIES, now }));
-    const finishedHistory = indexByItem(cleaned.series);
+    // История гира читается за ВСЕ 10 дней кувшина: окно скана — основа оценки, старые дни — только для пустых ячеек (windowWithGapFill)
+    const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, HISTORY_WINDOW_HOURS, { locations: blackMarket ? [...locations, BM_QUERY_LOCATION] : locations, qualities: ALL_QUALITIES, now }));
+    const finishedHistory = indexByItem(windowWithGapFill(cleaned.series, days, now));
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
     // Оборот сырья/полуфабрикатов для закупки — по тому же окну, что и их цены (materialHours), а не по «Истории» продажи гира.
     // Для эксперимента «Доверие с учётом сырья»: часы торговли материалов за период «Истории»
@@ -2464,6 +2501,8 @@ app.get('/api/unified-scan', (req, res) => {
         kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
         dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, marketProfitPerDay,
         freshMinutes, rankScore,
+        dataAgeDays: lastTradeAgeDays(seriesOfItem, quality, sellCities, now),                 // возраст последней сделки в городах продажи — «данные устарели на N дней»
+        filledCities: (seriesOfItem || []).filter((s) => s.synthetic && s.quality === quality && sellCities.some((c) => normLocation(c) === normLocation(s.location))).length,
         refined,   // материалы, которые выгоднее переработать самому: [{ id, city, buyPrice, price }]
       };
     };
@@ -2596,7 +2635,7 @@ function computeRefine(market, { type, tier, enchant, rate, taxRate, queryCities
 }
 
 function parseRefineParams(req) {
-  const hours = (() => { const v = parseFloat(req.query.hours); return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), 168) : 24; })();
+  const hours = (() => { const v = parseFloat(req.query.hours); return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), HISTORY_WINDOW_HOURS) : 24; })();
   const queryCities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
   return { hours, queryCities, rate: parseRefineRate(req), taxRate: getSalesTaxRate(req) };
 }
@@ -2985,9 +3024,10 @@ function startJug() {
   const catalog = buildJugCatalog();
   const pruned = pruneToCatalog(jugDb, catalog);
   if (pruned.prices || pruned.history) console.log(`кувшин: удалены строки вне каталога — цен ${pruned.prices}, истории ${pruned.history}`);
-  const historyStart = () => new Date(Date.now() - 7 * 24 * 3600 * 1000);
+  const historyStart = () => new Date(Date.now() - HISTORY_WINDOW_HOURS * 3600 * 1000);
   jugCrawler = startJugCrawler({
     db: jugDb,
+    cycleMs: CYCLE_MS,
     jobs: buildJugJobs(),
     log: (msg) => console.log(msg),
     fetchPrices: async (chunk, cities = CITIES) => {

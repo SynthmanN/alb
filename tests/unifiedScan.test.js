@@ -383,3 +383,51 @@ describe('«зачаровать после крафта»: себестоимо
     expect(a.map((r) => [r.enchant, Math.round(r.cost)])).toEqual(b.map((r) => [r.enchant, Math.round(r.cost)]));
   });
 });
+
+describe('пустые ячейки «город × комбинация»: заполнение из старых дней кувшина (до 10 дней)', () => {
+  const both = { cities: 'Martlock,Thetford', mode: 'patient', days: 3, minDaily: 0 };
+  const olderPoints = (ago) => ago.map((d) => ({ timestamp: iso(NOW - d * 86400000), item_count: 70, avg_price: 4000 }));
+  beforeEach(() => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 30, city: 'Martlock' });            // в окне 3 дня у Martlock сделки есть
+  });
+  const sword = async (extra = {}) => (await scan({ ...both, ...extra })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+
+  it('город без сделок в окне, но с ними в дни 4–10, заполняется средним дневным оборотом старых дней и помечается; города без данных за все 10 дней не появляются', async () => {
+    upsertHistoryBatch(jugDb, [{ item_id: 'T4_MAIN_SWORD', location: 'Thetford', quality: 1, data: olderPoints([5, 6, 7, 8]) }], NOW);   // 4 × 70 = 280 за дни 4–10
+    const row = await sword();
+    const thetford = row.byCity.find((c) => c.city === 'Thetford');
+    expect(thetford).toMatchObject({ filled: true });
+    expect(thetford.dailyVolume).toBeCloseTo(280 / 7, 5);                                       // 40 в день: старые дни делятся на их длину (7 дней)
+    expect(thetford.lastTradeTs).not.toBeNull();
+    expect(row.byCity.find((c) => c.city === 'Martlock').filled).toBe(false);
+    expect(row.filledCities).toBe(1);
+    expect(row.dataAgeDays).toBeLessThan(2);                                                    // свежее — сделки Martlock 1 день назад
+    const without = await sword({ cities: 'Martlock' });
+    expect(row.dailyVolume).toBeGreaterThan(without.dailyVolume);
+  });
+
+  it('там, где сделки в окне есть, старые дни оборот НЕ раздувают: расширение — только для пустых ячеек', async () => {
+    const before = (await sword({ cities: 'Martlock' })).dailyVolume;
+    upsertHistoryBatch(jugDb, [{ item_id: 'T4_MAIN_SWORD', location: 'Martlock', quality: 1, data: olderPoints([5, 6, 7, 8, 9]) }], NOW);   // огромный «старый пик»
+    resetCaches();
+    const after = (await sword({ cities: 'Martlock' })).dailyVolume;
+    expect(after).toBeCloseTo(before, 9);
+  });
+
+  it('заполненные ячейки не считаются «часами торговли» (доверие) и данные старше 2 дней видны в dataAgeDays', async () => {
+    jugDb.exec("DELETE FROM history WHERE item_id = 'T4_MAIN_SWORD'");
+    upsertHistoryBatch(jugDb, [{ item_id: 'T4_MAIN_SWORD', location: 'Thetford', quality: 1, data: olderPoints([5, 6]) }], NOW);
+    seedMaterial('T4_METALBAR', 100);
+    resetCaches();
+    const row = await sword({ minDaily: 0 });
+    expect(row.tradeHours).toBe(0);                                                             // настоящих часов торговли в окне нет
+    expect(row.dataAgeDays).toBeGreaterThan(4.9);                                               // последняя сделка 5 дней назад
+    expect(row.filledCities).toBe(1);
+  });
+
+  it('окно 10 дней и больше — заполнять нечего', async () => {
+    upsertHistoryBatch(jugDb, [{ item_id: 'T4_MAIN_SWORD', location: 'Thetford', quality: 1, data: olderPoints([5, 6, 7]) }], NOW);
+    const row = await sword({ days: 10 });
+    expect(row.byCity.find((c) => c.city === 'Thetford').filled).toBe(false);                   // в окне 10 дней эти сделки — обычные, не «заполнение»
+  });
+});

@@ -1086,3 +1086,22 @@ test('история в настройках калькулятора: «Ист�
   expect(last.get('materialHours')).toBe('2');
   expect(last.get('days')).toBe('5');
 });
+
+test('скан гира: «данные устарели на N дней» (от 2 дней — жёлтым) и пометка городов, где оборот взят из прошлых дней', async ({ page }) => {
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', liquidity: 'sum', days: 3, taxRate: 0.08, setupFeeRate: 0.025, scanned: 2,
+    enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367, jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now() }, results: [
+      { kind: 'gear', itemId: 'T5_2H_BOW', enchant: 0, quality: 1, tier: 5, cost: 20000, avgSellPrice: 30000, dailyVolume: 60, marketDailyVolume: 60, sellCities: ['Martlock', 'Thetford'], profitPerUnit: 6000, profitPct: 30, marketProfitPerDay: 360000, freshMinutes: 20, rankScore: 300, tradeHours: 6, confidence: 0.2, dataAgeDays: 3.4, filledCities: 1,
+        byCity: [{ city: 'Martlock', dailyVolume: 20, avgPrice: 30100, inPlan: true, filled: false }, { city: 'Thetford', dailyVolume: 40, avgPrice: 29800, inPlan: true, filled: true }] },
+      { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 900, avgSellPrice: 1300, dailyVolume: 80, marketDailyVolume: 80, sellCities: ['Martlock'], profitPerUnit: 250, profitPct: 28, marketProfitPerDay: 20000, freshMinutes: 20, rankScore: 100, tradeHours: 6, confidence: 0.2, dataAgeDays: 0.4, filledCities: 0, byCity: [] },
+    ] } }));
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-run').click();
+  const old = page.locator('#margin-result tbody tr').filter({ hasText: 'T5' }).first();
+  await expect(old).toContainText('данные устарели на 3.4 дн.');
+  await expect(old.locator('small.scan-stale', { hasText: 'устарели' })).toBeVisible();                          // жёлтый (класс scan-stale)
+  await expect(old).toContainText('1 г. — из прошлых дней');
+  await old.locator('details.city-prices summary').click();
+  await expect(old.locator('details.city-prices li', { hasText: 'Thetford' })).toContainText('за прошлые дни');
+  await expect(page.locator('#margin-result tbody tr').filter({ hasText: 'T4' }).first()).not.toContainText('данные устарели');   // свежие данные — без подписи
+});
