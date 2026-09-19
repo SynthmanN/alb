@@ -629,3 +629,50 @@ describe('свои значения: период истории и допуск
     expect(res.status).toBe(200);
   });
 });
+
+describe('калькулятор крафта: купить готовый материал или переработать самому', () => {
+  // Сырьё и предыдущий тир по 100; готовый слиток T4 — по параметру. Переработка: 2×руда + 1×слиток T3 = 300 × (1 − ставка).
+  const install = (barPrice) => vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+    const u = String(url);
+    if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
+    const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+    return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : id === 'T4_METALBAR' ? barPrice : 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() })) };
+  });
+  const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock&gearRrr=none${extra}`);
+  const bar = (d) => d.recipe.find((r) => r.resource === 'T4_METALBAR');
+
+  it('слиток дорогой (400) — выгоднее переработать: цена 300 × (1 − 36.7%), источник refine, компоненты и цена покупки в ответе', async () => {
+    install(400);
+    const d = (await get()).body;
+    expect(d.refineRate).toBeCloseTo(0.367, 3);
+    expect(bar(d)).toMatchObject({ materialSource: 'refine', buyPrice: 400, priceSource: 'refine' });
+    expect(bar(d).cheapestPrice).toBeCloseTo(300 * (1 - 0.367), 1);
+    expect(bar(d).refineOption.components.map((c) => c.id)).toEqual(['T4_ORE', 'T3_METALBAR']);
+    expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo(16 * 300 * (1 - 0.367) + 8 * 100, 0);
+  });
+  it('слиток дешёвый (150) — покупаем готовый, но вариант переработки отдаётся для пересчёта в интерфейсе', async () => {
+    install(150);
+    const d = (await get()).body;
+    expect(bar(d)).toMatchObject({ materialSource: 'buy', cheapestPrice: 150, buyCity: 'Martlock' });
+    expect(bar(d).refineOption.price).toBeCloseTo(300 * (1 - 0.367), 1);
+  });
+  it('своя ставка переработки меняет решение: 0% — переработка стоит 300 и проигрывает покупке за 250; 50% — 150 и выигрывает', async () => {
+    install(250);
+    expect(bar((await get('&refineRrrCustom=0')).body).materialSource).toBe('buy');
+    const half = (await get('&refineRrrCustom=50')).body;
+    expect(half.refineRate).toBe(0.5);
+    expect(bar(half)).toMatchObject({ materialSource: 'refine' });
+    expect(bar(half).cheapestPrice).toBeCloseTo(150, 6);
+  });
+  it('пресет ставки переработки: none — без возврата', async () => {
+    install(250);
+    const d = (await get('&refineRrr=none')).body;
+    expect(d.refineRate).toBe(0);
+    expect(bar(d).materialSource).toBe('buy');
+  });
+  it('у невозвращаемых и нерафинируемых материалов (герб, жетон) вариант переработки не строится', async () => {
+    install(400);
+    const d = (await get()).body;
+    expect(d.recipe.filter((r) => !/METALBAR|LEATHER|PLANKS|CLOTH|STONEBLOCK/.test(r.resource)).every((r) => r.refineOption === null || r.refineOption === undefined)).toBe(true);
+  });
+});

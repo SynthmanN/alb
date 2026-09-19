@@ -639,3 +639,48 @@ describe('возврат ресурсов (RRR) по материалу и го�
   });
 });
 
+
+describe('полуфабрикаты: купить готовый материал или переработать самому', () => {
+  const { refineComponents, refineAlternative, bestMaterialQuote } = require('../server.js');
+  const prices = { T4_ORE: { price: 100, city: 'Thetford', date: '2026-01-01T10:00:00' }, T3_METALBAR: { price: 200, city: 'Martlock', date: '2026-01-01T09:00:00' } };
+  const priceOf = (id) => prices[id] || null;
+
+  it('разбор id материала: сырьё тира и материал предыдущего тира; зачарованный — с тем же уровнем сырья', () => {
+    const c = refineComponents('T4_METALBAR');
+    expect(c).toMatchObject({ tier: 4, type: 'ORE', rawId: 'T4_ORE', prevId: 'T3_METALBAR', ratio: { raw: 2, prevRefined: 1 } });
+    const e = refineComponents('T5_LEATHER_LEVEL2@2');
+    expect(e).toMatchObject({ tier: 5, type: 'HIDE', rawId: 'T5_HIDE_LEVEL2@2', prevId: 'T4_LEATHER_LEVEL2@2' });
+    expect(refineComponents('T2_PLANKS').prevId).toBeNull();
+    expect(refineComponents('T4_MAIN_SWORD')).toBeNull();
+    expect(refineComponents('T4_ORE')).toBeNull();
+  });
+  it('цена переработки = (2×сырьё + 1×предыдущий материал) × (1 − ставка переработки)', () => {
+    const alt = refineAlternative('T4_METALBAR', priceOf, 0.367);
+    expect(alt.rawCost).toBe(400);
+    expect(alt.price).toBeCloseTo(400 * (1 - 0.367), 9);
+    expect(alt.city).toBe('Thetford');
+    expect(alt.date).toBe('2026-01-01T09:00:00');    // самая старая цена компонентов
+    expect(alt.components.map((x) => x.id)).toEqual(['T4_ORE', 'T3_METALBAR']);
+  });
+  it('нет цены компонента — переработка невозможна', () => {
+    expect(refineAlternative('T4_METALBAR', (id) => (id === 'T4_ORE' ? prices.T4_ORE : null), 0.367)).toBeNull();
+    expect(refineAlternative('T4_METALBAR', () => null, 0.367)).toBeNull();
+  });
+  it('выбирается дешевле: переработка (253.2) против покупки готового (300) — и наоборот; ставка гира применяется поверх', () => {
+    const opts = (rate) => ({ gearRate: 0.248, refine: { priceOf, rate } });
+    const cheapRefine = bestMaterialQuote([{ city: 'Martlock', price: 300 }], { resource: 'T4_METALBAR', queryId: 'T4_METALBAR' }, opts(0.367));
+    expect(cheapRefine.source).toBe('refine');
+    expect(cheapRefine.price).toBeCloseTo(253.2, 6);
+    expect(cheapRefine.buyPrice).toBe(300);
+    expect(cheapRefine.effective).toBeCloseTo(253.2 * (1 - 0.248), 6);
+    const cheapBuy = bestMaterialQuote([{ city: 'Martlock', price: 200 }], { resource: 'T4_METALBAR', queryId: 'T4_METALBAR' }, opts(0.367));
+    expect(cheapBuy.source).toBeUndefined();
+    expect(cheapBuy.price).toBe(200);
+    expect(cheapBuy.refineOption.price).toBeCloseTo(253.2, 6);        // вариант переработки отдаётся всегда — клиент пересчитает при другой ставке
+  });
+  it('без ставки возврата — 0%: при цене 400 против покупки 300 берётся покупка', () => {
+    const noRate = bestMaterialQuote([{ city: 'Martlock', price: 300 }], { resource: 'T4_METALBAR', queryId: 'T4_METALBAR' }, { gearRate: 0.248, refine: { priceOf, rate: 0 } });
+    expect(noRate.source).toBeUndefined();
+    expect(noRate.price).toBe(300);
+  });
+});

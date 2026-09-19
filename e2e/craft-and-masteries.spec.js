@@ -806,3 +806,61 @@ test('лог закупок по лотам: вписал купленные с�
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('8 000');       // лоты в расчёт не идут
   expect(requests).toBe(1);
 });
+
+test('купить готовый материал или переработать самому: ставка переработки пересчитывает выбор на месте, в колонке «Возврат» — две отдельные ставки', async ({ page }) => {
+  let requests = 0;
+  const gear = 1 - 1 / 1.33;                                        // 24.8% — умолчание возврата при крафте
+  const refine = 1 - 1 / 1.58;                                       // 36.7% — умолчание возврата при переработке (58 очков)
+  const refinePrice = 600 * (1 - refine);                            // сырьё + предыдущий тир = 600 на слиток, переработка 36.7% → 379.8
+  await page.route('**/api/craft-calc*', (route) => { requests++; route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 10, marketShare: 1, materialHours: 24, refineRate: refine,
+    rrrPreset: { id: 'custom', label: 'возврат при крафте: 24.8%', gearRate: gear, gearRrr: null, gearRrrCustom: null, rrr: gear },
+    cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 16 * refinePrice, effectiveCostPerUnit: 16 * refinePrice * (1 - gear), totalCost: 160 * refinePrice * (1 - gear),
+    recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, rrr: gear, cityBonus: false, neededToBuy: Math.ceil(160 * (1 - gear)),
+      cheapestCity: 'Thetford', cheapestPrice: refinePrice, priceSource: 'refine', materialSource: 'refine', buyPrice: 500, buyCity: null, cityPrices: [],
+      refineOption: { city: 'Thetford', rate: refine, rawCost: 600, price: refinePrice, components: [{ id: 'T4_ORE', count: 2, price: 250, city: 'Thetford' }, { id: 'T3_METALBAR', count: 1, price: 100, city: 'Martlock' }] } }],
+    sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
+    baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 16 * refinePrice * (1 - gear), baseCostPerUnit: 16 * refinePrice * (1 - gear) },
+  } }); });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  const row = page.locator('#craft-result .craft-recipe-table tbody tr').first();
+  await expect(row).toContainText('выгоднее переработать в Thetford');
+  await expect(row).toContainText('36.7% → 24.8%');                                            // две ставки отдельно, без общего процента
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('4 568');   // 16 × 379.8 × (1 − 0.2481)
+  // ставка переработки 0%: переработка стоит 600 против покупки 500 — берём готовый слиток; себестоимость 16 × 500 × (1 − 0.2481) = 6 015
+  await page.locator('#craft-refine-rrr').selectOption('none');
+  await expect(row).not.toContainText('выгоднее переработать');
+  await expect(row).toContainText('24.8%');
+  await expect(row).not.toContainText('→');
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('6 015');
+  await page.locator('#craft-refine-rrr').selectOption('custom');                               // своя ставка 50%: 300 < 500 — снова перерабатываем
+  await page.locator('#craft-refine-rrr-custom').fill('50');
+  await expect(row).toContainText('50.0% → 24.8%');
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('3 609');   // 16 × 300 × (1 − 0.2481)
+  expect(requests).toBe(1);                                                                    // всё пересчитано на месте, без нового запроса
+});
+
+test('скан гира: ставка переработки уходит в запрос, строка с переработанным материалом помечена ♻', async ({ page }) => {
+  let scanQuery = null;
+  await page.route('**/api/unified-scan*', (route) => {
+    scanQuery = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: { mode: 'patient', enchantMode: 'after', liquidity: 'best', days: 7, capital: 500000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 10,
+      enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.5,
+      jug: { lastPricePass: Date.now() - 120000, lastHistoryPass: Date.now() - 300000, lastFullPass: null, oldestPriceAgeMinutes: 5 }, results: [
+      { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: 3800, avgSellPrice: 9000, dailyVolume: 50, sellCities: ['Martlock'], profitPerUnit: 4000, profitPct: 100, dailyProfit: 100000, premiumDays: 100, daysToAcquire: 1, daysToSell: 2, cycleDays: 3, effectiveDays: 3, cappedByMinDays: false, positionCost: 380000, quantity: 100, freshMinutes: 12, rankScore: 100000, tradeHours: 6, confidence: 0.2,
+        refined: [{ id: 'T4_METALBAR', city: 'Thetford', buyPrice: 300, price: 150 }] },
+    ] } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-refine-rrr').selectOption('custom');
+  await page.locator('#margin-refine-rrr-custom').fill('50');
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
+  expect(scanQuery.get('refineRrrCustom')).toBe('50');
+  await expect(page.locator('#margin-result tbody tr').first()).toContainText('♻ переработка: 1');
+  await expect(page.locator('#margin-result .calc-note')).toContainText('возвратом при переработке 50.0%');
+});

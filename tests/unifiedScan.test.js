@@ -282,3 +282,37 @@ describe('GET /api/unified-scan', () => {
   });
 });
 
+
+describe('скан гира: купить готовый материал или переработать самому', () => {
+  const swordRow = async (extra = {}) => (await scan({ mode: 'patient', ...extra })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+  beforeEach(() => {
+    seedMaterial('T4_METALBAR', 300);            // готовый слиток дорог
+    seedMaterial('T4_ORE', 100, 5000);            // а переработка: 2×100 + 1×100 = 300 × (1 − 36.7%) = 189.9
+    seedMaterial('T3_METALBAR', 100, 5000);
+    seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 50 });
+  });
+
+  it('материал перерабатывается самому, если так дешевле: себестоимость и список refined в строке', async () => {
+    const row = await swordRow();
+    expect(row.cost).toBeCloseTo(16 * 300 * (1 - 0.367) + 8 * 100, 0);
+    expect(row.refined).toHaveLength(1);
+    expect(row.refined[0]).toMatchObject({ id: 'T4_METALBAR', buyPrice: 300 });
+  });
+  it('своя ставка переработки пересчитывает выбор: при 0% переработка (300) не дешевле покупки (300) — покупаем готовый', async () => {
+    seedMaterial('T4_METALBAR', 250);
+    resetCaches();
+    const row = await swordRow({ refineRrrCustom: 0 });
+    expect(row.refined).toEqual([]);
+    expect(row.cost).toBeCloseTo(16 * 250 + 800, 6);
+    expect((await scan({ mode: 'patient', refineRrrCustom: 0 })).refineRate).toBe(0);
+  });
+  it('ставка гира применяется поверх: 24.8% возврата при крафте уменьшает цену переработанного материала', async () => {
+    const row = await swordRow({ gearRrr: 'city_bonus' });
+    expect(row.cost).toBeCloseTo((16 * 300 * (1 - 0.367) + 8 * 100) * (1 - (1 - 1 / 1.33)), 0);
+  });
+  it('мгновенный режим тоже сравнивает переработку', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 50, buyOrder: 8500 });
+    const row = (await scan({ mode: 'instant' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(row.refined).toHaveLength(1);
+  });
+});

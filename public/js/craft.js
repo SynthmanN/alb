@@ -13,6 +13,8 @@ const craftEl = {
   purchaseLog: document.getElementById('craft-purchase-log'),
   gearRrr: document.getElementById('craft-gear-rrr'),
   gearRrrCustom: document.getElementById('craft-gear-rrr-custom'),
+  refineRrr: document.getElementById('craft-refine-rrr'),
+  refineRrrCustom: document.getElementById('craft-refine-rrr-custom'),
   materialHours: document.getElementById('craft-material-hours'),
   blackMarket: document.getElementById('craft-black-market'),
   quantity: document.getElementById('craft-quantity'),
@@ -54,17 +56,44 @@ function currentGearRate() {
   return preset ? preset.rrr : null;
 }
 
+// Возврат при ПЕРЕРАБОТКЕ сырья («переработать самому» вместо покупки готового материала): пресеты RRR_PRESETS с сервера (rrrPresets),
+// по умолчанию «город со спец-бонусом ресурса» (36.7%). Устроен так же, как список ставки крафта, но это ДРУГАЯ ставка.
+let refineRrrPresets = [];
+function fillRefineRrrSelect(select, custom) {
+  select.innerHTML = refineRrrPresets.map((p) => `<option value="${p.id}">${p.label} — ${(p.rrr * 100).toFixed(1)}%</option>`).join('') + '<option value="custom">Своя ставка…</option>';
+  select.value = 'city_bonus';
+  select.addEventListener('change', () => {
+    custom.hidden = select.value !== 'custom';
+    if (!custom.hidden) custom.focus();
+  });
+}
+function refineRrrParams(select, custom) {
+  const own = select.value === 'custom' ? parseFloat(custom.value) : NaN;
+  return Number.isFinite(own) ? { refineRrr: 'city_bonus', refineRrrCustom: String(own) } : { refineRrr: select.value === 'custom' ? 'city_bonus' : select.value };
+}
+function currentRefineRate() {
+  const own = craftEl.refineRrr.value === 'custom' ? parseFloat(craftEl.refineRrrCustom.value) : NaN;
+  if (Number.isFinite(own)) return Math.min(Math.max(own, 0), 95) / 100;
+  const preset = refineRrrPresets.find((p) => p.id === craftEl.refineRrr.value) || refineRrrPresets.find((p) => p.id === 'city_bonus');
+  return preset ? preset.rrr : null;
+}
+
 async function initCraft() {
   const res = await fetch('/api/refining-meta');
   const meta = await res.json();
   gearRrrPresets = meta.gearRrrPresets || [];
   fillGearRrrSelect(craftEl.gearRrr, craftEl.gearRrrCustom);
   fillGearRrrSelect(marginEl.gearRrr, marginEl.gearRrrCustom);
+  refineRrrPresets = meta.rrrPresets || [];
+  fillRefineRrrSelect(craftEl.refineRrr, craftEl.refineRrrCustom);
+  fillRefineRrrSelect(marginEl.refineRrr, marginEl.refineRrrCustom);
   // смена ставки в калькуляторе пересчитывает результат на месте — без запроса к серверу
   const rerender = () => { if (lastCraftData) renderCraftResult(lastCraftData); };
   craftEl.gearRrr.addEventListener('change', rerender);
   craftEl.purchaseLog.addEventListener('change', rerender);        // включает/выключает мини-список лотов вместо поля «своя цена»
   craftEl.gearRrrCustom.addEventListener('input', rerender);
+  craftEl.refineRrr.addEventListener('change', rerender);
+  craftEl.refineRrrCustom.addEventListener('input', rerender);
 
   craftEl.search.addEventListener('input', (e) => renderCraftSuggestions(e.target.value));
   craftEl.categoryFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
@@ -153,7 +182,7 @@ async function runCraftCalc() {
   try {
     const params = new URLSearchParams({
       item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
-      quantity: craftEl.quantity.value || '1', ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), blackMarket: String(craftEl.blackMarket.checked), materialHours: readCustomizable(craftEl.materialHours), cities: activeCities().join(','),
+      quantity: craftEl.quantity.value || '1', ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), ...refineRrrParams(craftEl.refineRrr, craftEl.refineRrrCustom), blackMarket: String(craftEl.blackMarket.checked), materialHours: readCustomizable(craftEl.materialHours), cities: activeCities().join(','),
       premium: premiumParam(),
     });
     params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
@@ -208,22 +237,35 @@ function applyManualPrices(data) {
   const newRate = currentGearRate();
   const oldRate = data.rrrPreset ? data.rrrPreset.gearRate : undefined;
   const rateChanged = oldRate !== undefined && newRate !== null && Math.abs(newRate - oldRate) > 1e-9;
-  if (!hasOwnPrices() && manualSellPrice === null && !rateChanged) return data;
+  // Ставка переработки: «купить готовый или переработать самому» выбирается заново — сначала эта проверка, дальше остальные расчёты
+  // идут уже по выбранному источнику и по ставке возврата гира.
+  const newRefine = currentRefineRate();
+  const refineChanged = data.refineRate !== undefined && newRefine !== null && Math.abs(newRefine - data.refineRate) > 1e-9;
+  if (!hasOwnPrices() && manualSellPrice === null && !rateChanged && !refineChanged) return data;
   const d = { ...data, recipe: data.recipe.map((r) => ({ ...r })) };
+  if (refineChanged) d.refineRate = newRefine;
   if (rateChanged) d.rrrPreset = { ...data.rrrPreset, gearRate: newRate, rrr: newRate, label: `возврат при крафте: ${(newRate * 100).toFixed(1)}%${craftEl.gearRrr.value === 'custom' ? ' (своя ставка)' : ''}` };
   let materialDelta = 0;                 // изменение себестоимости за штуку от своих цен на материалы рецепта (с учётом возврата)
   let nominalDelta = 0;
   for (const r of d.recipe) {
     if (r.cheapestPrice === null) continue;
+    const oldPrice = r.cheapestPrice;                    // цена до пересчётов: от неё считаются дельты себестоимости
+    if (refineChanged && r.refineOption) {
+      const alt = r.refineOption.rawCost * (1 - newRefine);
+      const buy = r.materialSource === 'refine' ? r.buyPrice : r.cheapestPrice;
+      r.refineOption = { ...r.refineOption, rate: newRefine, price: alt };
+      if (buy === null || alt < buy) { r.materialSource = 'refine'; r.cheapestPrice = alt; r.cheapestCity = r.refineOption.city; r.priceSource = 'refine'; r.buyPrice = buy; }
+      else { r.materialSource = 'buy'; r.cheapestPrice = buy; r.cheapestCity = r.buyCity; r.priceSource = null; }
+    }
     const own = ownPriceFor(r.resource);
     const p = own !== undefined ? own : r.cheapestPrice;
     const oldFactor = r.returnable === false ? 1 : 1 - (r.rrr || 0);
     if (rateChanged && r.returnable !== false) r.rrr = newRate;
     const newFactor = r.returnable === false ? 1 : 1 - (r.rrr || 0);
-    materialDelta += (p * newFactor - r.cheapestPrice * oldFactor) * r.count;
-    nominalDelta += (p - r.cheapestPrice) * r.count;
+    materialDelta += (p * newFactor - oldPrice * oldFactor) * r.count;
+    nominalDelta += (p - oldPrice) * r.count;
     if (rateChanged) r.neededToBuy = Math.ceil(r.count * data.quantity * newFactor);
-    if (p !== r.cheapestPrice) { r.cheapestPrice = p; r.manualPrice = true; }
+    if (own !== undefined && p !== r.cheapestPrice) { r.cheapestPrice = p; r.manualPrice = true; }
   }
   const baseFlow = data.enchantAfterCraft || data.baseChoice;
   let stepsDelta = 0;
@@ -305,10 +347,10 @@ function renderCraftResult(rawData) {
       <tr>
         <td>${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
         <td>${needed.toLocaleString('ru-RU')}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU')}</small>` : ''}</td>
-        <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : `${cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}${r.priceSource === 'quote' ? '<br><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>' : ''}${craftEl.purchaseLog.checked ? lotLogHtml(r) : `<br><input class="manual-price ${r.manualPrice ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${r.resource}" placeholder="своя цена" value="${manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : ''}" title="Видишь другую цену в игре — впиши её: расчёт обновится сразу" />`}`}</td>
+        <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : `${r.materialSource === 'refine' && !r.manualPrice ? refineSourceHtml(r) : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}${r.priceSource === 'quote' ? '<br><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>' : ''}${craftEl.purchaseLog.checked ? lotLogHtml(r) : `<br><input class="manual-price ${r.manualPrice ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${r.resource}" placeholder="своя цена" value="${manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : ''}" title="Видишь другую цену в игре — впиши её: расчёт обновится сразу" />`}`}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
         <td data-sort-value="${acquireDaysFor(data, r.resource) ?? ''}">${acquireDaysFor(data, r.resource) !== null ? fmtDays(acquireDaysFor(data, r.resource)) : '—'}${data.acquire && data.acquire.bottleneckResource === r.resource ? ' 🐢' : ''}${acquirePlanHtml(data, r.resource)}</td>
-        <td data-sort-value="${r.rrr ?? 0}">${r.returnable === false ? '—' : `${((r.rrr || 0) * 100).toFixed(1)}%${r.cityBonus ? ` <span class="city-bonus" title="Город закупки (${r.cheapestCity}) даёт спец-бонус именно этому типу ресурса: возврат выше базового">★ бонус</span>` : ''}`}</td>
+        <td data-sort-value="${r.rrr ?? 0}">${r.returnable === false ? '—' : `${r.materialSource === 'refine' && r.refineOption ? `${(r.refineOption.rate * 100).toFixed(1)}% → ` : ''}${((r.rrr || 0) * 100).toFixed(1)}%${r.cityBonus ? ` <span class="city-bonus" title="Город закупки (${r.cheapestCity}) даёт спец-бонус именно этому типу ресурса: возврат выше базового">★ бонус</span>` : ''}`}</td>
       </tr>
     `;
   }).join('');
@@ -370,6 +412,27 @@ function volumeCell(r, showCount) {
   if (!r.byCity || r.byCity.length < 2) return main;
   const list = r.byCity.map((c) => `<li class="${c.inPlan ? '' : 'city-out'}">${c.city}: ${fmtNum(c.dailyVolume, 1)}/день <small>${c.inPlan ? 'в расчёте' : 'вне расчёта'}</small></li>`).join('');
   return `<details class="city-prices"><summary>${main}</summary><ul>${list}</ul></details>`;
+}
+
+// Название материала по id (в т.ч. зачарованного T4_ORE_LEVEL1@1 → «… .1»).
+function itemLabel(id) {
+  const m = String(id).match(/^(.+?)_LEVEL(\d)@\d$/);
+  return m ? `${itemName(m[1])} .${m[2]}` : itemName(id);
+}
+// Материал выгоднее переработать самому: город переработки, состав (сырьё + предыдущий тир) и цена готового с рынка для сравнения.
+// Две ставки возврата НЕ склеиваются: переработка (по составу) и крафт гира (в колонке «Возврат») — разные действия.
+function refineSourceHtml(r) {
+  const o = r.refineOption;
+  const parts = o.components.map((c) => `${c.count}× ${itemLabel(c.id)}`).join(' + ');
+  const buy = r.buyPrice ? `; готовый на рынке — ${fmtNum(r.buyPrice)}` : '';
+  return `<span class="refine-source" title="Сырьё и материал предыдущего тира по рыночным ценам, ставка возврата при переработке ${(o.rate * 100).toFixed(1)}%${buy}">♻ выгоднее переработать в ${o.city}: ${fmtNum(r.cheapestPrice)}</span><br><small>${parts}</small>`;
+}
+
+// Подпись в строке скана: какие материалы рецепта выгоднее переработать самому (♻), а какие купить готовыми.
+function refinedNote(r) {
+  if (!r.refined || r.refined.length === 0) return '';
+  const list = r.refined.map((m) => `${itemLabel(m.id)}: переработать в ${m.city} — ${fmtNum(m.price)} вместо ${fmtNum(m.buyPrice)}`).join('; ');
+  return `<br><small class="refine-source" title="${list}">♻ переработка: ${r.refined.length}</small>`;
 }
 
 function cityPricesCell(cheapestCity, cheapestPrice, cityPrices) {
@@ -844,7 +907,7 @@ async function runLazyCrafter() {
   try {
     const params = new URLSearchParams({
       budget: readGroupedNumber(lazyEl.budget) || '0', share: lazyEl.share.value || '25', sellDays: lazyEl.sellDays.value || '1',
-      strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom),
+      strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), ...refineRrrParams(craftEl.refineRrr, craftEl.refineRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/lazy-crafter?${params}`);
@@ -900,6 +963,8 @@ const marginEl = {
   blackMarketField: document.getElementById('margin-black-market-field'),
   gearRrr: document.getElementById('margin-gear-rrr'),
   gearRrrCustom: document.getElementById('margin-gear-rrr-custom'),
+  refineRrr: document.getElementById('margin-refine-rrr'),
+  refineRrrCustom: document.getElementById('margin-refine-rrr-custom'),
   category: document.getElementById('margin-category'),
   enchantMode: document.getElementById('margin-enchant-mode'),
   liquidity: document.getElementById('margin-liquidity'),
@@ -931,7 +996,7 @@ async function runMarginScan() {
     const params = new URLSearchParams({
       mode: marginEl.mode.value, blackMarket: String(marginEl.blackMarket.checked),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
-      capital: readGroupedNumber(marginEl.capital) || '500000', minDays: marginEl.minDays.value || '1', materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom),
+      capital: readGroupedNumber(marginEl.capital) || '500000', minDays: marginEl.minDays.value || '1', materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom), ...refineRrrParams(marginEl.refineRrr, marginEl.refineRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/unified-scan?${params}`);
@@ -979,7 +1044,7 @@ function renderMarginScan(data) {
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
         <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality]}</td>
-        <td>${fmtNum(r.cost)}</td>
+        <td>${fmtNum(r.cost)}${refinedNote(r)}</td>
         <td>${fmtNum(r.avgSellPrice)}${patient ? '' : `<br><small>${r.blackMarket ? '⚫ ' : ''}${r.sellCities[0]}${r.blackMarket ? ` (налог ${(r.sellTaxRate * 100).toFixed(1)}%)` : ''}</small>`}</td>
         <td data-sort-value="${r.dailyVolume}">${volumeCell(r, patient && data.liquidity !== 'best')}</td>
         <td data-sort-value="${r.quantity}" title="Позиция на ${fmtNum(data.capital)} серебра: штук = капитал ÷ себестоимость (${fmtNum(r.positionCost)} серебра)">${fmtNum(r.quantity)}</td>
@@ -998,7 +1063,7 @@ function renderMarginScan(data) {
     ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней цикла» — закупка узкого материала + распродажа позиции`
     : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. Материал берётся дешевле из двух путей: купить готовым или переработать самому (♻) из сырья и материала предыдущего тира с возвратом при переработке ${(data.refineRate * 100).toFixed(1)}%. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
     <div class="table-scroll"><table class="scan-table">
       <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит/день</th><th title="Эксперимент">Профит/час ★</th><th>Дней цикла</th><th>Дней на премиум</th><th title="Эксперимент">Часов на премиум ★</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
