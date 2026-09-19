@@ -149,6 +149,7 @@ function renderCraftResult(data) {
         <td>${needed.toLocaleString('ru-RU')}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
+        <td data-sort-value="${acquireDaysFor(data, r.resource) ?? ''}">${acquireDaysFor(data, r.resource) !== null ? fmtDays(acquireDaysFor(data, r.resource)) : '—'}${data.acquire && data.acquire.bottleneckResource === r.resource ? ' 🐢' : ''}</td>
       </tr>
     `;
   }).join('');
@@ -167,7 +168,7 @@ function renderCraftResult(data) {
   craftEl.result.innerHTML = `
     ${warning}
     <div class="table-scroll"><table class="craft-recipe-table">
-      <thead><tr><th>Материал</th><th>Нужно всего</th><th>Где дешевле</th><th>Сумма</th></tr></thead>
+      <thead><tr><th>Материал</th><th>Нужно всего</th><th>Где дешевле</th><th>Сумма</th><th>Дней на закупку</th></tr></thead>
       <tbody>${recipeRows}</tbody>
     </table></div>
     <details style="margin-top:10px">
@@ -230,6 +231,12 @@ function tierComparisonHtml(data) {
         <tbody>${rows}</tbody>
       </table></div>
     </details>`;
+}
+
+// Дней на закупку материала (по истории торгов, с учётом доли рынка); null — нет данных.
+function acquireDaysFor(data, resource) {
+  const row = data.acquire && data.acquire.byResource.find((a) => a.resource === resource);
+  return row && row.daysToAcquire !== null ? row.daysToAcquire : null;
 }
 
 // Разбивка продажи через Sell Order по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
@@ -338,6 +345,16 @@ function teleportHtml(data) {
     </div>`;
 }
 
+// Время закупки сырья и весь цикл: закупка (узкое место) + продажа — отдельной графой рядом со временем на продажу.
+function cycleRowsHtml(data) {
+  const a = data.acquire;
+  if (!a || a.days === null) return '';
+  const bottleneck = a.byResource.find((r) => r.resource === a.bottleneckResource);
+  return `
+      <div class="craft-summary-row"><span>Дней на закупку сырья (узкое место: ${bottleneck ? bottleneck.resourceName : '—'}, по доле рынка ${(data.marketShare * 100).toFixed(0)}%)</span><span>${fmtDays(a.days)}</span></div>
+      <div class="craft-summary-row"><strong>Весь цикл: закупка + продажа</strong><strong>${a.cycleDays !== null ? fmtDays(a.cycleDays) : '—'}</strong></div>`;
+}
+
 // Продажа через Sell Order: свой ордер на продажу по средней цене истории; объём и дни на распродажу защищают
 // от «прибыли» на предмете, который не продаётся.
 function patientSellHtml(data) {
@@ -355,6 +372,7 @@ function patientSellHtml(data) {
       <div class="craft-summary-row"><span>Лучший город по цене</span><span>${p.bestCity.city}: ${fmtNum(p.bestCity.avgPrice)}</span></div>
       <div class="craft-summary-row"><span>Спрос: сделок в день (по выбранным городам)</span><span>${fmtNum(p.avgDailyVolume, 1)}</span></div>
       <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(data.quantity)} шт (по доле рынка ${(p.marketShare * 100).toFixed(0)}%: тебе достаётся ~${fmtNum(p.avgDailyVolume * p.marketShare, 1)} из ${fmtNum(p.avgDailyVolume, 1)} сделок в день)</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(p.daysToSellBatch)}${slow ? ' ⚠' : ''}</span></div>
+      ${cycleRowsHtml(data)}
       <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(p.netSellPrice)}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(p.profitPerUnit)}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${fmtNum(data.quantity)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>

@@ -671,6 +671,30 @@ app.get('/api/craft-calc', async (req, res) => {
       console.error('не удалось загрузить историю для терпеливой продажи:', err.message);
     }
 
+    // Время закупки сырья и весь цикл (закупка + продажа): считаем по истории торгов самих материалов.
+    let acquire = null;
+    try {
+      const days = parseBulkDays(req);
+      const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+      const rows = [];
+      if (enchantAfterCraft && enchantAfterCraft.baseSource === 'buy') {
+        rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city });
+      } else {
+        recipeBreakdown.forEach((r) => rows.push({
+          resource: r.resource, resourceName: r.resourceName, queryId: r.queryId, needed: Math.ceil(r.count * quantity * (1 - rrr)), city: r.cheapestCity,
+        }));
+      }
+      if (enchantAfterCraft) {
+        for (const st of enchantAfterCraft.steps) rows.push({ resource: st.materialId, resourceName: st.materialName, queryId: st.materialId, needed: st.count * quantity, city: st.cheapestCity });
+      }
+      const ids = [...new Set(rows.map((r) => r.queryId))];
+      const matHistory = await fetchHistoryBatched(ids, days * 24, 1, locations);
+      acquire = computeAcquireTime({ rows, history: matHistory, days, marketShare });
+      acquire.cycleDays = acquire.days !== null && patientSell && patientSell.daysToSellBatch !== null ? acquire.days + patientSell.daysToSellBatch : null;
+    } catch (err) {
+      console.error('не удалось посчитать время закупки сырья:', err.message);
+    }
+
     // Логистика: галочка «Учитывать телепорт» — материалы покупаются в разных городах и едут в город сборки,
     // готовый предмет — в город продажи; «домашний» город подбирается автоматически.
     let teleport = null;
@@ -743,6 +767,7 @@ app.get('/api/craft-calc', async (req, res) => {
       patientSell,
       qualityComparison,
       tierComparison,
+      acquire,
       enchantAfterCraft,
       teleport,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
@@ -1341,6 +1366,26 @@ function cityPriceList(cityRecords, queryCities) {
     if (rec && rec.sell_price_min) out.push({ city, price: rec.sell_price_min });
   }
   return out.sort((a, b) => a.price - b.price);
+}
+
+// Время закупки сырья: даже если закупаешь по Sell Order'ам других игроков, собрать нужное количество можно лишь
+// так быстро, как этот материал торгуется (а на нашу долю приходится не весь оборот). Считаем по каждому материалу
+// в городе, где он дешевле всего; общий срок — по узкому месту (самому медленному материалу), как в плане партии.
+// rows: [{ resource, resourceName, queryId, needed, city }]
+function computeAcquireTime({ rows, history, days, marketShare = 1 }) {
+  const byResource = rows.map((r) => {
+    const stats = cityStats(history, r.queryId, days);
+    // Оборот берём в городе покупки; если там сделок нет — по всем выбранным городам.
+    const cityStat = r.city && Object.entries(stats).find(([c]) => normLocation(c) === normLocation(r.city));
+    const avgDailyVolume = cityStat ? cityStat[1].avgDailyVolume : Object.values(stats).reduce((sum, st) => sum + st.avgDailyVolume, 0);
+    return {
+      resource: r.resource, resourceName: r.resourceName, needed: r.needed, city: r.city, avgDailyVolume,
+      daysToAcquire: avgDailyVolume > 0 ? r.needed / (avgDailyVolume * marketShare) : null,
+    };
+  });
+  let bottleneck = null;
+  for (const r of byResource) if (r.daysToAcquire !== null && (!bottleneck || r.daysToAcquire > bottleneck.daysToAcquire)) bottleneck = r;
+  return { byResource, days: bottleneck ? bottleneck.daysToAcquire : null, bottleneckResource: bottleneck ? bottleneck.resource : null };
 }
 
 // Порог терпеливой продажи: вместо одного лучшего города — все города, где средняя цена не ниже порога
@@ -2204,6 +2249,7 @@ module.exports = {
   marginSellStats,
   premiumPaybackDays,
   computePatientSell,
+  computeAcquireTime,
   computeSellThreshold,
   teleportDistance,
   teleportStackCost,

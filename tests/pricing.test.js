@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  computeAcquireTime, requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -515,5 +515,32 @@ describe('доля рынка: срок распродажи по реалист
   });
   it('дней на премиум по доле: чем меньше доля, тем дольше', () => {
     expect(premiumPaybackDays(1000, 28 * 0.25)).toBeGreaterThan(premiumPaybackDays(1000, 28));
+  });
+});
+
+describe('время закупки сырья', () => {
+  const history = [
+    { item_id: 'A', location: 'Martlock', data: [{ item_count: 70, avg_price: 10 }] },   // 10 в день
+    { item_id: 'A', location: 'Lymhurst', data: [{ item_count: 700, avg_price: 10 }] }, // 100 в день
+    { item_id: 'B', location: 'Martlock', data: [{ item_count: 7, avg_price: 10 }] },    // 1 в день
+  ];
+  const rows = [
+    { resource: 'A', resourceName: 'Материал A', queryId: 'A', needed: 100, city: 'Martlock' },
+    { resource: 'B', resourceName: 'Материал B', queryId: 'B', needed: 5, city: 'Martlock' },
+  ];
+  it('дни = нужное количество / оборот в городе покупки; узкое место — самый медленный материал', () => {
+    const t = computeAcquireTime({ rows, history, days: 7 });
+    expect(t.byResource[0].daysToAcquire).toBeCloseTo(10, 6);
+    expect(t.byResource[1].daysToAcquire).toBeCloseTo(5, 6);
+    expect(t.days).toBeCloseTo(10, 6);
+    expect(t.bottleneckResource).toBe('A');
+  });
+  it('доля рынка замедляет закупку: при 25% срок вчетверо больше', () => {
+    expect(computeAcquireTime({ rows, history, days: 7, marketShare: 0.25 }).days).toBeCloseTo(40, 6);
+  });
+  it('нет сделок в городе покупки — берём оборот по всем городам; нет вообще — null', () => {
+    const t = computeAcquireTime({ rows: [{ resource: 'A', queryId: 'A', needed: 110, city: 'Bridgewatch' }, { resource: 'Z', queryId: 'Z', needed: 1, city: 'Martlock' }], history, days: 7 });
+    expect(t.byResource[0].daysToAcquire).toBeCloseTo(1, 6);   // (10 + 100) в день
+    expect(t.byResource[1].daysToAcquire).toBeNull();
   });
 });

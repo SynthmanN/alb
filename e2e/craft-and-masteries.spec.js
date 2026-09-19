@@ -93,6 +93,28 @@ test('доля рынка: селектор уходит в запрос кал�
   expect(query.get('marketShare')).toBe('0.5');
 });
 
+test('время закупки сырья: колонка «Дней на закупку» и весь цикл рядом со временем продажи', async ({ page }) => {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_CAPEITEM_AVALON', enchant: 0, quality: 1, quantity: 100, marketShare: 0.25, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+    cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 90000, effectiveCostPerUnit: 90000, totalCost: 9000000,
+    recipe: [{ resource: 'T4_CAPEITEM_AVALON_BP', resourceName: 'Герб Авалона', queryId: 'T4_CAPEITEM_AVALON_BP', enchanted: false, count: 1, cheapestCity: 'Martlock', cheapestPrice: 20000, cityPrices: [] },
+             { resource: 'T4_CAPE', resourceName: 'Плащ', queryId: 'T4_CAPE', enchanted: false, count: 1, cheapestCity: 'Martlock', cheapestPrice: 2000, cityPrices: [] }],
+    sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+    patientSell: { days: 7, marketShare: 0.25, avgSellPrice: 125000, bestCity: { city: 'Martlock', avgPrice: 125000 }, avgDailyVolume: 20, daysToSellBatch: 20.3, netSellPrice: 115000, profitPerUnit: 25000, byCity: [], cities: [] },
+    acquire: { days: 22.5, cycleDays: 42.8, bottleneckResource: 'T4_CAPEITEM_AVALON_BP', byResource: [
+      { resource: 'T4_CAPEITEM_AVALON_BP', resourceName: 'Герб Авалона', needed: 100, avgDailyVolume: 4.4, daysToAcquire: 22.5 },
+      { resource: 'T4_CAPE', resourceName: 'Плащ', needed: 100, avgDailyVolume: 200, daysToAcquire: 0.5 }] },
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('авалонский плащ');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  await expect(page.locator('#craft-result .craft-recipe-table').first()).toContainText('Дней на закупку');
+  await expect(page.locator('#craft-result .craft-recipe-table').first()).toContainText('22.5 дн. 🐢');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('Весь цикл: закупка + продажа');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('42.8 дн.');
+});
+
 test('телепорт: галочка добавляет параметр в запрос и показывает логистику', async ({ page }) => {
   let query = null;
   await page.route('**/api/craft-calc*', (route) => {
