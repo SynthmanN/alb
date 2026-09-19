@@ -93,7 +93,7 @@ describe('валидация запросов', () => {
     for (const url of ['/api/craft-bulk-plan', '/api/craft-calc?item=NOPE']) {
       const res = await request(app).get(url);
       expect(res.status).toBe(404);
-      expect(res.body.error).toMatch(/no recipe/);
+      expect(res.body.error).toMatch(/не найден рецепт/);
     }
   });
   const fitBase = 'head=HEAD_PLATE_SET1&chest=ARMOR_PLATE_SET1&shoes=SHOES_PLATE_SET1&cape=CAPE&targetIP=900';

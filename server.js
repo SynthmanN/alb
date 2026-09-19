@@ -158,16 +158,16 @@ app.get('/api/prices', async (req, res) => {
     const itemsParam = req.query.items;
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
     if (!itemsParam) {
-      return res.status(400).json({ error: 'query param "items" is required, e.g. ?items=T4_WOOD,T4_PLANKS' });
+      return res.status(400).json({ error: 'нужен параметр "items", например ?items=T4_WOOD,T4_PLANKS' });
     }
     const itemIds = itemsParam.split(',').map((s) => s.trim()).filter(Boolean);
-    if (itemIds.length === 0) return res.status(400).json({ error: 'no valid item ids provided' });
-    if (itemIds.length > 300) return res.status(400).json({ error: 'max 300 items per request' });
+    if (itemIds.length === 0) return res.status(400).json({ error: 'не передано ни одного корректного id предмета' });
+    if (itemIds.length > 300) return res.status(400).json({ error: 'максимум 300 предметов за запрос' });
     const data = await fetchPricesBatched(itemIds, quality);
     res.json(data);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to fetch AODP data', details: err.message });
+    res.status(502).json({ error: 'не удалось получить данные AODP', details: err.message });
   }
 });
 
@@ -262,7 +262,7 @@ app.get('/api/history', async (req, res) => {
     const item = req.query.item;
     const hours = Math.min(parseInt(req.query.hours, 10) || 24, 168);
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
-    if (!item) return res.status(400).json({ error: 'query param "item" is required' });
+    if (!item) return res.status(400).json({ error: 'нужен параметр "item"' });
 
     const now = new Date();
     const start = new Date(now.getTime() - hours * 3600 * 1000);
@@ -279,7 +279,7 @@ app.get('/api/history', async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to fetch AODP history', details: err.message });
+    res.status(502).json({ error: 'не удалось получить историю AODP', details: err.message });
   }
 });
 
@@ -300,12 +300,12 @@ app.get('/api/refining-calc', async (req, res) => {
     const enchant = Math.min(Math.max(parseInt(req.query.enchant, 10) || 0, 0), 4);
     const citiesParam = req.query.cities;
 
-    if (!RESOURCE_TYPES.includes(type)) return res.status(400).json({ error: `type must be one of: ${RESOURCE_TYPES.join(', ')}` });
-    if (!REFINING_RATIOS[tier]) return res.status(400).json({ error: 'tier must be 2-8' });
+    if (!RESOURCE_TYPES.includes(type)) return res.status(400).json({ error: `type должен быть одним из: ${RESOURCE_TYPES.join(', ')}` });
+    if (!REFINING_RATIOS[tier]) return res.status(400).json({ error: 'tier должен быть от 2 до 8' });
     const preset = RRR_PRESETS.find((p) => p.id === rrrId);
-    if (!preset) return res.status(400).json({ error: `rrr must be one of: ${RRR_PRESETS.map((p) => p.id).join(', ')}` });
+    if (!preset) return res.status(400).json({ error: `rrr должен быть одним из: ${RRR_PRESETS.map((p) => p.id).join(', ')}` });
     const maxEnchant = tier < 4 ? 0 : type === 'ROCK' ? 3 : 4;
-    if (enchant > maxEnchant) return res.status(400).json({ error: `enchant ${enchant} not available for T${tier} ${type} (max ${maxEnchant})` });
+    if (enchant > maxEnchant) return res.status(400).json({ error: `зачарование ${enchant} недоступно для T${tier} ${type} (максимум ${maxEnchant})` });
 
     const refinedName = REFINED_NAME[type];
     const ratio = REFINING_RATIOS[tier];
@@ -346,7 +346,7 @@ app.get('/api/refining-calc', async (req, res) => {
     res.json({ itemId: refinedId, tier, type, enchant, ratio, taxRate, rrrPreset: { ...preset, rrr }, bonusCity: BONUS_CITY[type], perCity });
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to compute refining calc', details: err.message });
+    res.status(502).json({ error: 'не удалось посчитать переработку', details: err.message });
   }
 });
 
@@ -378,7 +378,7 @@ app.get('/api/craft-calc', async (req, res) => {
     const citiesParam = req.query.cities;
     const rrrId = req.query.rrr || 'none';
 
-    if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `no recipe found for item "${itemId}"` });
+    if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `не найден рецепт для предмета "${itemId}"` });
     const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
     const rrr = rrrFromBonus(preset.bonus);
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
@@ -461,7 +461,7 @@ app.get('/api/craft-calc', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to compute craft calc', details: err.message });
+    res.status(502).json({ error: 'не удалось посчитать крафт', details: err.message });
   }
 });
 
@@ -529,7 +529,7 @@ app.get('/api/opportunities', async (req, res) => {
     } catch (err) {
       // Если история не смогла подгрузиться — не роняем весь сканер, просто отдаём
       // без данных об объёме (клиент это отобразит как "не проверено").
-      console.error('history check failed for opportunities scan:', err.message);
+      console.error('не удалось проверить историю для сканера возможностей:', err.message);
       withVolume = candidates.map((c) => ({ ...c, volume24h: null }));
     }
 
@@ -538,7 +538,7 @@ app.get('/api/opportunities', async (req, res) => {
     res.json(top);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to scan opportunities', details: err.message });
+    res.status(502).json({ error: 'не удалось выполнить скан возможностей', details: err.message });
   }
 });
 
@@ -625,7 +625,7 @@ app.get('/api/bm-opportunities', async (req, res) => {
         .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.bmVolume24h) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
-      console.error('BM history check failed:', err.message);
+      console.error('не удалось проверить историю Чёрного Рынка:', err.message);
       withVolume = candidates.map((c) => ({ ...c, bmVolume24h: null }));
     }
 
@@ -634,7 +634,7 @@ app.get('/api/bm-opportunities', async (req, res) => {
     res.json(top);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to scan black market', details: err.message });
+    res.status(502).json({ error: 'не удалось выполнить скан Чёрного Рынка', details: err.message });
   }
 });
 
@@ -732,7 +732,7 @@ app.get('/api/craft-opportunities', async (req, res) => {
         .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
-      console.error('craft scan history check failed:', err.message);
+      console.error('не удалось проверить историю для сканера крафта:', err.message);
       withVolume = candidates.map((c) => ({ ...c, volume: null }));
     }
 
@@ -741,7 +741,7 @@ app.get('/api/craft-opportunities', async (req, res) => {
     res.json(top);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to scan craft opportunities', details: err.message });
+    res.status(502).json({ error: 'не удалось выполнить скан крафта', details: err.message });
   }
 });
 
@@ -843,7 +843,7 @@ app.get('/api/refining-opportunities', async (req, res) => {
         .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
-      console.error('refining scan history check failed:', err.message);
+      console.error('не удалось проверить историю для сканера рефайна:', err.message);
       withVolume = candidates.map((c) => ({ ...c, volume: null }));
     }
 
@@ -852,7 +852,7 @@ app.get('/api/refining-opportunities', async (req, res) => {
     res.json(top);
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to scan refining opportunities', details: err.message });
+    res.status(502).json({ error: 'не удалось выполнить скан рефайна', details: err.message });
   }
 });
 
@@ -1006,7 +1006,7 @@ app.get('/api/craft-bulk-plan', async (req, res) => {
     const sellHigh = parseFloat(req.query.sellHigh) > 0 ? parseFloat(req.query.sellHigh) : null;
     const citiesParam = req.query.cities;
 
-    if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `no recipe found for item "${itemId}"` });
+    if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `не найден рецепт для предмета "${itemId}"` });
     const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
     const rrr = rrrFromBonus(preset.bonus);
     const taxRate = getSalesTaxRate(req);
@@ -1026,7 +1026,7 @@ app.get('/api/craft-bulk-plan', async (req, res) => {
     ));
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to compute bulk plan', details: err.message });
+    res.status(502).json({ error: 'не удалось посчитать план партии', details: err.message });
   }
 });
 
@@ -1084,7 +1084,7 @@ app.get('/api/craft-bulk-opportunities', async (req, res) => {
     res.json(results.slice(0, 25));
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to scan bulk craft opportunities', details: err.message });
+    res.status(502).json({ error: 'не удалось выполнить скан партий', details: err.message });
   }
 });
 
@@ -1113,7 +1113,7 @@ app.post('/api/masteries', (req, res) => {
     res.json({ ok: true, ...current });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'failed to save mastery levels', details: err.message });
+    res.status(500).json({ error: 'не удалось сохранить уровни мастерок', details: err.message });
   }
 });
 
@@ -1314,14 +1314,14 @@ app.get('/api/fitting-room', async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(502).json({ error: 'failed to compute fitting room', details: err.message });
+    res.status(502).json({ error: 'не удалось подобрать экипировку', details: err.message });
   }
 });
 
 // Порт занимаем только при прямом запуске (node server.js); при require() из тестов — нет.
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Albion market table running on http://localhost:${PORT}`);
+    console.log(`Albion market table запущен на http://localhost:${PORT}`);
   });
 }
 
