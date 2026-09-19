@@ -1,0 +1,3310 @@
+{
+ "QUESTITEM_TOKEN_MISTS": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.56
+ },
+ "T1_ALCHEMY_COMMON": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T1_FACTION_CAERLEON_TOKEN_1": {
+  "fastTravelFactor": 256.0,
+  "weight": 2.56
+ },
+ "T1_FACTION_FOREST_TOKEN_1": {
+  "fastTravelFactor": 256.0,
+  "weight": 2.56
+ },
+ "T1_FACTION_HIGHLAND_TOKEN_1": {
+  "fastTravelFactor": 256.0,
+  "weight": 2.56
+ },
+ "T1_FACTION_MOUNTAIN_TOKEN_1": {
+  "fastTravelFactor": 256.0,
+  "weight": 2.56
+ },
+ "T1_FACTION_STEPPE_TOKEN_1": {
+  "fastTravelFactor": 256.0,
+  "weight": 2.56
+ },
+ "T1_FACTION_SWAMP_TOKEN_1": {
+  "fastTravelFactor": 256.0,
+  "weight": 2.56
+ },
+ "T2_2H_BOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.0
+ },
+ "T2_ARMOR_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.5
+ },
+ "T2_ARMOR_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.5
+ },
+ "T2_ARMOR_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.5
+ },
+ "T2_CAPE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_CLOTH": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_FIBER": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_HEAD_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_HEAD_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_HEAD_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_HIDE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_LEATHER": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_MAIN_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.3
+ },
+ "T2_MAIN_SWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.3
+ },
+ "T2_METALBAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_OFF_BOOK": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_OFF_SHIELD": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_ORE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_PLANKS": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_ROCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_SHOES_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_SHOES_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_SHOES_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.8
+ },
+ "T2_STONEBLOCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T2_WOOD": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.23
+ },
+ "T3_2H_BOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 4.5
+ },
+ "T3_2H_CROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 4.5
+ },
+ "T3_2H_KNUCKLES_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 4.5
+ },
+ "T3_2H_QUARTERSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 4.5
+ },
+ "T3_2H_SHAPESHIFTER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 4.5
+ },
+ "T3_ALCHEMY_RARE_DIREBEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T3_ALCHEMY_RARE_ENT": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T3_ALCHEMY_RARE_PANTHER": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T3_ARMOR_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.3
+ },
+ "T3_ARMOR_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.3
+ },
+ "T3_ARMOR_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.3
+ },
+ "T3_CAPE": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_CLOTH": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_FIBER": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_HEAD_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_HEAD_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_HEAD_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_HIDE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_LEATHER": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_MAIN_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_DAGGER": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_MAIN_SWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T3_METALBAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_OFF_BOOK": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_OFF_SHIELD": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_OFF_TORCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_ORE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_PLANKS": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_ROCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_SHOES_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_SHOES_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_SHOES_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.1
+ },
+ "T3_STONEBLOCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T3_WOOD": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.34
+ },
+ "T4_2H_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_BOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_CLAWPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_CLAYMORE": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_CROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_CROSSBOWLARGE": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DAGGERPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DEMONICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DIVINESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DOUBLEBLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_DUALSWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_ENIGMATICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_FLAIL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_GLACIALSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_GLAIVE": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_HALBERD": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_INFERNOSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_IRONCLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_KNUCKLES_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_KNUCKLES_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_KNUCKLES_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_LONGBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_POLEHAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_QUARTERSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_SHAPESHIFTER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_SHAPESHIFTER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_SHAPESHIFTER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_WARBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_2H_WILDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 6.8
+ },
+ "T4_ARMOR_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARMOR_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.4
+ },
+ "T4_ARTEFACT_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_ARTEFACT_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T4_CAPE": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_BRECILIEN": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_BRECILIEN_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_FW_BRIDGEWATCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_BRIDGEWATCH_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_FW_CAERLEON": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_CAERLEON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_FW_FORTSTERLING": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_FORTSTERLING_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_FW_LYMHURST": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_LYMHURST_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_FW_MARTLOCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_MARTLOCK_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CAPEITEM_FW_THETFORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T4_CLOTH": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_FIBER": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_HEAD_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HEAD_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_HIDE": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_LEATHER": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_MAIN_1HCROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_DAGGER": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_SWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T4_METALBAR": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_OFF_BOOK": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_OFF_SHIELD": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_OFF_TORCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_ORE": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_PLANKS": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_RELIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T4_ROCK": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_RUNE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T4_SHOES_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SHOES_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.7
+ },
+ "T4_SOUL": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T4_STONEBLOCK": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T4_WOOD": {
+  "fastTravelFactor": 2.0,
+  "weight": 0.51
+ },
+ "T5_2H_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_BOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_CLAWPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_CLAYMORE": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_CROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_CROSSBOWLARGE": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DAGGERPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DEMONICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DIVINESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DOUBLEBLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_DUALSWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_ENIGMATICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_FLAIL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_GLACIALSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_GLAIVE": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_HALBERD": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_INFERNOSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_IRONCLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_KNUCKLES_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_KNUCKLES_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_KNUCKLES_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_LONGBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_POLEHAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_QUARTERSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_SHAPESHIFTER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_SHAPESHIFTER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_SHAPESHIFTER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_WARBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_2H_WILDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 10.1
+ },
+ "T5_ALCHEMY_RARE_DIREBEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T5_ALCHEMY_RARE_ENT": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T5_ALCHEMY_RARE_PANTHER": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T5_ARMOR_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARMOR_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.1
+ },
+ "T5_ARTEFACT_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_ARTEFACT_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T5_CAPE": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_BRECILIEN": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_BRECILIEN_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_FW_BRIDGEWATCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_BRIDGEWATCH_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_FW_CAERLEON": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_CAERLEON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_FW_FORTSTERLING": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_FORTSTERLING_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_FW_LYMHURST": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_LYMHURST_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_FW_MARTLOCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_MARTLOCK_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CAPEITEM_FW_THETFORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T5_CLOTH": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_FIBER": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_HEAD_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HEAD_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_HIDE": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_LEATHER": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_MAIN_1HCROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_DAGGER": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_SWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T5_METALBAR": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_OFF_BOOK": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_OFF_SHIELD": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_OFF_TORCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_ORE": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_PLANKS": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_RELIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.25
+ },
+ "T5_ROCK": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_RUNE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.25
+ },
+ "T5_SHOES_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SHOES_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.5
+ },
+ "T5_SOUL": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.25
+ },
+ "T5_STONEBLOCK": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T5_WOOD": {
+  "fastTravelFactor": 4.0,
+  "weight": 0.76
+ },
+ "T6_2H_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_BOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_CLAWPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_CLAYMORE": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_CROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_CROSSBOWLARGE": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DAGGERPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DEMONICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DIVINESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DOUBLEBLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_DUALSWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_ENIGMATICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_FLAIL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_GLACIALSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_GLAIVE": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_HALBERD": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_INFERNOSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_IRONCLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_KNUCKLES_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_KNUCKLES_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_KNUCKLES_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_LONGBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_POLEHAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_QUARTERSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_SHAPESHIFTER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_SHAPESHIFTER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_SHAPESHIFTER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_WARBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_2H_WILDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 15.2
+ },
+ "T6_ARMOR_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARMOR_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 7.6
+ },
+ "T6_ARTEFACT_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_ARTEFACT_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T6_CAPE": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_BRECILIEN": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_BRECILIEN_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_FW_BRIDGEWATCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_BRIDGEWATCH_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_FW_CAERLEON": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_CAERLEON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_FW_FORTSTERLING": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_FORTSTERLING_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_FW_LYMHURST": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_LYMHURST_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_FW_MARTLOCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_MARTLOCK_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CAPEITEM_FW_THETFORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T6_CLOTH": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_FIBER": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_HEAD_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HEAD_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_HIDE": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_LEATHER": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_MAIN_1HCROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_DAGGER": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_SWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T6_METALBAR": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_OFF_BOOK": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_OFF_SHIELD": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_OFF_TORCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_ORE": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_PLANKS": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_RELIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.38
+ },
+ "T6_ROCK": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_RUNE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.38
+ },
+ "T6_SHOES_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SHOES_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 3.8
+ },
+ "T6_SOUL": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.38
+ },
+ "T6_STONEBLOCK": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T6_WOOD": {
+  "fastTravelFactor": 8.0,
+  "weight": 1.14
+ },
+ "T7_2H_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_BOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_CLAWPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_CLAYMORE": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_CROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_CROSSBOWLARGE": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DAGGERPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DEMONICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DIVINESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DOUBLEBLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_DUALSWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_ENIGMATICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_FLAIL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_GLACIALSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_GLAIVE": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_HALBERD": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_INFERNOSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_IRONCLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_KNUCKLES_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_KNUCKLES_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_KNUCKLES_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_LONGBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_POLEHAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_QUARTERSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_SHAPESHIFTER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_SHAPESHIFTER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_SHAPESHIFTER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_WARBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_2H_WILDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 22.8
+ },
+ "T7_ALCHEMY_RARE_DIREBEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T7_ALCHEMY_RARE_ENT": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T7_ALCHEMY_RARE_PANTHER": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.05
+ },
+ "T7_ARMOR_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARMOR_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 11.4
+ },
+ "T7_ARTEFACT_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_ARTEFACT_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T7_CAPE": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_BRECILIEN": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_BRECILIEN_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_FW_BRIDGEWATCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_BRIDGEWATCH_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_FW_CAERLEON": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_CAERLEON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_FW_FORTSTERLING": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_FORTSTERLING_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_FW_LYMHURST": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_LYMHURST_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_FW_MARTLOCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_MARTLOCK_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CAPEITEM_FW_THETFORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T7_CLOTH": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_FIBER": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_HEAD_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HEAD_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_HIDE": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_LEATHER": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_MAIN_1HCROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_DAGGER": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_SWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T7_METALBAR": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_OFF_BOOK": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_OFF_SHIELD": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_OFF_TORCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_ORE": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_PLANKS": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_RELIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.5
+ },
+ "T7_ROCK": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_RUNE": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.5
+ },
+ "T7_SHOES_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SHOES_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 5.7
+ },
+ "T7_SOUL": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.5
+ },
+ "T7_STONEBLOCK": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T7_WOOD": {
+  "fastTravelFactor": 16.0,
+  "weight": 1.71
+ },
+ "T8_2H_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_BOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_CLAWPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_CLAYMORE": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_CROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_CROSSBOWLARGE": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DAGGERPAIR": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DEMONICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DIVINESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DOUBLEBLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_DUALSWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_ENIGMATICSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_FLAIL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_GLACIALSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_GLAIVE": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_HALBERD": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_INFERNOSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_IRONCLADEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_KNUCKLES_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_KNUCKLES_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_KNUCKLES_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_LONGBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_POLEHAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_QUARTERSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_SHAPESHIFTER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_SHAPESHIFTER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_SHAPESHIFTER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_WARBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_2H_WILDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 34.2
+ },
+ "T8_ARMOR_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARMOR_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 17.1
+ },
+ "T8_ARTEFACT_2H_ARCANESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_BOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_DAGGERPAIR_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_FROSTSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_GLAIVE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_HAMMER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_HOLYSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_KNUCKLES_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_SCYTHE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_ARTEFACT_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 2.0
+ },
+ "T8_CAPE": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_BRECILIEN": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_BRECILIEN_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_FW_BRIDGEWATCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_BRIDGEWATCH_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_FW_CAERLEON": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_CAERLEON_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_FW_FORTSTERLING": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_FORTSTERLING_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_FW_LYMHURST": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_LYMHURST_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_FW_MARTLOCK": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_MARTLOCK_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CAPEITEM_FW_THETFORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_CAPEITEM_FW_THETFORD_BP": {
+  "fastTravelFactor": 1.0,
+  "weight": 0.51
+ },
+ "T8_CLOTH": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_FIBER": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_HEAD_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HEAD_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_HIDE": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_LEATHER": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_MAIN_1HCROSSBOW": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_ARCANESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_AXE": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_CURSEDSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_CURSEDSTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_DAGGER": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_FIRESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_FIRESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_FROSTSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_HAMMER": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_HOLYSTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_MACE": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_MACE_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_NATURESTAFF": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_NATURESTAFF_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_SPEAR": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_SWORD": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_MAIN_SWORD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 25.6
+ },
+ "T8_METALBAR": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_OFF_BOOK": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_OFF_SHIELD": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_OFF_SHIELD_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_OFF_TOME_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_OFF_TORCH": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_OFF_TORCH_CRYSTAL": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_ORE": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_PLANKS": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_RELIC": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.0
+ },
+ "T8_ROCK": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_RUNE": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.0
+ },
+ "T8_SHOES_CLOTH_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_CLOTH_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_CLOTH_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_LEATHER_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_LEATHER_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_LEATHER_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_PLATE_SET1": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_PLATE_SET2": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SHOES_PLATE_SET3": {
+  "fastTravelFactor": 1.0,
+  "weight": 8.5
+ },
+ "T8_SOUL": {
+  "fastTravelFactor": 1.0,
+  "weight": 1.0
+ },
+ "T8_STONEBLOCK": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ },
+ "T8_WOOD": {
+  "fastTravelFactor": 32.0,
+  "weight": 2.56
+ }
+}

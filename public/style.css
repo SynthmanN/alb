@@ -230,3 +230,8 @@ main { padding-top: 4px; }
 /* Компактная ширина: на широких экранах контент не растягивается на весь монитор */
 #site-chrome, main, .page-header { max-width: 1100px; margin-left: auto; margin-right: auto; }
 .mastery-cat summary input, .mastery-row input { width: 76px; padding: 5px 8px; }
+
+/* Галочка внутри строки полей калькулятора */
+.craft-check .check-inline { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #e6e6e6; height: 34px; cursor: pointer; }
+.craft-check .check-inline input { width: auto; }
+.teleport-plan { margin-top: 12px; }

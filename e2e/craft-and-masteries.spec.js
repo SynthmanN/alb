@@ -80,3 +80,30 @@ test('ленивый крафтер: по бюджету строит план �
   expect(query.get('budget')).toBe('1000000');
   expect(query.get('strategy')).toBe('mass');
 });
+
+test('телепорт: галочка добавляет параметр в запрос и показывает логистику', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/craft-calc*', (route) => {
+    query = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: {
+      itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 8000, effectiveCostPerUnit: 8000, totalCost: 800000,
+      recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, cheapestCity: 'Martlock', cheapestPrice: 500 }],
+      sellPrices: [{ city: 'Martlock', sellMin: 12000, buyMax: 10000 }], bestSell: { city: 'Martlock', price: 10000 },
+      taxRate: 0.08, netSellPrice: 9200, profitPerUnit: 1200, totalProfit: 120000, patientSell: null,
+      teleport: {
+        homeCity: 'Lymhurst', legsCost: 30600, costPerUnit: 8306,
+        materialLegs: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', fromCity: 'Martlock', price: 500, needed: 1600, distance: 2, cost: 30600 }],
+        instant: { city: 'Lymhurst', price: 10000, distance: 0, cost: 0, net: 920000, profitPerUnit: 894 }, patient: null,
+      },
+    } });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('меч');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-teleport').check();
+  await page.locator('#craft-run').click();
+  await expect(page.locator('#craft-result .teleport-plan')).toContainText('собираем в Lymhurst');
+  await expect(page.locator('#craft-result .teleport-plan')).toContainText('30 600');
+  expect(query.get('teleport')).toBe('true');
+});

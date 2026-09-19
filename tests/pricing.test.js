@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -307,5 +307,58 @@ describe('терпеливая продажа', () => {
   });
   it('нет сделок в выбранных городах — null (блок терпеливой продажи не показывается)', () => {
     expect(computePatientSell({ ...base, queryCities: ['Bridgewatch'] })).toBeNull();
+  });
+});
+
+describe('стоимость телепорта', () => {
+  it('формула: ceil(вес × кол-во × коэффициент × 150), затем × дистанция', () => {
+    expect(teleportStackCost('T4_WOOD', 100, 1)).toBe(Math.ceil(0.51 * 100 * 2 * 150)); // ресурс: коэффициент 2 → 15300
+    expect(teleportStackCost('T4_WOOD', 100, 2)).toBe(15300 * 2);
+    expect(teleportStackCost('T4_MAIN_SWORD', 3, 1)).toBe(2295);
+    expect(teleportStackCost('T4_MAIN_SWORD', 3, 0)).toBe(0);
+  });
+  it('нет веса или маршрута — null', () => {
+    expect(teleportStackCost('NO_SUCH_ITEM', 1, 1)).toBeNull();
+    expect(teleportStackCost('T4_WOOD', 1, null)).toBeNull();
+  });
+  it('кольцо из 5 городов: соседние ×1, через город ×2, Бресильен всегда ×2, Каэрлеон недоступен', () => {
+    expect(teleportDistance('Lymhurst', 'Bridgewatch')).toBe(1);
+    expect(teleportDistance('Bridgewatch', 'Martlock')).toBe(1);
+    expect(teleportDistance('Fort Sterling', 'Lymhurst')).toBe(1); // замыкание кольца
+    expect(teleportDistance('Lymhurst', 'Martlock')).toBe(2);
+    expect(teleportDistance('Martlock', 'Fort Sterling')).toBe(2);
+    expect(teleportDistance('Brecilien', 'Thetford')).toBe(2);
+    expect(teleportDistance('Martlock', 'Brecilien')).toBe(2);
+    expect(teleportDistance('Caerleon', 'Martlock')).toBeNull();
+    expect(teleportDistance('Martlock', 'Martlock')).toBe(0);
+    expect(teleportDistance('FortSterling', 'Fort Sterling')).toBe(0);
+  });
+
+  const materials = [
+    { resource: 'T4_WOOD', resourceName: 'Дерево', needed: 100, priceByCity: { Lymhurst: 100, Martlock: 90 } },
+    { resource: 'T4_METALBAR', resourceName: 'Слитки', needed: 100, priceByCity: { Lymhurst: 200, Martlock: 200 } },
+  ];
+  const finished = { itemId: 'T4_MAIN_SWORD', qty: 10, instantByCity: { Martlock: 20000 }, patientByCity: null };
+
+  it('дом выбирается по максимальной прибыли: собираем там, где не надо возить и материалы, и результат', () => {
+    const plan = planCraftTeleport({ materials, finished, homes: ['Lymhurst', 'Martlock'], taxRate: 0.08 });
+    expect(plan.homeCity).toBe('Martlock');
+    expect(plan.legsCost).toBe(0);
+    expect(plan.instant.cost).toBe(0);
+    expect(plan.costPerUnit).toBeCloseTo((90 * 100 + 200 * 100) / 10, 6);
+    expect(plan.instant.profitPerUnit).toBeCloseTo(20000 * 0.92 - plan.costPerUnit, 6);
+  });
+  it('дорогая дорога перебивает дешёвую цену: материал берём в городе дома, а не дешевле, но далеко', () => {
+    const heavy = [{ resource: 'T4_WOOD', resourceName: 'Дерево', needed: 1000, priceByCity: { Lymhurst: 101, Martlock: 100 } }];
+    const plan = planCraftTeleport({ materials: heavy, finished: { ...finished, instantByCity: { Lymhurst: 50000 } }, homes: ['Lymhurst'], taxRate: 0.08 });
+    expect(plan.materialLegs[0].fromCity).toBe('Lymhurst'); // перевозка из Мартлока стоит больше, чем разница в цене
+    expect(plan.legsCost).toBe(0);
+  });
+  it('Каэрлеон нельзя ни как источник, ни как город продажи: маршрута нет', () => {
+    const plan = planCraftTeleport({
+      materials: [{ resource: 'T4_WOOD', resourceName: 'Дерево', needed: 10, priceByCity: { Caerleon: 1 } }],
+      finished, homes: ['Martlock'], taxRate: 0.08,
+    });
+    expect(plan).toBeNull();
   });
 });

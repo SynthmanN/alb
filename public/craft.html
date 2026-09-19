@@ -43,6 +43,10 @@
         </label>
         <label class="craft-field">Возврат ресурсов<select id="craft-rrr"></select></label>
         <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
+        <label class="craft-field craft-check" title="Материалы покупаются в разных городах и едут в город сборки, готовый предмет — в город продажи. Считается по весу и дистанции (кольцо из 5 городов, Бресильен ×2, Каэрлеон исключён)">
+          <span>Логистика</span>
+          <span class="check-inline"><input id="craft-teleport" type="checkbox" /> Учитывать телепорт</span>
+        </label>
         <button id="craft-run">Посчитать</button>
       </div>
       <div id="craft-result"></div>

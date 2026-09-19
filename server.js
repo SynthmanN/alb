@@ -480,6 +480,33 @@ app.get('/api/craft-calc', async (req, res) => {
       console.error('не удалось загрузить историю для терпеливой продажи:', err.message);
     }
 
+    // Логистика: галочка «Учитывать телепорт» — материалы покупаются в разных городах и едут в город сборки,
+    // готовый предмет — в город продажи; «домашний» город подбирается автоматически.
+    let teleport = null;
+    if (req.query.teleport === 'true') {
+      const travelCities = queryCities.filter((c) => normLocation(c) !== 'caerleon');
+      const materials = recipe.resources.map((r) => {
+        const queryId = effectiveRecipeResourceId(r.resource, enchant);
+        const priceByCity = {};
+        for (const city of travelCities) {
+          const price = materialByCity[queryId]?.[city]?.sell_price_min;
+          if (price) priceByCity[city] = price;
+        }
+        return {
+          resource: r.resource, resourceName: resolveItemName(r.resource), priceByCity,
+          needed: Math.ceil(r.count * quantity * (1 - rrr)),
+        };
+      });
+      const instantByCity = {};
+      for (const sp of sellPrices) if (sp.buyMax && travelCities.includes(sp.city)) instantByCity[sp.city] = sp.buyMax;
+      const patientByCity = patientSell
+        ? Object.fromEntries(patientSell.cities.filter((c) => travelCities.includes(c.city)).map((c) => [c.city, c.avgPrice]))
+        : null;
+      teleport = planCraftTeleport({
+        materials, finished: { itemId, qty: quantity, instantByCity, patientByCity }, homes: travelCities, taxRate, silverPerUnit: recipe.silver || 0,
+      });
+    }
+
     res.json({
       itemId, enchant, quality, quantity,
       rrrPreset: { ...preset, rrr },
@@ -495,6 +522,7 @@ app.get('/api/craft-calc', async (req, res) => {
       netSellPrice,
       profitPerUnit,
       patientSell,
+      teleport,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
     });
   } catch (err) {
@@ -950,11 +978,100 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
     days,
     avgSellPrice,
     bestCity,
+    cities: stats.map(([city, st]) => ({ city, avgPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume })),
     avgDailyVolume,
     daysToSellBatch: avgDailyVolume > 0 ? quantity / avgDailyVolume : null,
     netSellPrice,
     profitPerUnit: netSellPrice - costPerUnit,
   };
+}
+
+// --- Стоимость телепорта ---
+// Быстрое перемещение между городами платное: чем тяжелее и «дороже» груз, тем дороже. Формула
+// (подтверждена двумя независимыми гайдами): 150 × вес × количество × коэффициент × дистанция,
+// округление вверх до целого на стек, затем × дистанция. Вес и коэффициент (fasttravelfactor) — из items.xml
+// (data/travel-weights.json, scripts/extract_travel_weights.py). Серверный множитель = 1 (живое значение
+// нигде, кроме клиента, не видно).
+const TRAVEL_WEIGHTS = require('./data/travel-weights.json');
+const TELEPORT_BASE_COST = 150;
+
+// Топология (со слов игрока): кольцо из 5 городов — Люмхёрст–Бриджуотч–Мартлок–Тетфорд–Форт Стерлинг–обратно.
+// Соседние города — дистанция 1, через город — 2. С Бресилиеном и в него — всегда 2. Каэрлеон исключён:
+// телепорт оттуда требует полностью пустого инвентаря (с грузом не перемещаться).
+const TELEPORT_RING = ['Lymhurst', 'Bridgewatch', 'Martlock', 'Thetford', 'Fort Sterling'];
+function teleportDistance(from, to) {
+  const a = String(from).replace(/\s+/g, '').toLowerCase();
+  const b = String(to).replace(/\s+/g, '').toLowerCase();
+  if (a === b) return 0;
+  if (a === 'caerleon' || b === 'caerleon') return null;
+  if (a === 'brecilien' || b === 'brecilien') return 2;
+  const ring = TELEPORT_RING.map((c) => c.replace(/\s+/g, '').toLowerCase());
+  const i = ring.indexOf(a);
+  const j = ring.indexOf(b);
+  if (i === -1 || j === -1) return null;
+  const step = Math.abs(i - j);
+  return step === 1 || step === ring.length - 1 ? 1 : 2;
+}
+
+// Стоимость перевозки qty штук предмета на distance «плеч» (null — веса нет в данных или маршрут недоступен).
+function teleportStackCost(itemId, qty, distance) {
+  const tw = TRAVEL_WEIGHTS[itemId];
+  if (!tw || distance === null || distance === undefined) return null;
+  if (distance === 0) return 0;
+  return Math.ceil(tw.weight * qty * tw.fastTravelFactor * TELEPORT_BASE_COST) * distance;
+}
+
+// Лучший «домашний» город сборки: материалы едут из городов, где они дешевле с учётом дороги, готовый предмет —
+// в город с лучшей ценой (за вычетом дороги). Перебираем все города-кандидаты и берём с максимальной прибылью —
+// игрока не спрашиваем, где он крафтит. materials: [{ resource, resourceName, needed, priceByCity }],
+// finished: { itemId, qty, instantByCity, patientByCity } (цены продажи по городам, patientByCity может быть null).
+function planCraftTeleport({ materials, finished, homes, taxRate, silverPerUnit = 0 }) {
+  const qty = finished.qty;
+  let best = null;
+  for (const home of homes) {
+    let materialsCost = 0;
+    let legsCost = 0;
+    const legs = [];
+    let feasible = true;
+    for (const m of materials) {
+      let pick = null;
+      for (const [city, price] of Object.entries(m.priceByCity)) {
+        const distance = teleportDistance(city, home);
+        const leg = teleportStackCost(m.resource, m.needed, distance);
+        if (leg === null) continue;
+        const total = price * m.needed + leg;
+        if (!pick || total < pick.total) pick = { city, price, distance, leg, total };
+      }
+      if (!pick) { feasible = false; break; }
+      materialsCost += pick.price * m.needed;
+      legsCost += pick.leg;
+      legs.push({ resource: m.resource, resourceName: m.resourceName, fromCity: pick.city, price: pick.price, needed: m.needed, distance: pick.distance, cost: pick.leg });
+    }
+    if (!feasible) continue;
+
+    const sellOption = (byCity) => {
+      let bestSell = null;
+      for (const [city, price] of Object.entries(byCity || {})) {
+        const distance = teleportDistance(home, city);
+        const leg = teleportStackCost(finished.itemId, qty, distance);
+        if (leg === null) continue;
+        const net = price * (1 - taxRate) * qty - leg;
+        if (!bestSell || net > bestSell.net) bestSell = { city, price, distance, cost: leg, net };
+      }
+      return bestSell;
+    };
+    const costPerUnit = (materialsCost + legsCost) / qty + silverPerUnit;
+    const instant = sellOption(finished.instantByCity);
+    const patient = sellOption(finished.patientByCity);
+    const withProfit = (opt) => (opt ? { ...opt, profitPerUnit: opt.net / qty - costPerUnit } : null);
+    const candidate = {
+      homeCity: home, materialLegs: legs, legsCost, costPerUnit,
+      instant: withProfit(instant), patient: withProfit(patient),
+    };
+    const score = (c) => (c.patient ? c.patient.profitPerUnit : c.instant ? c.instant.profitPerUnit : -Infinity);
+    if (!best || score(candidate) > score(best)) best = candidate;
+  }
+  return best;
 }
 
 // Чистый расчёт плана партии по уже загруженной истории — общий для одиночного плана и сканера,
@@ -1630,6 +1747,9 @@ module.exports = {
   cityStats,
   computeBulkPlan,
   computePatientSell,
+  teleportDistance,
+  teleportStackCost,
+  planCraftTeleport,
   enchantMaterialId,
   ENCHANT_MATERIAL_COUNT,
   gearEnchantId,

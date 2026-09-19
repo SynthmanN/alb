@@ -81,6 +81,7 @@ async function runCraftCalc() {
       quantity: craftEl.quantity.value || '1', rrr: craftEl.rrr.value, cities: activeCities().join(','),
       premium: premiumParam(),
     });
+    if (document.getElementById('craft-teleport').checked) params.set('teleport', 'true');
     const res = await fetch(`/api/craft-calc?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -140,12 +141,42 @@ function renderCraftResult(data) {
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
     ${patientSellHtml(data)}
+    ${teleportHtml(data)}
   `;
   const craftTables = craftEl.result.querySelectorAll('table');
   wireTableSort(craftTables[0], 'craft-recipe');
   wireTableSort(craftTables[1], 'craft-sell');
 }
 
+
+// Логистика по телепорту: где собирать, откуда везти материалы, куда везти готовый предмет и как это меняет профит.
+function teleportHtml(data) {
+  if (!document.getElementById('craft-teleport').checked) return '';
+  const t = data.teleport;
+  if (!t) {
+    return '<div class="craft-summary teleport-plan"><div class="craft-summary-row"><span>Телепорт</span><span>маршрут посчитать нельзя (нет цен в городах без Каэрлеона)</span></div></div>';
+  }
+  const legRows = t.materialLegs.map((l) => `
+    <tr><td>${l.resourceName}</td><td>${l.fromCity}</td><td>${fmtNum(l.needed)}</td><td>${l.distance === 0 ? 'на месте' : `×${l.distance}`}</td><td>${fmtNum(l.cost)}</td></tr>`).join('');
+  const sellLine = (label, opt) => {
+    if (!opt) return `<div class="craft-summary-row"><span>${label}</span><span>нет цен</span></div>`;
+    const cls = opt.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
+    return `
+      <div class="craft-summary-row"><span>${label}: везём в ${opt.city} (${opt.distance === 0 ? 'на месте' : `×${opt.distance}`}, перевозка ${fmtNum(opt.cost)})</span><span class="${cls}">профит/шт ${fmtNum(opt.profitPerUnit)}</span></div>`;
+  };
+  return `
+    <div class="craft-summary teleport-plan">
+      <div class="craft-summary-row"><strong>Логистика (телепорт): собираем в ${t.homeCity}</strong><span></span></div>
+      <div class="table-scroll"><table class="craft-recipe-table">
+        <thead><tr><th>Материал</th><th>Покупаем в</th><th>Штук</th><th>Дистанция</th><th>Перевозка</th></tr></thead>
+        <tbody>${legRows}</tbody>
+      </table></div>
+      <div class="craft-summary-row"><span>Перевозка материалов, всего</span><span>${fmtNum(t.legsCost)}</span></div>
+      <div class="craft-summary-row"><span>Себестоимость с логистикой / шт</span><span>${fmtNum(t.costPerUnit)}</span></div>
+      ${sellLine('Терпеливая продажа', t.patient)}
+      ${sellLine('Мгновенная продажа', t.instant)}
+    </div>`;
+}
 
 // Терпеливая продажа: свой ордер на продажу по средней цене истории; объём и дни на распродажу защищают
 // от «прибыли» на предмете, который не продаётся.
