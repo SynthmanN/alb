@@ -685,8 +685,8 @@ const marginEl = {
   category: document.getElementById('margin-category'),
   enchantMode: document.getElementById('margin-enchant-mode'),
   liquidity: document.getElementById('margin-liquidity'),
-  quantity: document.getElementById('margin-quantity'),
-  quantityField: document.getElementById('margin-quantity-field'),
+  capital: document.getElementById('margin-capital'),
+  minDays: document.getElementById('margin-min-days'),
   minDaily: document.getElementById('margin-min-daily'),
   days: document.getElementById('margin-days'),
   run: document.getElementById('margin-run'),
@@ -696,7 +696,6 @@ marginEl.run.addEventListener('click', runMarginScan);
 // В мгновенном режиме партии и «ликвидности по городам» нет — лишние поля не показываем.
 function syncMarginMode() {
   const patient = marginEl.mode.value === 'patient';
-  marginEl.quantityField.hidden = !patient;
   marginEl.liquidity.closest('label').hidden = !patient;
   marginEl.blackMarketField.hidden = patient;                       // Чёрный Рынок — только мгновенная продажа
 }
@@ -710,8 +709,7 @@ async function runMarginScan() {
     const params = new URLSearchParams({
       mode: marginEl.mode.value, includeAwakened: String(marginEl.includeAwakened.checked), blackMarket: String(marginEl.blackMarket.checked && marginEl.mode.value === 'instant'),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
-      quantity: marginEl.quantity.value || '1000', minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), royalBonus: String(marginEl.royalBonus.checked), focus: String(marginEl.focus.checked),
-      marketShare: readCustomizable(document.getElementById('margin-market-share')),
+      capital: marginEl.capital.value || '500000', minDays: marginEl.minDays.value || '1', minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), royalBonus: String(marginEl.royalBonus.checked), focus: String(marginEl.focus.checked),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/unified-scan?${params}`);
@@ -750,7 +748,7 @@ function renderMarginScan(data) {
   const rows = data.results.map((r) => {
     const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
     const stale = r.freshMinutes !== null && r.freshMinutes > 180;
-    const long = patient && r.totalDays !== null && r.totalDays > 30;
+    const long = r.effectiveDays > 30;
     const premiumDays = r.premiumDays === null ? '—' : r.premiumDays < 1000 ? fmtNum(r.premiumDays, 0) : '>1000';
     const action = `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-quantity="${r.quantity || ''}" data-black-market="${r.blackMarket ? 'true' : ''}">в калькулятор</button>`;
     return `
@@ -759,10 +757,11 @@ function renderMarginScan(data) {
         <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality]}</td>
         <td>${fmtNum(r.cost)}</td>
         <td>${fmtNum(r.avgSellPrice)}${patient ? '' : `<br><small>${r.blackMarket ? '⚫ ' : ''}${r.sellCities[0]}${r.blackMarket ? ` (налог ${(r.sellTaxRate * 100).toFixed(1)}%)` : ''}</small>`}</td>
-        <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${patient && data.liquidity !== 'best' ? ` <small>(${r.sellCities.length} гор.)</small>` : ''}<br><small>тебе ~${fmtNum(r.yourDailyVolume, 1)}</small></td>
+        <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${patient && data.liquidity !== 'best' ? ` <small>(${r.sellCities.length} гор.)</small>` : ''}</td>
+        <td data-sort-value="${r.quantity}" title="Позиция на ${fmtNum(data.capital)} серебра: штук = капитал ÷ себестоимость (${fmtNum(r.positionCost)} серебра)">${fmtNum(r.quantity)}</td>
         <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
         <td data-sort-value="${r.dailyProfit}">${fmtNum(r.dailyProfit)}</td>
-        ${patient ? `<td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.totalDays}" title="закупка узкого материала ${fmtDays(r.daysToAcquire)} + распродажа ${fmtDays(r.daysToSell)}">${fmtDays(r.totalDays)}${long ? ' ⚠' : ''}</td>` : ''}
+        <td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.effectiveDays}" title="${patient ? `закупка узкого материала ${fmtDays(r.daysToAcquire)} + ` : ''}распродажа ${fmtDays(r.daysToSell)}${r.cappedByMinDays ? `; по рынку быстрее минимума — профит в день считаем за ${fmtDays(data.minDays)}` : ''}">${fmtDays(r.effectiveDays)}${r.cappedByMinDays ? ' <small>(минимум)</small>' : ''}${long ? ' ⚠' : ''}</td>
         <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит — только шкала масштаба">${premiumDays}</td>
         <td class="${confidenceClass(r.confidence)}" data-sort-value="${r.confidence}" title="Цифры стоят на ${r.tradeHours} разных часах торговли за период (индекс доверия = n / (n + 20))">${Math.round(r.confidence * 100)}%<br><small>${r.tradeHours} ч</small></td>
         <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${fmtAgeMinutes(r.freshMinutes)}${stale ? ' ⚠' : ''}</td>
@@ -770,12 +769,12 @@ function renderMarginScan(data) {
       </tr>`;
   }).join('');
   const sellNote = patient
-    ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней» — закупка узкого материала + распродажа партии из ${fmtNum(data.quantity)} шт`
+    ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней цикла» — закупка узкого материала + распродажа позиции`
     : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Доля рынка ${(data.marketShare * 100).toFixed(0)}% — профит в день и «дней на премиум» по твоей доле, а не по всему обороту. Список отсортирован по дневному профиту с поправкой на свежесть котировок${patient ? ' и длину цикла' : ''}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат ресурсов: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат ресурсов: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит/день (твоя доля)</th>${patient ? '<th>Дней (закупка+продажа)</th>' : ''}<th>Дней на премиум</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит/день</th><th>Дней цикла</th><th>Дней на премиум</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');

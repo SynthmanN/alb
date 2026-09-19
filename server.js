@@ -2126,8 +2126,9 @@ app.get('/api/unified-scan', (req, res) => {
     const enchantMode = req.query.enchantMode === 'after' ? 'after' : 'direct';
     const liquidity = req.query.liquidity === 'best' ? 'best' : 'sum';
     const minDaily = Math.max(parseFloat(req.query.minDaily) || 1, 0);
-    const marketShare = parseMarketShare(req);
-    const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1000, 1), 100000);
+    // Капитал на одну позицию (серебро) и минимум дней на цикл — вместо «доли рынка»: явные параметры, а не спрятанный процент.
+    const capital = Math.min(Math.max(parseFloat(req.query.capital) || 500_000, 1000), 100_000_000_000);
+    const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
     const rrrOpts = parseRrrOptions(req, 'none');
     // Зачарование .4 (Awakening): по умолчанию не ищем, но это явный выбор игрока (галочка), а не молчаливое умолчание движка.
     const includeAwakened = req.query.includeAwakened === 'true';
@@ -2140,7 +2141,7 @@ app.get('/api/unified-scan', (req, res) => {
     const now = Date.now();
 
     const fresh = jugFreshness(jugDb, now);
-    const cacheKey = JSON.stringify([mode, category, days, enchantMode, liquidity, minDaily, marketShare, quantity, rrrOpts, includeAwakened, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, includeAwakened, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2207,29 +2208,29 @@ app.get('/api/unified-scan', (req, res) => {
         profitPerUnit = sell.avgPrice * (1 - taxRate - SETUP_FEE_RATE) - cost;
         if (profitPerUnit <= 0) return null;
       }
-      const yourDailyVolume = dailyVolume * marketShare;
+      // Размер позиции — из КАПИТАЛА: штук = капитал / себестоимость (дешёвый предмет — много штук, дорогой — мало; один параметр на весь
+      // список вместо угадывания партии для каждой позиции и вместо «доли рынка»). Сроки — по ПОЛНОМУ обороту прибыльных городов.
+      const quantity = Math.max(Math.floor(capital / cost), 1);
       let daysToAcquire = null;
-      let daysToSell = null;
-      let totalDays = null;
-      let throughput = yourDailyVolume;
+      const daysToSell = quantity / dailyVolume;
       if (mode === 'patient') {
-        const acquire = unifiedAcquire(needs.map((n) => ({ id: n.id, total: Math.ceil(n.perUnit * quantity), perUnit: n.perUnit })), materialHistory, days, marketShare, queryCities);
+        const acquire = unifiedAcquire(needs.map((n) => ({ id: n.id, total: Math.ceil(n.perUnit * quantity), perUnit: n.perUnit })), materialHistory, days, 1, queryCities);
         if (!acquire) return null;      // у какого-то материала нет сделок за период — закупку честно оценить нельзя
         daysToAcquire = acquire.days;
-        daysToSell = quantity / yourDailyVolume;
-        totalDays = daysToAcquire + daysToSell;
-        throughput = Math.min(yourDailyVolume, acquire.unitsPerDay);
       }
-      const dailyProfit = profitPerUnit * throughput;
+      const cycleDays = (daysToAcquire || 0) + daysToSell;
+      const adjusted = batchAdjustedDailyProfit({ profitPerUnit, quantity, cycleDays, minDays });
+      const dailyProfit = adjusted.dailyProfit;
       const freshMinutes = dealAgeMinutes([...quoteDates, ...(sellDate ? [sellDate] : [])], now);
-      const rankScore = dailyProfit * freshnessDecay(freshMinutes) * (mode === 'patient' ? bulkCycleDecay(totalDays) : 1);
+      const rankScore = dailyProfit * freshnessDecay(freshMinutes);
       const profitPct = (profitPerUnit / cost) * 100;
       const tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
       return {
         kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
-        dailyVolume, yourDailyVolume, marketDailyVolume, profitPerUnit, profitPct, dailyProfit,
-        premiumDays: premiumPaybackDays(profitPerUnit, throughput),
-        daysToAcquire, daysToSell, totalDays, quantity: mode === 'patient' ? quantity : null,
+        dailyVolume, marketDailyVolume, profitPerUnit, profitPct, dailyProfit,
+        quantity, batchProfit: adjusted.batchProfit, positionCost: quantity * cost,
+        daysToAcquire, daysToSell, cycleDays, effectiveDays: adjusted.effectiveDays, cappedByMinDays: cycleDays < minDays,
+        premiumDays: premiumPaybackDays(dailyProfit, 1),
         freshMinutes, rankScore,
       };
     };
@@ -2273,7 +2274,7 @@ app.get('/api/unified-scan', (req, res) => {
 
     rows.sort((a, b) => b.rankScore - a.rankScore);
     const data = {
-      mode, enchantMode, liquidity, days, marketShare, quantity: mode === 'patient' ? quantity : null, taxRate,
+      mode, enchantMode, liquidity, days, capital, minDays, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       rrrOptions: rrrOpts, enchantRange: includeAwakened ? '.0–.4' : '.0–.3', includeAwakened,
@@ -2304,7 +2305,8 @@ app.get('/api/refine-scan', (req, res) => {
     const mode = req.query.mode === 'instant' ? 'instant' : 'patient';
     const days = parseBulkDays(req);
     const minDaily = Math.max(parseFloat(req.query.minDaily) || 1, 0);
-    const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1000, 1), 10_000_000);
+    // Размер позиции — из КАПИТАЛА (штук = капитал / себестоимость), как в скане гира: дешёвый материал — много штук, дорогой — мало.
+    const capital = Math.min(Math.max(parseFloat(req.query.capital) || 500_000, 1000), 100_000_000_000);
     const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
     const rrrOpts = parseRrrOptions(req, 'none');
     const taxRate = getSalesTaxRate(req);
@@ -2314,7 +2316,7 @@ app.get('/api/refine-scan', (req, res) => {
     const now = Date.now();
 
     const fresh = jugFreshness(jugDb, now);
-    const cacheKey = JSON.stringify([mode, days, minDaily, quantity, minDays, rrrOpts, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, days, minDaily, capital, minDays, rrrOpts, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (refineScanCache && refineScanCache.key === cacheKey && now - refineScanCache.ts < 60_000) return res.json(refineScanCache.data);
 
     const combos = [];
@@ -2368,7 +2370,8 @@ app.get('/api/refine-scan', (req, res) => {
         profitPerUnit = sell.avgPrice * (1 - taxRate - SETUP_FEE_RATE) - cost;
         if (profitPerUnit <= 0) continue;
       }
-      // Сроки — по ПОЛНОМУ обороту прибыльных городов (без «доли рынка»): партия из `quantity` штук и её закупка.
+      // Сроки — по ПОЛНОМУ обороту прибыльных городов (без «доли рынка»): позиция на `capital` серебра и её закупка.
+      const quantity = Math.max(Math.floor(capital / cost), 1);
       let daysToAcquire = null;
       if (mode === 'patient') {
         const acquire = unifiedAcquire(needs.map((n) => ({ id: n.id, total: Math.ceil(n.perUnit * quantity), perUnit: n.perUnit })), materialHistory, days, 1, queryCities);
@@ -2383,7 +2386,7 @@ app.get('/api/refine-scan', (req, res) => {
       rows.push({
         kind: 'material', itemId: c.refinedId, type: c.type, tier: c.tier, cost, avgSellPrice: sellPrice, sellCities,
         dailyVolume, profitPerUnit, profitPct: (profitPerUnit / cost) * 100,
-        quantity, batchProfit: adjusted.batchProfit, daysToAcquire, daysToSell, cycleDays, effectiveDays: adjusted.effectiveDays,
+        quantity, batchProfit: adjusted.batchProfit, positionCost: quantity * cost, daysToAcquire, daysToSell, cycleDays, effectiveDays: adjusted.effectiveDays,
         cappedByMinDays: cycleDays < minDays, dailyProfit: adjusted.dailyProfit,
         premiumDays: premiumPaybackDays(adjusted.dailyProfit, 1),
         rawRrr: raw.rrr, prevRrr: prev ? prev.rrr : null, cityBonus: raw.cityBonus || (!!prev && prev.cityBonus),
@@ -2393,7 +2396,7 @@ app.get('/api/refine-scan', (req, res) => {
     }
     rows.sort((a, b) => b.rankScore - a.rankScore);
     const data = {
-      mode, days, quantity, minDays, taxRate, setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
+      mode, days, capital, minDays, taxRate, setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
       rrrOptions: rrrOpts, scanned: combos.length, jug: fresh, results: rows,
     };
     refineScanCache = { key: cacheKey, ts: now, data };

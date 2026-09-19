@@ -13,7 +13,7 @@ const { upsertPriceSnapshots, upsertHistoryBatch } = require('../lib/jugStore.js
 const NOW = Date.now();
 const iso = (ms) => new Date(ms).toISOString().slice(0, 19);
 const CITY = 'Martlock';
-const QUERY = { cities: CITY, days: 7, minDaily: 1, quantity: 1000, minDays: 1 };
+const QUERY = { cities: CITY, days: 7, minDaily: 1, capital: 10_000, minDays: 1 };   // T2 металл стоит 10 → 1000 штук
 const days = (n = 6) => Array.from({ length: n }, (_, i) => `${iso(NOW - (i + 1) * 86400000).slice(0, 10)}T00:00:00`);
 
 function seed(id, { price, buyOrder = 0, perDay, avg = price, city = CITY }) {
@@ -47,17 +47,19 @@ describe('GET /api/refine-scan', () => {
     expect(res.body.results).toEqual([]);
   });
 
-  it('нет «доли рынка»: параметр marketShare не влияет на результат; в ответе партия и минимум дней', async () => {
+  it('нет «доли рынка»: параметр marketShare не влияет на результат; в ответе капитал и минимум дней; штуки = капитал ÷ себестоимость', async () => {
     seed('T2_ORE', { price: 10, perDay: 50000 });
     seed('T2_METALBAR', { price: 40, buyOrder: 38, perDay: 50000, avg: 40 });
     const a = await scan({ mode: 'patient', marketShare: 0.1 });
     const b = await scan({ mode: 'patient', marketShare: 1 });
     expect(a.results[0].dailyProfit).toBe(b.results[0].dailyProfit);
-    expect(a).toMatchObject({ quantity: 1000, minDays: 1, mode: 'patient' });
+    expect(a).toMatchObject({ capital: 10_000, minDays: 1, mode: 'patient' });
+    expect(a.results[0].quantity).toBe(1000);
+    expect(a.results[0].positionCost).toBe(10_000);
     expect(a.results[0]).not.toHaveProperty('yourDailyVolume');
   });
 
-  it('гигантский оборот дешёвого сырья: профит в день = профит с партии за минимум дней, а не «профит × 25% от 350 000 штук»', async () => {
+  it('гигантский оборот дешёвого сырья: профит в день = профит с позиции за минимум дней, а не «профит × 25% от 350 000 штук»', async () => {
     seed('T2_ORE', { price: 10, perDay: 350_000 });
     seed('T2_METALBAR', { price: 40, buyOrder: 38, perDay: 350_000, avg: 40 });
     const row = (await scan({ mode: 'patient' })).results.find((r) => r.itemId === 'T2_METALBAR');
@@ -84,7 +86,7 @@ describe('GET /api/refine-scan', () => {
   it('дни цикла = закупка + продажа партии по полному обороту; материал без оборота — строки нет', async () => {
     seed('T2_ORE', { price: 10, perDay: 6000 });                                     // 6000·6/7 в день
     seed('T2_METALBAR', { price: 40, perDay: 3000, avg: 40 });
-    const row = (await scan({ mode: 'patient', quantity: 10000, minDays: 0.1 })).results.find((r) => r.itemId === 'T2_METALBAR');
+    const row = (await scan({ mode: 'patient', capital: 100_000, minDays: 0.1 })).results.find((r) => r.itemId === 'T2_METALBAR');
     expect(row.daysToSell).toBeCloseTo(10000 / (3000 * 6 / 7), 6);
     expect(row.daysToAcquire).toBeCloseTo(10000 / (6000 * 6 / 7), 6);
     expect(row.cycleDays).toBeCloseTo(row.daysToSell + row.daysToAcquire, 6);

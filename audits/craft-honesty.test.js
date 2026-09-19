@@ -148,14 +148,18 @@ describe('3. находка: скан маржи не завышает днев�
       finished: { [ITEM]: { Martlock: { price: 1500, dailyVolume: 200 }, Lymhurst: { price: 4000, dailyVolume: 10 } } },
     });
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&marketShare=1&minDaily=1&quantity=100&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&minDays=0.1&capital=240000&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
     const netUnit = 4000 * (1 - TAX - FEE) - 2400;                      // прибыльный только Lymhurst
     expect(row.profitPerUnit).toBeCloseTo(netUnit, 6);
     expect(row.dailyVolume).toBe(10);                                   // оборот прибыльных городов
     expect(row.marketDailyVolume).toBe(210);                            // весь оборот — только справочно
-    expect(row.dailyProfit).toBeCloseTo(netUnit * 10, 6);               // а не netUnit × 210 (завышение в 21 раз)
+    // позиция из капитала: 240 000 / 2400 = 100 мечей; срок — по обороту ПРИБЫЛЬНОГО города (10 в день), а не всех 210
+    expect(row.quantity).toBe(100);
+    expect(row.daysToSell).toBeCloseTo(100 / 10, 6);
+    expect(row.dailyProfit).toBeCloseTo((netUnit * 100) / row.effectiveDays, 6);
+    expect(row.dailyProfit).toBeLessThan((netUnit * 100) / (100 / 210));  // а не «сбыть за 0.48 дня по обороту всех городов» (завышение в 21 раз)
   });
 });
 
@@ -166,7 +170,7 @@ describe('4. сверка инструментов: скан маржи ↔ ка
       finished: { [ITEM]: { Thetford: { price: 9000, dailyVolume: 30 }, Bridgewatch: { price: 8000, dailyVolume: 20 } } },
     });
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&quantity=100&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&capital=240000&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
     const calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=100&quality=${row.quality}&days=7&cities=${CITIES.join(',')}`)).body;
@@ -219,7 +223,7 @@ describe('7. ролевой цикл: скан → калькулятор → п
   it('обещанный профит плана = реализованному по тем же ценам; после «перебивания» цены пересчёт совпадает с реализованным', async () => {
     installMarket(market(8000));
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&minDaily=1&quantity=400&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&minDaily=1&capital=960000&cities=${CITIES.join(',')}`)).body;
     const pick = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(pick).toBeTruthy();                                            // игрок выбрал находку в скане
 

@@ -125,10 +125,8 @@
             <option value="best">Только лучший город</option>
           </select>
         </label>
-        <label class="craft-field" title="Доля дневного оборота рынка, которую реально удастся продать (конкуренты тоже торгуют)">Доля рынка
-          <select id="margin-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
-        </label>
-        <label class="craft-field" id="margin-quantity-field" title="Сколько штук планируешь сделать за один цикл. Влияет только на оценку срока (дней на закупку материалов и распродажу партии) и оценку «дней на премиум», а не на профит с одной штуки и не на отбор комбинации">Партия, шт<input id="margin-quantity" type="number" min="1" value="1000" /></label>
+        <label class="craft-field" title="Сколько серебра готов вложить в ОДНУ позицию. Из него для каждого предмета считается количество: штук = капитал ÷ себестоимость (дешёвое — много штук, дорогое — мало), поэтому один параметр подходит всему списку. Вместо «доли рынка», которую приходилось угадывать">Капитал на позицию, серебро<input id="margin-capital" type="number" min="1000" step="50000" value="500000" /></label>
+        <label class="craft-field" title="Быстрее этого срока цикл не идёт (заказы, походы, перевыставление). Это не прогноз: реальные дни цикла считаются из истории торгов и показаны в таблице. Минимум включается, только если рынок «проглотил» бы позицию нереально быстро: тогда профит в день считается по нему. Профит в день = профит с позиции ÷ max(дни цикла, минимум)">Минимум дней на цикл<input id="margin-min-days" type="number" min="0.1" step="0.5" value="1" /></label>
         <label class="craft-field">Оборот от, шт/день<input id="margin-min-daily" type="number" min="0" step="0.5" value="1" /></label>
         <label class="craft-field">История
           <select id="margin-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>

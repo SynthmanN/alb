@@ -3,7 +3,7 @@
 // --- Скан рефайна (кувшин): партия и минимум дней вместо «доли рынка» ---
 const refineScan = {
   mode: document.getElementById('refine-scan-mode'),
-  quantity: document.getElementById('refine-scan-quantity'),
+  capital: document.getElementById('refine-scan-capital'),
   minDays: document.getElementById('refine-scan-min-days'),
   minDaily: document.getElementById('refine-scan-min-daily'),
   days: document.getElementById('refine-scan-days'),
@@ -28,7 +28,7 @@ async function runRefineScan() {
   refineScan.result.innerHTML = 'Считаю по данным кувшина: 5 типов × 7 тиров...';
   try {
     const params = new URLSearchParams({
-      mode: refineScan.mode.value, quantity: refineScan.quantity.value || '1000', minDays: refineScan.minDays.value || '1',
+      mode: refineScan.mode.value, capital: refineScan.capital.value || '500000', minDays: refineScan.minDays.value || '1',
       minDaily: refineScan.minDaily.value || '0', days: readCustomizable(refineScan.days),
       royalBonus: String(refineScan.royalBonus.checked), focus: String(refineScan.focus.checked),
       cities: activeCities().join(','), premium: premiumParam(),
@@ -62,6 +62,7 @@ function renderRefineScan(data) {
         <td>${scanNum(r.cost)}</td>
         <td>${scanNum(r.avgSellPrice)}<br><small>${r.sellCities.join(', ')}</small></td>
         <td data-sort-value="${r.dailyVolume}">${scanNum(r.dailyVolume, 0)}</td>
+        <td data-sort-value="${r.quantity}" title="Позиция на ${scanNum(data.capital)} серебра: штук = капитал ÷ себестоимость (${scanNum(r.positionCost)} серебра)">${scanNum(r.quantity)}</td>
         <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${scanNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
         <td data-sort-value="${r.batchProfit}">${scanNum(r.batchProfit)}</td>
         <td data-sort-value="${r.effectiveDays}" title="закупка ${scanDays(r.daysToAcquire)} + продажа ${scanDays(r.daysToSell)}${r.cappedByMinDays ? `; по рынку быстрее минимума — считаем ${data.minDays} дн.` : ''}">${scanDays(r.effectiveDays)}${r.cappedByMinDays ? ' <small>(минимум)</small>' : ''}</td>
@@ -75,9 +76,9 @@ function renderRefineScan(data) {
     ? `закупка по средней цене сделок за ${data.days} дн., продажа своим Sell Order только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор ${(data.setupFeeRate * 100).toFixed(1)}%)`
     : `закупка по текущим ценам, продажа в Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%)`;
   refineScan.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${data.scanned}. ${patient ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Партия ${scanNum(data.quantity)} шт, минимум ${data.minDays} дн. на цикл: профит в день = профит с партии ÷ max(дни цикла, минимум). Возврат: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
+    <p class="calc-note">Просмотрено комбинаций: ${data.scanned}. ${patient ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Капитал на позицию ${scanNum(data.capital)} серебра (штук = капитал ÷ себестоимость), минимум ${data.minDays} дн. на цикл: профит в день = профит с позиции ÷ max(дни цикла, минимум). Возврат: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Материал</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит с партии</th><th>Дней цикла</th><th>Профит/день</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
+      <thead><tr><th>Материал</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит с позиции</th><th>Дней цикла</th><th>Профит/день</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   wireTableSort(refineScan.result.querySelector('table'), 'refine-scan');

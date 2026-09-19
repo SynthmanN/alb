@@ -20,7 +20,7 @@ const calcPayload = (qty) => ({
       { city: 'Thetford', avgSellPrice: 4000, avgDailyVolume: 30, profitPerUnit: 4000 * (1 - TAX - FEE) - COST },
     ],
     cities: [],
-    plan: { bestPrice: 8000, avgPrice: 7500, overpayPct: 0, totalDays: 8, excluded: [{ city: 'Thetford', reason: 'вне допуска' }],
+    plan: { bestPrice: 8000, avgPrice: 7500, overpayPct: 0, totalDays: 8, cycleDays: 8, effectiveDays: 8, cappedByMinDays: false, positionCost: 500000, excluded: [{ city: 'Thetford', reason: 'вне допуска' }],
       cities: [{ city: 'Lymhurst', avgPrice: 8000, avgDailyVolume: 40, tolerance: 0.02, qty: qty * 4 / 7, days: 8 }, { city: 'Martlock', avgPrice: 7000, avgDailyVolume: 30, tolerance: 0.02, qty: qty * 3 / 7, days: 8 }] },
   },
 });
@@ -39,9 +39,9 @@ async function readPlan(page) {
 const numOf = (t) => Number(t.replace(/[^\d.,-]/g, '').replace(/\s/g, '').replace(',', '.'));
 
 test('цикл игрока: числа итога совпадают с независимым пересчётом при любых правках плана', async ({ page }) => {
-  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', includeMaterials: false, enchantMode: 'direct', liquidity: 'sum', days: 7, quantity: 700, marketShare: 0.5, taxRate: TAX, setupFeeRate: FEE, premiumPrice: 28000000, scanned: 1, enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { royalBonus: false, focus: false },
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', includeMaterials: false, enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 500000, minDays: 1, quantity: 700, marketShare: 0.5, taxRate: TAX, setupFeeRate: FEE, premiumPrice: 28000000, scanned: 1, enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { royalBonus: false, focus: false },
     jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
-    { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: COST, avgSellPrice: 7500, dailyVolume: 70, yourDailyVolume: 35, marketDailyVolume: 100, sellCities: ['Lymhurst', 'Martlock'], profitPerUnit: 3000, profitPct: 80, dailyProfit: 105000, premiumDays: 266, daysToAcquire: 1, daysToSell: 20, totalDays: 21, quantity: 700, freshMinutes: 10, rankScore: 100000, tradeHours: 120, confidence: 120 / 140 }] } }));
+    { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: COST, avgSellPrice: 7500, dailyVolume: 70, yourDailyVolume: 35, marketDailyVolume: 100, sellCities: ['Lymhurst', 'Martlock'], profitPerUnit: 3000, profitPct: 80, dailyProfit: 105000, premiumDays: 266, daysToAcquire: 1, daysToSell: 20, totalDays: 21, cycleDays: 21, effectiveDays: 21, cappedByMinDays: false, positionCost: 500000, quantity: 700, freshMinutes: 10, rankScore: 100000, tradeHours: 120, confidence: 120 / 140 }] } }));
   await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: calcPayload(Number(new URL(route.request().url()).searchParams.get('quantity') || 700)) }));
 
   await page.goto('/craft.html');
