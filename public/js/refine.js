@@ -1,72 +1,4 @@
-// Страница «Рефайн»: сканер выгодности и калькулятор себестоимости.
-
-// --- Сканер выгодности рефайна ---
-const refineScanBtn = document.getElementById('refine-scan-run');
-const refineScanHours = document.getElementById('refine-scan-hours');
-const refineScanRrr = document.getElementById('refine-scan-rrr');
-const refineScanResult = document.getElementById('refine-scan-result');
-
-async function initRefineScan() {
-  const res = await fetch('/api/refining-meta');
-  const meta = await res.json();
-  refineScanRrr.innerHTML = meta.rrrPresets.map((p) => `<option value="${p.id}">${p.label} (${(p.rrr * 100).toFixed(1)}%)</option>`).join('');
-  refineScanRrr.value = 'city_bonus';
-  refineScanBtn.addEventListener('click', runRefineScan);
-}
-
-async function runRefineScan() {
-  refineScanBtn.disabled = true;
-  refineScanResult.innerHTML = 'Считаю по всем 35 комбинациям ресурс×тир...';
-  try {
-    const params = new URLSearchParams({ hours: readCustomizable(refineScanHours), rrr: refineScanRrr.value, cities: activeCities().join(','), premium: premiumParam(), marketShare: readCustomizable(document.getElementById('refine-market-share')) });
-    const res = await fetch(`/api/refining-opportunities?${params}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    renderRefineScanResult(data);
-  } catch (err) {
-    refineScanResult.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
-  } finally {
-    refineScanBtn.disabled = false;
-  }
-}
-
-function renderRefineScanResult(rows) {
-  if (rows.length === 0) {
-    refineScanResult.innerHTML = '<div class="chart-empty">Ничего не нашлось — либо всё отфильтровано по низкой ликвидности, либо AODP недоступен.</div>';
-    return;
-  }
-  const rowsHtml = rows.map((r) => {
-    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
-    const volumeText = r.volume === null ? 'не проверено' : `${r.volume} сделок`;
-    return `
-      <tr>
-        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
-        <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
-        <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
-        <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
-        <td data-sort-value="${r.volume ?? ''}">${volumeText}${r.yourVolume !== undefined ? `<br><small>тебе ~${Math.round(r.yourVolume)}</small>` : ''}</td>
-        <td><button class="scan-add-btn" data-type="${r.type}" data-tier="${r.tier}">в калькулятор</button></td>
-      </tr>
-    `;
-  }).join('');
-  refineScanResult.innerHTML = `
-    <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Материал</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Объём</th><th></th></tr></thead>
-      <tbody>${rowsHtml}</tbody>
-    </table></div>
-  `;
-  wireTableSort(refineScanResult.querySelector('table'), 'refine-scan');
-  highlightBestRow(refineScanResult.querySelector('table'), rows);
-  // «в калькулятор»: тип ресурса и тир переносятся в калькулятор себестоимости и считаются на месте
-  refineScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      calcEl.type.value = btn.dataset.type;
-      calcEl.tier.value = btn.dataset.tier;
-      calcEl.result.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      runCalc();
-    });
-  });
-}
+// Страница «Рефайн»: калькулятор себестоимости. Сканер выгодности переехал в общий скан маржи и ликвидности на странице «Крафт».
 
 // --- Калькулятор рефайна ---
 const calcEl = {
@@ -87,6 +19,15 @@ async function initCalc() {
   calcEl.rrr.innerHTML = meta.rrrPresets.map((p) => `<option value="${p.id}">${p.label} (${(p.rrr * 100).toFixed(1)}%)</option>`).join('');
   calcEl.rrr.value = 'city_bonus';
   calcEl.run.addEventListener('click', runCalc);
+  // Переход из общего сканера («в калькулятор» у строки сырья): ?type=ORE&tier=5 — подставляем и сразу считаем.
+  const query = new URLSearchParams(window.location.search);
+  const type = query.get('type');
+  const tier = query.get('tier');
+  if (type && meta.resourceTypes.some((t) => t.id === type) && [2, 3, 4, 5, 6, 7, 8].includes(Number(tier))) {
+    calcEl.type.value = type;
+    calcEl.tier.value = tier;
+    runCalc();
+  }
 }
 
 async function runCalc() {
@@ -143,4 +84,3 @@ function renderCalcResult(data) {
 }
 
 initCalc();
-initRefineScan();

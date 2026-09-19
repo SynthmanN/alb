@@ -74,49 +74,25 @@
       <div id="craft-result"></div>
 
       <details class="tool-accordion">
-        <summary>📈 Что выгодно крафтить прямо сейчас</summary>
-      <p class="calc-note">
-        Себестоимость сырья (без зачарования) против цены продажи, плюс проверка реального объёма торгов
-        готового предмета. Проверяются все 5 качеств — показано лучшее по профиту и ликвидности.
-      </p>
-      <div class="calc-controls">
-        <select id="craft-scan-hours" data-custom="hours">
-          <option value="12">12ч</option><option value="24" selected>24ч</option>
-          <option value="72">3 дня</option><option value="168">7 дней</option>
-        </select>
-        <button id="craft-scan-run">Сканировать</button>
-      </div>
-      <div id="craft-scan-result"></div>
-      </details>
-
-      <details class="tool-accordion">
-        <summary>📦 Что выгодно крафтить партиями</summary>
-      <p class="calc-note">
-        Та же партионная модель, что и в плане крупной партии (средневзвешенные цены за период, дни на
-        закупку и распродажу), сразу по всем рецептам. Длинные циклы (больше 30 дней) помечены ⚠ и
-        уходят вниз списка.
-      </p>
-      <div class="calc-controls">
-        <select id="bulk-scan-category">
-          <option value="all">Всё</option><option value="weapon">Оружие</option>
-          <option value="armor">Броня</option><option value="cape">Плащи</option>
-        </select>
-        <label class="craft-field">Партия, шт<input id="bulk-scan-quantity" type="number" min="1" value="1000" /></label>
-        <select id="bulk-scan-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
-        <button id="bulk-scan-run">Сканировать партии</button>
-      </div>
-      <div id="bulk-scan-result"></div>
-      </details>
-
-      <details class="tool-accordion">
         <summary>🎯 Скан маржи и ликвидности</summary>
       <p class="calc-note">
-        Ищет вещь, которая одновременно хорошо продаётся и даёт маржу: перебирает весь гир × зачарование .0–.3 ×
-        качество, считает себестоимость, среднюю цену продажи по истории и дневной оборот. «Дней на премиум» —
-        просто шкала масштаба (28 млн серебра ÷ дневной профит с оборота), а не цель: это терпеливый трейдинг.
-        Зачарование .4 не входит — оно не чарится рунами.
+        Ищет, что выгодно делать прямо сейчас: перебирает весь гир × зачарование .0–.3 × качество (и по желанию сырьё для рефайна),
+        для каждой комбинации считает себестоимость, цену продажи и оборот, а лучшую комбинацию предмета выбирает по дневному профиту
+        в серебре — а не по голому проценту маржи. Читает локальную базу («кувшин»), которую фоном обновляет сервер, поэтому считает
+        мгновенно; финальную проверку любой находки делает калькулятор по живым ценам. «Дней на премиум» — просто шкала масштаба
+        (28 млн серебра ÷ дневной профит), а не цель. Зачарование .4 не входит — оно не чарится рунами.
       </p>
       <div class="craft-controls-row">
+        <label class="craft-field" title="Терпеливо: свой Sell Order по средней цене сделок в прибыльных городах, с закупкой и распродажей партии. Мгновенно: продажа в текущий Buy Order лучшего города">Режим
+          <select id="margin-mode">
+            <option value="patient">Терпеливая продажа (свой Sell Order)</option>
+            <option value="instant">Мгновенно (в Buy Order)</option>
+          </select>
+        </label>
+        <label class="craft-field craft-check" title="Добавить в список сырьё и переработку (рефайн): тир × тип ресурса. Считается по той же модели, что и гир">
+          <span>Рефайн</span>
+          <span class="check-inline"><input id="margin-include-materials" type="checkbox" /> Включить сырьё и рефайн</span>
+        </label>
         <label class="craft-field">Категория
           <select id="margin-category"><option value="all">Всё</option><option value="weapon">Оружие</option><option value="armor">Броня</option><option value="cape">Плащи</option></select>
         </label>
@@ -126,7 +102,7 @@
             <option value="after">Зачаровать после крафта рунами</option>
           </select>
         </label>
-        <label class="craft-field">Ликвидность
+        <label class="craft-field" title="Только терпеливый режим: считать оборот по всем выбранным городам или только по лучшему">Ликвидность
           <select id="margin-liquidity">
             <option value="sum">Сумма по всем городам</option>
             <option value="best">Только лучший город</option>
@@ -135,6 +111,7 @@
         <label class="craft-field" title="Доля дневного оборота рынка, которую реально удастся продать (конкуренты тоже торгуют)">Доля рынка
           <select id="margin-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
         </label>
+        <label class="craft-field" id="margin-quantity-field" title="Терпеливый режим: партия, для которой считаются дни на закупку и распродажу">Партия, шт<input id="margin-quantity" type="number" min="1" value="1000" /></label>
         <label class="craft-field">Оборот от, шт/день<input id="margin-min-daily" type="number" min="0" step="0.5" value="1" /></label>
         <label class="craft-field">История
           <select id="margin-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>

@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import { describe, it, expect } from 'vitest';
 
 process.env.DISABLE_JUG_CRAWLER = 'true';
+process.env.JUG_DB_PATH = ':memory:';
 const require = createRequire(import.meta.url);
 const { buildJugCatalog } = require('../server.js');
 

@@ -1,9 +1,9 @@
-// Аудит честности калькулятора крафта и скана маржи и ликвидности.
+// Аудит честности калькулятора крафта и объединённого скана маржи и ликвидности (читает кувшин).
 // Запуск: npm run audit:craft (отдельно от обычного npm test).
 //
 // Методика — независимые слои, каждый ловит свой класс ошибок:
 //  1. Золотые числа: ожидаемые значения считаются в тесте вручную, без обращения к формулам сервера.
-//  2. Сверка инструментов: строка скана маржи и калькулятор по тем же параметрам обязаны дать одну и ту же себестоимость и профит.
+//  2. Сверка инструментов: строка объединённого скана (кувшин) и калькулятор (живой AODP) по тем же параметрам обязаны дать одну и ту же себестоимость и профит.
 //  3. Свойства: то, что должно выполняться при любых ценах рынка (знак профита, сумма плана, монотонность).
 //  4. Ролевой цикл: скан → калькулятор → план продажи → «конкурент сбил цену» → пересчёт; обещанный профит = реализованному.
 //  5. Стресс-кейсы: нет ликвидности, убыток, охотничьи плащи, разные количества.
@@ -17,11 +17,14 @@ import request from 'supertest';
 const require = createRequire(import.meta.url);
 process.env.USER_MASTERIES_PATH = path.join(os.tmpdir(), `albion-audit-masteries-${process.pid}.json`);
 process.env.DISABLE_RATE_LIMIT = 'true';
+process.env.JUG_DB_PATH = ':memory:';
 process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не ждёт очереди в регуляторе бюджета
-const { app, resetCaches, returnFactor } = require('../server.js');
+const { app, resetCaches, returnFactor, jugDb } = require('../server.js');
+const { crawlPricesOnce, crawlHistoryOnce } = require('../lib/jugCrawler.js');
 const RECIPES = require('../data/recipes.json');
 const TRAVEL_WEIGHTS = require('../data/travel-weights.json');
 
+const ITEM = 'T4_MAIN_SWORD';
 const TAX = 0.08;
 const FEE = 0.025;
 const CITIES = ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford'];
@@ -29,41 +32,65 @@ const NOW = () => new Date().toISOString().slice(0, 19);
 
 // --- Детерминированный рынок ---------------------------------------------------------------------------------------
 // materialPrice: цена любого материала (sell_price_min во всех городах); history: id -> город -> { price, dailyVolume }.
+// Записи цен и ряды истории детерминированного рынка (общие для подменённого fetch и для прогрева кувшина).
+function marketPrices(market, ids, qualities) {
+  const records = [];
+  for (const id of ids) {
+    for (const city of CITIES) {
+      for (const quality of qualities) {
+        const sells = market.finished[id]?.[city];
+        records.push({
+          item_id: id, city, quality,
+          sell_price_min: sells ? sells.price * 1.05 : market.materialPrice, sell_price_min_date: NOW(),
+          buy_price_max: sells ? sells.price * 0.9 : 0, buy_price_max_date: NOW(),
+        });
+      }
+    }
+  }
+  return records;
+}
+const TODAY_TS = () => `${new Date().toISOString().slice(0, 10)}T00:00:00`;
+function marketHistory(market, ids, { materials = false } = {}) {
+  const out = [];
+  for (const id of ids) {
+    for (const [city, m] of Object.entries(market.finished[id] || {})) {
+      out.push({ item_id: id, location: city, quality: 1, data: [{ item_count: m.dailyVolume * 7, avg_price: m.price, timestamp: TODAY_TS() }] });
+    }
+    // Материалы кувшина: оборот огромный (закупка не узкое место), цена — рыночная; в живом AODP-моке истории материалов нет.
+    if (materials && !market.finished[id]) {
+      for (const city of CITIES) out.push({ item_id: id, location: city, quality: 1, data: [{ item_count: 7_000_000, avg_price: market.materialPrice, timestamp: TODAY_TS() }] });
+    }
+  }
+  return out;
+}
+
+let currentMarket = { materialPrice: 100, finished: {} };
+// finished: { [itemId@ench]: { [city]: { price, dailyVolume } } } — сделки за 7 дней (объём/день × 7 в истории)
 function installMarket({ materialPrice = 100, finished = {} }) {
-  // finished: { [itemId@ench]: { [city]: { price, dailyVolume } } } — сделки за 7 дней (объём/день × 7 в истории)
+  currentMarket = { materialPrice, finished };
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
     const u = String(url);
     if (u.includes('/history/')) {
       const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
-      const out = [];
-      for (const id of ids) {
-        for (const [city, m] of Object.entries(finished[id] || {})) {
-          out.push({ item_id: id, location: city, quality: 1, data: [{ item_count: m.dailyVolume * 7, avg_price: m.price }] });
-        }
-      }
-      return { ok: true, status: 200, json: async () => out };
+      return { ok: true, status: 200, json: async () => marketHistory(currentMarket, ids).map(({ data, ...rest }) => ({ ...rest, data: data.map(({ timestamp, ...p }) => p) })) };
     }
     const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
     const qualities = (new URL(u).searchParams.get('qualities') || '1').split(',').map(Number);
-    const records = [];
-    for (const id of ids) {
-      for (const city of CITIES) {
-        for (const quality of qualities) {
-          const sells = finished[id]?.[city];
-          records.push({
-            item_id: id, city, quality,
-            sell_price_min: sells ? sells.price * 1.05 : materialPrice, sell_price_min_date: NOW(),
-            buy_price_max: sells ? sells.price * 0.9 : 0, buy_price_max_date: NOW(),
-          });
-        }
-      }
-    }
-    return { ok: true, status: 200, json: async () => records };
+    return { ok: true, status: 200, json: async () => marketPrices(currentMarket, ids, qualities) };
   });
+}
+
+// Объединённый скан читает кувшин: прогреваем его тем же детерминированным рынком через настоящие функции краулера.
+async function warmJug() {
+  jugDb.exec('DELETE FROM prices');
+  jugDb.exec('DELETE FROM history');
+  const ids = [ITEM, ...RECIPES[ITEM].resources.map((r) => r.resource)];
+  await crawlPricesOnce({ db: jugDb, ids, fetchPrices: async (chunk) => marketPrices(currentMarket, chunk, [1, 2, 3, 4, 5]) });
+  await crawlHistoryOnce({ db: jugDb, ids, fetchHistory: async (chunk) => marketHistory(currentMarket, chunk, { materials: true }) });
+  resetCaches();
 }
 beforeEach(() => resetCaches());
 
-const ITEM = 'T4_MAIN_SWORD';
 const recipe = RECIPES[ITEM];
 // себестоимость меча вручную: Σ цена материала × количество (RRR 0, серебра в рецепте нет)
 const costByHand = (price) => recipe.resources.reduce((sum, r) => sum + price * r.count, 0) + (recipe.silver || 0);
@@ -118,7 +145,8 @@ describe('3. находка: скан маржи не завышает днев�
       materialPrice: 100,
       finished: { [ITEM]: { Martlock: { price: 1500, dailyVolume: 200 }, Lymhurst: { price: 4000, dailyVolume: 10 } } },
     });
-    const scan = (await request(app).get(`/api/craft-margin-opportunities?category=weapon&days=7&liquidity=sum&marketShare=1&minDaily=1&cities=${CITIES.join(',')}`)).body;
+    await warmJug();
+    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&marketShare=1&minDaily=1&quantity=100&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
     const netUnit = 4000 * (1 - TAX - FEE) - 2400;                      // прибыльный только Lymhurst
@@ -135,7 +163,8 @@ describe('4. сверка инструментов: скан маржи ↔ ка
       materialPrice: 250,
       finished: { [ITEM]: { Thetford: { price: 9000, dailyVolume: 30 }, Bridgewatch: { price: 8000, dailyVolume: 20 } } },
     });
-    const scan = (await request(app).get(`/api/craft-margin-opportunities?category=weapon&days=7&liquidity=sum&minDaily=1&cities=${CITIES.join(',')}`)).body;
+    await warmJug();
+    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&quantity=100&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
     const calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=100&quality=${row.quality}&days=7&cities=${CITIES.join(',')}`)).body;
@@ -187,7 +216,8 @@ describe('7. ролевой цикл: скан → калькулятор → п
 
   it('обещанный профит плана = реализованному по тем же ценам; после «перебивания» цены пересчёт совпадает с реализованным', async () => {
     installMarket(market(8000));
-    const scan = (await request(app).get(`/api/craft-margin-opportunities?category=weapon&days=7&minDaily=1&cities=${CITIES.join(',')}`)).body;
+    await warmJug();
+    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&minDaily=1&quantity=400&cities=${CITIES.join(',')}`)).body;
     const pick = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(pick).toBeTruthy();                                            // игрок выбрал находку в скане
 

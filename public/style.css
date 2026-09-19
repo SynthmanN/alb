@@ -309,3 +309,6 @@ input.plan-qty.is-manual { border-color: #cc8844; color: #ffd8a8; }
 
 td.plan-check { width: 1%; text-align: center; }
 td.plan-check input { width: auto; }
+
+/* Атрибут hidden должен скрывать и flex/grid-элементы (поля формы скана прячутся в зависимости от режима) */
+[hidden] { display: none !important; }

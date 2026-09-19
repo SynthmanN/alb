@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url);
 const masteriesFile = path.join(os.tmpdir(), `albion-masteries-test-${process.pid}.json`);
 process.env.USER_MASTERIES_PATH = masteriesFile;
 process.env.DISABLE_RATE_LIMIT = 'true'; // десятки запросов с одного IP за секунды — норма для тестов
+process.env.JUG_DB_PATH = ':memory:'; // тесты не трогают реальную базу кувшина
 process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не должен ждать своей очереди в регуляторе бюджета
 const { app, resetCaches } = require('../server.js');
 
@@ -86,6 +87,15 @@ describe('мастерки', () => {
     res = await visitor.post('/api/masteries').send({ specializations: { COMBAT_SWORDS_SWORD: 0 }, masteries: { COMBAT_SWORDS: 0 } });
     expect(res.body.specializations).toEqual({});
     expect(res.body.masteries).toEqual({});
+  });
+  it('заголовки безопасности стоят и на страницах, и на API; по http cookie без Secure', async () => {
+    for (const url of ['/', '/api/masteries']) {
+      const res = await request(app).get(url);
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['x-frame-options']).toBe('DENY');
+      expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+    }
+    expect(String((await request(app).get('/api/masteries')).headers['set-cookie'])).not.toMatch(/Secure/);
   });
   it('первый визит получает cookie сессии (HttpOnly, SameSite=Lax), повторный — нет', async () => {
     const first = await request(app).get('/api/masteries');
@@ -261,37 +271,6 @@ describe('калькулятор крафта: зачарование после
   });
 });
 
-describe('сканер крафта: качество готового предмета', () => {
-  const now = new Date().toISOString().slice(0, 19);
-  const isHistory = (u) => String(u).includes('/history/');
-  it('берёт лучшее качество по ликвидности: у Обычного нет сделок, у Отличного есть', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-      const u = String(url);
-      if (isHistory(u)) {
-        const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
-        return { ok: true, status: 200, json: async () => ids.flatMap((id) => [
-          { item_id: id, location: 'Martlock', quality: 1, data: [] },
-          { item_id: id, location: 'Martlock', quality: 4, data: [{ item_count: 500, avg_price: 1000 }] },
-        ]) };
-      }
-      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
-      const qualities = (new URL(u).searchParams.get('qualities') || '1').split(',').map(Number);
-      const records = ids.flatMap((id) => qualities.map((quality) => ({
-        item_id: id, city: 'Martlock', quality,
-        sell_price_min: 1, sell_price_min_date: now,           // материалы стоят по 1 — себестоимость ничтожна
-        buy_price_max: id.includes('_MAIN_SWORD') ? 1000 : 0, buy_price_max_date: now,
-      })));
-      return { ok: true, status: 200, json: async () => records };
-    });
-    const res = (await request(app).get('/api/craft-opportunities?hours=24&cities=Martlock')).body;
-    const sword = res.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    expect(sword).toBeTruthy();
-    expect(sword.quality).toBe(4); // Обычное (1) тоже «продаётся» по цене, но объёма у него нет — оно отсеивается
-    expect(sword.volume).toBe(500);
-    expect(res.filter((r) => r.itemId === 'T4_MAIN_SWORD')).toHaveLength(1); // одна строка на предмет
-  });
-});
-
 describe('калькулятор крафта: сравнение по тирам', () => {
   it('все тиры семейства; T2/T3 считаются без зачарования с пометкой; текущий отмечен', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
@@ -413,7 +392,7 @@ describe('свои значения: период истории и допуск
   });
   it('часы для сканеров тоже свои: 1–720', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => (String(url).includes('/history/') ? [] : fakeAodp(url)) }));
-    const res = await request(app).get('/api/craft-opportunities?hours=48&cities=Martlock');
+    const res = await request(app).get('/api/enchant-opportunities?hours=48&cities=Martlock');
     expect(res.status).toBe(200);
   });
 });

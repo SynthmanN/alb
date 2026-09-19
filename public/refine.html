@@ -10,29 +10,11 @@
   <div id="site-chrome"></div>
   <main>
     <section class="calc-panel">
-      <h2>📈 Что выгодно перерабатывать (рефайн)</h2>
-      <p class="calc-note">
-        По всем 5 типам ресурсов и 7 тирам разом (35 комбинаций), себестоимость с
-        учётом возврата ресурсов против цены готового переработанного материала.
-      </p>
-      <div class="calc-controls">
-        <select id="refine-scan-hours" data-custom="hours">
-          <option value="12">12ч</option><option value="24" selected>24ч</option>
-          <option value="72">3 дня</option><option value="168">7 дней</option>
-        </select>
-        <select id="refine-scan-rrr"></select>
-        <label class="craft-field inline-field" title="Какую долю дневного оборота рынка реально удастся продать (конкуренты тоже торгуют): влияет на ранжирование">Доля рынка
-          <select id="refine-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
-        </label>
-        <button id="refine-scan-run">Сканировать</button>
-      </div>
-      <div id="refine-scan-result"></div>
-    </section>
-
-    <section class="calc-panel">
       <h2>Калькулятор себестоимости рефайна</h2>
       <p class="calc-note">
         Пропорции сырья сверены с дампом игровых файлов. RRR-формула подтверждена вики.
+        Искать, что выгодно перерабатывать, теперь можно в общем сканере на странице «<a href="craft.html">Крафт</a>»
+        (🎯 Скан маржи и ликвидности → «Включить сырьё и рефайн»): кнопка «в калькулятор» оттуда открывает эту страницу с готовым расчётом.
       </p>
       <div class="calc-controls">
         <select id="calc-type"></select>

@@ -230,11 +230,12 @@ test('сравнение по тирам: строка переключает т
 test('скан маржи и ликвидности: параметры в запросе, результаты в таблице, «в калькулятор» переносит связку', async ({ page }) => {
   let scanQuery = null;
   let calcQuery = null;
-  await page.route('**/api/craft-margin-opportunities*', (route) => {
+  await page.route('**/api/unified-scan*', (route) => {
     scanQuery = new URL(route.request().url()).searchParams;
-    route.fulfill({ json: { enchantMode: 'after', liquidity: 'best', days: 7, taxRate: 0.08, premiumPrice: 28000000, scanned: 2365, results: [
-      { itemId: 'T4_2H_BOW', enchant: 2, quality: 4, cost: 40000, avgSellPrice: 60000, dailyVolume: 12.5, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 190000, premiumDays: 147, score: 200 },
-      { itemId: 'T4_CAPE', enchant: 0, quality: 1, cost: 2700, avgSellPrice: 22000, dailyVolume: 300, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 17000, profitPct: 600, dailyProfit: 5100000, premiumDays: 5, score: 900 },
+    route.fulfill({ json: { mode: 'patient', includeMaterials: false, enchantMode: 'after', liquidity: 'best', days: 7, quantity: 1000, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 2365,
+      jug: { lastPricePass: Date.now() - 120000, lastHistoryPass: Date.now() - 300000, lastFullPass: null, oldestPriceAgeMinutes: 5 }, results: [
+      { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 2, quality: 4, tier: 4, cost: 40000, avgSellPrice: 60000, dailyVolume: 12.5, yourDailyVolume: 3.1, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 47000, premiumDays: 147, daysToAcquire: 2, daysToSell: 8, totalDays: 10, quantity: 1000, freshMinutes: 12, rankScore: 47000 },
+      { kind: 'gear', itemId: 'T4_CAPE', enchant: 0, quality: 1, tier: 4, cost: 2700, avgSellPrice: 22000, dailyVolume: 300, yourDailyVolume: 75, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 17000, profitPct: 600, dailyProfit: 1275000, premiumDays: 22, daysToAcquire: 1, daysToSell: 13, totalDays: 14, quantity: 1000, freshMinutes: 30, rankScore: 900000 },
     ] } });
   });
   await page.route('**/api/craft-calc*', (route) => { calcQuery = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
@@ -244,14 +245,43 @@ test('скан маржи и ликвидности: параметры в за�
   await page.locator('#margin-liquidity').selectOption('best');
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
+  expect(scanQuery.get('mode')).toBe('patient');                                   // по умолчанию терпеливая продажа
+  expect(scanQuery.get('includeMaterials')).toBe('false');
   expect(scanQuery.get('enchantMode')).toBe('after');
   expect(scanQuery.get('liquidity')).toBe('best');
+  await expect(page.locator('#margin-result')).toContainText('Кувшин: цены обновлены');
   await page.locator('#margin-result .scan-add-btn').first().click();
   await expect.poll(() => calcQuery).not.toBeNull();
   expect(calcQuery.get('item')).toBe('T4_2H_BOW');
   expect(calcQuery.get('enchant')).toBe('2');
   expect(calcQuery.get('quality')).toBe('4');
+  expect(calcQuery.get('quantity')).toBe('1000');                                  // партия из скана переносится в калькулятор
   expect(calcQuery.get('enchantAfterCraft')).toBe('true');
+});
+
+test('объединённый скан: мгновенный режим прячет партию и ликвидность, «сырьё и рефайн» — опция, строка сырья ведёт в калькулятор рефайна', async ({ page }) => {
+  let scanQuery = null;
+  await page.route('**/api/unified-scan*', (route) => {
+    scanQuery = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: { mode: 'instant', includeMaterials: true, enchantMode: 'direct', liquidity: 'sum', days: 7, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 40,
+      jug: { lastPricePass: Date.now() - 60000, lastHistoryPass: null, lastFullPass: null, oldestPriceAgeMinutes: 1 }, results: [
+      { kind: 'material', itemId: 'T5_METALBAR', enchant: 0, quality: 1, tier: 5, type: 'ORE', cost: 900, avgSellPrice: 1300, dailyVolume: 400, yourDailyVolume: 100, sellCities: ['Martlock'], profitPerUnit: 250, profitPct: 28, dailyProfit: 25000, premiumDays: 1120, daysToAcquire: null, daysToSell: null, totalDays: null, quantity: null, freshMinutes: 20, rankScore: 25000 },
+    ] } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await expect(page.locator('#margin-quantity')).toBeVisible();
+  await page.locator('#margin-mode').selectOption('instant');
+  await expect(page.locator('#margin-quantity')).toBeHidden();                     // в мгновенном режиме партии нет
+  await expect(page.locator('#margin-liquidity')).toBeHidden();
+  await page.locator('#margin-include-materials').check();
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
+  expect(scanQuery.get('mode')).toBe('instant');
+  expect(scanQuery.get('includeMaterials')).toBe('true');
+  await expect(page.locator('#margin-result')).toContainText('(рефайн)');
+  await page.locator('#margin-result .scan-add-btn').click();
+  await expect(page).toHaveURL(/refine\.html\?type=ORE&tier=5/);
 });
 
 test('потолок и полоса цены живут в калькуляторе: поля уходят в запрос, результат — в блоке Sell Order', async ({ page }) => {
@@ -287,7 +317,7 @@ test('аккордеон ★ бета: калькулятор на виду, и�
   await expect(page.locator('#craft-search')).toBeVisible();                       // калькулятор — всегда открыт
   await expect(page.locator('.beta-star')).toBeVisible();
   const tools = page.locator('details.tool-accordion');
-  await expect(tools).toHaveCount(4);
+  await expect(tools).toHaveCount(2);                                          // скан маржи и ленивый крафтер (скан партий и «что крафтить» слиты в общий скан)
   await expect(page.locator('#lazy-run')).toBeHidden();                            // ленивый крафтер свёрнут
   await openTool(page, 'Ленивый крафтер');
   await expect(page.locator('#lazy-run')).toBeVisible();

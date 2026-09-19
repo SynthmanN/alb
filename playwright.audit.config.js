@@ -18,6 +18,6 @@ module.exports = defineConfig({
     port: PORT,
     reuseExistingServer: false,
     timeout: 20_000,
-    env: { PORT: String(PORT), DISABLE_RATE_LIMIT: 'true', DISABLE_JUG_CRAWLER: 'true', USER_MASTERIES_PATH: path.join(os.tmpdir(), `albion-masteries-audit-${process.pid}.json`) },
+    env: { PORT: String(PORT), DISABLE_RATE_LIMIT: 'true', DISABLE_JUG_CRAWLER: 'true', JUG_DB_PATH: ':memory:', USER_MASTERIES_PATH: path.join(os.tmpdir(), `albion-masteries-audit-${process.pid}.json`) },
   },
 });

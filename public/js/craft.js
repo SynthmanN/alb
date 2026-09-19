@@ -588,144 +588,6 @@ function patientSellHtml(data) {
     </div>`;
 }
 
-// --- Сканер выгодности крафта ---
-const craftScanBtn = document.getElementById('craft-scan-run');
-const craftScanHours = document.getElementById('craft-scan-hours');
-const craftScanResult = document.getElementById('craft-scan-result');
-craftScanBtn.addEventListener('click', runCraftScan);
-
-async function runCraftScan() {
-  craftScanBtn.disabled = true;
-  craftScanResult.innerHTML = 'Считаю себестоимость по всем рецептам, это может занять несколько секунд...';
-  try {
-    const params = new URLSearchParams({ hours: readCustomizable(craftScanHours), cities: activeCities().join(','), rrr: 'none', premium: premiumParam() });
-    const res = await fetch(`/api/craft-opportunities?${params}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    renderCraftScanResult(data);
-  } catch (err) {
-    craftScanResult.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
-  } finally {
-    craftScanBtn.disabled = false;
-  }
-}
-
-function renderCraftScanResult(rows) {
-  if (rows.length === 0) {
-    craftScanResult.innerHTML = '<div class="chart-empty">Ничего не нашлось — либо всё отфильтровано по низкой ликвидности, либо AODP недоступен.</div>';
-    return;
-  }
-  const rowsHtml = rows.map((r) => {
-    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
-    const volumeText = r.volume === null ? 'не проверено' : `${r.volume} сделок`;
-    return `
-      <tr>
-        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
-        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality] || '—'}</td>
-        <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
-        <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
-        <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
-        <td>${volumeText}</td>
-        <td><button class="scan-add-btn" data-id="${item.id}" data-quality="${r.quality}">в калькулятор</button></td>
-      </tr>
-    `;
-  }).join('');
-
-  craftScanResult.innerHTML = `
-    <p class="calc-note">Без зачарования. Проверяются все 5 качеств готового предмета — показано лучшее по скору (профит × ликвидность именно этого качества). Профит — после налога с продажи. Объём — по городу продажи за выбранный период, малоликвидное уже отфильтровано. Старые котировки понижают позицию в списке.</p>
-    <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Объём</th><th></th></tr></thead>
-      <tbody>${rowsHtml}</tbody>
-    </table></div>
-  `;
-  wireTableSort(craftScanResult.querySelector('table'), 'craft-scan');
-  highlightBestRow(craftScanResult.querySelector('table'), rows);
-  craftScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const item = findItem(btn.dataset.id);
-      if (item) {
-        selectCraftItem(item);
-        if (btn.dataset.quality) craftEl.quality.value = btn.dataset.quality; // сразу то качество, которое нашёл скан
-        document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-  });
-}
-
-
-// --- Сканер партионных возможностей ---
-const bulkScanEl = {
-  category: document.getElementById('bulk-scan-category'),
-  quantity: document.getElementById('bulk-scan-quantity'),
-  days: document.getElementById('bulk-scan-days'),
-  run: document.getElementById('bulk-scan-run'),
-  result: document.getElementById('bulk-scan-result'),
-};
-bulkScanEl.run.addEventListener('click', runBulkScan);
-
-async function runBulkScan() {
-  bulkScanEl.run.disabled = true;
-  bulkScanEl.result.innerHTML = 'Считаю партионную модель по всем рецептам, это может занять несколько секунд...';
-  try {
-    const params = new URLSearchParams({
-      category: bulkScanEl.category.value, quantity: bulkScanEl.quantity.value || '1000', days: readCustomizable(bulkScanEl.days),
-      rrr: craftEl.rrr.value, cities: activeCities().join(','), premium: premiumParam(),
-    });
-    const res = await fetch(`/api/craft-bulk-opportunities?${params}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    renderBulkScanResult(data);
-  } catch (err) {
-    bulkScanEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
-  } finally {
-    bulkScanEl.run.disabled = false;
-  }
-}
-
-function renderBulkScanResult(rows) {
-  if (rows.length === 0) {
-    bulkScanEl.result.innerHTML = '<div class="chart-empty">Ничего не нашлось — при партионной модели сейчас нет прибыльных рецептов в выбранных городах.</div>';
-    return;
-  }
-  const rowsHtml = rows.map((r) => {
-    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
-    const long = r.totalDays > 30;
-    return `
-      <tr>
-        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
-        <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
-        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality] || '—'}</td>
-        <td>${r.bestSellCity.city}: ${Math.round(r.bestSellCity.avgPrice).toLocaleString('ru-RU')}</td>
-        <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
-        <td>${itemName(r.bottleneckResource)}</td>
-        <td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.totalDays}">${r.totalDays.toFixed(1)} дн.${long ? ' ⚠' : ''}</td>
-        <td><button class="scan-add-btn" data-id="${item.id}" data-quantity="${r.quantity}" data-quality="${r.quality}">в калькулятор</button></td>
-      </tr>
-    `;
-  }).join('');
-
-  bulkScanEl.result.innerHTML = `
-    <p class="calc-note">Цены — средневзвешенные за период, профит — после налога с продажи. «Дней» — закупка узкого материала + распродажа партии из ${rows[0].quantity.toLocaleString('ru-RU')} шт.</p>
-    <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Себестоимость/шт</th><th>Качество</th><th>Продать</th><th>Профит/шт</th><th>Узкое место</th><th>Дней</th><th></th></tr></thead>
-      <tbody>${rowsHtml}</tbody>
-    </table></div>
-  `;
-  wireTableSort(bulkScanEl.result.querySelector('table'), 'bulk-scan');
-  highlightBestRow(bulkScanEl.result.querySelector('table'), rows);
-  bulkScanEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const item = findItem(btn.dataset.id);
-      if (!item) return;
-      selectCraftItem(item);
-      craftEl.quantity.value = btn.dataset.quantity;
-      if (btn.dataset.quality) craftEl.quality.value = btn.dataset.quality;
-      document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      runCraftCalc();
-    });
-  });
-}
-
 // --- Ленивый крафтер ---
 const lazyEl = {
   budget: document.getElementById('lazy-budget'),
@@ -793,29 +655,42 @@ function renderLazyCrafter(data) {
   wireTableSort(lazyEl.result.querySelector('table'), 'lazy');
 }
 
-// --- Скан маржи и ликвидности ---
+// --- Скан маржи и ликвидности (объединённый: гир, партии, рефайн — по данным кувшина) ---
 const marginEl = {
+  mode: document.getElementById('margin-mode'),
+  includeMaterials: document.getElementById('margin-include-materials'),
   category: document.getElementById('margin-category'),
   enchantMode: document.getElementById('margin-enchant-mode'),
   liquidity: document.getElementById('margin-liquidity'),
+  quantity: document.getElementById('margin-quantity'),
+  quantityField: document.getElementById('margin-quantity-field'),
   minDaily: document.getElementById('margin-min-daily'),
   days: document.getElementById('margin-days'),
   run: document.getElementById('margin-run'),
   result: document.getElementById('margin-result'),
 };
 marginEl.run.addEventListener('click', runMarginScan);
+// В мгновенном режиме партии и «ликвидности по городам» нет — лишние поля не показываем.
+function syncMarginMode() {
+  const patient = marginEl.mode.value === 'patient';
+  marginEl.quantityField.hidden = !patient;
+  marginEl.liquidity.closest('label').hidden = !patient;
+}
+marginEl.mode.addEventListener('change', syncMarginMode);
+syncMarginMode();
 
 async function runMarginScan() {
   marginEl.run.disabled = true;
-  marginEl.result.innerHTML = 'Перебираю весь гир × зачарование × качество по истории торгов, это может занять несколько секунд...';
+  marginEl.result.innerHTML = 'Считаю по данным кувшина: весь гир × зачарование × качество, это может занять несколько секунд...';
   try {
     const params = new URLSearchParams({
+      mode: marginEl.mode.value, includeMaterials: String(marginEl.includeMaterials.checked),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
-      minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), rrr: craftEl.rrr.value,
+      quantity: marginEl.quantity.value || '1000', minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), rrr: craftEl.rrr.value,
       marketShare: readCustomizable(document.getElementById('margin-market-share')),
       cities: activeCities().join(','), premium: premiumParam(),
     });
-    const res = await fetch(`/api/craft-margin-opportunities?${params}`);
+    const res = await fetch(`/api/unified-scan?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderMarginScan(data);
@@ -826,43 +701,71 @@ async function runMarginScan() {
   }
 }
 
+// Возраст данных кувшина человеческим языком: «3 мин назад», «2 ч назад».
+function fmtAgeMinutes(minutes) {
+  if (minutes === null || minutes === undefined) return '—';
+  if (minutes < 1) return 'только что';
+  if (minutes < 60) return `${Math.round(minutes)} мин назад`;
+  return `${(minutes / 60).toFixed(1)} ч назад`;
+}
+
 function renderMarginScan(data) {
+  const patient = data.mode === 'patient';
+  const jugNote = data.jug && data.jug.lastPricePass
+    ? `Кувшин: цены обновлены ${fmtAgeMinutes((Date.now() - data.jug.lastPricePass) / 60000)}, история — ${fmtAgeMinutes(data.jug.lastHistoryPass ? (Date.now() - data.jug.lastHistoryPass) / 60000 : null)}.`
+    : 'Кувшин ещё пуст — фоновый краулер только начал работу, подожди пару минут.';
   if (data.results.length === 0) {
-    marginEl.result.innerHTML = '<div class="chart-empty">Ничего не нашлось — нет прибыльных комбинаций с таким оборотом. Попробуй снизить «Оборот от».</div>';
+    marginEl.result.innerHTML = `<div class="chart-empty">Ничего не нашлось — нет прибыльных комбинаций с таким оборотом. Попробуй снизить «Оборот от» или сменить режим. ${jugNote}</div>`;
     return;
   }
   const rows = data.results.map((r) => {
+    const material = r.kind === 'material';
     const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
-    const days = r.premiumDays === null ? '—' : r.premiumDays < 1000 ? fmtNum(r.premiumDays, 0) : '>1000';
+    const stale = r.freshMinutes !== null && r.freshMinutes > 180;
+    const long = patient && r.totalDays !== null && r.totalDays > 30;
+    const premiumDays = r.premiumDays === null ? '—' : r.premiumDays < 1000 ? fmtNum(r.premiumDays, 0) : '>1000';
+    const action = material
+      ? `<button class="scan-add-btn" data-kind="material" data-type="${r.type}" data-tier="${r.tier}">в калькулятор</button>`
+      : `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-quantity="${r.quantity || ''}">в калькулятор</button>`;
     return `
       <tr>
-        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
-        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality]}</td>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}${material ? ' <small>(рефайн)</small>' : ''}</td>
+        <td data-sort-value="${r.quality}">${material ? '—' : QUALITY_NAMES[r.quality]}</td>
         <td>${fmtNum(r.cost)}</td>
-        <td>${fmtNum(r.avgSellPrice)}</td>
-        <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${data.liquidity === 'best' ? '' : ` <small>(${r.sellCities.length} гор.)</small>`}<br><small>тебе ~${fmtNum(r.yourDailyVolume, 1)}</small></td>
+        <td>${fmtNum(r.avgSellPrice)}${patient ? '' : `<br><small>${r.sellCities[0]}</small>`}</td>
+        <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${patient && data.liquidity !== 'best' ? ` <small>(${r.sellCities.length} гор.)</small>` : ''}<br><small>тебе ~${fmtNum(r.yourDailyVolume, 1)}</small></td>
         <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
         <td data-sort-value="${r.dailyProfit}">${fmtNum(r.dailyProfit)}</td>
-        <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит с оборота — только шкала масштаба">${days}</td>
-        <td><button class="scan-add-btn" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}">в калькулятор</button></td>
+        ${patient ? `<td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.totalDays}" title="закупка узкого материала ${fmtDays(r.daysToAcquire)} + распродажа ${fmtDays(r.daysToSell)}">${fmtDays(r.totalDays)}${long ? ' ⚠' : ''}</td>` : ''}
+        <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит — только шкала масштаба">${premiumDays}</td>
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${fmtAgeMinutes(r.freshMinutes)}${stale ? ' ⚠' : ''}</td>
+        <td>${action}</td>
       </tr>`;
   }).join('');
+  const sellNote = patient
+    ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней» — закупка узкого материала + распродажа партии из ${fmtNum(data.quantity)} шт`
+    : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. Профит — после налога с продажи (${(data.taxRate * 100).toFixed(0)}%), цена — средняя по сделкам за ${data.days} дн.,
-      оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по всем выбранным городам'}; доля рынка ${(data.marketShare * 100).toFixed(0)}% (профит в день и «дней на премиум» — по твоей доле, а не по всему обороту). Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}.</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Доля рынка ${(data.marketShare * 100).toFixed(0)}% — профит в день и «дней на премиум» по твоей доле, а не по всему обороту. Список отсортирован по дневному профиту с поправкой на свежесть котировок${patient ? ' и длину цикла' : ''}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}. ${jugNote}</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>Ср. цена продажи</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит/день (твоя доля)</th><th>Дней на премиум</th><th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит/день (твоя доля)</th>${patient ? '<th>Дней (закупка+продажа)</th>' : ''}<th>Дней на премиум</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');
   highlightBestRow(marginEl.result.querySelector('table'), data.results);
   marginEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (btn.dataset.kind === 'material') {
+        // Сырьё считается калькулятором рефайна на своей странице: тип и тир переносятся в адрес и считаются сразу.
+        window.location.href = `refine.html?type=${encodeURIComponent(btn.dataset.type)}&tier=${encodeURIComponent(btn.dataset.tier)}`;
+        return;
+      }
       const item = findItem(btn.dataset.id);
       if (!item) return;
       selectCraftItem(item);
       craftEl.enchant.value = btn.dataset.enchant;
       craftEl.quality.value = btn.dataset.quality;
+      if (btn.dataset.quantity) craftEl.quantity.value = btn.dataset.quantity;
       document.getElementById('craft-enchant-after').checked = data.enchantMode === 'after' && btn.dataset.enchant !== '0';
       document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
       runCraftCalc();
