@@ -10,8 +10,8 @@ const craftEl = {
   controls: document.getElementById('craft-controls'),
   enchant: document.getElementById('craft-enchant'),
   quality: document.getElementById('craft-quality'),
-  royalBonus: document.getElementById('craft-royal-bonus'),
-  focus: document.getElementById('craft-focus'),
+  gearRrr: document.getElementById('craft-gear-rrr'),
+  gearRrrCustom: document.getElementById('craft-gear-rrr-custom'),
   materialHours: document.getElementById('craft-material-hours'),
   blackMarket: document.getElementById('craft-black-market'),
   quantity: document.getElementById('craft-quantity'),
@@ -28,9 +28,40 @@ const saleCityToggles = new Map(); // город -> true/false: включён/�
 let saleStrategy = 'profit';       // распределение партии: 'profit' — максимизировать профит по индексу города (по умолчанию), 'even' — равный срок продажи
 const PROFIT_STRATEGY_HORIZON = 1.5; // «в пределах разумного»: при стратегии «профит» город может держать партию до 1.5× срока равномерного плана
 
+// Возврат ресурсов при крафте гира: список готовых ставок с реальными процентами + «Своя ставка…». Список строится из /api/refining-meta
+// (gearRrrPresets), чтобы проценты не разъезжались с сервером; по умолчанию — «город с бонусом предмета» (24.8%).
+let gearRrrPresets = [];
+function fillGearRrrSelect(select, custom) {
+  select.innerHTML = gearRrrPresets.map((p) => `<option value="${p.id}">${p.label} — ${(p.rrr * 100).toFixed(1)}%</option>`).join('') + '<option value="custom">Своя ставка…</option>';
+  select.value = 'city_bonus';
+  select.addEventListener('change', () => {
+    custom.hidden = select.value !== 'custom';
+    if (!custom.hidden) custom.focus();
+  });
+}
+// Параметры запроса: пресет и (только при «Своя ставка…») свой процент.
+function gearRrrParams(select, custom) {
+  const own = select.value === 'custom' ? parseFloat(custom.value) : NaN;
+  return Number.isFinite(own) ? { gearRrr: 'city_bonus', gearRrrCustom: String(own) } : { gearRrr: select.value === 'custom' ? 'city_bonus' : select.value };
+}
+// Та же ставка долей 0..1 — для мгновенного пересчёта в калькуляторе без запроса.
+function currentGearRate() {
+  const own = craftEl.gearRrr.value === 'custom' ? parseFloat(craftEl.gearRrrCustom.value) : NaN;
+  if (Number.isFinite(own)) return Math.min(Math.max(own, 0), 95) / 100;
+  const preset = gearRrrPresets.find((p) => p.id === craftEl.gearRrr.value) || gearRrrPresets.find((p) => p.id === 'city_bonus');
+  return preset ? preset.rrr : null;
+}
+
 async function initCraft() {
   const res = await fetch('/api/refining-meta');
   const meta = await res.json();
+  gearRrrPresets = meta.gearRrrPresets || [];
+  fillGearRrrSelect(craftEl.gearRrr, craftEl.gearRrrCustom);
+  fillGearRrrSelect(marginEl.gearRrr, marginEl.gearRrrCustom);
+  // смена ставки в калькуляторе пересчитывает результат на месте — без запроса к серверу
+  const rerender = () => { if (lastCraftData) renderCraftResult(lastCraftData); };
+  craftEl.gearRrr.addEventListener('change', rerender);
+  craftEl.gearRrrCustom.addEventListener('input', rerender);
 
   craftEl.search.addEventListener('input', (e) => renderCraftSuggestions(e.target.value));
   craftEl.categoryFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
@@ -119,7 +150,7 @@ async function runCraftCalc() {
   try {
     const params = new URLSearchParams({
       item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
-      quantity: craftEl.quantity.value || '1', royalBonus: String(craftEl.royalBonus.checked), focus: String(craftEl.focus.checked), blackMarket: String(craftEl.blackMarket.checked), materialHours: readCustomizable(craftEl.materialHours), cities: activeCities().join(','),
+      quantity: craftEl.quantity.value || '1', ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), blackMarket: String(craftEl.blackMarket.checked), materialHours: readCustomizable(craftEl.materialHours), cities: activeCities().join(','),
       premium: premiumParam(),
     });
     params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
@@ -151,18 +182,26 @@ async function runCraftCalc() {
 // Возвращает копию ответа с подставленными ценами; исходный lastCraftData не меняется. Сравнения по качеству и по тирам своими
 // ценами не пересчитываются (они считались по рыночным).
 function applyManualPrices(data) {
-  if (manualMaterialPrice.size === 0 && manualSellPrice === null) return data;
+  // Ставка возврата, выбранная в списке ПОСЛЕ расчёта, тоже подставляется на месте (без запроса): меняются только доли возврата,
+  // цены материалов те же. План закупки по городам (сроки) остаётся посчитан по ставке последнего запроса.
+  const newRate = currentGearRate();
+  const oldRate = data.rrrPreset ? data.rrrPreset.gearRate : undefined;
+  const rateChanged = oldRate !== undefined && newRate !== null && Math.abs(newRate - oldRate) > 1e-9;
+  if (manualMaterialPrice.size === 0 && manualSellPrice === null && !rateChanged) return data;
   const d = { ...data, recipe: data.recipe.map((r) => ({ ...r })) };
+  if (rateChanged) d.rrrPreset = { ...data.rrrPreset, gearRate: newRate, rrr: newRate, label: `возврат при крафте: ${(newRate * 100).toFixed(1)}%${craftEl.gearRrr.value === 'custom' ? ' (своя ставка)' : ''}` };
   let materialDelta = 0;                 // изменение себестоимости за штуку от своих цен на материалы рецепта (с учётом возврата)
   let nominalDelta = 0;
   for (const r of d.recipe) {
-    const p = manualMaterialPrice.get(r.resource);
-    if (p === undefined || r.cheapestPrice === null) continue;
-    const factor = r.returnable === false ? 1 : 1 - (r.rrr || 0);
-    materialDelta += (p - r.cheapestPrice) * r.count * factor;
+    if (r.cheapestPrice === null) continue;
+    const p = manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : r.cheapestPrice;
+    const oldFactor = r.returnable === false ? 1 : 1 - (r.rrr || 0);
+    if (rateChanged && r.returnable !== false) r.rrr = newRate;
+    const newFactor = r.returnable === false ? 1 : 1 - (r.rrr || 0);
+    materialDelta += (p * newFactor - r.cheapestPrice * oldFactor) * r.count;
     nominalDelta += (p - r.cheapestPrice) * r.count;
-    r.cheapestPrice = p;
-    r.manualPrice = true;
+    if (rateChanged) r.neededToBuy = Math.ceil(r.count * data.quantity * newFactor);
+    if (p !== r.cheapestPrice) { r.cheapestPrice = p; r.manualPrice = true; }
   }
   const baseFlow = data.enchantAfterCraft || data.baseChoice;
   let stepsDelta = 0;
@@ -213,7 +252,7 @@ function applyManualPrices(data) {
     if (ps.plan) ps.plan = { ...ps.plan, profitPerUnit: ps.plan.profitPerUnit === undefined ? undefined : ps.plan.profitPerUnit - costDelta };
     d.patientSell = ps;
   }
-  d.manualPrices = true;
+  d.manualPrices = manualMaterialPrice.size > 0 || manualSellPrice !== null;
   return d;
 }
 
@@ -736,7 +775,7 @@ async function runLazyCrafter() {
   try {
     const params = new URLSearchParams({
       budget: readGroupedNumber(lazyEl.budget) || '0', share: lazyEl.share.value || '25', sellDays: lazyEl.sellDays.value || '1',
-      strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), royalBonus: String(craftEl.royalBonus.checked), focus: String(craftEl.focus.checked),
+      strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/lazy-crafter?${params}`);
@@ -791,8 +830,8 @@ const marginEl = {
   includeAwakened: document.getElementById('margin-include-awakened'),
   blackMarket: document.getElementById('margin-black-market'),
   blackMarketField: document.getElementById('margin-black-market-field'),
-  royalBonus: document.getElementById('margin-royal-bonus'),
-  focus: document.getElementById('margin-focus'),
+  gearRrr: document.getElementById('margin-gear-rrr'),
+  gearRrrCustom: document.getElementById('margin-gear-rrr-custom'),
   category: document.getElementById('margin-category'),
   enchantMode: document.getElementById('margin-enchant-mode'),
   liquidity: document.getElementById('margin-liquidity'),
@@ -825,7 +864,7 @@ async function runMarginScan() {
     const params = new URLSearchParams({
       mode: marginEl.mode.value, includeAwakened: String(marginEl.includeAwakened.checked), blackMarket: String(marginEl.blackMarket.checked && marginEl.mode.value === 'instant'),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
-      capital: readGroupedNumber(marginEl.capital) || '500000', minDays: marginEl.minDays.value || '1', materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), royalBonus: String(marginEl.royalBonus.checked), focus: String(marginEl.focus.checked),
+      capital: readGroupedNumber(marginEl.capital) || '500000', minDays: marginEl.minDays.value || '1', materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/unified-scan?${params}`);
@@ -892,7 +931,7 @@ function renderMarginScan(data) {
     ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней цикла» — закупка узкого материала + распродажа позиции`
     : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат ресурсов: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
     <div class="table-scroll"><table class="scan-table">
       <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит/день</th><th title="Эксперимент">Профит/час ★</th><th>Дней цикла</th><th>Дней на премиум</th><th title="Эксперимент">Часов на премиум ★</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>

@@ -102,7 +102,7 @@ describe('1. золотые числа калькулятора (считаем 
     const cost = costByHand(100);                                                    // 24 материала × 100
     expect(cost).toBe(2400);
     installMarket({ materialPrice: 100, finished: { [ITEM]: { Lymhurst: { price: 4000, dailyVolume: 10 } } } });
-    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=100&cities=${CITIES.join(',')}`)).body;
+    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=100&cities=${CITIES.join(',')}`)).body;
     expect(d.effectiveCostPerUnit).toBeCloseTo(cost, 6);
     expect(d.patientSell.avgSellPrice).toBeCloseTo(4000, 6);
     expect(d.patientSell.netSellPrice).toBeCloseTo(4000 * (1 - TAX - FEE), 6);      // 3580
@@ -111,7 +111,7 @@ describe('1. золотые числа калькулятора (считаем 
   });
   it('возврат RRR уменьшает закупку и цену только возвращаемых материалов', async () => {
     installMarket({ materialPrice: 100 });
-    const d = (await request(app).get(`/api/craft-calc?item=T4_CAPEITEM_AVALON&quantity=100&rrr=city_bonus`)).body;
+    const d = (await request(app).get(`/api/craft-calc?item=T4_CAPEITEM_AVALON&quantity=100&gearRrr=city_bonus`)).body;
     for (const r of d.recipe) expect(r.neededToBuy).toBe(Math.ceil(r.count * 100 * returnFactor(RECIPES.T4_CAPEITEM_AVALON.resources.find((x) => x.resource === r.resource), d.rrrPreset.rrr)));
   });
 });
@@ -122,7 +122,7 @@ describe('2. находка: профит не считается наивным
       materialPrice: 100,
       finished: { [ITEM]: { Martlock: { price: 1500, dailyVolume: 200 }, Lymhurst: { price: 4000, dailyVolume: 10 } } }, // Martlock: убыток
     });
-    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=1000&cities=${CITIES.join(',')}`)).body;
+    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=1000&cities=${CITIES.join(',')}`)).body;
     const naive = d.patientSell.marketAvgPrice * (1 - TAX - FEE) - d.effectiveCostPerUnit;
     expect(naive).toBeLessThan(0);                                       // так «врал» наивный расчёт: минус
     expect(d.patientSell.profitPerUnit).toBeGreaterThan(0);              // честный план: продаём только в Lymhurst
@@ -132,7 +132,7 @@ describe('2. находка: профит не считается наивным
   });
   it('то же честное правило — в «Сравнении по качеству» и «Сравнении по тирам»', async () => {
     installMarket({ materialPrice: 100, finished: { [ITEM]: { Martlock: { price: 1500, dailyVolume: 200 }, Lymhurst: { price: 4000, dailyVolume: 10 } } } });
-    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=1000`)).body;
+    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=1000`)).body;
     const q1 = d.qualityComparison.find((q) => q.quality === 1);
     expect(q1.profitPerUnit).toBeCloseTo(d.patientSell.profitPerUnit, 6);
     expect(q1.avgDailyVolume).toBe(10);
@@ -148,7 +148,7 @@ describe('3. находка: скан маржи не завышает днев�
       finished: { [ITEM]: { Martlock: { price: 1500, dailyVolume: 200 }, Lymhurst: { price: 4000, dailyVolume: 10 } } },
     });
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&minDays=0.1&capital=240000&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?gearRrr=none&mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&minDays=0.1&capital=240000&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
     const netUnit = 4000 * (1 - TAX - FEE) - 2400;                      // прибыльный только Lymhurst
@@ -170,10 +170,10 @@ describe('4. сверка инструментов: скан маржи ↔ ка
       finished: { [ITEM]: { Thetford: { price: 9000, dailyVolume: 30 }, Bridgewatch: { price: 8000, dailyVolume: 20 } } },
     });
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&capital=240000&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?gearRrr=none&mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&capital=240000&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
-    const calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=100&quality=${row.quality}&days=7&cities=${CITIES.join(',')}`)).body;
+    const calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=100&quality=${row.quality}&days=7&cities=${CITIES.join(',')}`)).body;
     expect(calc.effectiveCostPerUnit).toBeCloseTo(row.cost, 6);
     expect(calc.patientSell.avgSellPrice).toBeCloseTo(row.avgSellPrice, 6);
     expect(calc.patientSell.profitPerUnit).toBeCloseTo(row.profitPerUnit, 6);
@@ -195,7 +195,7 @@ describe('5. телепорт: нет молчаливых нулей', () => {
     const saved = TRAVEL_WEIGHTS.T4_LEATHER;
     delete TRAVEL_WEIGHTS.T4_LEATHER;                                    // имитируем «данных о весе нет»
     try {
-      const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=10&teleport=true&cities=${CITIES.join(',')}`)).body;
+      const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=10&teleport=true&cities=${CITIES.join(',')}`)).body;
       expect(d.teleport.unweighted).toContain('T4 Кожа (IV)');
       expect(d.teleport.materialLegs.map((l) => l.resource)).not.toContain('T4_LEATHER');
     } finally { TRAVEL_WEIGHTS.T4_LEATHER = saved; }
@@ -205,8 +205,8 @@ describe('5. телепорт: нет молчаливых нулей', () => {
 describe('6. Setup Fee: свой ордер стоит 2.5% сверх налога', () => {
   it('во всех терпеливых расчётах чистая цена = цена × (1 − налог − 2.5%); с премиумом налог 4%', async () => {
     installMarket({ materialPrice: 100, finished: { [ITEM]: { Lymhurst: { price: 10000, dailyVolume: 10 } } } });
-    const free = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=10&cities=${CITIES.join(',')}`)).body;
-    const prem = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=10&premium=true&cities=${CITIES.join(',')}`)).body;
+    const free = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=10&cities=${CITIES.join(',')}`)).body;
+    const prem = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=10&premium=true&cities=${CITIES.join(',')}`)).body;
     expect(free.patientSell.netSellPrice).toBeCloseTo(10000 * (1 - 0.08 - 0.025), 6);
     expect(prem.patientSell.netSellPrice).toBeCloseTo(10000 * (1 - 0.04 - 0.025), 6);
     expect(free.setupFeeRate).toBe(0.025);
@@ -223,11 +223,11 @@ describe('7. ролевой цикл: скан → калькулятор → п
   it('обещанный профит плана = реализованному по тем же ценам; после «перебивания» цены пересчёт совпадает с реализованным', async () => {
     installMarket(market(8000));
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?mode=patient&category=weapon&days=7&minDaily=1&capital=960000&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?gearRrr=none&mode=patient&category=weapon&days=7&minDaily=1&capital=960000&cities=${CITIES.join(',')}`)).body;
     const pick = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(pick).toBeTruthy();                                            // игрок выбрал находку в скане
 
-    let calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=400&quality=${pick.quality}&priceTolerance=20&cities=${CITIES.join(',')}`)).body;
+    let calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=400&quality=${pick.quality}&priceTolerance=20&cities=${CITIES.join(',')}`)).body;
     const cost = calc.effectiveCostPerUnit;
     let plan = calc.patientSell.plan;
     expect(plan.cities.reduce((s, c) => s + c.qty, 0)).toBe(400);         // сумма плана = партия
@@ -237,7 +237,7 @@ describe('7. ролевой цикл: скан → калькулятор → п
     // Конкурент сбил цену в Lymhurst на 25%: игрок открывает калькулятор снова и получает новый план
     resetCaches();
     installMarket(market(6000));
-    calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=400&quality=${pick.quality}&priceTolerance=20&cities=${CITIES.join(',')}`)).body;
+    calc = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=400&quality=${pick.quality}&priceTolerance=20&cities=${CITIES.join(',')}`)).body;
     plan = calc.patientSell.plan;
     const prices = { Lymhurst: 6000, Martlock: 7000, Thetford: 6800 };
     const promised2 = plan.avgPrice * (1 - TAX - FEE) * 400 - calc.effectiveCostPerUnit * 400;
@@ -250,19 +250,19 @@ describe('7. ролевой цикл: скан → калькулятор → п
 describe('8. стресс-кейсы', () => {
   it('нет ликвидности: профит не выдумывается (patientSell = null), инструмент не падает', async () => {
     installMarket({ materialPrice: 100, finished: {} });
-    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=10`)).body;
+    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=10`)).body;
     expect(d.patientSell).toBeNull();
     expect(d.effectiveCostPerUnit).toBeGreaterThan(0);
   });
   it('себестоимость выше цены продажи: честный минус, а не ноль и не пропуск', async () => {
     installMarket({ materialPrice: 5000, finished: { [ITEM]: { Lymhurst: { price: 2000, dailyVolume: 10 } } } });
-    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=10&cities=${CITIES.join(',')}`)).body;
+    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=10&cities=${CITIES.join(',')}`)).body;
     expect(d.patientSell.profitPerUnit).toBeLessThan(0);
     expect(d.patientSell.profitPerUnit).toBeCloseTo(2000 * 0.895 - d.effectiveCostPerUnit, 6);
   });
   it.each([1, 100000])('количество %i: срок и суммы масштабируются линейно, цена за штуку не меняется', async (qty) => {
     installMarket({ materialPrice: 100, finished: { [ITEM]: { Lymhurst: { price: 4000, dailyVolume: 10 } } } });
-    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&quantity=${qty}&cities=${CITIES.join(',')}`)).body;
+    const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=${qty}&cities=${CITIES.join(',')}`)).body;
     expect(d.patientSell.profitPerUnit).toBeCloseTo(1180, 6);
     expect(d.patientSell.daysToSellBatch).toBeCloseTo(qty / (10 * 0.25), 6);
   });

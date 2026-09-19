@@ -13,7 +13,7 @@ const { upsertPriceSnapshots, upsertHistoryBatch } = require('../lib/jugStore.js
 const NOW = Date.now();
 const iso = (ms) => new Date(ms).toISOString().slice(0, 19);
 const CITY = 'Martlock';
-const QUERY = { cities: CITY, days: 7, minDaily: 1, minDays: 1, capital: 240_000, category: 'weapon', rrr: 'none' };   // 240 000 / 2400 = 100 мечей
+const QUERY = { cities: CITY, days: 7, minDaily: 1, minDays: 1, capital: 240_000, category: 'weapon', gearRrr: 'none' };   // 240 000 / 2400 = 100 мечей
 
 // Цена материала в кувшине (свежая котировка) и его история торгов (оборот, чтобы закупка партии была осуществима).
 function seedMaterial(id, price, dailyVolume = 500, avg = price) {
@@ -191,13 +191,17 @@ describe('GET /api/unified-scan', () => {
     expect(row.confidence).toBeCloseTo(6 / 26, 9);
   });
 
-  it('возврат по городу покупки: с бонусом города себестоимость меньше, чем без него', async () => {
+  it('возврат при крафте гира: одна ставка на весь рецепт — пресет (24.8% по умолчанию у city_bonus) или своя; от города покупки не зависит', async () => {
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
-    const without = (await scan({ mode: 'patient', royalBonus: 'false', focus: 'false' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    const withBonus = (await scan({ mode: 'patient', royalBonus: 'true', focus: 'false' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    // в тестовом кувшине единственный город — Martlock: кожа получает спец-бонус (58%), слитки — только базу (18%)
-    expect(withBonus.cost).toBeCloseTo(16 * 100 * (1 - 0.18 / 1.18) + 8 * 100 * (1 - 0.58 / 1.58), 0);
-    expect(withBonus.cost).toBeLessThan(without.cost);
+    const none = (await scan({ mode: 'patient', gearRrr: 'none' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    const bonus = (await scan({ mode: 'patient', gearRrr: 'city_bonus' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    const custom = (await scan({ mode: 'patient', gearRrrCustom: 10 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(none.cost).toBeCloseTo(2400, 6);
+    expect(bonus.cost).toBeCloseTo(2400 / 1.33, 6);                                 // 33 очка = 24.8%: 2400 × (1 − 0.248)
+    expect(custom.cost).toBeCloseTo(2400 * 0.9, 6);                                  // своя ставка главнее пресета
+    const withoutParams = (await request(app).get('/api/unified-scan').query({ cities: CITY, days: 7, minDaily: 1, minDays: 1, capital: 240000, category: 'weapon' })).body;
+    expect(withoutParams.results.find((r) => r.itemId === 'T4_MAIN_SWORD').cost).toBeCloseTo(2400 / 1.33, 6);   // по умолчанию — 24.8%
+    expect(withoutParams.rrrOptions.gearRate).toBeCloseTo(1 - 1 / 1.33, 9);
   });
 
   it('РЕГРЕССИЯ: убыточный город с огромным оборотом не раздувает профит и не топит прибыльный (профит считается по городам)', async () => {

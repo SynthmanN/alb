@@ -378,7 +378,7 @@ describe('калькулятор крафта: цена сырья — сред�
     const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
     return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() })) };
   });
-  const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock&royalBonus=false&focus=false${extra}`);
+  const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock&gearRrr=none${extra}`);
 
   it('сырьё с историей сделок — по средней цене за окно (priceSource: history), не по цене одного лота; окно возвращается в ответе', async () => {
     install(true);
@@ -398,23 +398,42 @@ describe('калькулятор крафта: цена сырья — сред�
   });
 });
 
-describe('калькулятор крафта: возврат по городу и типу ресурса, Фокус', () => {
+describe('калькулятор крафта: возврат при крафте гира — ставка выбирается, а не угадывается по городу', () => {
   const get = (extra) => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=100${extra}`);
-  it('без параметров возврата нет; бонус города даёт каждому материалу СВОЮ ставку; Фокус добавляет 59% всем', async () => {
+  it('по умолчанию 24.8% (город с бонусом предмета) у всех возвращаемых материалов; пресеты и своя ставка; невозвращаемое — без возврата', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
-    const none = (await get('&royalBonus=false&focus=false')).body;
-    expect(none.recipe.every((r) => r.rrr === 0)).toBe(true);
-    const royal = (await get('&royalBonus=true&focus=false')).body;
-    const byRes = Object.fromEntries(royal.recipe.map((r) => [r.resource, r]));
-    // цены во всех городах одинаковы → выбирается город со спец-бонусом ресурса: слитки — Thetford (58%), кожа — Martlock (58%)
-    expect(byRes.T4_METALBAR.cheapestCity).toBe('Thetford');
-    expect(byRes.T4_LEATHER.cheapestCity).toBe('Martlock');
-    expect(byRes.T4_METALBAR.rrr).toBeCloseTo(1 - 1 / 1.58, 9);
-    const both = (await get('&royalBonus=true&focus=true')).body;
-    expect(both.recipe[0].rrr).toBeCloseTo(1 - 1 / 2.17, 9);
-    expect(both.baseChoice.baseCraftCostPerUnit).toBeLessThan(royal.baseChoice.baseCraftCostPerUnit);
-    expect(royal.baseChoice.baseCraftCostPerUnit).toBeLessThan(none.baseChoice.baseCraftCostPerUnit);
-    expect(both.rrrPreset.label).toContain('Фокус: да');
+    const rate = (r) => r.rrr;
+    const byDefault = (await get('')).body;
+    for (const r of byDefault.recipe) expect(rate(r)).toBeCloseTo(1 - 1 / 1.33, 9);
+    expect(byDefault.rrrPreset.rrr).toBeCloseTo(1 - 1 / 1.33, 9);
+    expect(byDefault.recipe.every((r) => r.cityBonus === false)).toBe(true);           // «★ бонус города» для гира больше нет
+    for (const [id, bonus] of [['none', 0], ['city', 18], ['city_focus', 77], ['city_bonus_focus', 92]]) {
+      const d = (await get(`&gearRrr=${id}`)).body;
+      for (const r of d.recipe) expect(r.rrr).toBeCloseTo(bonus === 0 ? 0 : 1 - 1 / (1 + bonus / 100), 9);
+    }
+    const custom = (await get('&gearRrr=none&gearRrrCustom=10')).body;                 // своя ставка главнее пресета
+    for (const r of custom.recipe) expect(r.rrr).toBeCloseTo(0.1, 9);
+    expect(custom.rrrPreset.label).toContain('своя ставка');
+    const capped = (await get('&gearRrrCustom=150')).body;                               // потолок 95%
+    expect(capped.recipe[0].rrr).toBeCloseTo(0.95, 9);
+    const cape = (await get('&gearRrr=none').then(() => request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&quantity=100&gearRrrCustom=30'))).body;
+    expect(cape.recipe.every((r) => r.rrr === 0)).toBe(true);                            // герб, плащ, жетоны не возвращаются никогда
+  });
+  it('город закупки материала выбирается просто по минимальной цене (возврат от места покупки не зависит)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const ids = decodeURIComponent(String(url).split('/prices/')[1].split('?')[0]).split(',');
+      return { ok: true, status: 200, json: async () => ids.flatMap((id) => (id === 'T4_METALBAR'
+        ? [{ item_id: id, city: 'Bridgewatch', quality: 1, sell_price_min: 99, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() },
+           { item_id: id, city: 'Thetford', quality: 1, sell_price_min: 101, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() }]
+        : [{ item_id: id, city: 'Martlock', quality: 1, sell_price_min: 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() }])) };
+    });
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Bridgewatch,Thetford,Martlock&gearRrr=city_bonus')).body;
+    expect(d.recipe.find((r) => r.resource === 'T4_METALBAR').cheapestCity).toBe('Bridgewatch');   // 99 < 101, бонус Thetford для гира не действует
+  });
+  it('настройки возврата гира отдаются в /api/refining-meta для построения списка', async () => {
+    const meta = (await request(app).get('/api/refining-meta')).body;
+    expect(meta.gearRrrPresets.map((p) => p.id)).toEqual(['none', 'city', 'city_bonus', 'city_focus', 'city_bonus_focus']);
+    expect(meta.gearRrrPresets.find((p) => p.id === 'city_bonus').rrr).toBeCloseTo(0.248, 3);
   });
   it('refining-calc: возврат считается в каждом городе отдельно — спец-бонус только в городе своего ресурса', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));

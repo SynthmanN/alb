@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { AodpBudget } = require('./lib/aodpBudget');
+const { GEAR_RRR_PRESETS, resolveGearRrrRate } = require('./data/gear-rrr');
 const { openJug, jugStats, pruneToCatalog } = require('./lib/jugStore');
 const { readPrices, readHistory, jugFreshness } = require('./lib/jugQuery');
 const { startJugCrawler } = require('./lib/jugCrawler');
@@ -110,15 +111,24 @@ function parseRrrOptions(req, defaultPresetId = 'none') {
   return { royalBonus: preset.bonus > 0, focus: preset.id.includes('focus') };
 }
 function rrrOptionsLabel(opts) {
+  if (opts.gearRate !== undefined) return `возврат при крафте: ${(opts.gearRate * 100).toFixed(1)}%${opts.gearRrrCustom !== null ? ' (своя ставка)' : ''}`;
   return `бонус города: ${opts.royalBonus ? 'да' : 'нет'} · Фокус: ${opts.focus ? 'да' : 'нет'}`;
+}
+// Возврат при крафте ГОТОВОГО ГИРА: одна ставка на весь рецепт — пресет (gearRrr, по умолчанию city_bonus = 24.8%) или своя (gearRrrCustom, %).
+// Не зависит от города покупки материала: город крафта не угадываем, ставку выбирает игрок. Переработка сырья (refine-*) считается
+// по-прежнему по городу и типу ресурса (materialRrr).
+function parseGearRrrOptions(req) {
+  const custom = parseFloat(req.query.gearRrrCustom);
+  const gearRrrCustom = Number.isFinite(custom) ? custom : null;
+  return { gearRate: resolveGearRrrRate(req.query.gearRrr, gearRrrCustom), gearRrr: req.query.gearRrr || null, gearRrrCustom };
 }
 // Лучшая котировка материала с учётом возврата в городе покупки: минимум цена × (1 − RRR города). quotes = [{ city, price }].
 function bestMaterialQuote(quotes, resource, opts) {
   let best = null;
   for (const q of quotes) {
-    const rrr = resource.noReturn ? 0 : materialRrr(resource.resource, q.city, opts);
+    const rrr = resource.noReturn ? 0 : opts.gearRate !== undefined ? opts.gearRate : materialRrr(resource.resource, q.city, opts);
     const effective = q.price * (1 - rrr);
-    if (!best || effective < best.effective) best = { ...q, rrr, factor: 1 - rrr, effective, cityBonus: !resource.noReturn && !!opts.royalBonus && hasCityBonus(resource.resource, q.city) };
+    if (!best || effective < best.effective) best = { ...q, rrr, factor: 1 - rrr, effective, cityBonus: opts.gearRate === undefined && !resource.noReturn && !!opts.royalBonus && hasCityBonus(resource.resource, q.city) };
   }
   return best;
 }
@@ -494,6 +504,7 @@ app.get('/api/refining-meta', (req, res) => {
   res.json({
     resourceTypes: RESOURCE_TYPES.map((t) => ({ id: t, name: RESOURCE_NAME_RU[t], bonusCity: BONUS_CITY[t] })),
     rrrPresets: RRR_PRESETS.map((p) => ({ ...p, rrr: rrrFromBonus(p.bonus) })),
+    gearRrrPresets: GEAR_RRR_PRESETS.map((p) => ({ ...p, rrr: rrrFromBonus(p.bonus) })),
     rrrBonuses: { royalBase: RRR_ROYAL_BASE, citySpecial: RRR_CITY_SPECIAL, focus: RRR_FOCUS },
   });
 });
@@ -692,7 +703,7 @@ app.get('/api/craft-calc', async (req, res) => {
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1, 1), 100000);
     const citiesParam = req.query.cities;
-    const rrrOpts = parseRrrOptions(req, 'none');
+    const rrrOpts = parseGearRrrOptions(req);
     // Чёрный Рынок как ещё одно место продажи в плане (свой налог: налог + Setup Fee всегда — getBmTaxRate).
     const blackMarket = req.query.blackMarket === 'true';
     const bmTaxRate = getBmTaxRate(req);
@@ -1708,7 +1719,7 @@ app.get('/api/craft-bulk-plan', async (req, res) => {
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1, 1), 100000);
     const days = parseBulkDays(req);
-    const rrrOpts = parseRrrOptions(req, 'none');
+    const rrrOpts = parseGearRrrOptions(req);
     const costCeiling = parseFloat(req.query.ceiling) > 0 ? parseFloat(req.query.ceiling) : null;
     const sellLow = parseFloat(req.query.sellLow) > 0 ? parseFloat(req.query.sellLow) : null;
     const sellHigh = parseFloat(req.query.sellHigh) > 0 ? parseFloat(req.query.sellHigh) : null;
@@ -1787,7 +1798,7 @@ app.get('/api/lazy-crafter', async (req, res) => {
     const strategy = LAZY_STRATEGIES.includes(req.query.strategy) ? req.query.strategy : 'balanced';
     const days = parseBulkDays(req);
     const category = ['weapon', 'armor', 'cape'].includes(req.query.category) ? req.query.category : 'all';
-    const rrrOpts = parseRrrOptions(req, 'none');
+    const rrrOpts = parseGearRrrOptions(req);
     const taxRate = getSalesTaxRate(req);
     const citiesParam = req.query.cities;
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
@@ -2175,7 +2186,7 @@ app.get('/api/unified-scan', (req, res) => {
     const capital = Math.min(Math.max(parseFloat(req.query.capital) || 500_000, 1000), 100_000_000_000);
     const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
     const materialHours = parseMaterialHours(req);            // окно цен сырья (по умолчанию 24 ч), отдельное от «Истории» продажи
-    const rrrOpts = parseRrrOptions(req, 'none');
+    const rrrOpts = parseGearRrrOptions(req);
     // Зачарование .4 (Awakening): по умолчанию не ищем, но это явный выбор игрока (галочка), а не молчаливое умолчание движка.
     const includeAwakened = req.query.includeAwakened === 'true';
     // Чёрный Рынок — только в мгновенном режиме (терпеливой модели у него нет: ордер туда «выставить и ждать» нельзя).
