@@ -671,6 +671,27 @@ app.get('/api/craft-calc', async (req, res) => {
       console.error('не удалось загрузить историю для терпеливой продажи:', err.message);
     }
 
+    // Потолок себестоимости и полоса цены продажи (из «Плана крупной партии», слитого в блок Sell Order):
+    // «Проходит ли по потолку?» и профит при продаже в заданной полосе цен. Без полосы — по средней цене истории.
+    const ceilingParam = parseFloat(req.query.ceiling) > 0 ? parseFloat(req.query.ceiling) : null;
+    let sellLowParam = parseFloat(req.query.sellLow) > 0 ? parseFloat(req.query.sellLow) : null;
+    let sellHighParam = parseFloat(req.query.sellHigh) > 0 ? parseFloat(req.query.sellHigh) : null;
+    let sellPlan = null;
+    if (ceilingParam !== null || sellLowParam !== null || sellHighParam !== null) {
+      if (sellLowParam === null) sellLowParam = sellHighParam;
+      if (sellHighParam === null) sellHighParam = sellLowParam;
+      if (sellLowParam === null && patientSell) { sellLowParam = patientSell.avgSellPrice; sellHighParam = patientSell.avgSellPrice; }
+      if (sellLowParam !== null && sellHighParam !== null && sellHighParam < sellLowParam) [sellLowParam, sellHighParam] = [sellHighParam, sellLowParam];
+      const netLow = sellLowParam !== null ? sellLowParam * (1 - taxRate) : null;
+      const netHigh = sellHighParam !== null ? sellHighParam * (1 - taxRate) : null;
+      sellPlan = {
+        ceiling: ceilingParam, withinCeiling: ceilingParam !== null ? effectiveCostPerUnit <= ceilingParam : null,
+        sellLow: sellLowParam, sellHigh: sellHighParam, netLow, netHigh,
+        profitLow: netLow !== null ? netLow - effectiveCostPerUnit : null, profitHigh: netHigh !== null ? netHigh - effectiveCostPerUnit : null,
+        totalLow: netLow !== null ? (netLow - effectiveCostPerUnit) * quantity : null, totalHigh: netHigh !== null ? (netHigh - effectiveCostPerUnit) * quantity : null,
+      };
+    }
+
     // Время закупки сырья и весь цикл (закупка + продажа): считаем по истории торгов самих материалов.
     let acquire = null;
     try {
@@ -767,6 +788,7 @@ app.get('/api/craft-calc', async (req, res) => {
       patientSell,
       qualityComparison,
       tierComparison,
+      sellPlan,
       acquire,
       enchantAfterCraft,
       teleport,

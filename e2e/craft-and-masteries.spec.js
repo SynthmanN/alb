@@ -250,3 +250,31 @@ test('скан маржи и ликвидности: параметры в за�
   expect(calcQuery.get('quality')).toBe('4');
   expect(calcQuery.get('enchantAfterCraft')).toBe('true');
 });
+
+test('потолок и полоса цены живут в калькуляторе: поля уходят в запрос, результат — в блоке Sell Order', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/craft-calc*', (route) => {
+    query = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: {
+      itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 1000, marketShare: 0.25, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 60000, effectiveCostPerUnit: 68000, totalCost: 68000000,
+      recipe: [], sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+      patientSell: { days: 7, marketShare: 0.25, avgSellPrice: 121000, bestCity: { city: 'Thetford', avgPrice: 124000 }, avgDailyVolume: 3.8, daysToSellBatch: 1000, netSellPrice: 111320, profitPerUnit: 43320, byCity: [], cities: [] },
+      sellPlan: { ceiling: 90000, withinCeiling: true, sellLow: 110000, sellHigh: 130000, netLow: 101200, netHigh: 119600, profitLow: 33200, profitHigh: 51600, totalLow: 33200000, totalHigh: 51600000 },
+    } });
+  });
+  await page.goto('/craft.html');
+  await expect(page.locator('#bulk-panel')).toHaveCount(0);       // отдельного «Плана крупной партии» больше нет
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-extra summary').click();
+  await page.locator('#craft-ceiling').fill('90000');
+  await page.locator('#craft-sell-low').fill('110000');
+  await page.locator('#craft-sell-high').fill('130000');
+  await page.locator('#craft-run').click();
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('Потолок себестоимости 90 000: проходит?');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText('110 000—130 000');
+  expect(query.get('ceiling')).toBe('90000');
+  expect(query.get('sellLow')).toBe('110000');
+  expect(query.get('sellHigh')).toBe('130000');
+});

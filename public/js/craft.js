@@ -56,6 +56,13 @@ function renderCraftSuggestions(query) {
   }
 }
 
+function fmtNum(n, digits = 0) {
+  return n === null || n === undefined ? '—' : n.toLocaleString('ru-RU', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+}
+function fmtDays(n) {
+  return n === null || n === undefined ? '—' : `${n.toFixed(1)} дн.`;
+}
+
 // Предметы того же семейства (тот же предмет на других тирах): T4_MAIN_SWORD → MAIN_SWORD.
 function craftFamilyItems(item) {
   const family = item.id.replace(/^T\d+_/, '');
@@ -86,11 +93,8 @@ function selectCraftItem(item, keep = false) {
   if (keep && Number(prevEnchant) <= maxE) craftEl.enchant.value = prevEnchant;
 
   craftEl.controls.style.display = 'flex';
-  bulkEl.panel.style.display = 'block';
-  if (!keep) {
-    craftEl.result.innerHTML = '';
-    bulkEl.result.innerHTML = '';
-  }
+  document.getElementById('craft-extra').style.display = 'block';
+  if (!keep) craftEl.result.innerHTML = '';
 }
 
 // Быстрая смена тира без повторного поиска: тот же предмет на другом тире, зачарование/качество/количество те же.
@@ -111,6 +115,11 @@ async function runCraftCalc() {
       premium: premiumParam(),
     });
     params.set('marketShare', document.getElementById('craft-market-share').value);
+    params.set('days', document.getElementById('craft-days').value);
+    for (const [id, name] of [['craft-ceiling', 'ceiling'], ['craft-sell-low', 'sellLow'], ['craft-sell-high', 'sellHigh']]) {
+      const v = document.getElementById(id).value;
+      if (v) params.set(name, v);
+    }
     if (document.getElementById('craft-teleport').checked) params.set('teleport', 'true');
     if (document.getElementById('craft-enchant-after').checked) params.set('enchantAfterCraft', 'true');
     const threshold = document.getElementById('craft-sell-threshold').value;
@@ -345,6 +354,19 @@ function teleportHtml(data) {
     </div>`;
 }
 
+// Потолок себестоимости и полоса цены продажи (бывший «План крупной партии»): проходит ли по потолку, профит в полосе.
+function sellPlanHtml(data) {
+  const sp = data.sellPlan;
+  if (!sp) return '';
+  const band = sp.sellLow === null ? '—' : sp.sellLow === sp.sellHigh ? fmtNum(sp.sellLow) : `${fmtNum(sp.sellLow)}—${fmtNum(sp.sellHigh)}`;
+  const range = (a, b) => (a === null ? '—' : a === b ? fmtNum(a) : `${fmtNum(a)} … ${fmtNum(b)}`);
+  const cls = sp.profitLow !== null && sp.profitLow > 0 ? 'profit-pos' : 'profit-neg';
+  return `
+      ${sp.ceiling !== null ? `<div class="craft-summary-row"><span>Потолок себестоимости ${fmtNum(sp.ceiling)}: проходит?</span><span class="${sp.withinCeiling ? 'profit-pos' : 'profit-neg'}">${sp.withinCeiling ? 'да' : 'нет'}</span></div>` : ''}
+      <div class="craft-summary-row"><span>Профит / шт в полосе продажи ${band} (после налога ${(data.taxRate * 100).toFixed(0)}%)</span><span class="${cls}">${range(sp.profitLow, sp.profitHigh)}</span></div>
+      <div class="craft-summary-row"><strong>Итого на партию в этой полосе</strong><strong class="${cls}">${range(sp.totalLow, sp.totalHigh)}</strong></div>`;
+}
+
 // Время закупки сырья и весь цикл: закупка (узкое место) + продажа — отдельной графой рядом со временем на продажу.
 function cycleRowsHtml(data) {
   const a = data.acquire;
@@ -373,6 +395,7 @@ function patientSellHtml(data) {
       <div class="craft-summary-row"><span>Спрос: сделок в день (по выбранным городам)</span><span>${fmtNum(p.avgDailyVolume, 1)}</span></div>
       <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(data.quantity)} шт (по доле рынка ${(p.marketShare * 100).toFixed(0)}%: тебе достаётся ~${fmtNum(p.avgDailyVolume * p.marketShare, 1)} из ${fmtNum(p.avgDailyVolume, 1)} сделок в день)</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(p.daysToSellBatch)}${slow ? ' ⚠' : ''}</span></div>
       ${cycleRowsHtml(data)}
+      ${sellPlanHtml(data)}
       <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(p.netSellPrice)}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(p.profitPerUnit)}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${fmtNum(data.quantity)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
@@ -380,106 +403,6 @@ function patientSellHtml(data) {
       ${byCityHtml(p, data)}
       ${qualityComparisonHtml(data)}
     </div>`;
-}
-
-// --- План крупной партии ---
-const bulkEl = {
-  panel: document.getElementById('bulk-panel'),
-  quantity: document.getElementById('bulk-quantity'),
-  ceiling: document.getElementById('bulk-ceiling'),
-  sellLow: document.getElementById('bulk-sell-low'),
-  sellHigh: document.getElementById('bulk-sell-high'),
-  days: document.getElementById('bulk-days'),
-  run: document.getElementById('bulk-run'),
-  result: document.getElementById('bulk-result'),
-};
-bulkEl.run.addEventListener('click', runBulkPlan);
-
-async function runBulkPlan() {
-  if (!craftSelectedItem) return;
-  bulkEl.result.innerHTML = 'Считаю по истории торгов, это может занять несколько секунд...';
-  try {
-    const params = new URLSearchParams({
-      item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
-      quantity: bulkEl.quantity.value || '1', days: bulkEl.days.value, rrr: craftEl.rrr.value,
-      cities: activeCities().join(','), premium: premiumParam(),
-    });
-    if (bulkEl.ceiling.value) params.set('ceiling', bulkEl.ceiling.value);
-    if (bulkEl.sellLow.value) params.set('sellLow', bulkEl.sellLow.value);
-    if (bulkEl.sellHigh.value) params.set('sellHigh', bulkEl.sellHigh.value);
-    const res = await fetch(`/api/craft-bulk-plan?${params}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    renderBulkPlan(data);
-  } catch (err) {
-    bulkEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
-  }
-}
-
-function fmtNum(n, digits = 0) {
-  return n === null || n === undefined ? '—' : n.toLocaleString('ru-RU', { maximumFractionDigits: digits, minimumFractionDigits: digits });
-}
-function fmtDays(n) {
-  return n === null || n === undefined ? '—' : `${n.toFixed(1)} дн.`;
-}
-
-function renderBulkPlan(data) {
-  const rows = data.recipe.map((r) => {
-    const baseName = r.resourceName || r.resource;
-    const name = r.enchanted ? `${baseName} <span class="ench-tag">зачар. ${data.enchant}</span>` : baseName;
-    const missing = r.avgPrice === null;
-    const isBottleneck = r.resource === data.bottleneckResource;
-    return `
-      <tr class="${isBottleneck ? 'calc-best-row' : ''}">
-        <td>${name}${isBottleneck ? ' 🐢' : ''}</td>
-        <td>${fmtNum(r.neededAfterRrr)}</td>
-        <td class="${missing ? 'missing' : ''}">${missing ? 'нет торгов' : r.sourceCity}</td>
-        <td class="${missing ? 'missing' : ''}">${fmtNum(r.avgPrice)}</td>
-        <td>${fmtNum(r.avgDailyVolume, 1)}</td>
-        <td>${fmtNum(r.daysToAcquire, 1)}</td>
-      </tr>
-    `;
-  }).join('');
-
-  const warning = !data.hasAllMaterialPrices
-    ? `<p class="calc-note" style="color:#cc8844">⚠ По части материалов за выбранный период не было торгов в выбранных городах — план по ним посчитать нельзя.</p>`
-    : '';
-  const bottleneck = data.recipe.find((r) => r.resource === data.bottleneckResource);
-  const ceilingRow = data.costCeiling !== null
-    ? `<div class="craft-summary-row"><span>Потолок себестоимости</span><span>${fmtNum(data.costCeiling)}</span></div>
-       <div class="craft-summary-row"><span>Проходит по потолку?</span><span class="${data.withinCeiling ? 'profit-pos' : 'profit-neg'}">${data.withinCeiling ? 'да' : 'нет'}</span></div>`
-    : '';
-  const bandText = data.sellLow === data.sellHigh
-    ? fmtNum(data.sellLow)
-    : `${fmtNum(data.sellLow)}—${fmtNum(data.sellHigh)}`;
-  const profitText = data.profitPerUnitLow === data.profitPerUnitHigh
-    ? fmtNum(data.profitPerUnitLow)
-    : `${fmtNum(data.profitPerUnitLow)} … ${fmtNum(data.profitPerUnitHigh)}`;
-  const totalText = data.totalProfitLow === data.totalProfitHigh
-    ? fmtNum(data.totalProfitLow)
-    : `${fmtNum(data.totalProfitLow)} … ${fmtNum(data.totalProfitHigh)}`;
-  const profitClass = data.profitPerUnitLow === null ? '' : data.profitPerUnitLow > 0 ? 'profit-pos' : 'profit-neg';
-
-  bulkEl.result.innerHTML = `
-    ${warning}
-    <div class="table-scroll"><table class="craft-recipe-table">
-      <thead><tr><th>Материал</th><th>Нужно (после RRR)</th><th>Где закупать</th><th>Ср. цена</th><th>Объём/день</th><th>Дней на закупку</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    <div class="craft-summary">
-      <div class="craft-summary-row"><span>Себестоимость/шт (по средней цене за период)</span><span>${fmtNum(data.effectiveCostPerUnit)}</span></div>
-      ${ceilingRow}
-      <div class="craft-summary-row"><span>Узкое место закупки</span><span>${bottleneck ? bottleneck.resourceName : '—'}</span></div>
-      <div class="craft-summary-row"><span>Дней на закупку партии из ${fmtNum(data.quantity)} шт</span><span>${fmtNum(data.daysToAcquireBatch, 1)}</span></div>
-      <div class="craft-summary-row"><span>Рыночная цена продажи (средняя за период)</span><span>${fmtNum(data.marketAvgSellPrice)}</span></div>
-      <div class="craft-summary-row"><span>Спрос/день на готовый предмет</span><span>${fmtNum(data.avgDailySellVolume, 1)}</span></div>
-      <div class="craft-summary-row"><span>Дней на распродажу партии</span><span>${fmtNum(data.daysToSellBatch, 1)}</span></div>
-      <div class="craft-summary-row"><span>Профит/шт в полосе продажи ${bandText} (за вычетом налога ${(data.taxRate * 100).toFixed(0)}%)</span><span class="${profitClass}">${profitText}</span></div>
-      <div class="craft-summary-row"><strong>Итого профит на партию</strong><strong class="${profitClass}">${totalText}</strong></div>
-      <div class="craft-summary-row"><span>Весь цикл (закупка + продажа)</span><span>${fmtDays(data.totalDaysEstimate)}</span></div>
-    </div>
-  `;
-  wireTableSort(bulkEl.result.querySelector('table'), 'bulk-recipe');
 }
 
 // --- Сканер выгодности крафта ---
@@ -592,7 +515,7 @@ function renderBulkScanResult(rows) {
         <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
         <td>${itemName(r.bottleneckResource)}</td>
         <td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.totalDays}">${r.totalDays.toFixed(1)} дн.${long ? ' ⚠' : ''}</td>
-        <td><button class="scan-add-btn" data-id="${item.id}" data-quantity="${r.quantity}" data-quality="${r.quality}">в план партии</button></td>
+        <td><button class="scan-add-btn" data-id="${item.id}" data-quantity="${r.quantity}" data-quality="${r.quality}">в калькулятор</button></td>
       </tr>
     `;
   }).join('');
@@ -610,9 +533,10 @@ function renderBulkScanResult(rows) {
       const item = findItem(btn.dataset.id);
       if (!item) return;
       selectCraftItem(item);
-      bulkEl.quantity.value = btn.dataset.quantity;
+      craftEl.quantity.value = btn.dataset.quantity;
       if (btn.dataset.quality) craftEl.quality.value = btn.dataset.quality;
-      bulkEl.panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      runCraftCalc();
     });
   });
 }

@@ -57,27 +57,18 @@
         </label>
         <button id="craft-run">Посчитать</button>
       </div>
-      <div id="craft-result"></div>
-
-      <div class="bulk-panel" id="bulk-panel" style="display:none">
-        <h3 class="sub-title">📦 План крупной партии</h3>
-        <p class="calc-note">
-          Для схемы «закупаю бай-ордерами, продаю партией за несколько дней»: цены берутся не мгновенные,
-          а средневзвешенные по объёму за период истории. Показано, сколько дней уйдёт на закупку сырья
-          и на распродажу партии, не обваливая рынок.
-        </p>
+      <details class="craft-extra" id="craft-extra" style="display:none">
+        <summary>Дополнительно: история, потолок себестоимости, полоса цены продажи</summary>
         <div class="craft-controls-row">
-          <label class="craft-field">Партия, шт<input id="bulk-quantity" type="number" min="1" value="1000" /></label>
-          <label class="craft-field">Потолок себестоимости/шт<input id="bulk-ceiling" type="number" min="0" placeholder="без потолка" /></label>
-          <label class="craft-field">Продажа от<input id="bulk-sell-low" type="number" min="0" placeholder="рынок" /></label>
-          <label class="craft-field">Продажа до<input id="bulk-sell-high" type="number" min="0" placeholder="рынок" /></label>
-          <label class="craft-field">История
-            <select id="bulk-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+          <label class="craft-field">История цен
+            <select id="craft-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
           </label>
-          <button id="bulk-run">Рассчитать план</button>
+          <label class="craft-field" title="Схема «закупаю по Buy Order, продаю партией»: проверить, укладывается ли себестоимость в потолок">Потолок себестоимости/шт<input id="craft-ceiling" type="number" min="0" placeholder="без потолка" /></label>
+          <label class="craft-field">Продажа от<input id="craft-sell-low" type="number" min="0" placeholder="рынок" /></label>
+          <label class="craft-field">Продажа до<input id="craft-sell-high" type="number" min="0" placeholder="рынок" /></label>
         </div>
-        <div id="bulk-result"></div>
-      </div>
+      </details>
+      <div id="craft-result"></div>
 
       <h3 class="sub-title">📈 Что выгодно крафтить прямо сейчас</h3>
       <p class="calc-note">

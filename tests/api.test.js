@@ -299,3 +299,16 @@ describe('калькулятор крафта: охотничий плащ .3 �
     expect(prices).toEqual([...prices].sort((a, b) => a - b));
   });
 });
+
+describe('калькулятор крафта: потолок и полоса цены (бывший «План крупной партии»)', () => {
+  it('без параметров sellPlan нет; с потолком и полосой — проходит ли потолок и профит в полосе после налога', async () => {
+    const plain = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10')).body;
+    expect(plain.sellPlan).toBeNull();
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&ceiling=1&sellLow=120000&sellHigh=100000')).body;
+    const sp = d.sellPlan;
+    expect(sp.withinCeiling).toBe(false);                       // потолок 1 серебро — заведомо не проходит
+    expect([sp.sellLow, sp.sellHigh]).toEqual([100000, 120000]); // перепутанные границы меняются местами
+    expect(sp.profitLow).toBeCloseTo(100000 * 0.92 - d.effectiveCostPerUnit, 6);
+    expect(sp.totalHigh).toBeCloseTo((120000 * 0.92 - d.effectiveCostPerUnit) * 10, 6);
+  });
+});
