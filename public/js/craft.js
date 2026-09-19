@@ -153,6 +153,49 @@ function renderCraftResult(data) {
 }
 
 
+// Разбивка терпеливой продажи по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
+function byCityHtml(p, data) {
+  if (!p.byCity || p.byCity.length === 0) return '';
+  const minPrice = p.threshold ? p.threshold.value : null;
+  const rows = p.byCity.map((c) => {
+    const dim = minPrice !== null && c.avgSellPrice < minPrice;
+    const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
+    return `<tr class="${dim ? 'below-threshold' : ''}"><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td></tr>`;
+  }).join('');
+  return `
+    <details open class="by-city">
+      <summary>Терпеливая продажа по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)})` : ''}</summary>
+      <div class="table-scroll"><table class="craft-recipe-table">
+        <thead><tr><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>`;
+}
+
+// Сравнение по качеству: у одной и той же вещи ликвидность разных качеств отличается на порядки.
+function qualityComparisonHtml(data) {
+  const q = data.qualityComparison;
+  if (!q || q.length === 0) return '';
+  const best = q.reduce((a, b) => ((b.daysToSellBatch ?? Infinity) < (a.daysToSellBatch ?? Infinity) ? b : a));
+  const rows = q.map((r) => {
+    const cls = r.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
+    const slow = r.daysToSellBatch !== null && r.daysToSellBatch > 30;
+    return `<tr class="${r.quality === data.quality ? 'calc-best-row' : ''}">
+      <td>${QUALITY_NAMES_CRAFT[r.quality]}${r.quality === best.quality ? ' ⚡' : ''}</td>
+      <td>${fmtNum(r.avgSellPrice)}</td><td>${fmtNum(r.avgDailyVolume, 1)}</td>
+      <td class="${slow ? 'scan-stale' : ''}">${fmtDays(r.daysToSellBatch)}${slow ? ' ⚠' : ''}</td><td class="${cls}">${fmtNum(r.profitPerUnit)}</td></tr>`;
+  }).join('');
+  return `
+    <details open class="quality-comparison">
+      <summary>Сравнение по качеству (⚡ — самая быстрая распродажа; выбранное качество выделено)</summary>
+      <div class="table-scroll"><table class="craft-recipe-table">
+        <thead><tr><th>Качество</th><th>Средняя цена</th><th>Сделок в день</th><th>Дней на распродажу</th><th>Профит / шт</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>`;
+}
+const QUALITY_NAMES_CRAFT = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
+
 // Порог продажи: все города, где терпеливая цена не ниже порога, — партию можно развезти по нескольким рынкам.
 function thresholdHtml(p) {
   const t = p.threshold;
@@ -241,6 +284,8 @@ function patientSellHtml(data) {
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(p.profitPerUnit)}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${fmtNum(data.quantity)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
       ${thresholdHtml(p)}
+      ${byCityHtml(p, data)}
+      ${qualityComparisonHtml(data)}
     </div>`;
 }
 

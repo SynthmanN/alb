@@ -235,3 +235,7 @@ main { padding-top: 4px; }
 .craft-check .check-inline { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #e6e6e6; height: 34px; cursor: pointer; }
 .craft-check .check-inline input { width: auto; }
 .teleport-plan { margin-top: 12px; }
+
+/* Разбивка терпеливой продажи и сравнение качеств */
+.by-city summary, .quality-comparison summary { cursor: pointer; font-size: 13px; color: #9aa0aa; margin: 10px 0 4px; }
+tr.below-threshold td { opacity: 0.45; }

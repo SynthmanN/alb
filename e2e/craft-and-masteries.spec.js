@@ -136,3 +136,21 @@ test('зачарование после крафта и порог продаж�
   expect(query.get('enchantAfterCraft')).toBe('true');
   expect(query.get('sellThreshold')).toBe('110000');
 });
+
+test('качество: сравнение всех 5 качеств и разбивка по городам видны без порога', async ({ page }) => {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_CAPEITEM_AVALON', enchant: 2, quality: 1, quantity: 100, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+    cities: ['Fort Sterling', 'Thetford'], hasAllMaterialPrices: true, materialCostPerUnit: 90000, effectiveCostPerUnit: 90000, totalCost: 9000000,
+    recipe: [], sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+    patientSell: { days: 7, avgSellPrice: 95058, bestCity: { city: 'Fort Sterling', avgPrice: 95058 }, avgDailyVolume: 1.6, daysToSellBatch: 62, netSellPrice: 87453, profitPerUnit: -2500,
+      byCity: [{ city: 'Fort Sterling', avgSellPrice: 95058, avgDailyVolume: 1.6, profitPerUnit: -2500 }, { city: 'Thetford', avgSellPrice: 90000, avgDailyVolume: 0.5, profitPerUnit: -7000 }], cities: [] },
+    qualityComparison: [1, 2, 3, 4, 5].map((q) => ({ quality: q, avgSellPrice: 90000 + q * 1000, avgDailyVolume: q === 4 ? 204.7 : 1.5, daysToSellBatch: q === 4 ? 0.5 : 66, profitPerUnit: q * 1000 })),
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('авалонский плащ');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  await expect(page.locator('#craft-result .by-city tbody tr')).toHaveCount(2);
+  await expect(page.locator('#craft-result .quality-comparison tbody tr')).toHaveCount(5);
+  await expect(page.locator('#craft-result .quality-comparison')).toContainText('Отличное ⚡');
+});

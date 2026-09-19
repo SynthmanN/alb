@@ -381,3 +381,28 @@ describe('порог терпеливой продажи', () => {
     expect(t.daysToSellBatch).toBeNull();
   });
 });
+
+describe('терпеливая продажа: качество и разбивка по городам', () => {
+  const history = [
+    { item_id: 'X', location: 'Martlock', quality: 1, data: [{ item_count: 7, avg_price: 1000 }] },
+    { item_id: 'X', location: 'Martlock', quality: 4, data: [{ item_count: 700, avg_price: 1500 }] },
+    { item_id: 'X', location: 'Lymhurst', quality: 4, data: [{ item_count: 70, avg_price: 2000 }] },
+  ];
+  const base = { history, itemId: 'X', days: 7, quantity: 100, taxRate: 0, costPerUnit: 500, queryCities: ['Martlock', 'Lymhurst'] };
+
+  it('фильтр по качеству: ряды других качеств не смешиваются', () => {
+    const q1 = computePatientSell({ ...base, quality: 1 });
+    const q4 = computePatientSell({ ...base, quality: 4 });
+    expect(q1.avgDailyVolume).toBe(1);
+    expect(q4.avgDailyVolume).toBe(110);
+    expect(q1.daysToSellBatch).toBeGreaterThan(q4.daysToSellBatch * 50);
+  });
+  it('без указания качества считаются все ряды вместе (как раньше)', () => {
+    expect(computePatientSell(base).avgDailyVolume).toBe(111);
+  });
+  it('byCity: все города с ценой, спросом и профитом, по убыванию цены', () => {
+    const p = computePatientSell({ ...base, quality: 4 });
+    expect(p.byCity.map((c) => c.city)).toEqual(['Lymhurst', 'Martlock']);
+    expect(p.byCity[0].profitPerUnit).toBeCloseTo(2000 - 500, 6);
+  });
+});

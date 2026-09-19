@@ -523,12 +523,20 @@ app.get('/api/craft-calc', async (req, res) => {
     // Вторая цифра рядом с мгновенной: терпеливая продажа по истории сделок. Не роняем весь расчёт,
     // если история не загрузилась — тогда просто нет блока терпеливой продажи.
     let patientSell = null;
+    let qualityComparison = null;
     try {
       const days = parseBulkDays(req);
       const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
-      const history = await fetchHistoryBatched([finishedQueryId], days * 24, quality, locations);
-      patientSell = computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities });
+      // Один запрос истории по всем 5 качествам: качество сильно влияет на ликвидность (Отличное может продаваться
+      // в 100+ раз быстрее Обычного), а себестоимость от качества не зависит — поэтому сравнение бесплатное.
+      const history = await fetchHistoryBatched([finishedQueryId], days * 24, ALL_QUALITIES.join(','), locations);
+      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q });
+      patientSell = forQuality(quality);
       if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity);
+      qualityComparison = ALL_QUALITIES.map((q) => {
+        const p = forQuality(q);
+        return p && { quality: q, avgSellPrice: p.avgSellPrice, avgDailyVolume: p.avgDailyVolume, daysToSellBatch: p.daysToSellBatch, profitPerUnit: p.profitPerUnit };
+      }).filter(Boolean);
     } catch (err) {
       console.error('не удалось загрузить историю для терпеливой продажи:', err.message);
     }
@@ -590,6 +598,7 @@ app.get('/api/craft-calc', async (req, res) => {
       netSellPrice,
       profitPerUnit,
       patientSell,
+      qualityComparison,
       enchantAfterCraft,
       teleport,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
@@ -1009,17 +1018,22 @@ function bulkCycleDecay(totalDays) {
 }
 
 // Статистика по городам за период: средневзвешенная цена и объём/день.
-function cityStats(historyData, itemId, days) {
-  const out = {};
+// quality — необязательный фильтр: история, запрошенная сразу по всем 5 качествам, приходит рядами с полем quality.
+function cityStats(historyData, itemId, days, quality) {
+  const acc = {};
   for (const series of historyData) {
     if (series.item_id !== itemId) continue;
-    let volume = 0;
-    let weightedSum = 0;
+    if (quality !== undefined && series.quality !== quality) continue;
+    // Несколько рядов одного города (разные качества, если фильтр не задан) складываем, а не затираем.
+    const a = acc[series.location] || (acc[series.location] = { volume: 0, weightedSum: 0 });
     for (const p of series.data || []) {
-      volume += p.item_count;
-      weightedSum += p.avg_price * p.item_count;
+      a.volume += p.item_count;
+      a.weightedSum += p.avg_price * p.item_count;
     }
-    if (volume > 0) out[series.location] = { avgPrice: weightedSum / volume, totalVolume: volume, avgDailyVolume: volume / days };
+  }
+  const out = {};
+  for (const [location, a] of Object.entries(acc)) {
+    if (a.volume > 0) out[location] = { avgPrice: a.weightedSum / a.volume, totalVolume: a.volume, avgDailyVolume: a.volume / days };
   }
   return out;
 }
@@ -1028,9 +1042,9 @@ function cityStats(historyData, itemId, days) {
 // свой ордер на продажу и ждём. Цену берём по истории сделок (средневзвешенная по объёму за период),
 // а не по текущему sell_price_min — иначе получится красивая маржа на предмете, который висит неделями
 // («стать инвестором предмета»). Объём/день и дни на распродажу партии показывают, насколько это реально.
-function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities }) {
+function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities, quality }) {
   const allowed = new Set(queryCities.map(normLocation));
-  const stats = Object.entries(cityStats(history, itemId, days)).filter(([city]) => allowed.has(normLocation(city)));
+  const stats = Object.entries(cityStats(history, itemId, days, quality)).filter(([city]) => allowed.has(normLocation(city)));
   if (stats.length === 0) return null;
   let totalVol = 0;
   let weighted = 0;
@@ -1048,6 +1062,10 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
     avgSellPrice,
     bestCity,
     cities: stats.map(([city, st]) => ({ city, avgPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume })),
+    // Разбивка по всем активным городам (порог продажи — лишь необязательный фильтр сверху).
+    byCity: stats
+      .map(([city, st]) => ({ city, avgSellPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, profitPerUnit: st.avgPrice * (1 - taxRate) - costPerUnit }))
+      .sort((a, b) => b.avgSellPrice - a.avgSellPrice),
     avgDailyVolume,
     daysToSellBatch: avgDailyVolume > 0 ? quantity / avgDailyVolume : null,
     netSellPrice,
