@@ -124,10 +124,22 @@ async function runCraftCalc() {
 }
 
 function renderCraftResult(data) {
-  const recipeRows = data.recipe.map((r) => {
-    const needed = r.count * data.quantity;
+  // Всё, что закупается (сырьё рецепта и материалы зачарования), — в одной таблице материалов; шаги зачарования
+  // отдельно описаны в блоке «Зачарование после крафта». Количество материалов зачарования масштабируется на партию.
+  const materialRowsData = data.recipe.map((r) => ({ ...r, needed: r.count * data.quantity, enchStep: null }));
+  if (data.enchantAfterCraft) {
+    for (const st of data.enchantAfterCraft.steps) {
+      materialRowsData.push({
+        resourceName: st.materialName, resource: st.materialId, enchanted: false, enchStep: st.level,
+        needed: st.count * data.quantity, cheapestCity: st.cheapestCity, cheapestPrice: st.cheapestPrice, cityPrices: st.cityPrices,
+      });
+    }
+  }
+  const recipeRows = materialRowsData.map((r) => {
+    const needed = r.needed;
     const baseName = r.resourceName || r.resource;
-    const name = r.enchanted ? `${baseName} <span class="ench-tag">зачар. ${data.enchant}</span>` : baseName;
+    const name = r.enchanted ? `${baseName} <span class="ench-tag">зачар. ${data.enchant}</span>`
+      : r.enchStep ? `${baseName} <span class="ench-tag">.${r.enchStep - 1} → .${r.enchStep}</span>` : baseName;
     const missing = r.cheapestPrice === null;
     const subtotal = missing ? null : r.cheapestPrice * needed;
     return `
@@ -281,20 +293,16 @@ function enchantAfterHtml(data) {
   const base = e.baseSource === 'buy'
     ? `покупка дешевле крафта: ${e.baseBuy.city}, ${fmtNum(e.baseBuy.price)}`
     : `крафт из материалов: ${fmtNum(e.baseCraftCostPerUnit)}`;
-  const rows = e.steps.map((st) => `
-    <tr><td>.${st.level - 1} → .${st.level}</td><td>${st.materialName}</td><td>${fmtNum(st.count)}</td>
-    <td>${st.cheapestCity ? cityPricesCell(st.cheapestCity, st.cheapestPrice, st.cityPrices) : 'нет цены'}</td><td>${st.cost !== null ? fmtNum(st.cost) : '—'}</td></tr>`).join('');
+  const stepLines = e.steps.map((st) => `
+    <div class="craft-summary-row"><span>.${st.level - 1} → .${st.level}: ${st.materialName} × ${fmtNum(st.count * data.quantity)} (${fmtNum(st.count)} на вещь)</span><span>${st.cost !== null ? `${fmtNum(st.cost)} / шт` : 'нет цены'}</span></div>`).join('');
   return `
     <div class="craft-summary enchant-after">
       <div class="craft-summary-row"><strong>Зачарование после крафта: до .${e.targetLevel}</strong><span></span></div>
       ${e.forced ? '<div class="craft-summary-row"><span>Этот плащ в зачарованном виде не крафтится: сначала делается обычный, затем зачаровывается рунами/душами.</span><span></span></div>' : ''}
       ${e.capped ? '<div class="craft-summary-row"><span class="scan-stale">⚠ Зачарование .4 (Awakening) не поддерживается — посчитано до .3</span><span></span></div>' : ''}
       <div class="craft-summary-row"><span>База .0 / шт</span><span>${base}</span></div>
-      <div class="table-scroll"><table class="craft-recipe-table">
-        <thead><tr><th>Шаг</th><th>Материал</th><th>Штук на 1 вещь</th><th>Где дешевле</th><th>Стоимость</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>
-      <div class="craft-summary-row"><span>Зачарование / шт</span><span>${fmtNum(e.stepsCostPerUnit)}</span></div>
+      ${stepLines}
+      <div class="craft-summary-row"><span>Зачарование / шт (материалы — в таблице выше)</span><span>${fmtNum(e.stepsCostPerUnit)}</span></div>
       <div class="craft-summary-row"><strong>Итого себестоимость с зачарованием / шт</strong><strong>${fmtNum(data.effectiveCostPerUnit)}</strong></div>
     </div>`;
 }

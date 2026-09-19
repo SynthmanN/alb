@@ -130,7 +130,9 @@ test('зачарование после крафта и порог продаж�
   await page.locator('#craft-enchant-after').check();
   await page.locator('#craft-sell-threshold').fill('110000');
   await page.locator('#craft-run').click();
-  await expect(page.locator('#craft-result .enchant-after')).toContainText('Руна (знаток)');
+  await expect(page.locator('#craft-result .enchant-after')).toContainText('Руна (знаток) × 480 000'); // 96 на вещь × 5000 шт
+  // материалы зачарования — в общей таблице материалов рядом с сырьём рецепта
+  await expect(page.locator('#craft-result table.craft-recipe-table').first()).toContainText('Руна (знаток)');
   await expect(page.locator('#craft-result .enchant-after')).toContainText('покупка дешевле крафта');
   await expect(page.locator('#craft-result .patient-sell')).toContainText('Города с ценой не ниже 110 000');
   expect(query.get('enchantAfterCraft')).toBe('true');
