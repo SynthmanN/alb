@@ -33,7 +33,7 @@ function renderScanResult(rows) {
     const volumeText = r.volume24h === null ? 'не проверено' : `${r.volume24h} сделок/24ч`;
     return `
       <tr>
-        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant || 0)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
         <td class="scan-spread-hot">${r.spreadPct.toFixed(1)}%</td>
         <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
         <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
@@ -96,7 +96,7 @@ function renderBmScanResult(rows) {
     const volumeText = r.bmVolume24h === null ? 'не проверено' : `${r.bmVolume24h} продаж/24ч`;
     return `
       <tr>
-        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant || 0)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
         <td class="scan-spread-hot">+${r.profitPct.toFixed(1)}%</td>
         <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
         <td>БМ: ${r.bmPrice.toLocaleString('ru-RU')}</td>

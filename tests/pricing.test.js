@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -431,5 +431,18 @@ describe('план партии: фильтр качества для скане
   it('без filterQuality (одиночный план, история запрошена под одно качество) ряды не отбрасываются', () => {
     const plan = computeBulkPlan({ ...base, filterQuality: false, quality: 1 }, materialHistory, finishedHistory);
     expect(plan.avgDailySellVolume).toBe(101);
+  });
+});
+
+describe('зачарованные версии предметов для сканеров', () => {
+  it('гир T4+: .0–.4 с суффиксом @N; до T4 — только .0', () => {
+    const t4 = enchantVariants({ id: 'T4_MAIN_SWORD', tier: 4, category: 'weapon' });
+    expect(t4.map((v) => v.queryId)).toEqual(['T4_MAIN_SWORD', 'T4_MAIN_SWORD@1', 'T4_MAIN_SWORD@2', 'T4_MAIN_SWORD@3', 'T4_MAIN_SWORD@4']);
+    expect(enchantVariants({ id: 'T3_MAIN_SWORD', tier: 3, category: 'weapon' })).toEqual([{ enchant: 0, queryId: 'T3_MAIN_SWORD' }]);
+  });
+  it('ресурсы: _LEVELn@n; камень — максимум .3; каменные блоки не зачаровываются', () => {
+    expect(enchantVariants({ id: 'T5_ORE', tier: 5, category: 'raw' }).map((v) => v.queryId).slice(-1)).toEqual(['T5_ORE_LEVEL4@4']);
+    expect(enchantVariants({ id: 'T5_ROCK', tier: 5, category: 'raw' })).toHaveLength(4);
+    expect(enchantVariants({ id: 'T5_STONEBLOCK', tier: 5, category: 'refined' })).toHaveLength(1);
   });
 });

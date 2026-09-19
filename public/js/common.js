@@ -199,9 +199,9 @@ function effectiveQualityFor(item) {
   return 1;
 }
 
-function effectiveId(baseId) {
+function effectiveId(baseId, enchantOverride) {
   const item = findItem(baseId);
-  const enchant = currentEnchant();
+  const enchant = enchantOverride !== undefined ? enchantOverride : currentEnchant();
   if (!item || enchant === 0) return baseId;
   const maxE = maxEnchantFor(item);
   if (enchant > maxE) return baseId;
@@ -214,8 +214,9 @@ function effectiveId(baseId) {
   return baseId;
 }
 
-function iconUrl(baseId, size) {
-  const id = effectiveId(baseId);
+// enchantOverride — иконка конкретного зачарования (сканеры показывают .0–.4 как разные позиции)
+function iconUrl(baseId, size, enchantOverride) {
+  const id = effectiveId(baseId, enchantOverride);
   const item = findItem(baseId);
   const quality = effectiveQualityFor(item);
   return `https://render.albiononline.com/v1/item/${encodeURIComponent(id)}.png?quality=${quality}&size=${size || 40}`;
@@ -230,6 +231,11 @@ const SITE_PAGES = [
   { href: 'fitting-room.html', label: '👗 Примерочная' },
   { href: 'masteries.html', label: '🎖 Мастерки' },
 ];
+
+// Метка уровня зачарования рядом с названием: T4 Меч .2
+function enchantTag(enchant) {
+  return enchant ? ` <span class="ench-tag">.${enchant}</span>` : '';
+}
 
 const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
 

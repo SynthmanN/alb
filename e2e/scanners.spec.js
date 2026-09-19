@@ -72,3 +72,12 @@ test('сканер зачарования: шаг, материалы и про�
   await sortBy(page, '#enchant-scan-result', 'Профит');
   await expect(page.locator('#enchant-scan-result tbody tr').first()).toContainText('.1 → .2');
 });
+
+test('сканер флиппинга показывает уровень зачарования как метку у названия', async ({ page }) => {
+  await page.route('**/api/opportunities*', (route) => route.fulfill({ json: OPPORTUNITIES }));
+  await page.goto('/scanners.html');
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-result tbody tr')).toHaveCount(3);
+  await expect(page.locator('#scan-result .ench-tag')).toHaveCount(1);
+  await expect(page.locator('#scan-result .ench-tag')).toHaveText('.2');
+});

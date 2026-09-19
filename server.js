@@ -34,6 +34,25 @@ function gearEnchantId(baseId, enchant) {
   return enchant > 0 ? `${baseId}@${enchant}` : baseId;
 }
 
+// Зачарованные версии предмета торгуются на рынке как отдельные позиции с другими ценами (T4_MAIN_SWORD в Каэрлеоне:
+// .0 — 23999, .1 — 44994, .2 — 77998), поэтому сканеры перебирают .0–.4 как разные предметы.
+// Гир: суффикс @N, только T4+. Ресурсы: _LEVELn@n, только T4+, камень — максимум .3, каменные блоки — без зачарования.
+function enchantVariants(item) {
+  const gear = item.category === 'weapon' || item.category === 'armor' || item.category === 'cape';
+  const resource = item.category === 'raw' || item.category === 'refined';
+  if ((!gear && !resource) || item.tier < 4) return [{ enchant: 0, queryId: item.id }];
+  let maxE = 4;
+  if (resource) {
+    if (item.id.includes('STONEBLOCK')) maxE = 0;
+    else if (item.id.includes('_ROCK')) maxE = 3;
+  }
+  const out = [];
+  for (let e = 0; e <= maxE; e++) {
+    out.push({ enchant: e, queryId: e === 0 ? item.id : gear ? `${item.id}@${e}` : `${item.id}_LEVEL${e}@${e}` });
+  }
+  return out;
+}
+
 function maxEnchantForGear(tier) {
   return tier >= 4 ? 4 : 0; // T2/T3 гир никогда не зачаровывается — та же логика, что и на фронте
 }
@@ -160,7 +179,7 @@ async function mapLimit(items, limit, fn) {
 }
 
 async function fetchPricesBatched(itemIds, quality) {
-  const CHUNK = 50;
+  const CHUNK = 120; // расширение каталога зачарованными версиями (~5×) не должно во столько же раз умножать число запросов
   const chunks = [];
   for (let i = 0; i < itemIds.length; i += CHUNK) chunks.push(itemIds.slice(i, i + CHUNK));
   const results = await mapLimit(chunks, AODP_CONCURRENCY, (c) => fetchPrices(c, quality));
@@ -619,8 +638,10 @@ app.get('/api/opportunities', async (req, res) => {
     const taxRate = getSalesTaxRate(req);
     if (scanCache && scanCache.taxRate === taxRate && Date.now() - scanCache.ts < SCAN_CACHE_TTL_MS) return res.json(scanCache.data);
 
-    const allIds = ITEMS.map((i) => i.id);
-    const data = await fetchPricesBatched(allIds, 1);
+    // Каталог × зачарование .0–.4: каждая версия — отдельная позиция рынка.
+    const variantByQuery = new Map();
+    for (const item of ITEMS) for (const v of enchantVariants(item)) variantByQuery.set(v.queryId, { ...v, baseId: item.id });
+    const data = await fetchPricesBatched([...variantByQuery.keys()], 1);
 
     const byItem = {};
     for (const rec of data) {
@@ -630,8 +651,11 @@ app.get('/api/opportunities', async (req, res) => {
 
     const now = Date.now();
     const results = [];
-    for (const itemId of Object.keys(byItem)) {
-      const records = byItem[itemId];
+    for (const queryId of Object.keys(byItem)) {
+      const variant = variantByQuery.get(queryId);
+      if (!variant) continue;
+      const itemId = variant.baseId;
+      const records = byItem[queryId];
       let bestBuy = null; // самая низкая sell_price_min — где дешевле всего купить
       let bestSell = null; // самая высокая buy_price_max — где дороже всего продать
       for (const rec of records) {
@@ -651,7 +675,7 @@ app.get('/api/opportunities', async (req, res) => {
       const spreadPct = (spread / bestBuy.price) * 100;
       // Свежесть — по двум котировкам самой сделки, а не по любым записям предмета.
       const freshMinutes = dealAgeMinutes([bestBuy.date, bestSell.date], now);
-      results.push({ itemId, bestBuy, bestSell, grossSellPrice, taxRate, spread, spreadPct, freshMinutes });
+      results.push({ itemId, enchant: variant.enchant, queryId, bestBuy, bestSell, grossSellPrice, taxRate, spread, spreadPct, freshMinutes });
     }
 
     results.sort((a, b) => b.spreadPct - a.spreadPct);
@@ -664,10 +688,10 @@ app.get('/api/opportunities', async (req, res) => {
 
     let withVolume = candidates;
     try {
-      const historyData = await fetchHistoryBatched(candidates.map((c) => c.itemId), 24, 1, CITIES);
+      const historyData = await fetchHistoryBatched(candidates.map((c) => c.queryId), 24, 1, CITIES);
       withVolume = candidates
         // Объём — только по двум городам сделки: ликвидность в других городах мне не поможет.
-        .map((c) => ({ ...c, volume24h: totalVolume(historyData, c.itemId, [c.bestBuy.city, c.bestSell.city]) }))
+        .map((c) => ({ ...c, volume24h: totalVolume(historyData, c.queryId, [c.bestBuy.city, c.bestSell.city]) }))
         .filter((c) => c.volume24h >= MIN_VOLUME_24H)
         .map((c) => ({ ...c, score: opportunityScore(c.spreadPct, c.volume24h) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
@@ -704,8 +728,13 @@ app.get('/api/bm-opportunities', async (req, res) => {
     if (bmScanCache && bmScanCache.key === cacheKey && Date.now() - bmScanCache.ts < SCAN_CACHE_TTL_MS) return res.json(bmScanCache.data);
     const bmLocations = [...queryCities.map((c) => c.replace(/\s+/g, '')), BM_QUERY_LOCATION];
 
-    const gearIds = ITEMS.filter((i) => i.category === 'weapon' || i.category === 'armor' || i.category === 'cape').map((i) => i.id);
-    const CHUNK = 50;
+    // Гир × зачарование .0–.4: на БМ зачарованные версии покупают по своим (более высоким) ценам.
+    const variantByQuery = new Map();
+    for (const item of ITEMS.filter((i) => GEAR_IDS.has(i.id))) {
+      for (const v of enchantVariants(item)) variantByQuery.set(v.queryId, { ...v, baseId: item.id });
+    }
+    const gearIds = [...variantByQuery.keys()];
+    const CHUNK = 120;
     const chunks = [];
     for (let i = 0; i < gearIds.length; i += CHUNK) chunks.push(gearIds.slice(i, i + CHUNK));
 
@@ -734,8 +763,11 @@ app.get('/api/bm-opportunities', async (req, res) => {
 
     const now = Date.now();
     const results = [];
-    for (const itemId of Object.keys(byItem)) {
-      const records = byItem[itemId];
+    for (const queryId of Object.keys(byItem)) {
+      const variant = variantByQuery.get(queryId);
+      if (!variant) continue;
+      const itemId = variant.baseId;
+      const records = byItem[queryId];
       let bestBuy = null;
       let bmSell = null;
       for (const rec of records) {
@@ -754,7 +786,7 @@ app.get('/api/bm-opportunities', async (req, res) => {
       const profitPct = (profit / bestBuy.price) * 100;
       // Свежесть — по двум котировкам самой сделки (покупка в городе + цена БМ), а не по всем записям предмета.
       const freshMinutes = dealAgeMinutes([bestBuy.date, bmSell.date], now);
-      results.push({ itemId, bestBuy, bmPrice: bmSell.price, bmTaxRate, profit, profitPct, freshMinutes });
+      results.push({ itemId, enchant: variant.enchant, queryId, bestBuy, bmPrice: bmSell.price, bmTaxRate, profit, profitPct, freshMinutes });
     }
 
     results.sort((a, b) => b.profitPct - a.profitPct);
@@ -763,9 +795,9 @@ app.get('/api/bm-opportunities', async (req, res) => {
     const MIN_BM_VOLUME_24H = 3;
     let withVolume = candidates;
     try {
-      const historyData = await fetchHistoryBatched(candidates.map((c) => c.itemId), 24, 1, [BM_QUERY_LOCATION]);
+      const historyData = await fetchHistoryBatched(candidates.map((c) => c.queryId), 24, 1, [BM_QUERY_LOCATION]);
       withVolume = candidates
-        .map((c) => ({ ...c, bmVolume24h: totalVolume(historyData, c.itemId) }))
+        .map((c) => ({ ...c, bmVolume24h: totalVolume(historyData, c.queryId) }))
         .filter((c) => c.bmVolume24h >= MIN_BM_VOLUME_24H)
         .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.bmVolume24h) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
@@ -1889,6 +1921,7 @@ module.exports = {
   enchantMaterialId,
   ENCHANT_MATERIAL_COUNT,
   gearEnchantId,
+  enchantVariants,
   mapLimit,
   allocateBudget,
   lazyStrategyScore,
