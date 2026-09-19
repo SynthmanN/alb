@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
-const { openJug, inTransaction, upsertPriceSnapshots, upsertHistoryBatch, setMeta, getMeta, jugStats } = require('../lib/jugStore.js');
+const { openJug, inTransaction, upsertPriceSnapshots, upsertHistoryBatch, pruneToCatalog, setMeta, getMeta, jugStats } = require('../lib/jugStore.js');
 
 const price = (over = {}) => ({
   item_id: 'T4_MAIN_SWORD', city: 'Lymhurst', quality: 1, sell_price_min: 1000, sell_price_min_date: '2026-01-01T10:00:00',
@@ -37,6 +37,25 @@ describe('кувшин: хранилище', () => {
     const rows = db.prepare('SELECT * FROM history ORDER BY ts').all();
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ item_count: 7, fetched_at: 2 });
+  });
+
+  it('время получения берётся с записи (_fetchedAt — момент реального похода в AODP), а не «сейчас»; запасной вариант — аргумент', () => {
+    const db = openJug();
+    upsertPriceSnapshots(db, [price({ _fetchedAt: 111 }), price({ city: 'Martlock' })], 999);
+    const rows = db.prepare('SELECT city, fetched_at FROM prices ORDER BY city').all();
+    expect(rows.find((r) => r.city === 'Lymhurst').fetched_at).toBe(111);
+    expect(rows.find((r) => r.city === 'Martlock').fetched_at).toBe(999);
+    upsertHistoryBatch(db, [{ location: 'Lymhurst', item_id: 'X', quality: 1, _fetchedAt: 222, data: [{ timestamp: '2026-01-01T00:00:00', item_count: 1, avg_price: 10 }] }], 999);
+    expect(db.prepare('SELECT fetched_at FROM history').get().fetched_at).toBe(222);
+  });
+
+  it('pruneToCatalog удаляет строки предметов вне каталога и не трогает остальные', () => {
+    const db = openJug();
+    upsertPriceSnapshots(db, [price({ item_id: 'T4_A' }), price({ item_id: 'T2_A@1' }), price({ item_id: 'T2_A@2' })]);
+    upsertHistoryBatch(db, [{ location: 'Lymhurst', item_id: 'T2_A@1', quality: 1, data: [{ timestamp: '2026-01-01T00:00:00', item_count: 1, avg_price: 10 }] }]);
+    expect(pruneToCatalog(db, ['T4_A'])).toEqual({ prices: 2, history: 1 });
+    expect(db.prepare('SELECT query_id FROM prices').all().map((r) => r.query_id)).toEqual(['T4_A']);
+    expect(jugStats(db).historyRows).toBe(0);
   });
 
   it('транзакция откатывается целиком при ошибке', () => {

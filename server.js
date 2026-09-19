@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { AodpBudget } = require('./lib/aodpBudget');
-const { openJug, jugStats } = require('./lib/jugStore');
+const { openJug, jugStats, pruneToCatalog } = require('./lib/jugStore');
 const { startJugCrawler } = require('./lib/jugCrawler');
 const path = require('path');
 const fs = require('fs');
@@ -2455,6 +2455,13 @@ function buildJugCatalog() {
   return [...ids].sort();
 }
 
+// Помечает каждую запись ответа временем реального похода в AODP (ts из кэша), чтобы кувшин не выдавал ответ двухминутной
+// давности из кэша за «только что полученный». Формат остальных данных не меняется — это лишняя служебная строка _fetchedAt.
+function tagFetchedAt(data, ts) {
+  for (const row of data) row._fetchedAt = ts;
+  return data;
+}
+
 // Фоновый краулер ходит теми же общими функциями (со своим приоритетом 0 в регуляторе бюджета и общим кэшем ответов),
 // что и живые запросы. Данные кладёт в локальную базу — сканеры по ней пока не работают (это следующие шаги).
 const JUG_DB_PATH = process.env.JUG_DB_PATH || path.join(__dirname, 'data', 'jug.db');
@@ -2463,32 +2470,37 @@ let jugCrawler = null;
 function startJug() {
   if (process.env.DISABLE_JUG_CRAWLER === 'true' || jugCrawler) return;
   jugDb = openJug(JUG_DB_PATH);
+  const catalog = buildJugCatalog();
+  const pruned = pruneToCatalog(jugDb, catalog);
+  if (pruned.prices || pruned.history) console.log(`кувшин: удалены строки вне каталога — цен ${pruned.prices}, истории ${pruned.history}`);
   const historyStart = () => new Date(Date.now() - 7 * 24 * 3600 * 1000);
   jugCrawler = startJugCrawler({
     db: jugDb,
-    ids: buildJugCatalog(),
+    ids: catalog,
     log: (msg) => console.log(msg),
     fetchPrices: async (chunk) => {
       const key = `jug:prices:${chunk.join(',')}`;
       const cached = cache.get(key);
-      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return tagFetchedAt(cached.data, cached.ts);
       const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${CITIES.join(',')}&qualities=${ALL_QUALITIES.join(',')}`;
       const response = await aodpFetch(url, 0);
       if (!response.ok) throw new Error(`AODP responded ${response.status}`);
-      const data = await response.json();
-      cache.set(key, { ts: Date.now(), data });
+      const ts = Date.now();
+      const data = tagFetchedAt(await response.json(), ts);
+      cache.set(key, { ts, data });
       return data;
     },
     // История — один раз на самое широкое окно (7 дней): короткие окна (12ч/24ч/72ч) агрегируются из тех же точек локально.
     fetchHistory: async (chunk) => {
       const key = `jug:history:${chunk.join(',')}`;
       const cached = historyCache.get(key);
-      if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL_MS) return cached.data;
+      if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL_MS) return tagFetchedAt(cached.data, cached.ts);
       const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(chunk.join(','))}?date=${fmtDate(historyStart())}&end_date=${fmtDate(new Date())}&locations=${CITIES.join(',')}&qualities=${ALL_QUALITIES.join(',')}&time-scale=1`;
       const response = await aodpFetch(url, 0);
       if (!response.ok) throw new Error(`AODP history responded ${response.status}`);
-      const data = await response.json();
-      historyCache.set(key, { ts: Date.now(), data });
+      const ts = Date.now();
+      const data = tagFetchedAt(await response.json(), ts);
+      historyCache.set(key, { ts, data });
       return data;
     },
   });
