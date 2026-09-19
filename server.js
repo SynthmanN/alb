@@ -423,7 +423,7 @@ function effectiveRecipeResourceId(resourceId, enchant) {
 }
 
 // Себестоимость (крафт) и лучшая мгновенная цена продажи для каждого тира семейства предмета.
-async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities }) {
+async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities, days = 7, marketShare = 1 }) {
   const family = familyIdOf(itemId);
   const items = ITEMS.filter((i) => GEAR_IDS.has(i.id) && familyIdOf(i.id) === family && RECIPES[i.id]).sort((a, b) => a.tier - b.tier);
   if (items.length < 2) return null;
@@ -446,9 +446,12 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
     for (const id of p.stepIds) materialIds.add(id);
     finishedIds.push(gearEnchantId(p.it.id, p.finalEnchant));
   }
-  const [materialData, finishedData] = await Promise.all([
+  const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+  const [materialData, finishedData, history] = await Promise.all([
     fetchPricesBatched([...materialIds], 1),
     fetchGearPrices(finishedIds, ALL_QUALITIES),
+    // История — для терпеливой продажи по каждому тиру (без неё «мгновенный» профит в разы занижен)
+    fetchHistoryBatched(finishedIds, days * 24, ALL_QUALITIES.join(','), locations).catch(() => []),
   ]);
   const allowed = new Set(queryCities.map(normLocation));
   const cheapestByItem = {};
@@ -489,11 +492,28 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
     }
     const netSellPrice = best ? best.sell.price * (1 - taxRate) : null;
     const profitPerUnit = cost !== null && netSellPrice !== null ? netSellPrice - cost : null;
+
+    // Терпеливая продажа тира: лучшее по профиту качество среди тех, где вообще есть сделки; срок — по доле рынка.
+    let patient = null;
+    if (cost !== null) {
+      for (const quality of ALL_QUALITIES) {
+        const st = computePatientSell({
+          history, itemId: gearEnchantId(p.it.id, p.finalEnchant), days, quantity: 1, taxRate, costPerUnit: cost, queryCities, quality, marketShare,
+        });
+        if (!st) continue;
+        if (!patient || st.profitPerUnit > patient.profitPerUnit) {
+          patient = {
+            quality, avgSellPrice: st.avgSellPrice, avgDailyVolume: st.avgDailyVolume, profitPerUnit: st.profitPerUnit,
+            profitPct: (st.profitPerUnit / cost) * 100,
+          };
+        }
+      }
+    }
     return {
       itemId: p.it.id, tier: p.it.tier, enchant: p.finalEnchant, enchantCapped: p.enchantCapped,
       hasPrice: best !== null, cost, bestQuality: best ? best.quality : null, bestSell: best ? best.sell : null,
       netSellPrice, profitPerUnit, profitPct: profitPerUnit !== null && cost > 0 ? (profitPerUnit / cost) * 100 : null,
-      isCurrent: p.it.id === itemId,
+      patient, isCurrent: p.it.id === itemId,
     };
   });
 }
@@ -522,6 +542,7 @@ app.get('/api/craft-calc', async (req, res) => {
     const enchantCapped = enchantAfterRequested && enchant > 3;
     const recipeEnchant = enchantAfterRequested ? 0 : enchant;
     const sellThreshold = parseFloat(req.query.sellThreshold) > 0 ? parseFloat(req.query.sellThreshold) : null;
+    const marketShare = parseMarketShare(req);
     const itemSlot = ITEM_SLOT_BY_ID.get(itemId);
     const itemTier = ITEM_TIER_BY_ID.get(itemId);
     const enchantStepIds = enchantAfterRequested && ENCHANT_MATERIAL_COUNT[itemSlot]
@@ -639,9 +660,9 @@ app.get('/api/craft-calc', async (req, res) => {
       // Один запрос истории по всем 5 качествам: качество сильно влияет на ликвидность (Отличное может продаваться
       // в 100+ раз быстрее Обычного), а себестоимость от качества не зависит — поэтому сравнение бесплатное.
       const history = await fetchHistoryBatched([finishedQueryId], days * 24, ALL_QUALITIES.join(','), locations);
-      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q });
+      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare });
       patientSell = forQuality(quality);
-      if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity);
+      if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity, marketShare);
       qualityComparison = ALL_QUALITIES.map((q) => {
         const p = forQuality(q);
         return p && { quality: q, avgSellPrice: p.avgSellPrice, avgDailyVolume: p.avgDailyVolume, daysToSellBatch: p.daysToSellBatch, profitPerUnit: p.profitPerUnit };
@@ -698,14 +719,15 @@ app.get('/api/craft-calc', async (req, res) => {
     let tierComparison = null;
     try {
       tierComparison = await computeTierComparison({
-        itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities,
+        itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities, quality, marketShare,
+        days: parseBulkDays(req),
       });
     } catch (err) {
       console.error('не удалось посчитать сравнение по тирам:', err.message);
     }
 
     res.json({
-      itemId, enchant, quality, quantity,
+      itemId, enchant, quality, quantity, marketShare,
       rrrPreset: { ...preset, rrr },
       cities: queryCities,
       recipe: recipeBreakdown,
@@ -1188,7 +1210,7 @@ function cityStats(historyData, itemId, days, quality) {
 // свой ордер на продажу и ждём. Цену берём по истории сделок (средневзвешенная по объёму за период),
 // а не по текущему sell_price_min — иначе получится красивая маржа на предмете, который висит неделями
 // («стать инвестором предмета»). Объём/день и дни на распродажу партии показывают, насколько это реально.
-function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities, quality }) {
+function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities, quality, marketShare = 1 }) {
   const allowed = new Set(queryCities.map(normLocation));
   const stats = Object.entries(cityStats(history, itemId, days, quality)).filter(([city]) => allowed.has(normLocation(city)));
   if (stats.length === 0) return null;
@@ -1213,7 +1235,11 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
       .map(([city, st]) => ({ city, avgSellPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, profitPerUnit: st.avgPrice * (1 - taxRate) - costPerUnit }))
       .sort((a, b) => b.avgSellPrice - a.avgSellPrice),
     avgDailyVolume,
-    daysToSellBatch: avgDailyVolume > 0 ? quantity / avgDailyVolume : null,
+    // Дневной оборот по истории — оборот ВСЕГО рынка, а не гарантированно доступный лично тебе объём: конкуренты тоже
+    // держат ордера на продажу и часто перевыставляют их, чтобы быть первыми в очереди. Поэтому срок распродажи
+    // считаем по реалистичной доле оборота (marketShare), а не по всему объёму.
+    marketShare,
+    daysToSellBatch: avgDailyVolume > 0 ? quantity / (avgDailyVolume * marketShare) : null,
     netSellPrice,
     profitPerUnit: netSellPrice - costPerUnit,
   };
@@ -1319,14 +1345,14 @@ function cityPriceList(cityRecords, queryCities) {
 
 // Порог терпеливой продажи: вместо одного лучшего города — все города, где средняя цена не ниже порога
 // (при крупных партиях один город не переварит объём без обвала цены). Показываем суммарный спрос и срок.
-function computeSellThreshold(cities, threshold, quantity) {
+function computeSellThreshold(cities, threshold, quantity, marketShare = 1) {
   const above = cities.filter((c) => c.avgPrice >= threshold).sort((a, b) => b.avgPrice - a.avgPrice);
   const totalDailyVolume = above.reduce((sum, c) => sum + c.avgDailyVolume, 0);
   return {
     value: threshold,
     cities: above,
     totalDailyVolume,
-    daysToSellBatch: totalDailyVolume > 0 ? quantity / totalDailyVolume : null,
+    daysToSellBatch: totalDailyVolume > 0 ? quantity / (totalDailyVolume * marketShare) : null,
   };
 }
 
@@ -1429,6 +1455,11 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
     totalProfitHigh: profitPerUnitHigh !== null ? profitPerUnitHigh * quantity : null,
     totalDaysEstimate: daysToAcquireBatch !== null && daysToSellBatch !== null ? daysToAcquireBatch + daysToSellBatch : null,
   };
+}
+
+// Доля рынка 0.01–1 (в интерфейсе 10/25/50/100%), по умолчанию 25%.
+function parseMarketShare(req) {
+  return Math.min(Math.max(parseFloat(req.query.marketShare) || 0.25, 0.01), 1);
 }
 
 function parseBulkDays(req) {
@@ -1578,7 +1609,9 @@ app.get('/api/lazy-crafter', async (req, res) => {
   try {
     const budget = parseFloat(req.query.budget);
     if (!(budget > 0)) return res.status(400).json({ error: 'бюджет должен быть положительным числом' });
-    const marketSharePct = Math.min(Math.max(parseFloat(req.query.share) || 25, 1), 100);
+    const marketSharePct = req.query.marketShare !== undefined
+      ? parseMarketShare(req) * 100
+      : Math.min(Math.max(parseFloat(req.query.share) || 25, 1), 100);
     const sellDays = Math.min(Math.max(parseFloat(req.query.sellDays) || 1, 0.5), 30);
     const strategy = LAZY_STRATEGIES.includes(req.query.strategy) ? req.query.strategy : 'balanced';
     const days = parseBulkDays(req);
@@ -1803,6 +1836,7 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
     const enchantMode = req.query.enchantMode === 'after' ? 'after' : 'direct';
     const liquidity = req.query.liquidity === 'best' ? 'best' : 'sum';
     const minDaily = Math.max(parseFloat(req.query.minDaily) || 1, 0);
+    const marketShare = parseMarketShare(req);
     const rrrId = req.query.rrr || 'none';
     const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
     const rrr = rrrFromBonus(preset.bonus);
@@ -1875,9 +1909,11 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
         if (profitPerUnit <= 0) continue;
         const profitPct = (profitPerUnit / cost) * 100;
         const row = {
+          // Оборот рынка ≠ твой объём: дневной профит и «дней на премиум» считаем по доле рынка (конкуренты тоже продают).
           itemId: c.itemId, enchant: c.enchant, quality, cost, avgSellPrice: sell.avgPrice, dailyVolume: sell.dailyVolume,
-          sellCities: sell.cities, profitPerUnit, profitPct, dailyProfit: profitPerUnit * sell.dailyVolume,
-          premiumDays: premiumPaybackDays(profitPerUnit, sell.dailyVolume),
+          yourDailyVolume: sell.dailyVolume * marketShare,
+          sellCities: sell.cities, profitPerUnit, profitPct, dailyProfit: profitPerUnit * sell.dailyVolume * marketShare,
+          premiumDays: premiumPaybackDays(profitPerUnit, sell.dailyVolume * marketShare),
           score: opportunityScore(profitPct, sell.dailyVolume),
         };
         if (!bestForCombo || row.score > bestForCombo.score) bestForCombo = row; // на комбинацию — лучшее качество
@@ -1886,7 +1922,7 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
     }
 
     rows.sort((a, b) => b.score - a.score);
-    res.json({ enchantMode, liquidity, days, taxRate, premiumPrice: PREMIUM_PRICE_SILVER, scanned: combos.length, results: rows.slice(0, 40) });
+    res.json({ enchantMode, liquidity, days, marketShare, taxRate, premiumPrice: PREMIUM_PRICE_SILVER, scanned: combos.length, results: rows.slice(0, 40) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось выполнить скан маржи и ликвидности', details: err.message });

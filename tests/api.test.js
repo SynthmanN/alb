@@ -273,6 +273,7 @@ describe('калькулятор крафта: сравнение по тира�
     expect(t.find((r) => r.tier === 6)).toMatchObject({ enchant: 2, enchantCapped: false });
     const cur = t.find((r) => r.isCurrent);
     expect(cur.cost).toBeCloseTo(d.effectiveCostPerUnit, 6);           // совпадает с основным расчётом
+    expect(d.marketShare).toBe(0.25);                                  // доля рынка по умолчанию
     expect(cur.profitPerUnit).toBeCloseTo(cur.netSellPrice - cur.cost, 6);
   });
 });

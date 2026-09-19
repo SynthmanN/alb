@@ -110,6 +110,7 @@ async function runCraftCalc() {
       quantity: craftEl.quantity.value || '1', rrr: craftEl.rrr.value, cities: activeCities().join(','),
       premium: premiumParam(),
     });
+    params.set('marketShare', document.getElementById('craft-market-share').value);
     if (document.getElementById('craft-teleport').checked) params.set('teleport', 'true');
     if (document.getElementById('craft-enchant-after').checked) params.set('enchantAfterCraft', 'true');
     const threshold = document.getElementById('craft-sell-threshold').value;
@@ -218,13 +219,14 @@ function tierComparisonHtml(data) {
         <td data-sort-value="${r.bestQuality ?? ''}">${r.bestQuality ? QUALITY_NAMES[r.bestQuality] : '—'}</td>
         <td>${r.bestSell ? `${r.bestSell.city}: ${fmtNum(r.bestSell.price)}` : 'нет предложений'}</td>
         <td class="${cls}" data-sort-value="${r.profitPerUnit ?? ''}">${r.profitPerUnit !== null ? `${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(1)}%)` : '—'}</td>
+        <td class="${r.patient && r.patient.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg'}" data-sort-value="${r.patient ? r.patient.profitPerUnit : ''}">${r.patient ? `${fmtNum(r.patient.profitPerUnit)} (${r.patient.profitPct.toFixed(1)}%), ${QUALITY_NAMES[r.patient.quality]}, ${fmtNum(r.patient.avgDailyVolume, 1)}/день` : '—'}</td>
       </tr>`;
   }).join('');
   return `
     <details open class="tier-comparison">
-      <summary>Сравнение по тирам (клик по строке — переключить тир; качество выбрано лучшее по каждому тиру, продажа мгновенная)</summary>
+      <summary>Сравнение по тирам (клик по строке — переключить тир; мгновенная продажа — в чужой ордер сейчас, терпеливая — свой ордер по средней цене истории; качество лучшее по каждому тиру)</summary>
       <div class="table-scroll"><table class="craft-recipe-table">
-        <thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать</th><th>Профит / шт</th></tr></thead>
+        <thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать (мгновенно)</th><th>Профит / шт (мгновенно)</th><th>Профит / шт (терпеливо, по истории)</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
     </details>`;
@@ -352,7 +354,7 @@ function patientSellHtml(data) {
       <div class="craft-summary-row"><span>Средняя цена сделок за период</span><span>${fmtNum(p.avgSellPrice)}</span></div>
       <div class="craft-summary-row"><span>Лучший город по цене</span><span>${p.bestCity.city}: ${fmtNum(p.bestCity.avgPrice)}</span></div>
       <div class="craft-summary-row"><span>Спрос: сделок в день (по выбранным городам)</span><span>${fmtNum(p.avgDailyVolume, 1)}</span></div>
-      <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(data.quantity)} шт</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(p.daysToSellBatch)}${slow ? ' ⚠' : ''}</span></div>
+      <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(data.quantity)} шт (по доле рынка ${(p.marketShare * 100).toFixed(0)}%: тебе достаётся ~${fmtNum(p.avgDailyVolume * p.marketShare, 1)} из ${fmtNum(p.avgDailyVolume, 1)} сделок в день)</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(p.daysToSellBatch)}${slow ? ' ⚠' : ''}</span></div>
       <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(p.netSellPrice)}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(p.profitPerUnit)}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${fmtNum(data.quantity)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
@@ -683,6 +685,7 @@ async function runMarginScan() {
     const params = new URLSearchParams({
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
       minDaily: marginEl.minDaily.value || '0', days: marginEl.days.value, rrr: craftEl.rrr.value,
+      marketShare: document.getElementById('margin-market-share').value,
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/craft-margin-opportunities?${params}`);
@@ -710,7 +713,7 @@ function renderMarginScan(data) {
         <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality]}</td>
         <td>${fmtNum(r.cost)}</td>
         <td>${fmtNum(r.avgSellPrice)}</td>
-        <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${data.liquidity === 'best' ? '' : ` <small>(${r.sellCities.length} гор.)</small>`}</td>
+        <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${data.liquidity === 'best' ? '' : ` <small>(${r.sellCities.length} гор.)</small>`}<br><small>тебе ~${fmtNum(r.yourDailyVolume, 1)}</small></td>
         <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
         <td data-sort-value="${r.dailyProfit}">${fmtNum(r.dailyProfit)}</td>
         <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит с оборота — только шкала масштаба">${days}</td>
@@ -719,9 +722,9 @@ function renderMarginScan(data) {
   }).join('');
   marginEl.result.innerHTML = `
     <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. Профит — после налога с продажи (${(data.taxRate * 100).toFixed(0)}%), цена — средняя по сделкам за ${data.days} дн.,
-      оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по всем выбранным городам'}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}.</p>
+      оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по всем выбранным городам'}; доля рынка ${(data.marketShare * 100).toFixed(0)}% (профит в день и «дней на премиум» — по твоей доле, а не по всему обороту). Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}.</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>Ср. цена продажи</th><th>Оборот/день</th><th>Профит/шт</th><th>Профит/день</th><th>Дней на премиум</th><th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>Ср. цена продажи</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит/день (твоя доля)</th><th>Дней на премиум</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');

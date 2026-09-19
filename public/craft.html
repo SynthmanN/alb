@@ -43,6 +43,9 @@
         </label>
         <label class="craft-field">Возврат ресурсов<select id="craft-rrr"></select></label>
         <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
+        <label class="craft-field" title="Какую долю дневного оборота рынка ты реально сможешь продать: другие игроки тоже торгуют и перевыставляют ордера, чтобы быть первыми. Влияет на срок распродажи">Доля рынка
+          <select id="craft-market-share"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
+        </label>
         <label class="craft-field craft-check" title="Крафтим (или покупаем, если дешевле) базовый предмет .0, дальше поднимаем зачарование рунами/душами/реликвиями до выбранного уровня. Без галочки — крафт сразу из зачарованных материалов">
           <span>Зачарование</span>
           <span class="check-inline"><input id="craft-enchant-after" type="checkbox" /> Зачаровать после крафта</span>
@@ -129,6 +132,9 @@
             <option value="sum">Сумма по всем городам</option>
             <option value="best">Только лучший город</option>
           </select>
+        </label>
+        <label class="craft-field" title="Доля дневного оборота рынка, которую реально удастся продать (конкуренты тоже торгуют)">Доля рынка
+          <select id="margin-market-share"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
         </label>
         <label class="craft-field">Оборот от, шт/день<input id="margin-min-daily" type="number" min="0" step="0.5" value="1" /></label>
         <label class="craft-field">История

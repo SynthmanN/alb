@@ -81,6 +81,18 @@ test('ленивый крафтер: по бюджету строит план �
   expect(query.get('strategy')).toBe('mass');
 });
 
+test('доля рынка: селектор уходит в запрос калькулятора', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/craft-calc*', (route) => { query = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('меч');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-market-share').selectOption('0.5');
+  await page.locator('#craft-run').click();
+  await expect.poll(() => query).not.toBeNull();
+  expect(query.get('marketShare')).toBe('0.5');
+});
+
 test('телепорт: галочка добавляет параметр в запрос и показывает логистику', async ({ page }) => {
   let query = null;
   await page.route('**/api/craft-calc*', (route) => {

@@ -496,3 +496,24 @@ describe('цены материала по городам', () => {
     expect(cityPriceList(records, ['Martlock', 'Lymhurst', 'Thetford'])).toEqual([{ city: 'Lymhurst', price: 100 }, { city: 'Martlock', price: 300 }]);
   });
 });
+
+describe('доля рынка: срок распродажи по реалистичной доле оборота', () => {
+  const history = [{ item_id: 'X', location: 'Martlock', quality: 1, data: [{ item_count: 70, avg_price: 1000 }] }]; // 10 в день
+  const base = { history, itemId: 'X', days: 7, quantity: 100, taxRate: 0, costPerUnit: 500, queryCities: ['Martlock'], quality: 1 };
+  it('по умолчанию (100%) — как раньше: 100 шт при 10 в день = 10 дней', () => {
+    expect(computePatientSell(base).daysToSellBatch).toBeCloseTo(10, 6);
+  });
+  it('доля 25% — конкуренты забирают остальное: 100 шт при ~2.5 в день = 40 дней', () => {
+    const p = computePatientSell({ ...base, marketShare: 0.25 });
+    expect(p.daysToSellBatch).toBeCloseTo(40, 6);
+    expect(p.marketShare).toBe(0.25);
+    expect(p.avgDailyVolume).toBe(10); // оборот рынка не меняется — меняется только доступная доля
+  });
+  it('порог продажи: срок по суммарному спросу с учётом доли', () => {
+    const cities = [{ city: 'A', avgPrice: 100, avgDailyVolume: 4 }, { city: 'B', avgPrice: 100, avgDailyVolume: 6 }];
+    expect(computeSellThreshold(cities, 50, 100, 0.5).daysToSellBatch).toBeCloseTo(20, 6);
+  });
+  it('дней на премиум по доле: чем меньше доля, тем дольше', () => {
+    expect(premiumPaybackDays(1000, 28 * 0.25)).toBeGreaterThan(premiumPaybackDays(1000, 28));
+  });
+});
