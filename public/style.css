@@ -262,3 +262,13 @@ details.city-prices small { color: #cc8844; }
 .dialog-buttons { display: flex; gap: 10px; justify-content: flex-end; }
 .dialog-cancel { background: #2a2d33; }
 .dialog-cancel:hover { background: #363a42; }
+
+/* Аккордеон инструментов на странице «Крафт» (экспериментально, ★ бета): калькулятор всегда на виду, сканеры — по клику */
+.beta-star { font-size: 11px; font-weight: 600; color: #cc8844; border: 1px solid #6b4a25; border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+details.tool-accordion { border: 1px solid #2a2d33; border-radius: 8px; margin-top: 12px; background: #17191d; }
+details.tool-accordion > summary { cursor: pointer; padding: 12px 14px; font-size: 14px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.tool-accordion > summary::before { content: '▸'; color: #9aa0aa; transition: transform .15s; }
+details.tool-accordion[open] > summary::before { transform: rotate(90deg); }
+details.tool-accordion > summary:hover { color: #7ee787; }
+details.tool-accordion > *:not(summary) { margin-left: 14px; margin-right: 14px; }
+details.tool-accordion[open] { padding-bottom: 14px; }

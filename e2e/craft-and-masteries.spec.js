@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { openTool } = require('./helpers');
 
 test('крафт-калькулятор: выбор предмета и расчёт показывают итог с налогом', async ({ page }) => {
   await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
@@ -72,6 +73,7 @@ test('ленивый крафтер: по бюджету строит план �
     } });
   });
   await page.goto('/craft.html');
+  await openTool(page, 'Ленивый крафтер');
   await page.locator('#lazy-budget').fill('1000000');
   await page.locator('#lazy-strategy').selectOption('mass');
   await page.locator('#lazy-run').click();
@@ -237,6 +239,7 @@ test('скан маржи и ликвидности: параметры в за�
   });
   await page.route('**/api/craft-calc*', (route) => { calcQuery = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
   await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-enchant-mode').selectOption('after');
   await page.locator('#margin-liquidity').selectOption('best');
   await page.locator('#margin-run').click();
@@ -277,4 +280,15 @@ test('потолок и полоса цены живут в калькулято
   expect(query.get('ceiling')).toBe('90000');
   expect(query.get('sellLow')).toBe('110000');
   expect(query.get('sellHigh')).toBe('130000');
+});
+
+test('аккордеон ★ бета: калькулятор на виду, инструменты свёрнуты и раскрываются по клику', async ({ page }) => {
+  await page.goto('/craft.html');
+  await expect(page.locator('#craft-search')).toBeVisible();                       // калькулятор — всегда открыт
+  await expect(page.locator('.beta-star')).toBeVisible();
+  const tools = page.locator('details.tool-accordion');
+  await expect(tools).toHaveCount(4);
+  await expect(page.locator('#lazy-run')).toBeHidden();                            // ленивый крафтер свёрнут
+  await openTool(page, 'Ленивый крафтер');
+  await expect(page.locator('#lazy-run')).toBeVisible();
 });

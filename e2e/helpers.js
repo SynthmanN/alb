@@ -30,4 +30,10 @@ const OPPORTUNITIES = [
   { itemId: 'T6_PLANKS', bestBuy: { city: 'Fort Sterling', price: 50 }, bestSell: { city: 'Thetford', price: 120 }, grossSellPrice: 120, taxRate: 0.08, spread: 60.4, spreadPct: 120.8, freshMinutes: 90, volume24h: 300, score: 400 },
 ];
 
-module.exports = { PAGES, openNavIfCollapsed, sortBy, OPPORTUNITIES };
+// Инструменты на странице «Крафт» свёрнуты в аккордеон (★ бета): перед работой с ними раскрываем нужный.
+async function openTool(page, title) {
+  const details = page.locator('details.tool-accordion', { has: page.locator('summary', { hasText: title }) });
+  if (!(await details.evaluate((d) => d.open))) await details.locator('summary').first().click();
+}
+
+module.exports = { openTool, PAGES, openNavIfCollapsed, sortBy, OPPORTUNITIES };
