@@ -292,3 +292,24 @@ test('аккордеон ★ бета: калькулятор на виду, и�
   await openTool(page, 'Ленивый крафтер');
   await expect(page.locator('#lazy-run')).toBeVisible();
 });
+
+test('план продажи по городам: партия делится пропорционально обороту, «Дней здесь» сходится у всех городов', async ({ page }) => {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 120, marketShare: 0.5, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+    cities: ['Lymhurst', 'Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 120000, recipe: [], sellPrices: [],
+    bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+    patientSell: { days: 7, marketShare: 0.5, avgSellPrice: 3000, bestCity: { city: 'Lymhurst', avgPrice: 3000 }, avgDailyVolume: 120, daysToSellBatch: 2, netSellPrice: 2760, profitPerUnit: 1760,
+      byCity: [{ city: 'Lymhurst', avgSellPrice: 3000, avgDailyVolume: 100, profitPerUnit: 1760 }, { city: 'Martlock', avgSellPrice: 2900, avgDailyVolume: 20, profitPerUnit: 1670 }], cities: [] },
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  const rows = page.locator('#craft-result .by-city tbody tr');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('100');            // Lymhurst: 120 × 100/120 = 100 шт
+  await expect(rows.nth(1).locator('td').nth(4)).toHaveText('20'); // Martlock: 20 шт
+  const days = await rows.locator('td:nth-child(6)').allTextContents();
+  expect(new Set(days).size).toBe(1);                         // у всех городов один срок: 100/(100·0.5) = 2 дн.
+  expect(days[0]).toContain('2.0');
+});

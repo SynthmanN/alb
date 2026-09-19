@@ -249,21 +249,49 @@ function acquireDaysFor(data, resource) {
 }
 
 // Разбивка продажи через Sell Order по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
+// План продажи партии по городам: штуки распределяются пропорционально дневному обороту каждого города
+// (в Люмхёрсте 100 в день, в Мартлоке 20 — везём туда 5:1). «Дней здесь» у всех городов сходится в одну цифру —
+// она и есть срок распродажи всей партии по плану. При заданном пороге в план входят только города выше порога.
+function salePlanByCity(byCity, quantity, marketShare, minPrice) {
+  const eligible = byCity.filter((c) => c.avgDailyVolume > 0 && (minPrice === null || c.avgSellPrice >= minPrice));
+  const totalVolume = eligible.reduce((sum, c) => sum + c.avgDailyVolume, 0);
+  if (eligible.length === 0 || totalVolume <= 0) return { rows: new Map(), totalVolume: 0, days: null };
+  const rows = new Map();
+  let assigned = 0;
+  eligible.forEach((c) => {
+    const qty = Math.floor((quantity * c.avgDailyVolume) / totalVolume);
+    rows.set(c.city, { qty, days: null });
+    assigned += qty;
+  });
+  // остаток от округления — самому ликвидному городу, чтобы сумма плана совпадала с партией
+  const top = eligible.reduce((a, b) => (b.avgDailyVolume > a.avgDailyVolume ? b : a));
+  rows.get(top.city).qty += quantity - assigned;
+  eligible.forEach((c) => {
+    const r = rows.get(c.city);
+    r.days = r.qty / (c.avgDailyVolume * marketShare);
+  });
+  return { rows, totalVolume, days: quantity / (totalVolume * marketShare) };
+}
+
 function byCityHtml(p, data) {
   if (!p.byCity || p.byCity.length === 0) return '';
   const minPrice = p.threshold ? p.threshold.value : null;
+  const plan = salePlanByCity(p.byCity, data.quantity, p.marketShare ?? 1, minPrice);
   const rows = p.byCity.map((c) => {
     const dim = minPrice !== null && c.avgSellPrice < minPrice;
     const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
-    return `<tr class="${dim ? 'below-threshold' : ''}"><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td></tr>`;
+    const pr = plan.rows.get(c.city);
+    return `<tr class="${dim ? 'below-threshold' : ''}"><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
+      <td data-sort-value="${pr ? pr.qty : ''}">${pr ? fmtNum(pr.qty) : '—'}</td><td data-sort-value="${pr ? pr.days : ''}">${pr ? fmtDays(pr.days) : '—'}</td></tr>`;
   }).join('');
   return `
     <details open class="by-city">
-      <summary>Продажа через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)})` : ''}</summary>
+      <summary>План продажи через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)}, в план не входят)` : ''}</summary>
       <div class="table-scroll"><table class="craft-recipe-table">
-        <thead><tr><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th></tr></thead>
+        <thead><tr><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
+      <p class="calc-note">Партия ${fmtNum(data.quantity)} шт делится между городами пропорционально их дневному обороту; при доле рынка ${((p.marketShare ?? 1) * 100).toFixed(0)}% весь план занимает ${fmtDays(plan.days)} — так продаётся партия целиком, а не «по одному лучшему городу».</p>
     </details>`;
 }
 
