@@ -136,15 +136,18 @@ async function runCraftCalc() {
 function renderCraftResult(data) {
   // Всё, что закупается (сырьё рецепта и материалы зачарования), — в одной таблице материалов; шаги зачарования
   // отдельно описаны в блоке «Зачарование после крафта». Количество материалов зачарования масштабируется на партию.
-  const materialRowsData = data.recipe.map((r) => ({ ...r, needed: r.count * data.quantity, enchStep: null }));
+  // Количество к закупке — уже с учётом возврата (RRR): остаток после крафта не нужен; невозвращаемое (герб, жетоны, базовый плащ) — по рецепту.
+  const materialRowsData = data.recipe.map((r) => ({ ...r, needed: r.neededToBuy ?? r.count * data.quantity, byRecipe: r.count * data.quantity, enchStep: null }));
   if (data.enchantAfterCraft) {
     for (const st of data.enchantAfterCraft.steps) {
       materialRowsData.push({
         resourceName: st.materialName, resource: st.materialId, enchanted: false, enchStep: st.level,
-        needed: st.count * data.quantity, cheapestCity: st.cheapestCity, cheapestPrice: st.cheapestPrice, cityPrices: st.cityPrices,
+        needed: st.count * data.quantity, byRecipe: st.count * data.quantity, returnable: false,
+        cheapestCity: st.cheapestCity, cheapestPrice: st.cheapestPrice, cityPrices: st.cityPrices,
       });
     }
   }
+  const materialsTotal = materialRowsData.reduce((sum, r) => sum + (r.cheapestPrice === null ? 0 : r.cheapestPrice * r.needed), 0);
   const recipeRows = materialRowsData.map((r) => {
     const needed = r.needed;
     const baseName = r.resourceName || r.resource;
@@ -154,8 +157,8 @@ function renderCraftResult(data) {
     const subtotal = missing ? null : r.cheapestPrice * needed;
     return `
       <tr>
-        <td>${name}</td>
-        <td>${needed.toLocaleString('ru-RU')}</td>
+        <td>${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
+        <td>${needed.toLocaleString('ru-RU')}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU')}</small>` : ''}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
         <td data-sort-value="${acquireDaysFor(data, r.resource) ?? ''}">${acquireDaysFor(data, r.resource) !== null ? fmtDays(acquireDaysFor(data, r.resource)) : '—'}${data.acquire && data.acquire.bottleneckResource === r.resource ? ' 🐢' : ''}</td>
@@ -179,6 +182,7 @@ function renderCraftResult(data) {
     <div class="table-scroll"><table class="craft-recipe-table">
       <thead><tr><th>Материал</th><th>Нужно всего</th><th>Где дешевле</th><th>Сумма</th><th>Дней на закупку</th></tr></thead>
       <tbody>${recipeRows}</tbody>
+      <tfoot><tr class="materials-total"><td colspan="3">Итого материалы к закупке (с учётом возврата)</td><td>${fmtNum(materialsTotal)}</td><td></td></tr></tfoot>
     </table></div>
     <details style="margin-top:10px">
       <summary style="cursor:pointer; font-size:13px; color:#9aa0aa">Цены готового предмета по городам</summary>

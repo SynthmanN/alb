@@ -337,3 +337,22 @@ describe('сканер возможностей: минимальная абсо
     expect(filtered).toContain('T4_MAIN_SWORD');
   });
 });
+
+describe('калькулятор крафта: возврат ресурсов при закупке', () => {
+  const get = (item, extra = '') => request(app).get(`/api/craft-calc?item=${item}&quantity=100&rrr=city_bonus${extra}`);
+  it('количество к закупке уменьшено на возврат у обычных материалов и не уменьшено у герба/жетона/плаща', async () => {
+    const d = (await get('T4_CAPEITEM_AVALON')).body;
+    const rrr = d.rrrPreset.rrr;
+    expect(rrr).toBeGreaterThan(0.3);
+    for (const r of d.recipe) expect(r.neededToBuy).toBe(r.count * 100);             // у охотничьего плаща возвращаемых материалов нет
+    expect(d.recipe.every((r) => r.returnable === false)).toBe(true);
+    const sword = (await get('T4_MAIN_SWORD')).body;
+    for (const r of sword.recipe) expect(r.neededToBuy).toBe(Math.ceil(r.count * 100 * (1 - rrr)));
+    expect(sword.recipe.every((r) => r.returnable === true)).toBe(true);
+  });
+  it('себестоимость с возвратом = сумма цены × количество × (1 − RRR) по возвращаемым и × 1 по невозвращаемым', async () => {
+    const d = (await get('T4_MAIN_SWORD')).body;
+    const expected = d.recipe.reduce((sum, r) => sum + r.cheapestPrice * r.count * (1 - d.rrrPreset.rrr), 0);
+    expect(d.effectiveCostPerUnit).toBeCloseTo(expected, 6);
+  });
+});

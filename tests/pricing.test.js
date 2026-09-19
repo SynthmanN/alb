@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  computeAcquireTime, requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  returnFactor, computeAcquireTime, requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -542,5 +542,33 @@ describe('время закупки сырья', () => {
     const t = computeAcquireTime({ rows: [{ resource: 'A', queryId: 'A', needed: 110, city: 'Bridgewatch' }, { resource: 'Z', queryId: 'Z', needed: 1, city: 'Martlock' }], history, days: 7 });
     expect(t.byResource[0].daysToAcquire).toBeCloseTo(1, 6);   // (10 + 100) в день
     expect(t.byResource[1].daysToAcquire).toBeNull();
+  });
+});
+
+describe('возврат ресурсов: только на возвращаемые материалы', () => {
+  it('returnFactor: 1 − RRR для обычного материала, 1 для помеченного noReturn', () => {
+    expect(returnFactor({ resource: 'T4_METALBAR', count: 16 }, 0.367)).toBeCloseTo(0.633, 6);
+    expect(returnFactor({ resource: 'T4_CAPEITEM_AVALON_BP', count: 1, noReturn: true }, 0.367)).toBe(1);
+  });
+  it('в рецептах артефактов, гербов, жетонов и базового плаща есть noReturn; в обычных рецептах меча/брони — нет', () => {
+    expect(RECIPES.T4_CAPEITEM_AVALON.resources.find((r) => r.resource === 'T4_CAPE').noReturn).toBe(true);
+    expect(RECIPES.T4_CAPEITEM_AVALON.resources.find((r) => r.resource === 'QUESTITEM_TOKEN_AVALON').noReturn).toBe(true);
+    expect(RECIPES.T4_MAIN_SWORD.resources.some((r) => r.noReturn)).toBe(false);
+    expect(RECIPES.T4_HEAD_PLATE_SET1.resources.some((r) => r.noReturn)).toBe(false);
+  });
+  const itemId = 'T4_CAPEITEM_AVALON';
+  const recipe = RECIPES[itemId];
+  const materialHistory = recipe.resources.map((r) => ({ item_id: r.resource, location: 'Martlock', data: [{ item_count: 700, avg_price: 1000 }] }));
+  const finishedHistory = [{ item_id: itemId, location: 'Martlock', data: [{ item_count: 700, avg_price: 100000 }] }];
+  const base = { itemId, enchant: 0, quality: 1, quantity: 100, days: 7, preset: RRR_PRESETS[0], taxRate: 0, costCeiling: null, sellLow: null, sellHigh: null, queryCities: ['Martlock'] };
+  it('план партии: возврат уменьшает закупку и цену только возвращаемых материалов', () => {
+    const rrr = 0.5;
+    const plan = computeBulkPlan({ ...base, rrr }, materialHistory, finishedHistory);
+    for (const r of plan.recipe) {
+      const src = recipe.resources.find((x) => x.resource === r.resource);
+      expect(r.neededAfterRrr).toBe(Math.ceil(src.count * 100 * (src.noReturn ? 1 : 0.5)));
+    }
+    const expected = recipe.resources.reduce((sum, r) => sum + r.count * 1000 * (r.noReturn ? 1 : 0.5), 0);
+    expect(plan.effectiveCostPerUnit).toBeCloseTo(expected, 6);
   });
 });

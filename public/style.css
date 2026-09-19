@@ -284,3 +284,7 @@ tr.top-find td:first-child { box-shadow: inset 3px 0 0 #7ee787; }
 .calc-panel { max-width: 100%; }
 .fit-slot .craft-selected img { width: 40px; height: 40px; }
 #fit-result .item-icon-sm { width: 32px; height: 32px; }
+
+/* Материалы: невозвращаемые и итог закупки */
+.no-return { font-size: 10px; color: #cc8844; border: 1px solid #6b4a25; border-radius: 3px; padding: 0 4px; margin-left: 6px; white-space: nowrap; }
+tr.materials-total td { font-weight: 700; border-top: 2px solid #333740; }

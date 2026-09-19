@@ -61,6 +61,13 @@ function requiresEnchantAfterCraft(itemId) {
   return FORCED_ENCHANT_AFTER_CRAFT_SLOTS.has(ITEM_SLOT_BY_ID.get(itemId));
 }
 
+// Возврат ресурсов (RRR) распространяется не на все материалы рецепта: артефакты, гербы, жетоны фракций и базовый
+// плащ (maxreturnamount="0" в items.xml, помечены noReturn в recipes.json) не возвращаются. Коэффициент, на который
+// умножается количество/стоимость материала: 1 — для невозвращаемого, (1 − RRR) — для остального.
+function returnFactor(resource, rrr) {
+  return resource.noReturn ? 1 : 1 - rrr;
+}
+
 function maxEnchantForGear(tier) {
   return tier >= 4 ? 4 : 0; // T2/T3 гир никогда не зачаровывается — та же логика, что и на фронте
 }
@@ -474,9 +481,9 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
     for (const r of recipe.resources) {
       const price = cheapestByItem[effectiveRecipeResourceId(r.resource, p.recipeEnchant)];
       if (!price) { complete = false; break; }
-      materials += price * r.count;
+      materials += price * r.count * returnFactor(r, rrr);
     }
-    let cost = complete ? materials * (1 - rrr) + (recipe.silver || 0) : null;
+    let cost = complete ? materials + (recipe.silver || 0) : null;
     if (cost !== null && p.stepIds.length) {
       for (const id of p.stepIds) {
         const price = cheapestByItem[id];
@@ -568,7 +575,8 @@ app.get('/api/craft-calc', async (req, res) => {
       finishedByCity[rec.item_id][rec.city] = rec;
     }
 
-    let materialCostPerUnit = 0;
+    let materialCostPerUnit = 0;       // по номиналу рецепта (без возврата)
+    let materialCostAfterReturn = 0;   // с возвратом только на возвращаемые материалы
     let hasAllPrices = true;
     const recipeBreakdown = recipe.resources.map((r) => {
       const queryId = effectiveRecipeResourceId(r.resource, recipeEnchant);
@@ -582,9 +590,15 @@ app.get('/api/craft-calc', async (req, res) => {
         }
       }
       if (!cheapest) hasAllPrices = false;
-      else materialCostPerUnit += cheapest.price * r.count;
+      else {
+        materialCostPerUnit += cheapest.price * r.count;
+        materialCostAfterReturn += cheapest.price * r.count * returnFactor(r, rrr);
+      }
 
       return {
+        returnable: !r.noReturn,
+        // Сколько реально закупать: после возврата (RRR) остаток от крафта не нужен, но невозвращаемое берётся по номиналу
+        neededToBuy: Math.ceil(r.count * quantity * returnFactor(r, rrr)),
         resource: r.resource,
         resourceName: resolveItemName(r.resource),
         queryId,
@@ -597,8 +611,8 @@ app.get('/api/craft-calc', async (req, res) => {
       };
     });
 
-    const craftCostPerUnit = hasAllPrices ? materialCostPerUnit * (1 - rrr) + (recipe.silver || 0) : null;
-    let effectiveCostPerUnit = materialCostPerUnit * (1 - rrr) + (recipe.silver || 0);
+    const craftCostPerUnit = hasAllPrices ? materialCostAfterReturn + (recipe.silver || 0) : null;
+    let effectiveCostPerUnit = materialCostAfterReturn + (recipe.silver || 0);
 
     let enchantAfterCraft = null;
     let baseBuyByCity = {};
@@ -702,7 +716,7 @@ app.get('/api/craft-calc', async (req, res) => {
         rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city });
       } else {
         recipeBreakdown.forEach((r) => rows.push({
-          resource: r.resource, resourceName: r.resourceName, queryId: r.queryId, needed: Math.ceil(r.count * quantity * (1 - rrr)), city: r.cheapestCity,
+          resource: r.resource, resourceName: r.resourceName, queryId: r.queryId, needed: r.neededToBuy, city: r.cheapestCity,
         }));
       }
       if (enchantAfterCraft) {
@@ -730,7 +744,7 @@ app.get('/api/craft-calc', async (req, res) => {
         }
         return {
           resource: r.resource, resourceName: resolveItemName(r.resource), priceByCity,
-          needed: Math.ceil(r.count * quantity * (1 - rrr)),
+          needed: Math.ceil(r.count * quantity * returnFactor(r, rrr)),
         };
       });
       if (enchantAfterCraft) {
@@ -1046,12 +1060,12 @@ app.get('/api/craft-opportunities', async (req, res) => {
           }
         }
         if (cheapest === null) { complete = false; break; }
-        cost += cheapest.price * r.count;
+        cost += cheapest.price * r.count * returnFactor(r, rrr);
         quoteDates.push(cheapest.date);
       }
       if (!complete) continue;
 
-      const effectiveCost = cost * (1 - rrr) + (recipe.silver || 0);
+      const effectiveCost = cost + (recipe.silver || 0);
       for (const quality of ALL_QUALITIES) {
         const sellCityData = finishedByQuality[itemId]?.[quality] || {};
         let bestSell = null;
@@ -1451,9 +1465,9 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
       if (!source || st.avgPrice < source.avgPrice) source = { city, ...st };
     }
     const neededRaw = r.count * quantity;
-    const neededAfterRrr = Math.ceil(neededRaw * (1 - rrr));
+    const neededAfterRrr = Math.ceil(neededRaw * returnFactor(r, rrr));
     if (!source) hasAllPrices = false;
-    else effectiveCostPerUnit += r.count * (1 - rrr) * source.avgPrice;
+    else effectiveCostPerUnit += r.count * returnFactor(r, rrr) * source.avgPrice;
     return {
       resource: r.resource,
       resourceName: resolveItemName(r.resource),
@@ -1960,10 +1974,10 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
       for (const r of recipe.resources) {
         const price = cheapest[effectiveRecipeResourceId(r.resource, matEnchant)];
         if (!price) { complete = false; break; }
-        materials += price * r.count;
+        materials += price * r.count * returnFactor(r, rrr);
       }
       if (!complete) continue;
-      let cost = materials * (1 - rrr) + (recipe.silver || 0);
+      let cost = materials + (recipe.silver || 0);
       if (c.after) {
         for (let lvl = 1; lvl <= c.enchant && cost !== null; lvl++) {
           const price = cheapest[enchantMaterialId(c.item.tier, lvl)];
@@ -2271,6 +2285,7 @@ module.exports = {
   totalVolume,
   cityStats,
   computeBulkPlan,
+  returnFactor,
   requiresEnchantAfterCraft,
   cityPriceList,
   marginSellStats,

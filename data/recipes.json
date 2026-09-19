@@ -102,7 +102,8 @@
    },
    {
     "resource": "T4_ARTEFACT_OFF_SHIELD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -119,7 +120,8 @@
    },
    {
     "resource": "T5_ARTEFACT_OFF_SHIELD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -136,7 +138,8 @@
    },
    {
     "resource": "T6_ARTEFACT_OFF_SHIELD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -153,7 +156,8 @@
    },
    {
     "resource": "T7_ARTEFACT_OFF_SHIELD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -170,7 +174,8 @@
    },
    {
     "resource": "T8_ARTEFACT_OFF_SHIELD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -278,7 +283,8 @@
    },
    {
     "resource": "T4_ARTEFACT_OFF_TOME_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -295,7 +301,8 @@
    },
    {
     "resource": "T5_ARTEFACT_OFF_TOME_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -312,7 +319,8 @@
    },
    {
     "resource": "T6_ARTEFACT_OFF_TOME_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -329,7 +337,8 @@
    },
    {
     "resource": "T7_ARTEFACT_OFF_TOME_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -346,7 +355,8 @@
    },
    {
     "resource": "T8_ARTEFACT_OFF_TOME_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -441,7 +451,8 @@
    },
    {
     "resource": "T4_ARTEFACT_OFF_TORCH_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -458,7 +469,8 @@
    },
    {
     "resource": "T5_ARTEFACT_OFF_TORCH_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -475,7 +487,8 @@
    },
    {
     "resource": "T6_ARTEFACT_OFF_TORCH_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -492,7 +505,8 @@
    },
    {
     "resource": "T7_ARTEFACT_OFF_TORCH_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -509,7 +523,8 @@
    },
    {
     "resource": "T8_ARTEFACT_OFF_TORCH_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -609,15 +624,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_FW_BRIDGEWATCH_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -626,15 +644,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_FW_BRIDGEWATCH_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -643,15 +664,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_FW_BRIDGEWATCH_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -660,15 +684,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_FW_BRIDGEWATCH_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -677,15 +704,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_FW_BRIDGEWATCH_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -694,15 +724,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_FW_FORTSTERLING_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -711,15 +744,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_FW_FORTSTERLING_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -728,15 +764,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_FW_FORTSTERLING_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -745,15 +784,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_FW_FORTSTERLING_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -762,15 +804,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_FW_FORTSTERLING_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -779,15 +824,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_FW_LYMHURST_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -796,15 +844,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_FW_LYMHURST_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -813,15 +864,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_FW_LYMHURST_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -830,15 +884,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_FW_LYMHURST_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -847,15 +904,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_FW_LYMHURST_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -864,15 +924,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_FW_MARTLOCK_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -881,15 +944,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_FW_MARTLOCK_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -898,15 +964,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_FW_MARTLOCK_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -915,15 +984,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_FW_MARTLOCK_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -932,15 +1004,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_FW_MARTLOCK_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -949,15 +1024,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_FW_THETFORD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -966,15 +1044,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_FW_THETFORD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -983,15 +1064,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_FW_THETFORD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1000,15 +1084,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_FW_THETFORD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1017,15 +1104,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_FW_THETFORD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1034,15 +1124,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_FW_CAERLEON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1051,15 +1144,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_FW_CAERLEON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1068,15 +1164,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_FW_CAERLEON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1085,15 +1184,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_FW_CAERLEON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1102,15 +1204,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_FW_CAERLEON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1119,15 +1224,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_FW_BRECILIEN_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_MISTS",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1136,15 +1244,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_FW_BRECILIEN_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_MISTS",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1153,15 +1264,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_FW_BRECILIEN_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_MISTS",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1170,15 +1284,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_FW_BRECILIEN_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_MISTS",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -1187,15 +1304,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_FW_BRECILIEN_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_MISTS",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -2738,7 +2858,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_BOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -2751,7 +2872,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_BOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -2764,7 +2886,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_BOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -2777,7 +2900,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_BOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -2790,7 +2914,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_BOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3015,7 +3140,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3032,7 +3158,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3049,7 +3176,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3066,7 +3194,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3083,7 +3212,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_DUALCROSSBOW_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3308,7 +3438,8 @@
    },
    {
     "resource": "T4_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3325,7 +3456,8 @@
    },
    {
     "resource": "T5_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3342,7 +3474,8 @@
    },
    {
     "resource": "T6_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3359,7 +3492,8 @@
    },
    {
     "resource": "T7_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3376,7 +3510,8 @@
    },
    {
     "resource": "T8_ARTEFACT_MAIN_CURSEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3614,7 +3749,8 @@
    },
    {
     "resource": "T4_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3631,7 +3767,8 @@
    },
    {
     "resource": "T5_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3648,7 +3785,8 @@
    },
    {
     "resource": "T6_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3665,7 +3803,8 @@
    },
    {
     "resource": "T7_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3682,7 +3821,8 @@
    },
    {
     "resource": "T8_ARTEFACT_MAIN_FIRESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3907,7 +4047,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3924,7 +4065,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3941,7 +4083,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3958,7 +4101,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -3975,7 +4119,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_FROSTSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4200,7 +4345,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4217,7 +4363,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4234,7 +4381,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4251,7 +4399,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4268,7 +4417,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_ARCANESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4493,7 +4643,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4510,7 +4661,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4527,7 +4679,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4544,7 +4697,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4561,7 +4715,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_HOLYSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4786,7 +4941,8 @@
    },
    {
     "resource": "T4_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4803,7 +4959,8 @@
    },
    {
     "resource": "T5_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4820,7 +4977,8 @@
    },
    {
     "resource": "T6_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4837,7 +4995,8 @@
    },
    {
     "resource": "T7_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -4854,7 +5013,8 @@
    },
    {
     "resource": "T8_ARTEFACT_MAIN_NATURESTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5079,7 +5239,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5096,7 +5257,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5113,7 +5275,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5130,7 +5293,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5147,7 +5311,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_DAGGERPAIR_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5372,7 +5537,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_GLAIVE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5389,7 +5555,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_GLAIVE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5406,7 +5573,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_GLAIVE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5423,7 +5591,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_GLAIVE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5440,7 +5609,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_GLAIVE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5665,7 +5835,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_SCYTHE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5682,7 +5853,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_SCYTHE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5699,7 +5871,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_SCYTHE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5716,7 +5889,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_SCYTHE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5733,7 +5907,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_SCYTHE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5971,7 +6146,8 @@
    },
    {
     "resource": "T4_ARTEFACT_MAIN_SWORD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -5988,7 +6164,8 @@
    },
    {
     "resource": "T5_ARTEFACT_MAIN_SWORD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6005,7 +6182,8 @@
    },
    {
     "resource": "T6_ARTEFACT_MAIN_SWORD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6022,7 +6200,8 @@
    },
    {
     "resource": "T7_ARTEFACT_MAIN_SWORD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6039,7 +6218,8 @@
    },
    {
     "resource": "T8_ARTEFACT_MAIN_SWORD_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6264,7 +6444,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6281,7 +6462,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6298,7 +6480,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6315,7 +6498,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6332,7 +6516,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_DOUBLEBLADEDSTAFF_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6533,7 +6718,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_HAMMER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6550,7 +6736,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_HAMMER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6567,7 +6754,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_HAMMER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6584,7 +6772,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_HAMMER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6601,7 +6790,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_HAMMER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6826,7 +7016,8 @@
    },
    {
     "resource": "T4_ARTEFACT_MAIN_MACE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6843,7 +7034,8 @@
    },
    {
     "resource": "T5_ARTEFACT_MAIN_MACE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6860,7 +7052,8 @@
    },
    {
     "resource": "T6_ARTEFACT_MAIN_MACE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6877,7 +7070,8 @@
    },
    {
     "resource": "T7_ARTEFACT_MAIN_MACE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -6894,7 +7088,8 @@
    },
    {
     "resource": "T8_ARTEFACT_MAIN_MACE_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7119,7 +7314,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_KNUCKLES_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7136,7 +7332,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_KNUCKLES_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7153,7 +7350,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_KNUCKLES_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7170,7 +7368,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_KNUCKLES_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7187,7 +7386,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_KNUCKLES_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7204,7 +7404,8 @@
    },
    {
     "resource": "T1_ALCHEMY_COMMON",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7221,7 +7422,8 @@
    },
    {
     "resource": "T3_ALCHEMY_RARE_PANTHER",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7238,7 +7440,8 @@
    },
    {
     "resource": "T5_ALCHEMY_RARE_PANTHER",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7255,7 +7458,8 @@
    },
    {
     "resource": "T5_ALCHEMY_RARE_PANTHER",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7272,7 +7476,8 @@
    },
    {
     "resource": "T7_ALCHEMY_RARE_PANTHER",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7289,7 +7494,8 @@
    },
    {
     "resource": "T7_ALCHEMY_RARE_PANTHER",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7306,7 +7512,8 @@
    },
    {
     "resource": "T3_ALCHEMY_RARE_ENT",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7323,7 +7530,8 @@
    },
    {
     "resource": "T5_ALCHEMY_RARE_ENT",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7340,7 +7548,8 @@
    },
    {
     "resource": "T5_ALCHEMY_RARE_ENT",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7357,7 +7566,8 @@
    },
    {
     "resource": "T7_ALCHEMY_RARE_ENT",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7374,7 +7584,8 @@
    },
    {
     "resource": "T7_ALCHEMY_RARE_ENT",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7391,7 +7602,8 @@
    },
    {
     "resource": "T3_ALCHEMY_RARE_DIREBEAR",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7408,7 +7620,8 @@
    },
    {
     "resource": "T5_ALCHEMY_RARE_DIREBEAR",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7425,7 +7638,8 @@
    },
    {
     "resource": "T5_ALCHEMY_RARE_DIREBEAR",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7442,7 +7656,8 @@
    },
    {
     "resource": "T7_ALCHEMY_RARE_DIREBEAR",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7459,7 +7674,8 @@
    },
    {
     "resource": "T7_ALCHEMY_RARE_DIREBEAR",
-    "count": 2
+    "count": 2,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7476,7 +7692,8 @@
    },
    {
     "resource": "T4_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7493,7 +7710,8 @@
    },
    {
     "resource": "T5_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7510,7 +7728,8 @@
    },
    {
     "resource": "T6_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7527,7 +7746,8 @@
    },
    {
     "resource": "T7_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7544,7 +7764,8 @@
    },
    {
     "resource": "T8_ARTEFACT_2H_SHAPESHIFTER_CRYSTAL",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7553,15 +7774,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_AVALON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_AVALON",
-    "count": 15
+    "count": 15,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7570,15 +7794,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_AVALON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_AVALON",
-    "count": 15
+    "count": 15,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7587,15 +7814,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_AVALON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_AVALON",
-    "count": 45
+    "count": 45,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7604,15 +7834,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_AVALON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_AVALON",
-    "count": 75
+    "count": 75,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7621,15 +7854,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_AVALON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "QUESTITEM_TOKEN_AVALON",
-    "count": 150
+    "count": 150,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7638,15 +7874,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_DEMON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7655,15 +7894,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_DEMON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7672,15 +7914,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_DEMON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7689,15 +7934,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_DEMON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7706,15 +7954,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_DEMON_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_STEPPE_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7723,15 +7974,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_HERETIC_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7740,15 +7994,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_HERETIC_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7757,15 +8014,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_HERETIC_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7774,15 +8034,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_HERETIC_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7791,15 +8054,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_HERETIC_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_FOREST_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7808,15 +8074,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_KEEPER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7825,15 +8094,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_KEEPER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7842,15 +8114,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_KEEPER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7859,15 +8134,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_KEEPER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7876,15 +8154,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_KEEPER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_HIGHLAND_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7893,15 +8174,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_MORGANA_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7910,15 +8194,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_MORGANA_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7927,15 +8214,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_MORGANA_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7944,15 +8234,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_MORGANA_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7961,15 +8254,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_MORGANA_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_SWAMP_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7978,15 +8274,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_SMUGGLER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -7995,15 +8294,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_SMUGGLER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8012,15 +8314,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_SMUGGLER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8029,15 +8334,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_SMUGGLER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8046,15 +8354,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_SMUGGLER_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_CAERLEON_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8063,15 +8374,18 @@
   "resources": [
    {
     "resource": "T4_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T4_CAPEITEM_UNDEAD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8080,15 +8394,18 @@
   "resources": [
    {
     "resource": "T5_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T5_CAPEITEM_UNDEAD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8097,15 +8414,18 @@
   "resources": [
    {
     "resource": "T6_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T6_CAPEITEM_UNDEAD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 3
+    "count": 3,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8114,15 +8434,18 @@
   "resources": [
    {
     "resource": "T7_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T7_CAPEITEM_UNDEAD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 5
+    "count": 5,
+    "noReturn": true
    }
   ],
   "silver": 0
@@ -8131,15 +8454,18 @@
   "resources": [
    {
     "resource": "T8_CAPE",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T8_CAPEITEM_UNDEAD_BP",
-    "count": 1
+    "count": 1,
+    "noReturn": true
    },
    {
     "resource": "T1_FACTION_MOUNTAIN_TOKEN_1",
-    "count": 10
+    "count": 10,
+    "noReturn": true
    }
   ],
   "silver": 0

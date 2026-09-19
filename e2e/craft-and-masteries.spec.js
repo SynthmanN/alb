@@ -313,3 +313,24 @@ test('план продажи по городам: партия делится �
   expect(new Set(days).size).toBe(1);                         // у всех городов один срок: 100/(100·0.5) = 2 дн.
   expect(days[0]).toContain('2.0');
 });
+
+test('материалы: количество к закупке с учётом возврата, «без возврата» у герба и итоговая стоимость сырья', async ({ page }) => {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_CAPEITEM_AVALON', enchant: 0, quality: 1, quantity: 100, marketShare: 0.25, rrrPreset: { id: 'city_bonus', label: 'Город с бонусом', bonus: 58, rrr: 0.367 },
+    cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 700, totalCost: 70000,
+    recipe: [
+      { resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, neededToBuy: 1013, cheapestCity: 'Martlock', cheapestPrice: 100, cityPrices: [] },
+      { resource: 'T4_CAPEITEM_AVALON_BP', resourceName: 'Герб Авалона', queryId: 'T4_CAPEITEM_AVALON_BP', enchanted: false, count: 1, returnable: false, neededToBuy: 100, cheapestCity: 'Martlock', cheapestPrice: 2000, cityPrices: [] },
+    ],
+    sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null, enchantAfterCraft: null, teleport: null,
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('авалонский плащ');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  const table = page.locator('#craft-result .craft-recipe-table').first();
+  await expect(table.locator('tbody tr').first()).toContainText('1 013');            // к закупке после возврата
+  await expect(table.locator('tbody tr').first()).toContainText('по рецепту 1 600'); // 16 × 100
+  await expect(table.locator('tbody tr').nth(1)).toContainText('без возврата');
+  await expect(table.locator('tfoot')).toContainText('301 300');                    // 1013·100 + 100·2000
+});
