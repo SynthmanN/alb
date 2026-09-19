@@ -198,5 +198,16 @@ describe('GET /api/unified-scan', () => {
     expect(withBonus.cost).toBeCloseTo(16 * 100 * (1 - 0.18 / 1.18) + 8 * 100 * (1 - 0.58 / 1.58), 0);
     expect(withBonus.cost).toBeLessThan(without.cost);
   });
+
+  it('РЕГРЕССИЯ: убыточный город с огромным оборотом не раздувает профит и не топит прибыльный (профит считается по городам)', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 10, city: 'Martlock' });          // прибыльный: 4000·0.895 − 2400 = 1180/шт
+    seedSales('T4_MAIN_SWORD', { avg: 2000, perDay: 5000, city: 'Thetford' });        // убыточный, но с огромным оборотом
+    const row = (await scan({ mode: 'patient', cities: 'Martlock,Thetford', quantity: 100 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    const profitPerUnit = 4000 * (1 - 0.08 - 0.025) - 2400;
+    expect(row.profitPerUnit).toBeCloseTo(profitPerUnit, 6);
+    expect(row.sellCities).toEqual(['Martlock']);
+    expect(row.dailyVolume).toBeCloseTo(60 / 7, 6);                                   // оборот только прибыльного города
+    expect(row.dailyProfit).toBeCloseTo(profitPerUnit * (60 / 7) * 1, 4);             // и профит в день — только с него
+  });
 });
 

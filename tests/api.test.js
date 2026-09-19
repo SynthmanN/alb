@@ -363,7 +363,8 @@ describe('калькулятор крафта: возврат ресурсов �
   it('себестоимость с возвратом = сумма цены × количество × (1 − RRR) по возвращаемым и × 1 по невозвращаемым', async () => {
     const d = (await get('T4_MAIN_SWORD')).body;
     const expected = d.recipe.reduce((sum, r) => sum + r.cheapestPrice * r.count * (1 - r.rrr), 0);
-    expect(d.effectiveCostPerUnit).toBeCloseTo(expected, 6);
+    // в тестовом рынке готовый меч дешевле материалов — для формулы берём именно стоимость крафта из блока «купить или скрафтить»
+    expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo(expected, 6);
   });
 });
 
@@ -381,8 +382,8 @@ describe('калькулятор крафта: возврат по городу 
     expect(byRes.T4_METALBAR.rrr).toBeCloseTo(1 - 1 / 1.58, 9);
     const both = (await get('&royalBonus=true&focus=true')).body;
     expect(both.recipe[0].rrr).toBeCloseTo(1 - 1 / 2.17, 9);
-    expect(both.effectiveCostPerUnit).toBeLessThan(royal.effectiveCostPerUnit);
-    expect(royal.effectiveCostPerUnit).toBeLessThan(none.effectiveCostPerUnit);
+    expect(both.baseChoice.baseCraftCostPerUnit).toBeLessThan(royal.baseChoice.baseCraftCostPerUnit);
+    expect(royal.baseChoice.baseCraftCostPerUnit).toBeLessThan(none.baseChoice.baseCraftCostPerUnit);
     expect(both.rrrPreset.label).toContain('Фокус: да');
   });
   it('refining-calc: возврат считается в каждом городе отдельно — спец-бонус только в городе своего ресурса', async () => {
@@ -392,6 +393,30 @@ describe('калькулятор крафта: возврат по городу 
     expect(rate('Thetford')).toBeCloseTo(1 - 1 / 1.58, 9);       // Thetford — город руды
     expect(rate('Martlock')).toBeCloseTo(1 - 1 / 1.18, 9);       // в Martlock руда получает только базу
     expect(d.rrrLabel).toContain('бонус города: да');
+  });
+});
+
+describe('калькулятор крафта: галочка «зачаровать после крафта» на предмете без зачарования', () => {
+  it('на .0-предмете галочка ничего не меняет; выбор «купить готовый или скрафтить» есть всегда (baseChoice)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
+    const plain = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=100&enchant=0')).body;
+    const flagged = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=100&enchant=0&enchantAfterCraft=true')).body;
+    expect(flagged.effectiveCostPerUnit).toBe(plain.effectiveCostPerUnit);
+    expect(flagged.profitPerUnit).toBe(plain.profitPerUnit);
+    expect(plain.enchantAfterCraft).toBeNull();
+    expect(flagged.enchantAfterCraft).toBeNull();
+    expect(plain.baseChoice).toMatchObject({ targetLevel: 0 });
+    expect(plain.baseChoice.steps).toEqual([]);
+    // в тестовом рынке готовый меч (≈430) дешевле крафта (≈6500) — берём готовый
+    expect(plain.baseChoice.baseSource).toBe('buy');
+    expect(plain.effectiveCostPerUnit).toBeCloseTo(plain.baseChoice.baseBuy.price, 6);
+    expect(plain.hasAllMaterialPrices).toBe(true);
+  });
+  it('строка текущего тира в сравнении по тирам совпадает с итогом калькулятора (та же стоимость базы)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&enchant=0')).body;
+    const cur = d.tierComparison.find((t) => t.isCurrent);
+    expect(cur.cost).toBeCloseTo(d.effectiveCostPerUnit, 6);
   });
 });
 

@@ -208,6 +208,7 @@ function renderCraftResult(data) {
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
     ${tierComparisonHtml(data)}
+    ${baseChoiceHtml(data)}
     ${enchantAfterHtml(data)}
     ${patientSellHtml(data)}
     ${teleportHtml(data)}
@@ -477,6 +478,20 @@ function thresholdHtml(p) {
 }
 
 // «Зачаровать после крафта»: откуда берём базу .0 и сколько стоят руны/души/реликвии по шагам.
+// Обычный предмет .0: что выгоднее — скрафтить самому или купить готовый (то же сравнение, что в «зачаровать после крафта»,
+// но для предмета без зачарования — там оно тоже должно быть, иначе галочка меняла бы расчёт .0-предмета).
+function baseChoiceHtml(data) {
+  const b = data.baseChoice;
+  if (!b) return '';
+  const buy = b.baseBuy ? `${b.baseBuy.city}: ${fmtNum(b.baseBuy.price)}` : 'нет предложений';
+  return `
+    <div class="craft-summary base-choice">
+      <div class="craft-summary-row"><strong>Базовый предмет (.0): выгоднее ${b.baseSource === 'buy' ? 'купить готовый' : 'скрафтить'}</strong><span>${fmtNum(b.baseCostPerUnit)} / шт</span></div>
+      <div class="craft-summary-row"><span>Себестоимость крафта / шт</span><span>${b.baseCraftCostPerUnit !== null ? fmtNum(b.baseCraftCostPerUnit) : 'нет цен на материалы'}</span></div>
+      <div class="craft-summary-row"><span>Цена покупки готового (Sell Order)</span><span>${buy}</span></div>
+    </div>`;
+}
+
 function enchantAfterHtml(data) {
   const e = data.enchantAfterCraft;
   if (!e) return '';

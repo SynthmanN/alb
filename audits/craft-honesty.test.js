@@ -39,9 +39,11 @@ function marketPrices(market, ids, qualities) {
     for (const city of CITIES) {
       for (const quality of qualities) {
         const sells = market.finished[id]?.[city];
+        // Готовый гир без записи в market.finished в этом городе не продаётся вовсе (иначе калькулятор «купил бы» его по цене материала).
+        const noOffer = !sells && RECIPES[id];
         records.push({
           item_id: id, city, quality,
-          sell_price_min: sells ? sells.price * 1.05 : market.materialPrice, sell_price_min_date: NOW(),
+          sell_price_min: sells ? sells.price * 1.05 : noOffer ? 0 : market.materialPrice, sell_price_min_date: NOW(),
           buy_price_max: sells ? sells.price * 0.9 : 0, buy_price_max_date: NOW(),
         });
       }

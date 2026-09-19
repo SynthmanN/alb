@@ -562,7 +562,7 @@ function effectiveRecipeResourceId(resourceId, enchant) {
 }
 
 // Себестоимость (крафт) и лучшая мгновенная цена продажи для каждого тира семейства предмета.
-async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, days = 7, marketShare = 1 }) {
+async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, quality: calcQuality = 1, days = 7, marketShare = 1 }) {
   const family = familyIdOf(itemId);
   const items = ITEMS.filter((i) => GEAR_IDS.has(i.id) && familyIdOf(i.id) === family && RECIPES[i.id]).sort((a, b) => a.tier - b.tier);
   if (items.length < 2) return null;
@@ -588,7 +588,7 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
   const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
   const [materialData, finishedData, history] = await Promise.all([
     fetchPricesBatched([...materialIds], 1),
-    fetchGearPrices(finishedIds, ALL_QUALITIES),
+    fetchGearPrices([...new Set([...finishedIds, ...plan.filter((p) => p.recipeEnchant === 0).map((p) => p.it.id)])], ALL_QUALITIES),   // + готовая база .0 для «купить или скрафтить»
     // История — для терпеливой продажи по каждому тиру (без неё «мгновенный» профит в разы занижен)
     fetchHistoryBatched(finishedIds, days * 24, ALL_QUALITIES.join(','), locations).catch(() => []),
   ]);
@@ -617,6 +617,16 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
       materials += best.price * r.count * best.factor;
     }
     let cost = complete ? materials + (recipe.silver || 0) : null;
+    // База .0: как и в основном расчёте — если готовый предмет выбранного качества дешевле крафта, берём его (иначе строка текущего
+    // тира расходилась бы с итогом калькулятора).
+    if (p.recipeEnchant === 0) {
+      let baseBuy = null;
+      for (const rec of finishedData) {
+        if (rec.item_id !== p.it.id || rec.quality !== calcQuality || !rec.sell_price_min || !allowed.has(normLocation(rec.city))) continue;
+        if (baseBuy === null || rec.sell_price_min < baseBuy) baseBuy = rec.sell_price_min;
+      }
+      if (baseBuy !== null && (cost === null || baseBuy < cost)) cost = baseBuy;
+    }
     if (cost !== null && p.stepIds.length) {
       for (const id of p.stepIds) {
         const price = cheapestByItem[id];
@@ -694,7 +704,10 @@ app.get('/api/craft-calc', async (req, res) => {
     const materialIds = [...new Set([...resourceQueryIds, ...enchantStepIds])];
     const materialData = await fetchPricesBatched(materialIds, 1);
     const finishedData = await fetchPricesBatched([finishedQueryId], quality);
-    const baseData = enchantAfterRequested ? await fetchPricesBatched([itemId], quality) : [];
+    // Базовый предмет .0: купить готовый или скрафтить — сравнение нужно и при «зачаровать после крафта», и для обычного .0-предмета
+    // (галочка «после крафта» на предмете без зачарования не должна менять расчёт).
+    const baseChoiceWanted = enchantAfterRequested || enchant === 0;
+    const baseData = baseChoiceWanted ? await fetchPricesBatched([itemId], quality) : [];
 
     const materialByCity = {};
     for (const rec of materialData) {
@@ -749,7 +762,7 @@ app.get('/api/craft-calc', async (req, res) => {
 
     let enchantAfterCraft = null;
     let baseBuyByCity = {};
-    if (enchantAfterRequested) {
+    if (baseChoiceWanted) {
       // База .0: крафтим сами или покупаем готовую — берём дешевле (без жёсткого порога вроде «дороже 2к — крафчу»).
       let baseBuy = null;
       for (const rec of baseData) {
@@ -760,7 +773,7 @@ app.get('/api/craft-calc', async (req, res) => {
       const baseSource = baseBuy && (craftCostPerUnit === null || baseBuy.price < craftCostPerUnit) ? 'buy' : 'craft';
       const baseCostPerUnit = baseSource === 'buy' ? baseBuy.price : craftCostPerUnit;
       const perUnitCount = ENCHANT_MATERIAL_COUNT[itemSlot];
-      let stepsAllPriced = perUnitCount !== undefined;
+      let stepsAllPriced = enchantStepIds.length === 0 || perUnitCount !== undefined;
       const steps = enchantStepIds.map((materialId, i) => {
         let cheapest = null;
         for (const city of queryCities) {
@@ -778,6 +791,7 @@ app.get('/api/craft-calc', async (req, res) => {
       const stepsCostPerUnit = steps.reduce((sum, st) => sum + (st.cost || 0), 0);
       hasAllPrices = baseCostPerUnit !== null && stepsAllPriced;
       effectiveCostPerUnit = (baseCostPerUnit || 0) + stepsCostPerUnit;
+      // Для .0-предмета без «зачарования после крафта» это лишь выбор «купить или скрафтить» — отдельным полем baseChoice.
       enchantAfterCraft = {
         forced: enchantAfterForced,
         targetLevel: targetEnchant, capped: enchantCapped, baseSource, baseBuy, baseCraftCostPerUnit: craftCostPerUnit,
@@ -969,7 +983,8 @@ app.get('/api/craft-calc', async (req, res) => {
       tierComparison,
       sellPlan,
       acquire,
-      enchantAfterCraft,
+      enchantAfterCraft: enchantAfterRequested ? enchantAfterCraft : null,
+      baseChoice: enchantAfterRequested ? null : enchantAfterCraft,   // .0-предмет: «купить готовый или скрафтить» (без зачарования)
       teleport,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
     });
@@ -1860,13 +1875,14 @@ function marginSellStats(history, finishedId, days, quality, queryCities, mode, 
   // даёт прибыль после налога и сбора за размещение. Иначе маржа лучшего города применялась бы ко ВСЕМУ рыночному объёму
   // (на сете брони T5 82% оборота шло в убыток, а dailyProfit считался по прибыльному городу на весь объём — завышение в 5.5 раза).
   if (econ) {
-    // Шумный город (оборот ничтожен по сравнению с самым ликвидным) не считается ценовым сигналом — та же защита, что в плане продажи.
-    if (econ.minShareOfMax) {
+    const netFactor = 1 - econ.taxRate - (econ.setupFee ?? 0);
+    stats = stats.filter(([, st]) => st.avgPrice * netFactor - econ.cost > 0);
+    // Шумный город (оборот ничтожен по сравнению с самым ликвидным ПРИБЫЛЬНЫМ) не считается ценовым сигналом — та же защита, что в
+    // плане продажи. Сравниваем только среди прибыльных: огромный убыточный рынок не должен объявлять шумом маленький прибыльный.
+    if (econ.minShareOfMax && stats.length > 0) {
       const maxVolume = Math.max(...stats.map(([, st]) => st.avgDailyVolume));
       stats = stats.filter(([, st]) => st.avgDailyVolume >= maxVolume * econ.minShareOfMax);
     }
-    const netFactor = 1 - econ.taxRate - (econ.setupFee ?? 0);
-    stats = stats.filter(([, st]) => st.avgPrice * netFactor - econ.cost > 0);
     if (stats.length === 0) return null;
   }
   if (mode === 'best') {
