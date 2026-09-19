@@ -188,3 +188,29 @@ test('сравнение по тирам: строка переключает т
   await expect.poll(() => queries.length).toBe(3);
   expect(queries[2].get('item')).toBe('T4_MAIN_SWORD');
 });
+
+test('скан маржи и ликвидности: параметры в запросе, результаты в таблице, «в калькулятор» переносит связку', async ({ page }) => {
+  let scanQuery = null;
+  let calcQuery = null;
+  await page.route('**/api/craft-margin-opportunities*', (route) => {
+    scanQuery = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: { enchantMode: 'after', liquidity: 'best', days: 7, taxRate: 0.08, premiumPrice: 28000000, scanned: 2365, results: [
+      { itemId: 'T4_2H_BOW', enchant: 2, quality: 4, cost: 40000, avgSellPrice: 60000, dailyVolume: 12.5, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 190000, premiumDays: 147, score: 200 },
+      { itemId: 'T4_CAPE', enchant: 0, quality: 1, cost: 2700, avgSellPrice: 22000, dailyVolume: 300, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 17000, profitPct: 600, dailyProfit: 5100000, premiumDays: 5, score: 900 },
+    ] } });
+  });
+  await page.route('**/api/craft-calc*', (route) => { calcQuery = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.goto('/craft.html');
+  await page.locator('#margin-enchant-mode').selectOption('after');
+  await page.locator('#margin-liquidity').selectOption('best');
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
+  expect(scanQuery.get('enchantMode')).toBe('after');
+  expect(scanQuery.get('liquidity')).toBe('best');
+  await page.locator('#margin-result .scan-add-btn').first().click();
+  await expect.poll(() => calcQuery).not.toBeNull();
+  expect(calcQuery.get('item')).toBe('T4_2H_BOW');
+  expect(calcQuery.get('enchant')).toBe('2');
+  expect(calcQuery.get('quality')).toBe('4');
+  expect(calcQuery.get('enchantAfterCraft')).toBe('true');
+});

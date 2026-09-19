@@ -646,4 +646,79 @@ function renderLazyCrafter(data) {
   wireTableSort(lazyEl.result.querySelector('table'), 'lazy');
 }
 
+// --- Скан маржи и ликвидности ---
+const marginEl = {
+  category: document.getElementById('margin-category'),
+  enchantMode: document.getElementById('margin-enchant-mode'),
+  liquidity: document.getElementById('margin-liquidity'),
+  minDaily: document.getElementById('margin-min-daily'),
+  days: document.getElementById('margin-days'),
+  run: document.getElementById('margin-run'),
+  result: document.getElementById('margin-result'),
+};
+marginEl.run.addEventListener('click', runMarginScan);
+
+async function runMarginScan() {
+  marginEl.run.disabled = true;
+  marginEl.result.innerHTML = 'Перебираю весь гир × зачарование × качество по истории торгов, это может занять несколько секунд...';
+  try {
+    const params = new URLSearchParams({
+      category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
+      minDaily: marginEl.minDaily.value || '0', days: marginEl.days.value, rrr: craftEl.rrr.value,
+      cities: activeCities().join(','), premium: premiumParam(),
+    });
+    const res = await fetch(`/api/craft-margin-opportunities?${params}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderMarginScan(data);
+  } catch (err) {
+    marginEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
+  } finally {
+    marginEl.run.disabled = false;
+  }
+}
+
+function renderMarginScan(data) {
+  if (data.results.length === 0) {
+    marginEl.result.innerHTML = '<div class="chart-empty">Ничего не нашлось — нет прибыльных комбинаций с таким оборотом. Попробуй снизить «Оборот от».</div>';
+    return;
+  }
+  const rows = data.results.map((r) => {
+    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
+    const days = r.premiumDays === null ? '—' : r.premiumDays < 1000 ? fmtNum(r.premiumDays, 0) : '>1000';
+    return `
+      <tr>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
+        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality]}</td>
+        <td>${fmtNum(r.cost)}</td>
+        <td>${fmtNum(r.avgSellPrice)}</td>
+        <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${data.liquidity === 'best' ? '' : ` <small>(${r.sellCities.length} гор.)</small>`}</td>
+        <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
+        <td data-sort-value="${r.dailyProfit}">${fmtNum(r.dailyProfit)}</td>
+        <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит с оборота — только шкала масштаба">${days}</td>
+        <td><button class="scan-add-btn" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}">в калькулятор</button></td>
+      </tr>`;
+  }).join('');
+  marginEl.result.innerHTML = `
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. Профит — после налога с продажи (${(data.taxRate * 100).toFixed(0)}%), цена — средняя по сделкам за ${data.days} дн.,
+      оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по всем выбранным городам'}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}.</p>
+    <div class="table-scroll"><table class="scan-table">
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>Ср. цена продажи</th><th>Оборот/день</th><th>Профит/шт</th><th>Профит/день</th><th>Дней на премиум</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');
+  marginEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = findItem(btn.dataset.id);
+      if (!item) return;
+      selectCraftItem(item);
+      craftEl.enchant.value = btn.dataset.enchant;
+      craftEl.quality.value = btn.dataset.quality;
+      document.getElementById('craft-enchant-after').checked = data.enchantMode === 'after' && btn.dataset.enchant !== '0';
+      document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      runCraftCalc();
+    });
+  });
+}
+
 initCraft();

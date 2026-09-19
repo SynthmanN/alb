@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -444,5 +444,38 @@ describe('зачарованные версии предметов для ска
     expect(enchantVariants({ id: 'T5_ORE', tier: 5, category: 'raw' }).map((v) => v.queryId).slice(-1)).toEqual(['T5_ORE_LEVEL4@4']);
     expect(enchantVariants({ id: 'T5_ROCK', tier: 5, category: 'raw' })).toHaveLength(4);
     expect(enchantVariants({ id: 'T5_STONEBLOCK', tier: 5, category: 'refined' })).toHaveLength(1);
+  });
+});
+
+describe('скан маржи и ликвидности', () => {
+  const history = [
+    { item_id: 'X', location: 'Martlock', quality: 4, data: [{ item_count: 70, avg_price: 1000 }] },
+    { item_id: 'X', location: 'Lymhurst', quality: 4, data: [{ item_count: 70, avg_price: 2000 }] },
+    { item_id: 'X', location: 'Martlock', quality: 1, data: [{ item_count: 7, avg_price: 500 }] },
+    { item_id: 'X', location: 'Caerleon', quality: 4, data: [{ item_count: 700, avg_price: 9999 }] },
+  ];
+  const cities = ['Martlock', 'Lymhurst'];
+
+  it('режим sum: цена средневзвешенная по городам, оборот — сумма по городам', () => {
+    const st = marginSellStats(history, 'X', 7, 4, cities, 'sum');
+    expect(st.avgPrice).toBeCloseTo(1500, 6);
+    expect(st.dailyVolume).toBe(20);
+    expect(st.cities.sort()).toEqual(['Lymhurst', 'Martlock']);
+  });
+  it('режим best: только город с лучшей ценой и его оборот', () => {
+    const st = marginSellStats(history, 'X', 7, 4, cities, 'best');
+    expect(st.avgPrice).toBe(2000);
+    expect(st.dailyVolume).toBe(10);
+    expect(st.cities).toEqual(['Lymhurst']);
+  });
+  it('качества не смешиваются, невыбранные города не учитываются, нет данных — null', () => {
+    expect(marginSellStats(history, 'X', 7, 1, cities, 'sum').dailyVolume).toBe(1);
+    expect(marginSellStats(history, 'X', 7, 2, cities, 'sum')).toBeNull();
+    expect(marginSellStats(history, 'X', 7, 4, ['Bridgewatch'], 'sum')).toBeNull();
+  });
+  it('дней на премиум = 28 млн ÷ (профит/шт × оборот/день); без прибыли — null', () => {
+    expect(premiumPaybackDays(1000, 28)).toBeCloseTo(1000, 6);
+    expect(premiumPaybackDays(-5, 10)).toBeNull();
+    expect(premiumPaybackDays(100, 0)).toBeNull();
   });
 });

@@ -107,6 +107,37 @@
       </div>
       <div id="bulk-scan-result"></div>
 
+      <h3 class="sub-title">🎯 Скан маржи и ликвидности</h3>
+      <p class="calc-note">
+        Ищет вещь, которая одновременно хорошо продаётся и даёт маржу: перебирает весь гир × зачарование .0–.3 ×
+        качество, считает себестоимость, среднюю цену продажи по истории и дневной оборот. «Дней на премиум» —
+        просто шкала масштаба (28 млн серебра ÷ дневной профит с оборота), а не цель: это терпеливый трейдинг.
+        Зачарование .4 не входит — оно не чарится рунами.
+      </p>
+      <div class="craft-controls-row">
+        <label class="craft-field">Категория
+          <select id="margin-category"><option value="all">Всё</option><option value="weapon">Оружие</option><option value="armor">Броня</option><option value="cape">Плащи</option></select>
+        </label>
+        <label class="craft-field">Зачарование
+          <select id="margin-enchant-mode">
+            <option value="direct">Крафт сразу из зачарованного сырья</option>
+            <option value="after">Зачаровать после крафта рунами</option>
+          </select>
+        </label>
+        <label class="craft-field">Ликвидность
+          <select id="margin-liquidity">
+            <option value="sum">Сумма по всем городам</option>
+            <option value="best">Только лучший город</option>
+          </select>
+        </label>
+        <label class="craft-field">Оборот от, шт/день<input id="margin-min-daily" type="number" min="0" step="0.5" value="1" /></label>
+        <label class="craft-field">История
+          <select id="margin-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+        </label>
+        <button id="margin-run">Сканировать</button>
+      </div>
+      <div id="margin-result"></div>
+
       <h3 class="sub-title">🛋 Ленивый крафтер</h3>
       <p class="calc-note">
         Задай бюджет — получишь готовый план: что и сколько крафтить, чтобы потратить именно эту сумму

@@ -1743,6 +1743,130 @@ app.get('/api/enchant-opportunities', async (req, res) => {
   }
 });
 
+// --- Скан маржи и ликвидности: гир × зачарование .0–.3 × качество ---
+// Находит вещь, которая одновременно и хорошо продаётся, и даёт маржу: для каждой комбинации считаем себестоимость
+// (материалы), среднюю цену продажи по истории и дневной оборот. Оборот можно суммировать по всем городам
+// (партиями в каждый — ближе к реальной схеме) или брать только лучший город. .4 (Awakening) не входит — он
+// не чарится рунами. «Дней на премиум» — информационная шкала, а не цель: 28 млн серебра / (профит/шт × оборот/день).
+const PREMIUM_PRICE_SILVER = 28_000_000;
+
+// Чистая часть: продажа одной комбинации (вещь@зачарование, качество) по уже загруженной истории.
+// mode 'sum' — цена средневзвешенная по всем городам, оборот суммируется; 'best' — город с лучшей ценой.
+function marginSellStats(history, finishedId, days, quality, queryCities, mode) {
+  const allowed = new Set(queryCities.map(normLocation));
+  const stats = Object.entries(cityStats(history, finishedId, days, quality)).filter(([city]) => allowed.has(normLocation(city)));
+  if (stats.length === 0) return null;
+  if (mode === 'best') {
+    const [city, st] = stats.reduce((a, b) => (b[1].avgPrice > a[1].avgPrice ? b : a));
+    return { avgPrice: st.avgPrice, dailyVolume: st.avgDailyVolume, cities: [city] };
+  }
+  let vol = 0;
+  let weighted = 0;
+  for (const [, st] of stats) { vol += st.totalVolume; weighted += st.avgPrice * st.totalVolume; }
+  return { avgPrice: weighted / vol, dailyVolume: vol / days, cities: stats.map(([c]) => c) };
+}
+
+// Дней, за которые профит с оборота окупил бы премиум: чем меньше — тем масштабнее находка.
+function premiumPaybackDays(profitPerUnit, dailyVolume, premiumPrice = PREMIUM_PRICE_SILVER) {
+  const daily = profitPerUnit * dailyVolume;
+  return daily > 0 ? premiumPrice / daily : null;
+}
+
+app.get('/api/craft-margin-opportunities', async (req, res) => {
+  try {
+    const category = ['weapon', 'armor', 'cape'].includes(req.query.category) ? req.query.category : 'all';
+    const days = parseBulkDays(req);
+    const enchantMode = req.query.enchantMode === 'after' ? 'after' : 'direct';
+    const liquidity = req.query.liquidity === 'best' ? 'best' : 'sum';
+    const minDaily = Math.max(parseFloat(req.query.minDaily) || 1, 0);
+    const rrrId = req.query.rrr || 'none';
+    const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
+    const rrr = rrrFromBonus(preset.bonus);
+    const taxRate = getSalesTaxRate(req);
+    const citiesParam = req.query.cities;
+    const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const allowedCities = new Set(queryCities.map(normLocation));
+    const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+
+    const categoryById = new Map(ITEMS.map((i) => [i.id, i.category]));
+    const itemById = new Map(ITEMS.map((i) => [i.id, i]));
+    const itemIds = Object.keys(RECIPES).filter((id) => itemById.has(id) && (category === 'all' || categoryById.get(id) === category));
+
+    // Комбинации вещь × зачарование: до T4 зачарования нет; .4 не включаем.
+    const combos = [];
+    for (const itemId of itemIds) {
+      const item = itemById.get(itemId);
+      const maxE = item.tier >= 4 ? 3 : 0;
+      if (enchantMode === 'after' && !ENCHANT_MATERIAL_COUNT[item.slot]) continue;
+      for (let e = 0; e <= maxE; e++) combos.push({ itemId, item, enchant: e });
+    }
+
+    const materialIds = new Set();
+    for (const c of combos) {
+      const matEnchant = enchantMode === 'after' ? 0 : c.enchant;
+      for (const r of RECIPES[c.itemId].resources) materialIds.add(effectiveRecipeResourceId(r.resource, matEnchant));
+      if (enchantMode === 'after') for (let lvl = 1; lvl <= c.enchant; lvl++) materialIds.add(enchantMaterialId(c.item.tier, lvl));
+    }
+    const finishedIds = [...new Set(combos.map((c) => gearEnchantId(c.itemId, c.enchant)))];
+
+    const [materialData, history] = await Promise.all([
+      fetchPricesBatched([...materialIds], 1),
+      fetchHistoryBatched(finishedIds, days * 24, ALL_QUALITIES.join(','), locations),
+    ]);
+    const cheapest = {};
+    for (const rec of materialData) {
+      if (!rec.sell_price_min || !allowedCities.has(normLocation(rec.city))) continue;
+      if (!cheapest[rec.item_id] || rec.sell_price_min < cheapest[rec.item_id]) cheapest[rec.item_id] = rec.sell_price_min;
+    }
+
+    const rows = [];
+    for (const c of combos) {
+      const recipe = RECIPES[c.itemId];
+      const matEnchant = enchantMode === 'after' ? 0 : c.enchant;
+      let materials = 0;
+      let complete = true;
+      for (const r of recipe.resources) {
+        const price = cheapest[effectiveRecipeResourceId(r.resource, matEnchant)];
+        if (!price) { complete = false; break; }
+        materials += price * r.count;
+      }
+      if (!complete) continue;
+      let cost = materials * (1 - rrr) + (recipe.silver || 0);
+      if (enchantMode === 'after') {
+        for (let lvl = 1; lvl <= c.enchant && cost !== null; lvl++) {
+          const price = cheapest[enchantMaterialId(c.item.tier, lvl)];
+          cost = price ? cost + price * ENCHANT_MATERIAL_COUNT[c.item.slot] : null;
+        }
+        if (cost === null) continue;
+      }
+
+      const finishedId = gearEnchantId(c.itemId, c.enchant);
+      let bestForCombo = null;
+      for (const quality of ALL_QUALITIES) {
+        const sell = marginSellStats(history, finishedId, days, quality, queryCities, liquidity);
+        if (!sell || sell.dailyVolume < minDaily) continue;
+        const profitPerUnit = sell.avgPrice * (1 - taxRate) - cost;
+        if (profitPerUnit <= 0) continue;
+        const profitPct = (profitPerUnit / cost) * 100;
+        const row = {
+          itemId: c.itemId, enchant: c.enchant, quality, cost, avgSellPrice: sell.avgPrice, dailyVolume: sell.dailyVolume,
+          sellCities: sell.cities, profitPerUnit, profitPct, dailyProfit: profitPerUnit * sell.dailyVolume,
+          premiumDays: premiumPaybackDays(profitPerUnit, sell.dailyVolume),
+          score: opportunityScore(profitPct, sell.dailyVolume),
+        };
+        if (!bestForCombo || row.score > bestForCombo.score) bestForCombo = row; // на комбинацию — лучшее качество
+      }
+      if (bestForCombo) rows.push(bestForCombo);
+    }
+
+    rows.sort((a, b) => b.score - a.score);
+    res.json({ enchantMode, liquidity, days, taxRate, premiumPrice: PREMIUM_PRICE_SILVER, scanned: combos.length, results: rows.slice(0, 40) });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: 'не удалось выполнить скан маржи и ликвидности', details: err.message });
+  }
+});
+
 // --- Мастерки: дерево и сохранённые уровни ---
 app.get('/api/masteries', (req, res) => {
   res.json({ ...MASTERIES, maxLevel: MASTERY_MAX_LEVEL, levels: loadUserMasteryLevels() });
@@ -2013,6 +2137,8 @@ module.exports = {
   totalVolume,
   cityStats,
   computeBulkPlan,
+  marginSellStats,
+  premiumPaybackDays,
   computePatientSell,
   computeSellThreshold,
   teleportDistance,
