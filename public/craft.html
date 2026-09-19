@@ -96,6 +96,31 @@
         <button id="bulk-scan-run">Сканировать партии</button>
       </div>
       <div id="bulk-scan-result"></div>
+
+      <h3 class="sub-title">🛋 Ленивый крафтер</h3>
+      <p class="calc-note">
+        Задай бюджет — получишь готовый план: что и сколько крафтить, чтобы потратить именно эту сумму
+        с максимальной прибылью. Количество каждой позиции ограничено и бюджетом, и рынком: не больше
+        выбранной доли от дневного объёма продаж за срок распродажи. Расчёт по партионной модели
+        (средневзвешенные цены за период, профит после налога).
+      </p>
+      <div class="craft-controls-row">
+        <label class="craft-field">Бюджет, серебро<input id="lazy-budget" type="number" min="1" value="1000000" /></label>
+        <label class="craft-field">Доля рынка, %<input id="lazy-share" type="number" min="1" max="100" value="25" title="Какую долю дневного объёма продаж предмета можно занять" /></label>
+        <label class="craft-field">Дней на продажу<input id="lazy-sell-days" type="number" min="0.5" step="0.5" value="1" /></label>
+        <label class="craft-field">Стратегия
+          <select id="lazy-strategy">
+            <option value="balanced">Баланс</option>
+            <option value="expensive">Дорогие (мало штук, большая прибыль)</option>
+            <option value="mass">Массовые (много штук, малая маржа)</option>
+          </select>
+        </label>
+        <label class="craft-field">История
+          <select id="lazy-history"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+        </label>
+        <button id="lazy-run">Подобрать план</button>
+      </div>
+      <div id="lazy-result"></div>
     </section>
   </main>
 

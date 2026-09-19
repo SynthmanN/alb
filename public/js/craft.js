@@ -377,4 +377,71 @@ function renderBulkScanResult(rows) {
   });
 }
 
+// --- Ленивый крафтер ---
+const lazyEl = {
+  budget: document.getElementById('lazy-budget'),
+  share: document.getElementById('lazy-share'),
+  sellDays: document.getElementById('lazy-sell-days'),
+  strategy: document.getElementById('lazy-strategy'),
+  history: document.getElementById('lazy-history'),
+  run: document.getElementById('lazy-run'),
+  result: document.getElementById('lazy-result'),
+};
+lazyEl.run.addEventListener('click', runLazyCrafter);
+
+async function runLazyCrafter() {
+  lazyEl.run.disabled = true;
+  lazyEl.result.innerHTML = 'Подбираю план по истории торгов, это может занять несколько секунд...';
+  try {
+    const params = new URLSearchParams({
+      budget: lazyEl.budget.value || '0', share: lazyEl.share.value || '25', sellDays: lazyEl.sellDays.value || '1',
+      strategy: lazyEl.strategy.value, days: lazyEl.history.value, rrr: craftEl.rrr.value,
+      cities: activeCities().join(','), premium: premiumParam(),
+    });
+    const res = await fetch(`/api/lazy-crafter?${params}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderLazyCrafter(data);
+  } catch (err) {
+    lazyEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
+  } finally {
+    lazyEl.run.disabled = false;
+  }
+}
+
+function renderLazyCrafter(data) {
+  if (data.items.length === 0) {
+    lazyEl.result.innerHTML = '<div class="chart-empty">План не получился — при таком бюджете и доле рынка нет прибыльных позиций.</div>';
+    return;
+  }
+  const rows = data.items.map((it) => {
+    const item = findItem(it.itemId) || { id: it.itemId, name: it.itemId };
+    return `
+      <tr>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td>${fmtNum(it.qty)}</td>
+        <td>${fmtNum(it.costPerUnit)}</td>
+        <td>${it.bestSellCity.city}: ${fmtNum(it.bestSellCity.avgPrice)}</td>
+        <td class="scan-spread-hot">+${fmtNum(it.profitPerUnit)}</td>
+        <td>${fmtNum(it.costUsed)}</td>
+        <td class="scan-spread-hot">+${fmtNum(it.profitEarned)}</td>
+        <td data-sort-value="${it.daysToAcquireBatch + it.daysToSellBatch}">${fmtDays(it.daysToAcquireBatch)} + ${fmtDays(it.daysToSellBatch)}</td>
+        <td>${it.bottleneckResource ? itemName(it.bottleneckResource) : '—'}</td>
+      </tr>`;
+  }).join('');
+  lazyEl.result.innerHTML = `
+    <div class="craft-summary">
+      <div class="craft-summary-row"><span>Бюджет</span><span>${fmtNum(data.budget)}</span></div>
+      <div class="craft-summary-row"><span>Потратим</span><span>${fmtNum(data.spent)} (остаток ${fmtNum(data.remaining)})</span></div>
+      <div class="craft-summary-row"><strong>Ожидаемая прибыль</strong><strong class="profit-pos">+${fmtNum(data.totalProfit)} (${data.profitPct.toFixed(1)}%)</strong></div>
+      <div class="craft-summary-row"><span>Позиций в плане</span><span>${data.items.length} из ${data.candidates} прибыльных</span></div>
+    </div>
+    <div class="table-scroll"><table class="scan-table">
+      <thead><tr><th>Предмет</th><th>Кол-во</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Потрачено</th><th>Прибыль</th><th>Закупка + продажа</th><th>Узкое место</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  `;
+  wireTableSort(lazyEl.result.querySelector('table'), 'lazy');
+}
+
 initCraft();

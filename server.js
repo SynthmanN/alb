@@ -1088,6 +1088,104 @@ app.get('/api/craft-bulk-opportunities', async (req, res) => {
   }
 });
 
+// --- Ленивый крафтер: подбор набора предметов под бюджет ---
+// Не «один предмет за раз», а план: что и сколько скрафтить, чтобы потратить именно эту сумму и получить
+// максимум прибыли, не планируя продать больше, чем реально купят (доля рынка от дневного объёма).
+const LAZY_STRATEGIES = ['balanced', 'expensive', 'mass'];
+
+// Порядок, в котором стратегия набирает позиции: "balanced" — прибыльность с поправкой на ликвидность,
+// "expensive" — большая прибыль с штуки (мало штук), "mass" — много ликвидных штук с малой маржой.
+function lazyStrategyScore(c, strategy) {
+  if (strategy === 'expensive') return c.profitPerUnit;
+  if (strategy === 'mass') return c.avgDailySellVolume * c.profitPerUnit;
+  return opportunityScore(c.profitPct, c.avgDailySellVolume);
+}
+
+// Жадное распределение бюджета. candidates: { itemId, costPerUnit, profitPerUnit, profitPct, avgDailySellVolume }.
+// Количество каждой позиции ограничено и бюджетом, и рынком: не больше доли (%) от объёма продаж за sellDays.
+function allocateBudget(candidates, { budget, marketSharePct, sellDays, strategy }) {
+  const share = marketSharePct / 100;
+  const usable = candidates
+    .filter((c) => c.costPerUnit > 0 && c.profitPerUnit > 0 && c.avgDailySellVolume > 0)
+    .map((c) => ({ ...c, maxQty: Math.floor(c.avgDailySellVolume * sellDays * share) }))
+    .filter((c) => c.maxQty >= 1)
+    .sort((a, b) => lazyStrategyScore(b, strategy) - lazyStrategyScore(a, strategy));
+
+  let remaining = budget;
+  const items = [];
+  for (const c of usable) {
+    const qty = Math.min(c.maxQty, Math.floor(remaining / c.costPerUnit));
+    if (qty < 1) continue;
+    const costUsed = qty * c.costPerUnit;
+    remaining -= costUsed;
+    items.push({ ...c, qty, costUsed, profitEarned: qty * c.profitPerUnit });
+  }
+  const spent = budget - remaining;
+  const totalProfit = items.reduce((sum, it) => sum + it.profitEarned, 0);
+  return { budget, spent, remaining, totalProfit, profitPct: spent > 0 ? (totalProfit / spent) * 100 : 0, items };
+}
+
+app.get('/api/lazy-crafter', async (req, res) => {
+  try {
+    const budget = parseFloat(req.query.budget);
+    if (!(budget > 0)) return res.status(400).json({ error: 'бюджет должен быть положительным числом' });
+    const marketSharePct = Math.min(Math.max(parseFloat(req.query.share) || 25, 1), 100);
+    const sellDays = Math.min(Math.max(parseFloat(req.query.sellDays) || 1, 0.5), 30);
+    const strategy = LAZY_STRATEGIES.includes(req.query.strategy) ? req.query.strategy : 'balanced';
+    const days = parseBulkDays(req);
+    const category = ['weapon', 'armor', 'cape'].includes(req.query.category) ? req.query.category : 'all';
+    const rrrId = req.query.rrr || 'none';
+    const preset = RRR_PRESETS.find((p) => p.id === rrrId) || RRR_PRESETS[0];
+    const rrr = rrrFromBonus(preset.bonus);
+    const taxRate = getSalesTaxRate(req);
+    const citiesParam = req.query.cities;
+    const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+
+    const categoryById = new Map(ITEMS.map((i) => [i.id, i.category]));
+    const itemIds = Object.keys(RECIPES).filter((id) => category === 'all' || categoryById.get(id) === category);
+    const materialIds = [...new Set(itemIds.flatMap((id) => RECIPES[id].resources.map((r) => r.resource)))];
+    const [materialHistory, finishedHistory] = await Promise.all([
+      fetchHistoryBatched(materialIds, days * 24, 1, locations),
+      fetchHistoryBatched(itemIds, days * 24, 1, locations),
+    ]);
+
+    // Кандидаты: цена и прибыль с одной штуки по партионной модели (средневзвешенные цены за период).
+    const candidates = [];
+    for (const itemId of itemIds) {
+      const plan = computeBulkPlan(
+        { itemId, enchant: 0, quality: 1, quantity: 1, days, preset, rrr, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
+        materialHistory, finishedHistory,
+      );
+      if (!plan.hasAllMaterialPrices || plan.profitPerUnitLow === null || plan.profitPerUnitLow <= 0) continue;
+      candidates.push({
+        itemId,
+        costPerUnit: plan.effectiveCostPerUnit,
+        profitPerUnit: plan.profitPerUnitLow,
+        profitPct: (plan.profitPerUnitLow / plan.effectiveCostPerUnit) * 100,
+        avgDailySellVolume: plan.avgDailySellVolume,
+        bestSellCity: plan.bestSellCity,
+      });
+    }
+
+    const plan = allocateBudget(candidates, { budget, marketSharePct, sellDays, strategy });
+    // Сроки закупки и распродажи пересчитываем уже для выбранного количества.
+    for (const it of plan.items) {
+      const full = computeBulkPlan(
+        { itemId: it.itemId, enchant: 0, quality: 1, quantity: it.qty, days, preset, rrr, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
+        materialHistory, finishedHistory,
+      );
+      it.bottleneckResource = full.bottleneckResource;
+      it.daysToAcquireBatch = full.daysToAcquireBatch;
+      it.daysToSellBatch = full.daysToSellBatch;
+    }
+    res.json({ ...plan, strategy, marketSharePct, sellDays, taxRate, candidates: candidates.length });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: 'не удалось построить план ленивого крафтера', details: err.message });
+  }
+});
+
 // --- Мастерки: дерево и сохранённые уровни ---
 app.get('/api/masteries', (req, res) => {
   res.json({ ...MASTERIES, maxLevel: MASTERY_MAX_LEVEL, levels: loadUserMasteryLevels() });
@@ -1346,5 +1444,7 @@ module.exports = {
   totalVolume,
   cityStats,
   computeBulkPlan,
+  allocateBudget,
+  lazyStrategyScore,
   effectiveRecipeResourceId,
 };

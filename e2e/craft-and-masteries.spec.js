@@ -56,3 +56,24 @@ test('примерочная: для достижимого IP показыва�
   await expect(page.locator('#fit-result tbody tr')).toHaveCount(1);
   await expect(page.locator('#fit-result')).toContainText('40 000');
 });
+
+test('ленивый крафтер: по бюджету строит план и показывает итог', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/lazy-crafter*', (route) => {
+    query = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: {
+      budget: 1000000, spent: 990000, remaining: 10000, totalProfit: 300000, profitPct: 30.3, strategy: 'balanced',
+      marketSharePct: 25, sellDays: 1, taxRate: 0.08, candidates: 5,
+      items: [{ itemId: 'T4_MAIN_SWORD', qty: 10, costPerUnit: 99000, profitPerUnit: 30000, costUsed: 990000, profitEarned: 300000,
+        avgDailySellVolume: 50, bestSellCity: { city: 'Martlock', avgPrice: 140000 }, bottleneckResource: 'T4_METALBAR', daysToAcquireBatch: 0.5, daysToSellBatch: 1 }],
+    } });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#lazy-budget').fill('1000000');
+  await page.locator('#lazy-strategy').selectOption('mass');
+  await page.locator('#lazy-run').click();
+  await expect(page.locator('#lazy-result .craft-summary')).toContainText('Ожидаемая прибыль');
+  await expect(page.locator('#lazy-result tbody tr')).toHaveCount(1);
+  expect(query.get('budget')).toBe('1000000');
+  expect(query.get('strategy')).toBe('mass');
+});

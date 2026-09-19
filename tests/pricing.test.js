@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  allocateBudget, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -201,5 +201,47 @@ describe('план крупной партии', () => {
     const plan = computeBulkPlan(base, materialHistory.slice(1), finishedHistory);
     expect(plan.hasAllMaterialPrices).toBe(false);
     expect(plan.profitPerUnitLow).toBeNull();
+  });
+});
+
+describe('ленивый крафтер: распределение бюджета', () => {
+  const cands = [
+    { itemId: 'A', costPerUnit: 1000, profitPerUnit: 500, profitPct: 50, avgDailySellVolume: 4 },
+    { itemId: 'B', costPerUnit: 100, profitPerUnit: 20, profitPct: 20, avgDailySellVolume: 200 },
+    { itemId: 'C', costPerUnit: 500, profitPerUnit: -5, profitPct: -1, avgDailySellVolume: 50 },
+  ];
+  const opts = { budget: 10000, marketSharePct: 50, sellDays: 1 };
+
+  it('убыточные позиции в план не попадают', () => {
+    const plan = allocateBudget(cands, { ...opts, strategy: 'balanced' });
+    expect(plan.items.map((i) => i.itemId)).not.toContain('C');
+  });
+  it('количество ограничено долей рынка: 50% от 4 шт/день за 1 день = 2 шт', () => {
+    const plan = allocateBudget(cands, { ...opts, strategy: 'expensive' });
+    expect(plan.items.find((i) => i.itemId === 'A').qty).toBe(2);
+  });
+  it('количество ограничено бюджетом; трата не превышает бюджет', () => {
+    const plan = allocateBudget(cands, { budget: 1500, marketSharePct: 100, sellDays: 10, strategy: 'expensive' });
+    expect(plan.spent).toBeLessThanOrEqual(1500);
+    expect(plan.spent + plan.remaining).toBeCloseTo(1500, 6);
+    expect(plan.items[0].itemId).toBe('A'); // «дорогие»: сначала максимум прибыли с штуки
+    expect(plan.items[0].qty).toBe(1);
+  });
+  it('«массовые» идут по объёму × прибыль, «дорогие» — по прибыли с штуки', () => {
+    const mass = allocateBudget(cands, { ...opts, strategy: 'mass' });
+    const expensive = allocateBudget(cands, { ...opts, strategy: 'expensive' });
+    expect(mass.items[0].itemId).toBe('B');      // 200·20 = 4000 против 4·500 = 2000
+    expect(expensive.items[0].itemId).toBe('A');
+  });
+  it('итоги: прибыль — сумма по позициям, процент — от потраченного', () => {
+    const plan = allocateBudget(cands, { ...opts, strategy: 'balanced' });
+    const sum = plan.items.reduce((acc, i) => acc + i.profitEarned, 0);
+    expect(plan.totalProfit).toBeCloseTo(sum, 6);
+    expect(plan.profitPct).toBeCloseTo((sum / plan.spent) * 100, 6);
+  });
+  it('нечего покупать — пустой план', () => {
+    const plan = allocateBudget([], { ...opts, strategy: 'balanced' });
+    expect(plan.items).toEqual([]);
+    expect(plan.spent).toBe(0);
   });
 });
