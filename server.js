@@ -1837,8 +1837,9 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
   else if (sellHigh === null) sellHigh = sellLow;
   if (sellLow !== null && sellHigh !== null && sellHigh < sellLow) [sellLow, sellHigh] = [sellHigh, sellLow];
 
-  const netSellLow = sellLow !== null ? sellLow * (1 - taxRate) : null;
-  const netSellHigh = sellHigh !== null ? sellHigh * (1 - taxRate) : null;
+  // Продажа партии — свой Sell Order: налог с продажи И Setup Fee 2.5% за размещение (он не возвращается)
+  const netSellLow = sellLow !== null ? sellLow * (1 - taxRate - SETUP_FEE_RATE) : null;
+  const netSellHigh = sellHigh !== null ? sellHigh * (1 - taxRate - SETUP_FEE_RATE) : null;
   const profitPerUnitLow = hasAllPrices && netSellLow !== null ? netSellLow - effectiveCostPerUnit : null;
   const profitPerUnitHigh = hasAllPrices && netSellHigh !== null ? netSellHigh - effectiveCostPerUnit : null;
   const daysToAcquireBatch = bottleneck ? bottleneck.daysToAcquire : null;
@@ -2371,6 +2372,9 @@ app.get('/api/unified-scan', (req, res) => {
     const capital = Math.min(Math.max(parseFloat(req.query.capital) || 500_000, 1000), 100_000_000_000);
     const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
     const materialHours = parseMaterialHours(req);            // окно цен сырья (по умолчанию 24 ч), отдельное от «Истории» продажи
+    // ЭКСПЕРИМЕНТАЛЬНО (выключено по умолчанию — без флагов поведение прежнее): находки аудита скана.
+    const materialLiquidity = req.query.materialLiquidity === 'true';     // материал с почти нулевым оборотом не задаёт цену
+    const confidenceMaterials = req.query.confidenceMaterials === 'true'; // «Доверие» — слабое звено: минимум по предмету и по его материалам
     const rrrOpts = parseGearRrrOptions(req);
     // Чёрный Рынок — в обоих режимах: мгновенно — в его Buy Order, терпеливо — по средней цене сделок ЧР; налог свой (налог + Setup Fee).
     const blackMarket = req.query.blackMarket === 'true';
@@ -2382,7 +2386,7 @@ app.get('/api/unified-scan', (req, res) => {
 
     const fresh = jugFreshness(jugDb, now);
     const refineParams = parseRefineRate(req);
-    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, refineParams.rate, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2415,13 +2419,29 @@ app.get('/api/unified-scan', (req, res) => {
     const materialQuotes = {};
     // Материалы покупаются своим Buy Order — комиссия 2.5% (Setup Fee) входит в цену; на руны/души/реликвии тоже. Мультигород здесь не считаем:
     // количество в скане выводится из себестоимости (капитал ÷ цена), а цена от количества — замкнутый круг; берётся самый дешёвый город.
-    for (const id of materialIds) materialQuotes[id] = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshotQuotes[id]).map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
+    for (const id of materialIds) {
+      let quotes = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshotQuotes[id]);
+      if (materialLiquidity && quotes.length > 1) {
+        // Город, где материал почти не торгуется (меньше 2% оборота самого ликвидного города или меньше 1 шт/день), цену не задаёт: она может
+        // держаться на одной случайной сделке. Нет истории вообще — судить нечем, котировки остаются.
+        const stats = cityStats(priceHistory.get(id) || [], id, materialHours / 24, 1);
+        const volumeOf = (city) => { const e = Object.entries(stats).find(([c]) => normLocation(c) === normLocation(city)); return e ? e[1].avgDailyVolume : 0; };
+        const maxVolume = Math.max(0, ...quotes.map((q) => volumeOf(q.city)));
+        if (maxVolume > 0) {
+          const reliable = quotes.filter((q) => volumeOf(q.city) >= Math.max(1, maxVolume * 0.02));
+          if (reliable.length) quotes = reliable;
+        }
+      }
+      materialQuotes[id] = quotes.map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
+    }
     const refineOpts = { ...rrrOpts, refine: { priceOf: (id) => cheapestOf(materialQuotes[id]), rate: refineParams.rate } };
     const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations: blackMarket ? [...locations, BM_QUERY_LOCATION] : locations, qualities: ALL_QUALITIES, now }));
     const finishedHistory = indexByItem(cleaned.series);
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
     // Оборот сырья/полуфабрикатов для закупки — по тому же окну, что и их цены (materialHours), а не по «Истории» продажи гира.
     const materialHistory = mode === 'patient' ? indexByItem(readHistory(jugDb, [...materialIds], materialHours, { locations, qualities: [1], now })) : null;
+    // Для эксперимента «Доверие с учётом сырья»: часы торговли материалов за период «Истории»
+    const materialConfidenceHistory = confidenceMaterials ? indexByItem(readHistory(jugDb, [...materialIds], days * 24, { locations, qualities: [1], now })) : new Map();
     const finishedPrices = new Map();
     if (mode === 'instant') {
       for (const rec of readPrices(jugDb, finishedIds, { cities: blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities })) {
@@ -2477,7 +2497,12 @@ app.get('/api/unified-scan', (req, res) => {
       const freshMinutes = dealAgeMinutes([...quoteDates, ...(sellDate ? [sellDate] : [])], now);
       const rankScore = dailyProfit * freshnessDecay(freshMinutes);
       const profitPct = (profitPerUnit / cost) * 100;
-      const tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
+      let tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
+      if (confidenceMaterials && needs.length) {
+        // слабое звено: доверие определяет самый «тонкий» материал (разные часы торговли за период «Истории»), если он тоньше самого предмета
+        const weakest = Math.min(...needs.map((n) => tradeHoursOf(materialConfidenceHistory.get(n.id) || [], 1, queryCities)));
+        tradeHours = Math.min(tradeHours, weakest);
+      }
       return {
         kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
         dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, dailyProfit,
@@ -2536,7 +2561,7 @@ app.get('/api/unified-scan', (req, res) => {
       mode, enchantMode, liquidity, days, materialHours, capital, minDays, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
-      rrrOptions: rrrOpts, refineRate: refineParams.rate, enchantRange: enchantMode === 'after' ? '.0–.3' : '.0–.4',
+      rrrOptions: rrrOpts, refineRate: refineParams.rate, experiments: { materialLiquidity, confidenceMaterials }, enchantRange: enchantMode === 'after' ? '.0–.3' : '.0–.4',
       scanned: combos.length, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
     };
     unifiedScanCache = { key: cacheKey, ts: now, data };

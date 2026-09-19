@@ -801,3 +801,16 @@ describe('калькулятор крафта: план продажи пока�
     expect(d.patientSell.plan.cities.map((c) => c.city)).toEqual(['Martlock']);       // в автоплан города без данных не входят
   });
 });
+
+describe('калькулятор крафта: руны/души/реликвии — с комиссией 2.5% за свой Buy Order', () => {
+  it('«зачаровать после крафта»: цена руны = рыночная × 1.025 (в игре 9600 рун по 5 стоят 49 200), как у остальных материалов', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => (String(url).includes('/history/') ? [] : fakeAodp(url)) }));
+    setJugAll(100, ['Martlock']);
+    setJug({ T4_RUNE: 5 }, { cities: ['Martlock'] });
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&enchant=1&enchantAfterCraft=true&quantity=100&cities=Martlock&gearRrr=none')).body;
+    const step = d.enchantAfterCraft.steps[0];
+    expect(step.materialId).toBe('T4_RUNE');
+    expect(step.cheapestPrice).toBeCloseTo(5 * 1.025, 9);
+    expect(step.count * 100 * step.cheapestPrice).toBeCloseTo(step.count * 100 * 5 * 1.025, 6);   // сумма партии — с комиссией (у плаща 96 рун × 100 шт = 9600 рун по 5 → 49 200)
+  });
+});

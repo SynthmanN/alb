@@ -176,8 +176,8 @@ describe('план крупной партии', () => {
     expect(plan.effectiveCostPerUnit).toBeCloseTo(expectedCost, 6);
     expect(plan.marketAvgSellPrice).toBeCloseTo(200000, 6);
     expect(plan.avgDailySellVolume).toBe(10);
-    expect(plan.daysToSellBatch).toBeCloseTo(10, 6); // 100 шт при 10 в день
-    expect(plan.profitPerUnitLow).toBeCloseTo(200000 * 0.92 - expectedCost, 6);
+    expect(plan.daysToSellBatch).toBeCloseTo(10, 6); // 100 шт при 10 в день  // продажа своим Sell Order: налог 8% и Setup Fee 2.5%
+    expect(plan.profitPerUnitLow).toBeCloseTo(200000 * (0.92 - 0.025) - expectedCost, 6);
     expect(plan.totalDaysEstimate).toBeCloseTo(plan.daysToAcquireBatch + 10, 6);
   });
   it('узкое место — материал с максимальным сроком закупки', () => {
@@ -196,7 +196,7 @@ describe('план крупной партии', () => {
     const plan = computeBulkPlan({ ...base, costCeiling: 1, sellLow: 150000, sellHigh: 100000 }, materialHistory, finishedHistory);
     expect(plan.withinCeiling).toBe(false);
     expect([plan.sellLow, plan.sellHigh]).toEqual([100000, 150000]); // перепутанные границы меняются местами
-    expect(plan.netSellLow).toBeCloseTo(100000 * 0.92, 6);
+    expect(plan.netSellLow).toBeCloseTo(100000 * (0.92 - 0.025), 6);
   });
   it('нет истории по материалу — план посчитать нельзя', () => {
     const plan = computeBulkPlan(base, materialHistory.slice(1), finishedHistory);

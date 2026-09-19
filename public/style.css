@@ -394,3 +394,11 @@ td.plan-check input { width: auto; }
 .gear-bonus-hint { color: #7ecba1; font-size: 11px; }
 .copyable { cursor: copy; }
 .copyable:hover { text-decoration: underline dotted; }
+
+/* Экспериментальный функционал — свой голубой цвет (не путать с жёлтым «устарело» и красным «убыток») */
+.exp-group { margin: 10px 0 0; padding: 8px 12px; border: 1px dashed #2f5f9e; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+.exp-group legend { font-size: 12px; padding: 0 6px; }
+.exp-label { color: #79b8ff; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.exp-badge { display: inline-block; font-size: 9px; letter-spacing: 0.06em; color: #79b8ff; border: 1px solid #2f5f9e; border-radius: 3px; padding: 0 4px; margin-left: 4px; }
+.exp-value { color: #79b8ff; }
+.exp-value.scan-stale { color: #cc8844; }

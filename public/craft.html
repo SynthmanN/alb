@@ -164,6 +164,15 @@
         </label>
         <button id="margin-run">Сканировать</button>
       </div>
+      <fieldset class="exp-group">
+        <legend class="exp-label">Эксперименты <span class="exp-badge">ЭКСП.</span> — выключены по умолчанию, без них всё считается как раньше</legend>
+        <label class="exp-label" title="Материал, который почти не торгуется (меньше 2% оборота самого ликвидного города или меньше 1 шт/день), не задаёт цену: она может держаться на одной случайной сделке. Меняет себестоимость и отбор">
+          <input id="margin-exp-liquidity" type="checkbox" /> Проверять ликвидность сырья</label>
+        <label class="exp-label" title="«Доверие» — слабое звено: минимум по самому предмету и по его сырью и полуфабрикатам (на скольких разных часах торговли стоят цифры). Обычное «Доверие» смотрит только на предмет">
+          <input id="margin-exp-confidence" type="checkbox" /> Учитывать сырьё в «Доверии»</label>
+        <label class="exp-label" title="Колонка «Свежесть»: возраст цены материала и продажи. Он и так влияет на порядок списка (старая цена срезает профит в день), но раньше был не виден">
+          <input id="margin-exp-fresh" type="checkbox" /> Колонка «Свежесть»</label>
+      </fieldset>
       <div id="margin-result"></div>
       </details>
 

@@ -1041,3 +1041,33 @@ test('клик по предмету копирует игровое назва�
   await expect(page.locator('.toast').last()).toContainText('Скопировано: Слиток стали — в поиске аукциона выбери фильтры: зачарование 2');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Слиток стали');
 });
+
+test('эксперименты скана (голубые): по умолчанию выключены и не уходят в запрос; включённые уходят на сервер; колонка «Свежесть» — только по галочке', async ({ page }) => {
+  const queries = [];
+  await page.route('**/api/unified-scan*', (route) => {
+    queries.push(new URL(route.request().url()).searchParams);
+    route.fulfill({ json: { mode: 'patient', enchantMode: 'after', liquidity: 'best', days: 3, capital: 1000000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 1,
+      enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367, experiments: { materialLiquidity: false, confidenceMaterials: false },
+      jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: null, oldestPriceAgeMinutes: 1 }, results: [
+        { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 1000, avgSellPrice: 1300, dailyVolume: 80, sellCities: ['Martlock'], profitPerUnit: 300, profitPct: 30, dailyProfit: 5000, premiumDays: 100, daysToAcquire: 1, daysToSell: 2, cycleDays: 3, effectiveDays: 3, cappedByMinDays: false, positionCost: 1000000, quantity: 1000, freshMinutes: 45, rankScore: 5000, tradeHours: 6, confidence: 0.2 },
+      ] } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await expect(page.locator('.exp-group')).toContainText('Эксперименты');
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
+  expect(queries[0].get('materialLiquidity')).toBeNull();                                    // выключены — параметров нет, поведение прежнее
+  expect(queries[0].get('confidenceMaterials')).toBeNull();
+  await expect(page.locator('#margin-result thead')).not.toContainText('Свежесть');
+  await page.locator('#margin-exp-fresh').check();                                            // колонка — только отображение, без запроса
+  await expect(page.locator('#margin-result thead')).toContainText('Свежесть');
+  await expect(page.locator('#margin-result tbody tr').first()).toContainText('45');
+  expect(queries.length).toBe(1);
+  await page.locator('#margin-exp-liquidity').check();
+  await page.locator('#margin-exp-confidence').check();
+  await page.locator('#margin-run').click();
+  await expect.poll(() => queries.length).toBe(2);
+  expect(queries[1].get('materialLiquidity')).toBe('true');
+  expect(queries[1].get('confidenceMaterials')).toBe('true');
+});
