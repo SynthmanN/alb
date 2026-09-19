@@ -736,6 +736,16 @@ app.get('/api/craft-calc', async (req, res) => {
       if (!materialByCity[rec.item_id]) materialByCity[rec.item_id] = {};
       materialByCity[rec.item_id][rec.city] = rec;
     }
+    // Цена сырья — среднее по сделкам за своё окно (materialHours, по умолчанию 24 ч), а не цена одного дешёвого лота.
+    const materialHours = parseMaterialHours(req);
+    const materialHistory = await fetchHistoryBatched(materialIds, materialHours, 1, queryCities.map((c) => c.replace(/\s+/g, ''))).catch(() => []);
+    const materialSeries = indexByItem(materialHistory);
+    for (const id of materialIds) {
+      const snapshot = Object.values(materialByCity[id] || {}).filter((rec) => rec.sell_price_min && queryCities.some((c) => normLocation(c) === normLocation(rec.city)))
+        .map((rec) => ({ city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date }));
+      const quotes = materialPriceQuotes(materialSeries.get(id), id, materialHours, queryCities, snapshot);
+      materialByCity[id] = Object.fromEntries(quotes.map((q) => [q.city, { city: q.city, sell_price_min: q.price, sell_price_min_date: q.date, priceSource: q.source }]));
+    }
     const finishedByCity = {};
     for (const rec of finishedData) {
       if (!finishedByCity[rec.item_id]) finishedByCity[rec.item_id] = {};
@@ -775,6 +785,7 @@ app.get('/api/craft-calc', async (req, res) => {
         count: r.count,
         cheapestCity: cheapest ? cheapest.city : null,
         cheapestPrice: cheapest ? cheapest.price : null,
+        priceSource: cheapest ? (cityPrices[cheapest.city] || {}).priceSource || null : null,   // 'history' — средняя по сделкам за окно, 'quote' — сделок нет, текущая котировка
         // Цены во всех активных городах (от дешёвых к дорогим): чтобы раскидать терпеливые ордера на закупку по нескольким городам.
         cityPrices: cityPriceList(cityPrices, queryCities),
       };
@@ -997,7 +1008,7 @@ app.get('/api/craft-calc', async (req, res) => {
     }
 
     res.json({
-      itemId, enchant, quality, quantity, marketShare, priceTolerance, setupFeeRate: SETUP_FEE_RATE, blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
+      itemId, enchant, quality, quantity, marketShare, priceTolerance, materialHours, setupFeeRate: SETUP_FEE_RATE, blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       // rrr — средняя ставка возврата по возвращаемым материалам (у каждого материала своя, см. recipe[].rrr)
       rrrPreset: { id: 'custom', label: rrrOptionsLabel(rrrOpts), ...rrrOpts, rrr: returnableNominal > 0 ? returnableSaved / returnableNominal : 0 },
       rrrOptions: rrrOpts,
@@ -2071,6 +2082,30 @@ function volumeBreakdown(seriesOfItem, itemId, days, quality, cities, usedCities
     .map(([city, st]) => ({ city, dailyVolume: st.avgDailyVolume, avgPrice: st.avgPrice, inPlan: used.has(normLocation(city)) }))
     .sort((a, b) => b.dailyVolume - a.dailyVolume);
 }
+// Цена сырья: ОДНА честная цена — средняя по сделкам за окно `hours` (по умолчанию 24 ч), а не цена одного самого дешёвого лота
+// (sell_price_min — это цена первой штуки; партия из сотен штук столько не стоит). Окно свежее и отдельное от «Истории» продажи
+// готового предмета (7 дней цен — старые). AODP не отдаёт стакан и не различает инициатора сделки, поэтому это именно
+// «средняя цена сделок за окно», а не Buy/Sell Order. Города без сделок за окно не участвуют; если сделок нет вовсе — берётся
+// текущая котировка (priceSource: 'quote'), чтобы редкий материал (герб, жетон) не остался без цены.
+const MATERIAL_HOURS_DEFAULT = 24;
+function parseMaterialHours(req) {
+  const v = parseFloat(req.query.materialHours);
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), 720) : MATERIAL_HOURS_DEFAULT;
+}
+// Возвращает [{ city, price, date, source }] по одному материалу. snapshotQuotes — [{ city, price, date }] текущих котировок.
+function materialPriceQuotes(seriesOfItem, itemId, hours, cities, snapshotQuotes) {
+  const allowed = new Set(cities.map(normLocation));
+  const stats = Object.entries(cityStats(seriesOfItem || [], itemId, hours / 24, 1)).filter(([city]) => allowed.has(normLocation(city)));
+  if (stats.length > 0) {
+    const lastTrade = (city) => {
+      let last = null;
+      for (const s of seriesOfItem) if (normLocation(s.location) === normLocation(city)) for (const p of s.data) if (p.item_count > 0 && (!last || p.timestamp > last)) last = p.timestamp;
+      return last;
+    };
+    return stats.map(([city, st]) => ({ city, price: st.avgPrice, date: lastTrade(city), source: 'history' }));
+  }
+  return (snapshotQuotes || []).map((q) => ({ ...q, source: 'quote' }));
+}
 const cheapestOf = (quotes) => (quotes && quotes.length ? quotes.reduce((a, b) => (b.price < a.price ? b : a)) : null);
 
 // Достоверность цифры: сколько РАЗНЫХ часов за период вообще шли сделки по предмету в городах продажи (не штук: одна оптовая
@@ -2139,6 +2174,7 @@ app.get('/api/unified-scan', (req, res) => {
     // Капитал на одну позицию (серебро) и минимум дней на цикл — вместо «доли рынка»: явные параметры, а не спрятанный процент.
     const capital = Math.min(Math.max(parseFloat(req.query.capital) || 500_000, 1000), 100_000_000_000);
     const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
+    const materialHours = parseMaterialHours(req);            // окно цен сырья (по умолчанию 24 ч), отдельное от «Истории» продажи
     const rrrOpts = parseRrrOptions(req, 'none');
     // Зачарование .4 (Awakening): по умолчанию не ищем, но это явный выбор игрока (галочка), а не молчаливое умолчание движка.
     const includeAwakened = req.query.includeAwakened === 'true';
@@ -2151,7 +2187,7 @@ app.get('/api/unified-scan', (req, res) => {
     const now = Date.now();
 
     const fresh = jugFreshness(jugDb, now);
-    const cacheKey = JSON.stringify([mode, category, days, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, includeAwakened, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, includeAwakened, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2176,7 +2212,11 @@ app.get('/api/unified-scan', (req, res) => {
     }
     const finishedIds = [...new Set(combos.map((c) => gearEnchantId(c.itemId, c.enchant)))];
 
-    const materialQuotes = quotesById(readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] }));
+    const snapshotQuotes = quotesById(readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] }));
+    // Цена сырья — средняя по сделкам за окно materialHours (а не цена одного дешёвого лота); нет сделок — текущая котировка.
+    const priceHistory = indexByItem(readHistory(jugDb, [...materialIds], materialHours, { locations, qualities: [1], now }));
+    const materialQuotes = {};
+    for (const id of materialIds) materialQuotes[id] = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshotQuotes[id]);
     const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations: blackMarket ? [...locations, BM_QUERY_LOCATION] : locations, qualities: ALL_QUALITIES, now }));
     const finishedHistory = indexByItem(cleaned.series);
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
@@ -2284,7 +2324,7 @@ app.get('/api/unified-scan', (req, res) => {
 
     rows.sort((a, b) => b.rankScore - a.rankScore);
     const data = {
-      mode, enchantMode, liquidity, days, capital, minDays, taxRate,
+      mode, enchantMode, liquidity, days, materialHours, capital, minDays, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       rrrOptions: rrrOpts, enchantRange: includeAwakened ? '.0–.4' : '.0–.3', includeAwakened,

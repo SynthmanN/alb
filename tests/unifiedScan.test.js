@@ -16,9 +16,9 @@ const CITY = 'Martlock';
 const QUERY = { cities: CITY, days: 7, minDaily: 1, minDays: 1, capital: 240_000, category: 'weapon', rrr: 'none' };   // 240 000 / 2400 = 100 мечей
 
 // Цена материала в кувшине (свежая котировка) и его история торгов (оборот, чтобы закупка партии была осуществима).
-function seedMaterial(id, price, dailyVolume = 500) {
+function seedMaterial(id, price, dailyVolume = 500, avg = price) {
   upsertPriceSnapshots(jugDb, [{ item_id: id, city: CITY, quality: 1, sell_price_min: price, sell_price_min_date: iso(NOW - 5 * 60000), buy_price_max: price - 1, buy_price_max_date: iso(NOW - 5 * 60000) }], NOW);
-  upsertHistoryBatch(jugDb, [{ item_id: id, location: CITY, quality: 1, data: days().map((ts) => ({ timestamp: ts, item_count: dailyVolume, avg_price: price })) }], NOW);
+  upsertHistoryBatch(jugDb, [{ item_id: id, location: CITY, quality: 1, data: days().map((ts) => ({ timestamp: ts, item_count: dailyVolume, avg_price: avg })) }], NOW);
 }
 function days(n = 6) { return Array.from({ length: n }, (_, i) => iso(NOW - (i + 1) * 86400000).slice(0, 10) + 'T00:00:00'); }
 // Продажа готового: история сделок по качеству (в город) и текущий Buy Order.
@@ -252,6 +252,22 @@ describe('GET /api/unified-scan', () => {
     expect(row.byCity.find((c) => c.city === 'Thetford')).toMatchObject({ inPlan: false });
     expect(row.byCity.find((c) => c.city === 'Thetford').dailyVolume).toBeCloseTo(1800 / 7, 6);
     expect(row.dailyVolume).toBeCloseTo(360 / 7, 6);                                   // в сумме — только город в расчёте
+  });
+
+  it('цена сырья — СРЕДНЯЯ по сделкам за окно (materialHours), а не цена одного самого дешёвого лота; нет сделок за окно — текущая котировка', async () => {
+    seedMaterial('T4_METALBAR', 100, 500, 130);                                 // самый дешёвый лот 100, но сделки шли в среднем по 130
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
+    const wide = (await scan({ mode: 'patient', materialHours: 168 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(wide.cost).toBeCloseTo(16 * 130 + 8 * 100, 6);                       // слитки по средней 130, кожа 100
+    const res = await scan({ mode: 'patient', materialHours: 1 });              // за последний час сделок нет → котировка 100
+    expect(res.materialHours).toBe(1);
+    expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD').cost).toBeCloseTo(24 * 100, 6);
+    const instant = (await scan({ mode: 'instant', materialHours: 168 }));       // одна честная цена сырья в обоих режимах
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40, buyOrder: 3800 });
+    resetCaches();
+    const inst = (await scan({ mode: 'instant', materialHours: 168 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(instant.materialHours).toBe(168);
+    expect(inst.cost).toBeCloseTo(16 * 130 + 8 * 100, 6);
   });
 });
 

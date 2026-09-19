@@ -722,3 +722,35 @@ test('скан: капитал вводится с разделителями р
   await expect(perHour).toContainText('25');                                         // 100 000 ÷ 4 ч, без нового запроса
   expect(requests).toBe(1);
 });
+
+
+test('свои цены: вписал реальную цену сырья и продажи — материалы, себестоимость, профит и города пересчитываются на месте, без запроса', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/api/craft-calc*', (route) => { requests++; route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 10, marketShare: 1, materialHours: 24, rrrPreset: { id: 'custom', label: 'бонус города: нет · Фокус: нет', rrr: 0 },
+    cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 2000, effectiveCostPerUnit: 2000, totalCost: 20000,
+    recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, rrr: 0, neededToBuy: 160, cheapestCity: 'Martlock', cheapestPrice: 100, priceSource: 'history', cityPrices: [] },
+             { resource: 'T4_LEATHER', resourceName: 'T4 Кожа (IV)', queryId: 'T4_LEATHER', enchanted: false, count: 8, returnable: true, rrr: 0, neededToBuy: 80, cheapestCity: 'Martlock', cheapestPrice: 50, priceSource: 'quote', cityPrices: [] }],
+    sellPrices: [{ city: 'Martlock', sellMin: null, buyMax: 3000 }], bestSell: { city: 'Martlock', price: 3000, blackMarket: false, taxRate: 0.08 }, taxRate: 0.08,
+    netSellPrice: 2760, profitPerUnit: 760, totalProfit: 7600, baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 2000, baseCostPerUnit: 2000 },
+    patientSell: { days: 7, marketShare: 1, avgSellPrice: 3000, bestCity: { city: 'Martlock', avgPrice: 3000 }, avgDailyVolume: 20, daysToSellBatch: 0.5, netSellPrice: 2685, profitPerUnit: 685,
+      byCity: [{ city: 'Martlock', avgSellPrice: 3000, avgDailyVolume: 20, netPrice: 2685, taxRate: 0.105, profitPerUnit: 685, profitIndex: 100 }],
+      cities: [], plan: { strategy: 'maxProfit', bestPrice: 3000, avgPrice: 3000, totalDays: 0.5, excluded: [], netPricePerUnit: 2685, profitPerUnit: 685, cities: [{ city: 'Martlock', avgPrice: 3000, avgDailyVolume: 20, tolerance: null, qty: 10, days: 0.5 }] } },
+  } }); });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  await expect(page.locator('#craft-result')).toContainText('котировка');                    // у кожи сделок нет — помечено
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('760');
+  // слитки в игре стоят 150, а не 100: себестоимость 2000 + 16 × 50 = 2800, профит 2760 − 2800 = −40
+  await page.locator('input.manual-price[data-res="T4_METALBAR"]').fill('150');
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('2 800');
+  await expect(page.locator('#craft-result')).toContainText('Сбросить свои цены');
+  await expect(page.locator('#craft-result .patient-sell')).toContainText(/[−-]115/);        // терпеливый профит города тоже сдвинулся на +800 к себестоимости: 685 − 800
+  await page.locator('#manual-sell-price').fill('3500');                                     // продаёшь по 3500: 3500 × 0.92 − 2800 = 420
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('420');
+  expect(requests).toBe(1);                                                                  // пересчёт на месте, без нового запроса
+  await page.locator('.manual-reset').click();
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('760');
+});

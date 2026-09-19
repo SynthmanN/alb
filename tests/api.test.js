@@ -368,6 +368,36 @@ describe('калькулятор крафта: возврат ресурсов �
   });
 });
 
+describe('калькулятор крафта: цена сырья — средняя по сделкам за своё окно', () => {
+  const install = (historyForMaterials) => vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+    const u = String(url);
+    if (u.includes('/history/')) {
+      const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
+      return { ok: true, status: 200, json: async () => (historyForMaterials ? ids.filter((id) => id === 'T4_METALBAR').map((id) => ({ item_id: id, location: 'Martlock', quality: 1, data: [{ item_count: 600, avg_price: 130, timestamp: new Date().toISOString().slice(0, 19) }] })) : []) };
+    }
+    const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+    return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : 100, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() })) };
+  });
+  const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock&royalBonus=false&focus=false${extra}`);
+
+  it('сырьё с историей сделок — по средней цене за окно (priceSource: history), не по цене одного лота; окно возвращается в ответе', async () => {
+    install(true);
+    const d = (await get('&materialHours=48')).body;
+    const bar = d.recipe.find((r) => r.resource === 'T4_METALBAR');
+    expect(bar).toMatchObject({ cheapestPrice: 130, priceSource: 'history' });
+    expect(d.materialHours).toBe(48);
+    const leather = d.recipe.find((r) => r.resource === 'T4_LEATHER');
+    expect(leather).toMatchObject({ cheapestPrice: 100, priceSource: 'quote' });       // сделок нет — текущая котировка, помечено
+    expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo(16 * 130 + 8 * 100, 6);
+  });
+
+  it('окно по умолчанию — 24 ч и не привязано к «Истории» продажи готового предмета', async () => {
+    install(true);
+    const d = (await get('&days=7')).body;
+    expect(d.materialHours).toBe(24);
+  });
+});
+
 describe('калькулятор крафта: возврат по городу и типу ресурса, Фокус', () => {
   const get = (extra) => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=100${extra}`);
   it('без параметров возврата нет; бонус города даёт каждому материалу СВОЮ ставку; Фокус добавляет 59% всем', async () => {
