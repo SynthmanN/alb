@@ -236,12 +236,13 @@ function normLocation(s) {
 
 // Объём сделок по item_id. Если передан locations — считаем только по этим городам
 // (нужно, чтобы объём относился к городам конкретной сделки, а не ко всем сразу).
-function totalVolume(historyData, itemId, locations) {
+function totalVolume(historyData, itemId, locations, quality) {
   const allowed = locations ? new Set(locations.map(normLocation)) : null;
   let total = 0;
   for (const series of historyData) {
     if (series.item_id !== itemId) continue;
     if (allowed && !allowed.has(normLocation(series.location))) continue;
+    if (quality !== undefined && series.quality !== quality) continue;
     for (const p of series.data || []) total += p.item_count;
   }
   return total;
@@ -805,9 +806,11 @@ app.get('/api/craft-opportunities', async (req, res) => {
     const itemIds = Object.keys(RECIPES);
     const allMaterialIds = [...new Set(itemIds.flatMap((id) => RECIPES[id].resources.map((r) => r.resource)))];
 
+    // Качество готового предмета сильно влияет на продаваемость (Отличное может уходить в сотни раз быстрее Обычного),
+    // а себестоимость от качества не зависит — поэтому цены продажи берём сразу по всем 5 качествам одним запросом.
     const [materialData, finishedData] = await Promise.all([
       fetchPricesBatched(allMaterialIds, 1),
-      fetchPricesBatched(itemIds, 1),
+      fetchGearPrices(itemIds, ALL_QUALITIES),
     ]);
 
     const materialByCity = {};
@@ -815,10 +818,10 @@ app.get('/api/craft-opportunities', async (req, res) => {
       if (!materialByCity[rec.item_id]) materialByCity[rec.item_id] = {};
       materialByCity[rec.item_id][rec.city] = rec;
     }
-    const finishedByCity = {};
+    const finishedByQuality = {}; // item -> quality -> city -> запись
     for (const rec of finishedData) {
-      if (!finishedByCity[rec.item_id]) finishedByCity[rec.item_id] = {};
-      finishedByCity[rec.item_id][rec.city] = rec;
+      const byQ = finishedByQuality[rec.item_id] || (finishedByQuality[rec.item_id] = {});
+      (byQ[rec.quality] || (byQ[rec.quality] = {}))[rec.city] = rec;
     }
 
     const results = [];
@@ -843,23 +846,25 @@ app.get('/api/craft-opportunities', async (req, res) => {
       if (!complete) continue;
 
       const effectiveCost = cost * (1 - rrr) + (recipe.silver || 0);
-      const sellCityData = finishedByCity[itemId] || {};
-      let bestSell = null;
-      for (const city of queryCities) {
-        const rec = sellCityData[city];
-        if (rec && rec.buy_price_max && (!bestSell || rec.buy_price_max > bestSell.price)) {
-          bestSell = { city, price: rec.buy_price_max, date: rec.buy_price_max_date };
+      for (const quality of ALL_QUALITIES) {
+        const sellCityData = finishedByQuality[itemId]?.[quality] || {};
+        let bestSell = null;
+        for (const city of queryCities) {
+          const rec = sellCityData[city];
+          if (rec && rec.buy_price_max && (!bestSell || rec.buy_price_max > bestSell.price)) {
+            bestSell = { city, price: rec.buy_price_max, date: rec.buy_price_max_date };
+          }
         }
-      }
-      if (!bestSell) continue;
-      const netSell = bestSell.price * (1 - taxRate);
-      if (netSell <= effectiveCost) continue;
+        if (!bestSell) continue;
+        const netSell = bestSell.price * (1 - taxRate);
+        if (netSell <= effectiveCost) continue;
 
-      const profit = netSell - effectiveCost;
-      const profitPct = (profit / effectiveCost) * 100;
-      // Свежесть — по самой старой из котировок сделки: цены материалов и цена продажи.
-      const freshMinutes = dealAgeMinutes([...quoteDates, bestSell.date], Date.now());
-      results.push({ itemId, cost: effectiveCost, bestSell, taxRate, profit, profitPct, freshMinutes });
+        const profit = netSell - effectiveCost;
+        const profitPct = (profit / effectiveCost) * 100;
+        // Свежесть — по самой старой из котировок сделки: цены материалов и цена продажи.
+        const freshMinutes = dealAgeMinutes([...quoteDates, bestSell.date], Date.now());
+        results.push({ itemId, quality, cost: effectiveCost, bestSell, taxRate, profit, profitPct, freshMinutes });
+      }
     }
 
     results.sort((a, b) => b.profitPct - a.profitPct);
@@ -868,16 +873,23 @@ app.get('/api/craft-opportunities', async (req, res) => {
     const minVolume = scaledMinVolume(hours);
     let withVolume = candidates;
     try {
-      const historyData = await fetchHistoryBatched(candidates.map((c) => c.itemId), hours, 1, queryCities);
-      withVolume = candidates
-        // Объём — по городу, где продаём готовый предмет.
-        .map((c) => ({ ...c, volume: totalVolume(historyData, c.itemId, [c.bestSell.city]) }))
+      const historyData = await fetchHistoryBatched([...new Set(candidates.map((c) => c.itemId))], hours, ALL_QUALITIES.join(','), queryCities.map((c) => c.replace(/\s+/g, '')));
+      const scored = candidates
+        // Объём — по городу, где продаём готовый предмет, и именно этого качества.
+        .map((c) => ({ ...c, volume: totalVolume(historyData, c.itemId, [c.bestSell.city], c.quality) }))
         .filter((c) => c.volume >= minVolume)
         .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
+      // Один предмет — одна строка: лучшее по скору качество (какое именно — в поле quality).
+      const seen = new Set();
+      withVolume = scored.filter((c) => (seen.has(c.itemId) ? false : (seen.add(c.itemId), true)));
     } catch (err) {
       console.error('не удалось проверить историю для сканера крафта:', err.message);
-      withVolume = candidates.map((c) => ({ ...c, volume: null }));
+      const seenIds = new Set();
+      withVolume = candidates
+        .map((c) => ({ ...c, volume: null }))
+        .sort((a, b) => b.profitPct - a.profitPct)
+        .filter((c) => (seenIds.has(c.itemId) ? false : (seenIds.add(c.itemId), true)));
     }
 
     const top = withVolume.slice(0, 25);

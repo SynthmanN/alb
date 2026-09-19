@@ -228,3 +228,34 @@ describe('калькулятор крафта: зачарование после
     expect((await get('enchant=2')).body.enchantAfterCraft).toBeNull();
   });
 });
+
+describe('сканер крафта: качество готового предмета', () => {
+  const now = new Date().toISOString().slice(0, 19);
+  const isHistory = (u) => String(u).includes('/history/');
+  it('берёт лучшее качество по ликвидности: у Обычного нет сделок, у Отличного есть', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (isHistory(u)) {
+        const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
+        return { ok: true, status: 200, json: async () => ids.flatMap((id) => [
+          { item_id: id, location: 'Martlock', quality: 1, data: [] },
+          { item_id: id, location: 'Martlock', quality: 4, data: [{ item_count: 500, avg_price: 1000 }] },
+        ]) };
+      }
+      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+      const qualities = (new URL(u).searchParams.get('qualities') || '1').split(',').map(Number);
+      const records = ids.flatMap((id) => qualities.map((quality) => ({
+        item_id: id, city: 'Martlock', quality,
+        sell_price_min: 1, sell_price_min_date: now,           // материалы стоят по 1 — себестоимость ничтожна
+        buy_price_max: id.includes('_MAIN_SWORD') ? 1000 : 0, buy_price_max_date: now,
+      })));
+      return { ok: true, status: 200, json: async () => records };
+    });
+    const res = (await request(app).get('/api/craft-opportunities?hours=24&cities=Martlock')).body;
+    const sword = res.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(sword).toBeTruthy();
+    expect(sword.quality).toBe(4); // Обычное (1) тоже «продаётся» по цене, но объёма у него нет — оно отсеивается
+    expect(sword.volume).toBe(500);
+    expect(res.filter((r) => r.itemId === 'T4_MAIN_SWORD')).toHaveLength(1); // одна строка на предмет
+  });
+});

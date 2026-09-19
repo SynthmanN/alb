@@ -422,19 +422,20 @@ function renderCraftScanResult(rows) {
     return `
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
+        <td data-sort-value="${r.quality}">${QUALITY_NAMES_CRAFT[r.quality] || '—'}</td>
         <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
         <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
         <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
         <td>${volumeText}</td>
-        <td><button class="scan-add-btn" data-id="${item.id}">в калькулятор</button></td>
+        <td><button class="scan-add-btn" data-id="${item.id}" data-quality="${r.quality}">в калькулятор</button></td>
       </tr>
     `;
   }).join('');
 
   craftScanResult.innerHTML = `
-    <p class="calc-note">Без зачарования, обычное качество. Профит — после налога с продажи. Объём — по городу продажи за выбранный период, малоликвидное уже отфильтровано. Старые котировки понижают позицию в списке.</p>
+    <p class="calc-note">Без зачарования. Проверяются все 5 качеств готового предмета — показано лучшее по скору (профит × ликвидность именно этого качества). Профит — после налога с продажи. Объём — по городу продажи за выбранный период, малоликвидное уже отфильтровано. Старые котировки понижают позицию в списке.</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Объём</th><th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Объём</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>
   `;
@@ -444,6 +445,7 @@ function renderCraftScanResult(rows) {
       const item = findItem(btn.dataset.id);
       if (item) {
         selectCraftItem(item);
+        if (btn.dataset.quality) craftEl.quality.value = btn.dataset.quality; // сразу то качество, которое нашёл скан
         document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
