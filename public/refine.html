@@ -9,58 +9,56 @@
 <body>
   <div id="site-chrome"></div>
   <main>
+    <section class="calc-panel refine-calc-shell craft-calc-shell">
+      <h2>Калькулятор переработки</h2>
+      <p class="calc-note">
+        Выбери полуфабрикат (слиток, кожа, брусья, ткань, блок) и зачарование — калькулятор покажет, что и где закупать (сырьё и полуфабрикат предыдущего тира — в самых
+        дешёвых ликвидных городах), где перерабатывать (город с бонусом ресурса ⭐) и где выгоднее продать. Всё своими ордерами: закупка по средней цене за окно + Setup Fee 2.5%,
+        продажа за вычетом налога и Setup Fee. Ставка возврата, окно, количество и свои цены пересчитываются на месте.
+      </p>
+      <div id="refine-picker" class="refine-picker"></div>
+      <div class="craft-controls-row">
+        <label class="craft-field" title="Возврат ресурсов при ПЕРЕРАБОТКЕ: по умолчанию 36.7% — город со спец-бонусом ресурса без фокуса. «Своя ставка» — впиши свой процент (фокус, гильдейские бонусы). Пересчёт на месте">Возврат ресурсов
+          <select id="calc-rrr"><option value="city_bonus" selected>Город со спец-бонусом ресурса — 36.7%</option></select>
+          <input id="calc-rrr-custom" type="number" min="0" max="95" step="0.1" placeholder="свой %, 0–95" hidden />
+        </label>
+        <label class="craft-field" title="За какое время усреднять цены сырья, полуфабриката и продажи: одно окно на всё. Кувшин хранит 7 дней">История
+          <select id="calc-hours" data-custom="hours" data-custom-max="168"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
+        </label>
+        <label class="craft-field" title="Сколько штук полуфабриката делаешь: чисто множитель уже посчитанных цены и профита за штуку, без запроса">Количество<input id="calc-quantity" type="number" min="1" value="1" /></label>
+      </div>
+      <div id="calc-result"></div>
+    </section>
+
     <section class="calc-panel">
       <h2>📈 Что выгодно перерабатывать</h2>
       <p class="calc-note">
-        Скан сырья и переработки: 5 типов ресурсов × 7 тиров. Читает локальную базу («кувшин»), считает мгновенно; каждую находку
-        проверь калькулятором ниже. Здесь нет «доли рынка»: сырьё торгуется десятками тысяч штук в день, и процент от такого оборота даёт
-        нереальное число сделок. Вместо неё — два понятных параметра: <b>Капитал на позицию</b> (из него для каждого материала считается количество: штук = капитал ÷ себестоимость) и
-        <b>Минимум дней</b> (быстрее этого срока цикл не идёт; реальные дни цикла считаются из истории и показаны в таблице). Профит в день = профит с позиции ÷ max(дней цикла, минимум дней).
-        «Доверие» — на скольких разных часах торговли стоят цифры: n / (n + 20).
+        Скан по данным кувшина: все типы сырья × все тиры (× зачарования — по галочке). Считает ОДНУ штуку полуфабриката: сырьё и полуфабрикат пред. тира — в самых дешёвых ликвидных городах,
+        переработка — в городе с бонусом (ставка возврата ниже), продажа — в городе с лучшей чистой ценой. Список отсортирован по «профит % × log₂(2 + оборот)»: полуфабрикат с раздутым
+        профитом, но мёртвой ликвидностью, вниз. Количество вводится в калькуляторе выше. «Доверие» — на скольких разных часах торговли стоят цифры (слабое звено — продукт или его сырьё): n / (n + 20).
       </p>
       <div class="craft-controls-row">
-        <label class="craft-field" title="Терпеливо: закупка по средней цене сделок за период и продажа своим Sell Order (налог + сбор 2.5%) в прибыльных городах. Мгновенно: закупка по текущим ценам и продажа в Buy Order">Режим
-          <select id="refine-scan-mode">
-            <option value="patient">Терпеливая продажа (свой Sell Order)</option>
-            <option value="instant">Мгновенно (в Buy Order)</option>
-          </select>
+        <label class="craft-field">Тип
+          <select id="refine-scan-type"><option value="">Все типы</option></select>
         </label>
-        <label class="craft-field" title="Сколько серебра готов вложить в ОДНУ позицию. Из него для каждого материала считается количество: штук = капитал ÷ себестоимость (дешёвое сырьё — много штук, дорогое — мало). Влияет на дни цикла и профит в день, не на профит с одной штуки">Капитал на позицию, серебро<input id="refine-scan-capital" data-grouped value="500000" /></label>
-        <label class="craft-field" title="Быстрее этого срока цикл не идёт (заказы, походы, перевыставление). Если партия «по рынку» продаётся быстрее, профит в день считается по этому минимуму — так дешёвое массовое сырьё не даёт фантастических цифр">Минимум дней на цикл<input id="refine-scan-min-days" type="number" min="0.1" step="0.5" value="1" /></label>
-        <label class="craft-field">Оборот от, шт/день<input id="refine-scan-min-daily" type="number" min="0" step="0.5" value="1" /></label>
-        <label class="craft-field">История
-          <select id="refine-scan-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+        <label class="craft-field">Тир
+          <select id="refine-scan-tier"><option value="">Все тиры</option><option value="2">T2</option><option value="3">T3</option><option value="4">T4</option><option value="5">T5</option><option value="6">T6</option><option value="7">T7</option><option value="8">T8</option></select>
         </label>
-        <label class="craft-field craft-check" title="«Бонус города» = переработка в royal-городе: возврат 15.3%; в городе со спец-бонусом этого ресурса — 36.7%. «Фокус»: 15.3% → 43.5%, 36.7% → 53.9%. Город закупки выбирается по цене после возврата в нём">
-          <span>Возврат ресурсов</span>
-          <span class="check-inline"><input id="refine-scan-royal-bonus" type="checkbox" checked /> Бонус города</span>
-          <span class="check-inline"><input id="refine-scan-focus" type="checkbox" /> Фокус</span>
+        <label class="craft-field" title="Возврат ресурсов при переработке (по умолчанию 36.7%). «Своя ставка» — впиши свой процент">Возврат ресурсов
+          <select id="refine-scan-rrr"><option value="city_bonus" selected>Город со спец-бонусом ресурса — 36.7%</option></select>
+          <input id="refine-scan-rrr-custom" type="number" min="0" max="95" step="0.1" placeholder="свой %, 0–95" hidden />
+        </label>
+        <label class="craft-field" title="Одно окно для цен сырья, полуфабрикатов и оборота продажи. Кувшин хранит 7 дней">История
+          <select id="refine-scan-hours" data-custom="hours" data-custom-max="168"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
+        </label>
+        <label class="craft-field" title="Продукт, который в лучшем городе продажи торгуется реже, в список не попадает: мёртвый полуфабрикат с огромным профитом — ловушка">Оборот от, шт/день<input id="refine-scan-min-daily" type="number" min="0" step="0.5" value="1" /></label>
+        <label class="craft-field craft-check">
+          <span>Зачарование</span>
+          <span class="check-inline"><input id="refine-scan-enchanted" type="checkbox" /> Показывать зачарованные</span>
         </label>
         <button id="refine-scan-run">Сканировать</button>
       </div>
       <div id="refine-scan-result"></div>
-    </section>
-
-    <section class="calc-panel">
-      <h2>Калькулятор себестоимости рефайна</h2>
-      <p class="calc-note">
-        Пропорции сырья сверены с дампом игровых файлов. RRR-формула подтверждена вики.
-        Кнопка «в калькулятор» в скане выше переносит тип и тир сюда и считает на месте.
-      </p>
-      <div class="calc-controls">
-        <select id="calc-type"></select>
-        <select id="calc-tier"></select>
-        <select id="calc-enchant">
-          <option value="0">Без зачар.</option><option value="1">Зачар. 1</option>
-          <option value="2">Зачар. 2</option><option value="3">Зачар. 3</option><option value="4">Зачар. 4</option>
-        </select>
-        <label class="craft-field craft-check" title="«Бонус города» = переработка в royal-городе: возврат 15.3%; в городе со спец-бонусом этого ресурса (в таблице отмечен ⭐) — 36.7%. «Фокус»: 15.3% → 43.5%, 36.7% → 53.9% (это не +59 процентных пунктов)">
-          <span class="check-inline"><input id="calc-royal-bonus" type="checkbox" checked /> Бонус города</span>
-          <span class="check-inline"><input id="calc-focus" type="checkbox" /> Фокус</span>
-        </label>
-        <button id="calc-run">Посчитать</button>
-      </div>
-      <div id="calc-result"></div>
     </section>
   </main>
 

@@ -194,8 +194,7 @@ function maxEnchantFor(item) {
   }
   if (item.category === 'raw' || item.category === 'refined') {
     if (item.tier < 4) return 0;
-    if (item.id.includes('STONEBLOCK')) return 0;
-    if (item.id.includes('_ROCK')) return 3;
+    if (item.id.includes('STONEBLOCK') || item.id.includes('_ROCK')) return 0;   // камень не зачаровывается вообще
     return 4;
   }
   return 0;
@@ -449,3 +448,36 @@ function renderSiteChrome() {
   });
 }
 renderSiteChrome();
+
+// --- Копирование названия для поиска в аукционе (калькулятор крафта и страница «Рефайн») ---
+// Клик по предмету копирует его игровое название без тира («Палаш (знаток)», «Слиток стали»): аукцион ищет по названию, а не по id.
+// Зачарование и качество в игре — отдельные фильтры интерфейса, поэтому вместо них в подсказке говорим, какие фильтры выбрать.
+const QUALITY_WORDS = { 1: 'обычное', 2: 'хорошее', 3: 'выдающееся', 4: 'отличное', 5: 'шедевр' };
+function auctionName(id) {
+  const base = String(id).replace(/_LEVEL\d@\d$/, '').replace(/@\d$/, '');
+  return itemName(base).replace(/^T\d+\s+/, '');
+}
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+}
+
+// filters — список слов подсказки («зачарование 2», «качество отличное»)
+async function copyAuctionName(id, filters = []) {
+  const name = auctionName(id);
+  const ok = await copyText(name);
+  showToast(ok ? `Скопировано: ${name}${filters.length ? ` — в поиске аукциона выбери фильтры: ${filters.join(', ')}` : ''}` : 'Не удалось скопировать: браузер запретил доступ к буферу обмена', ok ? 'ok' : 'error');
+}

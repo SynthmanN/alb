@@ -392,9 +392,9 @@ describe('зачарованные версии предметов для ска
     expect(t4.map((v) => v.queryId)).toEqual(['T4_MAIN_SWORD', 'T4_MAIN_SWORD@1', 'T4_MAIN_SWORD@2', 'T4_MAIN_SWORD@3', 'T4_MAIN_SWORD@4']);
     expect(enchantVariants({ id: 'T3_MAIN_SWORD', tier: 3, category: 'weapon' })).toEqual([{ enchant: 0, queryId: 'T3_MAIN_SWORD' }]);
   });
-  it('ресурсы: _LEVELn@n; камень — максимум .3; каменные блоки не зачаровываются', () => {
+  it('ресурсы: _LEVELn@n; камень (сырьё и блоки) не зачаровывается вообще', () => {
     expect(enchantVariants({ id: 'T5_ORE', tier: 5, category: 'raw' }).map((v) => v.queryId).slice(-1)).toEqual(['T5_ORE_LEVEL4@4']);
-    expect(enchantVariants({ id: 'T5_ROCK', tier: 5, category: 'raw' })).toHaveLength(4);
+    expect(enchantVariants({ id: 'T5_ROCK', tier: 5, category: 'raw' })).toHaveLength(1);
     expect(enchantVariants({ id: 'T5_STONEBLOCK', tier: 5, category: 'refined' })).toHaveLength(1);
   });
 });

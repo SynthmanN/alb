@@ -642,11 +642,6 @@ function bindPurchaseLog() {
 // Клик по предмету (выбранный гир, материал в таблице рецепта или плана закупки) копирует его игровое название без тира («Палаш (знаток)»,
 // «Слиток стали»): аукцион ищет по названию, а не по техническому id. Зачарование и качество в игре — отдельные фильтры интерфейса, а не часть
 // строки поиска, поэтому вместо них в подсказке говорим, какие фильтры выбрать.
-const QUALITY_WORDS = { 1: 'обычное', 2: 'хорошее', 3: 'выдающееся', 4: 'отличное', 5: 'шедевр' };
-function auctionName(id) {
-  const base = String(id).replace(/_LEVEL\d@\d$/, '').replace(/@\d$/, '');
-  return itemName(base).replace(/^T\d+\s+/, '');
-}
 function auctionFilters(el) {
   const id = String(el.dataset.copyId);
   let enchant = 0;
@@ -658,30 +653,10 @@ function auctionFilters(el) {
   if (quality > 1) parts.push(`качество ${QUALITY_WORDS[quality]}`);
   return parts;
 }
-async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch (e) {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
-    ta.remove();
-    return ok;
-  }
-}
 async function onCopyClick(e) {
   const el = e.target.closest('[data-copy-id]');
   if (!el || e.target.closest('select, input, button, a')) return;
-  const name = auctionName(el.dataset.copyId);
-  const filters = auctionFilters(el);
-  const ok = await copyText(name);
-  showToast(ok ? `Скопировано: ${name}${filters.length ? ` — в поиске аукциона выбери фильтры: ${filters.join(', ')}` : ''}` : 'Не удалось скопировать: браузер запретил доступ к буферу обмена', ok ? 'ok' : 'error');
+  await copyAuctionName(el.dataset.copyId, auctionFilters(el));
 }
 
 // Свои цены: значение запоминаем сразу, перерисовку откладываем (быстрый ввод не теряется), фокус и курсор возвращаем на то же поле.

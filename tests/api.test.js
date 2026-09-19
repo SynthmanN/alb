@@ -208,13 +208,6 @@ describe('расчёты с подменённым AODP', () => {
     expect(prem.netSellPrice).toBeCloseTo(480, 6);
     expect(free.profitPerUnit).toBeCloseTo(460 - free.effectiveCostPerUnit, 6);
   });
-  it('refining-calc: профит по городам считается после налога', async () => {
-    const res = (await request(app).get('/api/refining-calc?type=ORE&tier=4&rrr=none&premium=true')).body;
-    expect(res.taxRate).toBe(0.04);
-    const row = res.perCity[0];
-    expect(row.netOutputSell).toBeCloseTo(row.outputSell * 0.96, 6);
-    expect(row.profit).toBeCloseTo(row.netOutputSell - row.effectiveCost, 6);
-  });
   it('примерочная: комбинации в окне IP, цена растёт от первого варианта к последнему', async () => {
     const q = 'weapon=MAIN_SWORD&offhand=OFF_SHIELD&head=HEAD_PLATE_SET1&chest=ARMOR_PLATE_SET1&shoes=SHOES_PLATE_SET1&cape=CAPE&targetIP=900&tolMinus=30&tolPlus=100&variants=5';
     const res = (await request(app).get(`/api/fitting-room?${q}`)).body;
@@ -480,14 +473,6 @@ describe('калькулятор крафта: возврат при крафт�
     const meta = (await request(app).get('/api/refining-meta')).body;
     expect(meta.gearRrrPresets.map((p) => p.id)).toEqual(['none', 'city', 'city_bonus', 'city_focus', 'city_bonus_focus']);
     expect(meta.gearRrrPresets.find((p) => p.id === 'city_bonus').rrr).toBeCloseTo(0.248, 3);
-  });
-  it('refining-calc: возврат считается в каждом городе отдельно — спец-бонус только в городе своего ресурса', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
-    const d = (await request(app).get('/api/refining-calc?type=ORE&tier=4&royalBonus=true&focus=false&cities=Thetford,Martlock')).body;
-    const rate = (city) => d.perCity.find((c) => c.city === city).rrr;
-    expect(rate('Thetford')).toBeCloseTo(1 - 1 / 1.58, 9);       // Thetford — город руды
-    expect(rate('Martlock')).toBeCloseTo(1 - 1 / 1.18, 9);       // в Martlock руда получает только базу
-    expect(d.rrrLabel).toContain('бонус города: да');
   });
 });
 
