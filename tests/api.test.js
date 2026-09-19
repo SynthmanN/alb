@@ -670,6 +670,22 @@ describe('калькулятор крафта: купить готовый ма�
     expect(d.refineRate).toBe(0);
     expect(bar(d).materialSource).toBe('buy');
   });
+  it('план закупки: при переработке вместо готового слитка — сырьё и материал предыдущего тира в количестве «без остатка» (нужно × состав × (1 − возврат переработки))', async () => {
+    install(400);
+    const d = (await get()).body;
+    const rows = d.acquire.byResource.filter((r) => r.parent === 'T4_METALBAR');
+    expect(rows.map((r) => [r.queryId, r.role, r.source])).toEqual([['T4_ORE', 'raw', 'refine'], ['T3_METALBAR', 'prev', 'refine']]);
+    expect(rows[0].needed).toBe(Math.ceil(160 * 2 * (1 - d.refineRate)));      // 16 слитков × 10 шт, без возврата гира (gearRrr=none)
+    expect(rows[1].needed).toBe(Math.ceil(160 * 1 * (1 - d.refineRate)));
+    expect(rows[0].resourceName).toContain('сырьё (переработка)');
+    expect(d.acquire.byResource.some((r) => r.resource === 'T4_METALBAR')).toBe(false);   // готового слитка в плане нет
+  });
+  it('план закупки: если дешевле готовый — одна строка на сам материал', async () => {
+    install(150);
+    const rows = (await get()).body.acquire.byResource.filter((r) => r.parent === 'T4_METALBAR');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ resource: 'T4_METALBAR', source: 'buy', needed: 160 });
+  });
   it('у невозвращаемых и нерафинируемых материалов (герб, жетон) вариант переработки не строится', async () => {
     install(400);
     const d = (await get()).body;

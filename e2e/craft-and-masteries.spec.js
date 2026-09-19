@@ -14,8 +14,8 @@ test('крафт-калькулятор: выбор предмета и расч
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
-  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('После налога с продажи (8%)');
-  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('1 200');
+  await expect(page.locator('#craft-result li.craft-step:nth-child(2) .craft-summary').first()).toContainText('После налога с продажи (8%)');
+  await expect(page.locator('#craft-result li.craft-step:nth-child(2) .craft-summary').first()).toContainText('1 200');
   await expect(page.locator('#craft-result .patient-sell')).toContainText('Продажа через Sell Order');
   await expect(page.locator('#craft-result .patient-sell')).toContainText('2 120');
 });
@@ -754,17 +754,17 @@ test('свои цены: вписал реальную цену сырья и п
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
   await expect(page.locator('#craft-result')).toContainText('котировка');                    // у кожи сделок нет — помечено
-  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('760');
+  await expect(page.locator('#craft-result li.craft-step:nth-child(2) .craft-summary').first()).toContainText('760');
   // слитки в игре стоят 150, а не 100: себестоимость 2000 + 16 × 50 = 2800, профит 2760 − 2800 = −40
   await page.locator('input.manual-price[data-res="T4_METALBAR"]').fill('150');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('2 800');
   await expect(page.locator('#craft-result')).toContainText('Сбросить свои цены');
   await expect(page.locator('#craft-result .patient-sell')).toContainText(/[−-]115/);        // терпеливый профит города тоже сдвинулся на +800 к себестоимости: 685 − 800
   await page.locator('#manual-sell-price').fill('3500');                                     // продаёшь по 3500: 3500 × 0.92 − 2800 = 420
-  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('420');
+  await expect(page.locator('#craft-result li.craft-step:nth-child(2) .craft-summary').first()).toContainText('420');
   expect(requests).toBe(1);                                                                  // пересчёт на месте, без нового запроса
   await page.locator('.manual-reset').click();
-  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('760');
+  await expect(page.locator('#craft-result li.craft-step:nth-child(2) .craft-summary').first()).toContainText('760');
 });
 
 
@@ -819,6 +819,11 @@ test('купить готовый материал или переработат
     recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, rrr: gear, cityBonus: false, neededToBuy: Math.ceil(160 * (1 - gear)),
       cheapestCity: 'Thetford', cheapestPrice: refinePrice, priceSource: 'refine', materialSource: 'refine', buyPrice: 500, buyCity: null, cityPrices: [],
       refineOption: { city: 'Thetford', rate: refine, rawCost: 600, price: refinePrice, components: [{ id: 'T4_ORE', count: 2, price: 250, city: 'Thetford' }, { id: 'T3_METALBAR', count: 1, price: 100, city: 'Martlock' }] } }],
+    acquire: { days: 3, cycleDays: null, bottleneckResource: 'T4_METALBAR|T4_ORE', bottleneckParent: 'T4_METALBAR', byResource: [
+      { resource: 'T4_METALBAR|T4_ORE', parent: 'T4_METALBAR', source: 'refine', role: 'raw', queryId: 'T4_ORE', resourceName: 'T4 Слитки (IV) — сырьё (переработка)', needed: 203, avgDailyVolume: 100, daysToAcquire: 3,
+        plan: { cities: [{ city: 'Thetford', avgPrice: 250, avgDailyVolume: 100, tolerance: 0.02, qty: 203, days: 3 }], excluded: [], overpayPct: 0, totalDays: 3 } },
+      { resource: 'T4_METALBAR|T3_METALBAR', parent: 'T4_METALBAR', source: 'refine', role: 'prev', queryId: 'T3_METALBAR', resourceName: 'T4 Слитки (IV) — материал пред. тира (переработка)', needed: 102, avgDailyVolume: 100, daysToAcquire: 1,
+        plan: { cities: [{ city: 'Martlock', avgPrice: 100, avgDailyVolume: 100, tolerance: 0.02, qty: 102, days: 1 }], excluded: [], overpayPct: 0, totalDays: 1 } }] },
     sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
     baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 16 * refinePrice * (1 - gear), baseCostPerUnit: 16 * refinePrice * (1 - gear) },
   } }); });
@@ -828,17 +833,20 @@ test('купить готовый материал или переработат
   await page.locator('#craft-run').click();
   const row = page.locator('#craft-result .craft-recipe-table tbody tr').first();
   await expect(row).toContainText('выгоднее переработать в Thetford');
-  await expect(row).toContainText('36.7% → 24.8%');                                            // две ставки отдельно, без общего процента
+  await expect(row).toContainText('36.7% сырьё · 24.8% гир');                                            // две ставки отдельно, без общего процента
+  await expect(row).toContainText('сырьё — ');                                                  // план закупки: сырьё и материал пред. тира, а не готовый слиток
+  await expect(row).toContainText('материал пред. тира — ');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('4 568');   // 16 × 379.8 × (1 − 0.2481)
   // ставка переработки 0%: переработка стоит 600 против покупки 500 — берём готовый слиток; себестоимость 16 × 500 × (1 − 0.2481) = 6 015
   await page.locator('#craft-refine-rrr').selectOption('none');
   await expect(row).not.toContainText('выгоднее переработать');
+  await expect(row).not.toContainText('материал пред. тира');                                    // план строился под переработку — под покупку нужен новый расчёт
   await expect(row).toContainText('24.8%');
-  await expect(row).not.toContainText('→');
+  await expect(row).not.toContainText('сырьё · ');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('6 015');
   await page.locator('#craft-refine-rrr').selectOption('custom');                               // своя ставка 50%: 300 < 500 — снова перерабатываем
   await page.locator('#craft-refine-rrr-custom').fill('50');
-  await expect(row).toContainText('50.0% → 24.8%');
+  await expect(row).toContainText('50.0% сырьё · 24.8% гир');
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('3 609');   // 16 × 300 × (1 − 0.2481)
   expect(requests).toBe(1);                                                                    // всё пересчитано на месте, без нового запроса
 });
@@ -863,4 +871,38 @@ test('скан гира: ставка переработки уходит в з�
   expect(scanQuery.get('refineRrrCustom')).toBe('50');
   await expect(page.locator('#margin-result tbody tr').first()).toContainText('♻ переработка: 1');
   await expect(page.locator('#margin-result .calc-note')).toContainText('возвратом при переработке 50.0%');
+});
+
+test('любая правка параметров сама пересчитывает результат через сервер (с задержкой), свои цены при этом сохраняются; ставки возврата — на месте', async ({ page }) => {
+  const queries = [];
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    queries.push(q);
+    const qty = Number(q.get('quantity'));
+    route.fulfill({ json: {
+      itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: qty, marketShare: 1, materialHours: 24, refineRate: 0.367,
+      rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 1000 * qty,
+      recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 10, returnable: true, rrr: 0, neededToBuy: 10 * qty, cheapestCity: 'Martlock', cheapestPrice: 100, priceSource: 'history', cityPrices: [] }],
+      sellPrices: [], bestSell: { city: 'Martlock', price: 1500, blackMarket: false, taxRate: 0.08 }, taxRate: 0.08, netSellPrice: 1380, profitPerUnit: 380, totalProfit: 380 * qty, patientSell: null,
+      baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 1000, baseCostPerUnit: 1000 },
+    } });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-gear-rrr').selectOption('none');
+  await page.locator('#craft-quantity').fill('10');
+  await page.locator('#craft-run').click();
+  await expect(page.locator('.craft-scoreboard')).toContainText('10 000');                       // деньги на весь цикл: 1000 × 10
+  await expect(page.locator('.craft-scoreboard')).toContainText('3 800');                        // маржа всего: 380 × 10
+  await page.locator('input.manual-price[data-res="T4_METALBAR"]').fill('120');                  // своя цена сырья
+  await expect(page.locator('.craft-scoreboard')).toContainText('12 000');                       // 10 шт × (1000 + 10 слитков × 20) — пересчёт на месте
+  await page.locator('#craft-quantity').fill('20');
+  await expect.poll(() => queries.length).toBe(2);                                               // правка количества сама вызвала пересчёт
+  expect(queries[1].get('quantity')).toBe('20');
+  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toHaveValue('120');    // своя цена пережила пересчёт
+  await page.locator('#craft-gear-rrr').selectOption('city');                                   // ставка возврата — только на месте
+  await page.waitForTimeout(800);
+  expect(queries.length).toBe(2);
 });

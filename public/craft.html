@@ -17,6 +17,7 @@
         и текущей цены продажи готового предмета. Рядом — продажа через Sell Order: свой ордер по средней
         цене истории сделок, с объёмом и сроком распродажи, чтобы не стать «инвестором предмета».
       </p>
+      <div class="craft-calc-shell">
       <div class="calc-controls">
         <input id="craft-search" type="text" placeholder="Найди предмет (например, плащ бресильена)..." />
         <select id="craft-category-filter">
@@ -33,47 +34,62 @@
       </div>
       <div id="craft-suggestions" class="suggestions"></div>
       <div id="craft-selected" class="craft-selected"></div>
-      <div class="craft-controls-row" style="display:none" id="craft-controls">
-        <label class="craft-field">Зачарование<select id="craft-enchant"></select></label>
-        <label class="craft-field">Качество
+      <div id="craft-controls" class="craft-cards" style="display:none">
+        <div class="craft-card">
+          <h3>Что крафтим</h3>
+          <div class="craft-controls-row">
+          <label class="craft-field">Зачарование<select id="craft-enchant"></select></label>
+          <label class="craft-field">Качество
           <select id="craft-quality">
-            <option value="1">Обычное</option><option value="2">Хорошее</option>
-            <option value="3">Выдающееся</option><option value="4">Отличное</option><option value="5">Шедевр</option>
+          <option value="1">Обычное</option><option value="2">Хорошее</option>
+          <option value="3">Выдающееся</option><option value="4">Отличное</option><option value="5">Шедевр</option>
           </select>
-        </label>
-        <label class="craft-field craft-check" title="Купил сырьё стаками — впиши каждый стак (количество и цену за штуку): калькулятор посчитает среднюю цену и покажет, сколько ещё нужно докупить. Точнее любой модели: AODP не отдаёт стакан, а ты видишь реальные лоты в игре. Работает на месте, без запроса">
-          <span>Закупка</span>
-          <span class="check-inline"><input id="craft-purchase-log" type="checkbox" /> Лог закупок по лотам</span>
-        </label>
-        <label class="craft-field craft-check" title="Добавить Чёрный Рынок в план продажи: его цена — по истории сделок ЧР, налог свой (налог + Setup Fee всегда: 10.5% без премиума, 6.5% с премиумом). В план и распределение он входит наравне с городами">
-          <span>Чёрный Рынок</span>
-          <span class="check-inline"><input id="craft-black-market" type="checkbox" /> Учитывать ЧР</span>
-        </label>
-        <label class="craft-field" title="Возврат ресурсов при КРАФТЕ гира. Город не угадываем (где ты стоишь — неизвестно, а бонус города зависит от типа предмета: топор в Martlock — 24.8%, лук там же — 15.3%): ставку выбираешь ты. По умолчанию 24.8% — город с бонусом для предмета, без Фокуса. «Своя ставка» — впиши свой процент (мастерки и гильдейские бонусы двигают его дополнительно). Не путать с переработкой сырья на странице «Рефайн»: там ставка считается по городу и типу ресурса">Возврат ресурсов (крафт)
-          <select id="craft-gear-rrr"><option value="city_bonus" selected>Город с бонусом предмета — 24.8%</option></select>
-          <input id="craft-gear-rrr-custom" type="number" min="0" max="95" step="0.1" placeholder="свой %, 0–95" hidden />
-        </label>
-        <label class="craft-field" title="Возврат ресурсов при ПЕРЕРАБОТКЕ сырья (слитки, кожа, доски, ткань, блоки) — отдельная ставка от крафта гира. Материал рецепта можно купить готовым или собрать самому из сырья и материала предыдущего тира: калькулятор сам берёт дешевле. По умолчанию 36.7% — город со спец-бонусом ресурса без Фокуса (Тэтфорд — руда, Мартлок — кожа и т. д.). «Своя ставка» — впиши свой процент. Смена ставки пересчитывает всё на месте">Возврат ресурсов (переработка)
-          <select id="craft-refine-rrr"><option value="city_bonus" selected>Город со спец-бонусом ресурса — 36.7%</option></select>
-          <input id="craft-refine-rrr-custom" type="number" min="0" max="95" step="0.1" placeholder="свой %, 0–95" hidden />
-        </label>
-        <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
-        <label class="craft-field" title="Какую долю дневного оборота рынка ты реально сможешь продать: другие игроки тоже торгуют и перевыставляют ордера, чтобы быть первыми. Влияет на срок распродажи">Доля рынка
-          <select id="craft-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
-        </label>
-        <label class="craft-field" title="Ценовой допуск плана ЗАКУПКИ по городам, %: город входит в план, если его цена не хуже лучшей больше чем на допуск. У ликвидных городов допуск динамически растёт (до ×3), у совсем тонких рынков цена не считается надёжной. План продажи допуска не использует: в него входят все прибыльные города">Допуск цены закупки, %
-          <input id="craft-price-tolerance" type="number" min="0" max="50" step="1" value="2" />
-        </label>
-        <label class="craft-field craft-check" title="Крафтим (или покупаем, если дешевле) базовый предмет .0, дальше поднимаем зачарование рунами/душами/реликвиями до выбранного уровня. Без галочки — крафт сразу из зачарованных материалов">
+          </label>
+          <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
+          <label class="craft-field craft-check" title="Крафтим (или покупаем, если дешевле) базовый предмет .0, дальше поднимаем зачарование рунами/душами/реликвиями до выбранного уровня. Без галочки — крафт сразу из зачарованных материалов">
           <span>Зачарование</span>
           <span class="check-inline"><input id="craft-enchant-after" type="checkbox" /> Зачаровать после крафта</span>
-        </label>
-        <label class="craft-field" title="Продажа через Sell Order: показать все города, где средняя цена не ниже порога, с суммарным спросом. Для больших партий, которые один город не переварит">Порог продажи<input id="craft-sell-threshold" type="number" min="0" placeholder="нет" /></label>
-        <label class="craft-field craft-check" title="Материалы покупаются в разных городах и едут в город сборки, готовый предмет — в город продажи. Считается по весу и дистанции (кольцо из 5 городов, Бресильен ×2, Каэрлеон исключён)">
+          </label>
+          </div>
+        </div>
+        <div class="craft-card">
+          <h3>Возврат ресурсов</h3>
+          <div class="craft-controls-row">
+          <label class="craft-field" title="Возврат ресурсов при КРАФТЕ гира. Город не угадываем (где ты стоишь — неизвестно, а бонус города зависит от типа предмета: топор в Martlock — 24.8%, лук там же — 15.3%): ставку выбираешь ты. По умолчанию 24.8% — город с бонусом для предмета, без Фокуса. «Своя ставка» — впиши свой процент (мастерки и гильдейские бонусы двигают его дополнительно). Не путать с переработкой сырья на странице «Рефайн»: там ставка считается по городу и типу ресурса">Возврат ресурсов (крафт)
+          <select id="craft-gear-rrr"><option value="city_bonus" selected>Город с бонусом предмета — 24.8%</option></select>
+          <input id="craft-gear-rrr-custom" type="number" min="0" max="95" step="0.1" placeholder="свой %, 0–95" hidden />
+          </label>
+          <label class="craft-field" title="Возврат ресурсов при ПЕРЕРАБОТКЕ сырья (слитки, кожа, доски, ткань, блоки) — отдельная ставка от крафта гира. Материал рецепта можно купить готовым или собрать самому из сырья и материала предыдущего тира: калькулятор сам берёт дешевле. По умолчанию 36.7% — город со спец-бонусом ресурса без Фокуса (Тэтфорд — руда, Мартлок — кожа и т. д.). «Своя ставка» — впиши свой процент. Смена ставки пересчитывает всё на месте">Возврат ресурсов (переработка)
+          <select id="craft-refine-rrr"><option value="city_bonus" selected>Город со спец-бонусом ресурса — 36.7%</option></select>
+          <input id="craft-refine-rrr-custom" type="number" min="0" max="95" step="0.1" placeholder="свой %, 0–95" hidden />
+          </label>
+          </div>
+        </div>
+        <div class="craft-card">
+          <h3>Рынок и продажа</h3>
+          <div class="craft-controls-row">
+          <label class="craft-field" title="Какую долю дневного оборота рынка ты реально сможешь продать: другие игроки тоже торгуют и перевыставляют ордера, чтобы быть первыми. Влияет на срок распродажи">Доля рынка
+          <select id="craft-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
+          </label>
+          <label class="craft-field" title="Ценовой допуск плана ЗАКУПКИ по городам, %: город входит в план, если его цена не хуже лучшей больше чем на допуск. У ликвидных городов допуск динамически растёт (до ×3), у совсем тонких рынков цена не считается надёжной. План продажи допуска не использует: в него входят все прибыльные города">Допуск цены закупки, %
+          <input id="craft-price-tolerance" type="number" min="0" max="50" step="1" value="2" />
+          </label>
+          <label class="craft-field" title="Продажа через Sell Order: показать все города, где средняя цена не ниже порога, с суммарным спросом. Для больших партий, которые один город не переварит">Порог продажи<input id="craft-sell-threshold" type="number" min="0" placeholder="нет" /></label>
+          <label class="craft-field craft-check" title="Добавить Чёрный Рынок в план продажи: его цена — по истории сделок ЧР, налог свой (налог + Setup Fee всегда: 10.5% без премиума, 6.5% с премиумом). В план и распределение он входит наравне с городами">
+          <span>Чёрный Рынок</span>
+          <span class="check-inline"><input id="craft-black-market" type="checkbox" /> Учитывать ЧР</span>
+          </label>
+          <label class="craft-field craft-check" title="Материалы покупаются в разных городах и едут в город сборки, готовый предмет — в город продажи. Считается по весу и дистанции (кольцо из 5 городов, Бресильен ×2, Каэрлеон исключён)">
           <span>Логистика</span>
           <span class="check-inline"><input id="craft-teleport" type="checkbox" /> Учитывать телепорт</span>
-        </label>
-        <button id="craft-run">Посчитать</button>
+          </label>
+          <label class="craft-field craft-check" title="Купил сырьё стаками — впиши каждый стак (количество и цену за штуку): калькулятор посчитает среднюю цену и покажет, сколько ещё нужно докупить. Точнее любой модели: AODP не отдаёт стакан, а ты видишь реальные лоты в игре. Работает на месте, без запроса">
+          <span>Закупка</span>
+          <span class="check-inline"><input id="craft-purchase-log" type="checkbox" /> Лог закупок по лотам</span>
+          </label>
+          </div>
+        </div>
+        <div class="craft-run-row"><button id="craft-run">Посчитать</button></div>
       </div>
       <details class="craft-extra" id="craft-extra" style="display:none">
         <summary>Дополнительно: история, потолок себестоимости, полоса цены продажи</summary>
@@ -90,6 +106,7 @@
         </div>
       </details>
       <div id="craft-result"></div>
+      </div>
 
       <details class="tool-accordion">
         <summary>🎯 Скан маржи и ликвидности</summary>

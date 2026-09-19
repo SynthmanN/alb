@@ -98,7 +98,24 @@ async function initCraft() {
   craftEl.search.addEventListener('input', (e) => renderCraftSuggestions(e.target.value));
   craftEl.categoryFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
   craftEl.tierFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
-  craftEl.run.addEventListener('click', runCraftCalc);
+  craftEl.run.addEventListener('click', () => runCraftCalc());
+  // Любая правка параметров, которые считает сервер (количество, доля рынка, окна, порог, зачарование, качество, галочки…), сама
+  // пересчитывает результат. Ставки возврата и свои цены/лоты/план продажи пересчитываются на месте, без запроса (см. rerender выше).
+  const AUTO_FIELDS = new Set(['craft-enchant', 'craft-quality', 'craft-quantity', 'craft-enchant-after', 'craft-market-share', 'craft-price-tolerance', 'craft-sell-threshold',
+    'craft-black-market', 'craft-teleport', 'craft-days', 'craft-material-hours', 'craft-ceiling', 'craft-sell-low', 'craft-sell-high']);
+  let autoTimer = null;
+  const autoRun = (e) => {
+    const holder = e.target.closest && e.target.closest('[id]');
+    const id = e.target.id || (holder ? holder.id : '');
+    const owner = AUTO_FIELDS.has(id) ? id : [...AUTO_FIELDS].find((f) => e.target.closest('label') && e.target.closest('label').querySelector(`#${f}`));
+    if (!owner || !lastCraftData) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => runCraftCalc(true), 500);
+  };
+  craftEl.controls.addEventListener('change', autoRun);
+  craftEl.controls.addEventListener('input', autoRun);
+  document.getElementById('craft-extra').addEventListener('change', autoRun);
+  document.getElementById('craft-extra').addEventListener('input', autoRun);
 }
 
 function renderCraftSuggestions(query) {
@@ -163,9 +180,9 @@ function selectCraftItem(item, keep = false) {
   craftEl.enchant.innerHTML = opts.map((o) => `<option value="${o.v}" ${o.v > maxE ? 'disabled' : ''}>${o.l}</option>`).join('');
   if (keep && Number(prevEnchant) <= maxE) craftEl.enchant.value = prevEnchant;
 
-  craftEl.controls.style.display = 'flex';
+  craftEl.controls.style.display = 'grid';
   document.getElementById('craft-extra').style.display = 'block';
-  if (!keep) craftEl.result.innerHTML = '';
+  if (!keep) { craftEl.result.innerHTML = ''; lastCraftData = null; }   // новый предмет — старый результат не пересчитываем
 }
 
 // Быстрая смена тира без повторного поиска: тот же предмет на другом тире, зачарование/качество/количество те же.
@@ -176,9 +193,12 @@ function switchCraftTier(itemId) {
   runCraftCalc();
 }
 
-async function runCraftCalc() {
+// «Посчитать» — и автоматический пересчёт при правке параметров (keepManual: свои цены и лоты на автопересчёте сохраняются; план продажи
+// по городам зависит от количества и рынка — он сбрасывается).
+async function runCraftCalc(keepManual = false) {
   if (!craftSelectedItem) return;
-  craftEl.result.innerHTML = 'Считаю...';
+  if (keepManual !== true) keepManual = false;
+  if (!keepManual || !lastCraftData) craftEl.result.innerHTML = 'Считаю...';
   try {
     const params = new URLSearchParams({
       item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
@@ -200,10 +220,12 @@ async function runCraftCalc() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     manualSalePlan.clear();
-    manualMaterialPrice.clear();
-    purchaseLots.clear();
-    manualSellPrice = null;
     saleCityToggles.clear();
+    if (!keepManual) {
+      manualMaterialPrice.clear();
+      purchaseLots.clear();
+      manualSellPrice = null;
+    }
     lastCraftData = data;
     renderCraftResult(data);
   } catch (err) {
@@ -349,8 +371,8 @@ function renderCraftResult(rawData) {
         <td>${needed.toLocaleString('ru-RU')}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU')}</small>` : ''}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : `${r.materialSource === 'refine' && !r.manualPrice ? refineSourceHtml(r) : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}${r.priceSource === 'quote' ? '<br><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>' : ''}${craftEl.purchaseLog.checked ? lotLogHtml(r) : `<br><input class="manual-price ${r.manualPrice ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${r.resource}" placeholder="своя цена" value="${manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : ''}" title="Видишь другую цену в игре — впиши её: расчёт обновится сразу" />`}`}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
-        <td data-sort-value="${acquireDaysFor(data, r.resource) ?? ''}">${acquireDaysFor(data, r.resource) !== null ? fmtDays(acquireDaysFor(data, r.resource)) : '—'}${data.acquire && data.acquire.bottleneckResource === r.resource ? ' 🐢' : ''}${acquirePlanHtml(data, r.resource)}</td>
-        <td data-sort-value="${r.rrr ?? 0}">${r.returnable === false ? '—' : `${r.materialSource === 'refine' && r.refineOption ? `${(r.refineOption.rate * 100).toFixed(1)}% → ` : ''}${((r.rrr || 0) * 100).toFixed(1)}%${r.cityBonus ? ` <span class="city-bonus" title="Город закупки (${r.cheapestCity}) даёт спец-бонус именно этому типу ресурса: возврат выше базового">★ бонус</span>` : ''}`}</td>
+        <td data-sort-value="${acquireDaysFor(data, r) ?? ''}">${acquireDaysFor(data, r) !== null ? fmtDays(acquireDaysFor(data, r)) : '—'}${data.acquire && (data.acquire.bottleneckParent || data.acquire.bottleneckResource) === r.resource ? ' 🐢' : ''}${acquirePlanHtml(data, r)}</td>
+        <td data-sort-value="${r.rrr ?? 0}">${r.returnable === false ? '—' : `${r.materialSource === 'refine' && r.refineOption ? `${(r.refineOption.rate * 100).toFixed(1)}% сырьё · ${((r.rrr || 0) * 100).toFixed(1)}% гир` : `${((r.rrr || 0) * 100).toFixed(1)}%`}${r.cityBonus ? ` <span class="city-bonus" title="Город закупки (${r.cheapestCity}) даёт спец-бонус именно этому типу ресурса: возврат выше базового">★ бонус</span>` : ''}`}</td>
       </tr>
     `;
   }).join('');
@@ -366,41 +388,64 @@ function renderCraftResult(rawData) {
 
   const profitClass = data.profitPerUnit === null ? '' : data.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
 
+  // Хронология цикла: сводка → Шаг 1 «Сырьё» (закупка, план по городам, логистика) → Шаг 2 «Продажа» (сразу и терпеливо); «Что если» — отдельно.
   craftEl.result.innerHTML = `
-    ${warning}
-    <div class="table-scroll"><table class="craft-recipe-table">
+    <div class="craft-result-shell">
+    ${scoreboardHtml(data)}
+    <ol class="craft-flow">
+      <li class="craft-step">
+        <span class="step-badge" aria-hidden="true">1</span>
+        <div class="step-body">
+          <h3 class="step-title">Сырьё <small>закупка и переработка</small></h3>
+          ${warning}
+          <div class="table-scroll"><table class="craft-recipe-table" id="craft-recipe-table">
       <thead><tr><th>Материал</th><th>Нужно всего</th><th>Где дешевле</th><th>Сумма</th><th>Дней на закупку</th><th title="Ставка возврата ресурсов для этого материала в городе его покупки">Возврат</th></tr></thead>
       <tbody>${recipeRows}</tbody>
       <tfoot><tr class="materials-total"><td colspan="3">Итого материалы к закупке (с учётом возврата)</td><td>${fmtNum(materialsTotal)}</td><td></td><td></td></tr>${data.manualPrices ? '<tr><td colspan="6"><button type="button" class="manual-reset">Сбросить свои цены</button> <small>Расчёт идёт по твоим ценам; «Сравнение по качеству и тирам» считает по рыночным.</small></td></tr>' : ''}</tfoot>
     </table></div>
-    <details style="margin-top:10px">
-      <summary style="cursor:pointer; font-size:13px; color:#9aa0aa">Цены готового предмета по городам</summary>
-      <div class="table-scroll"><table class="craft-recipe-table" style="margin-top:6px">
-        <thead><tr><th>Город</th><th>Купить</th><th>Продать</th></tr></thead>
-        <tbody>${sellRows}</tbody>
-      </table></div>
-    </details>
-    <div class="craft-summary">
+          <div class="craft-summary">
       <div class="craft-summary-row"><span>Себестоимость материала / шт (сырое)</span><span>${Math.round(data.materialCostPerUnit).toLocaleString('ru-RU')}</span></div>
       <div class="craft-summary-row"><span title="${data.rrrPreset.label}; у каждого материала своя ставка (см. таблицу материалов)">Себестоимость с учётом RRR (в среднем ${(data.rrrPreset.rrr * 100).toFixed(1)}%) / шт</span><span>${Math.round(data.effectiveCostPerUnit).toLocaleString('ru-RU')}</span></div>
+          </div>
+          ${baseChoiceHtml(data)}
+          ${enchantAfterHtml(data)}
+          ${teleportHtml(data)}
+        </div>
+      </li>
+      <li class="craft-step">
+        <span class="step-badge" aria-hidden="true">2</span>
+        <div class="step-body">
+          <h3 class="step-title">Продажа <small>сразу в Buy Order и терпеливо через Sell Order</small></h3>
+          <div class="craft-summary">
       <div class="craft-summary-row"><span>Продажа в Buy Order: лучшая цена (мгновенно, в чужой ордер на покупку)</span><span>${data.bestSell && !data.bestSell.manual ? `${data.bestSell.blackMarket ? '⚫ ' : ''}${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : data.bestSell ? `своя цена: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'} <input id="manual-sell-price" class="manual-price ${manualSellPrice !== null ? 'is-manual' : ''}" type="number" min="0" step="1" placeholder="своя цена" value="${manualSellPrice !== null ? manualSellPrice : ''}" title="Вписал цену, по которой реально продаёшь, — профит пересчитается сразу" /></span></div>
       <div class="craft-summary-row"><span>После налога с продажи (${((data.bestSell && data.bestSell.taxRate !== undefined ? data.bestSell.taxRate : data.taxRate) * 100).toFixed(data.bestSell && data.bestSell.blackMarket ? 1 : 0)}%${data.bestSell && data.bestSell.blackMarket ? ', Чёрный Рынок' : ''})</span><span>${data.netSellPrice !== null ? Math.round(data.netSellPrice).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
+          </div>
+          <details style="margin-top:10px">
+      <summary style="cursor:pointer; font-size:13px; color:#9aa0aa">Цены готового предмета по городам</summary>
+      <div class="table-scroll"><table class="craft-recipe-table" id="craft-sell-table" style="margin-top:6px">
+        <thead><tr><th>Город</th><th>Купить</th><th>Продать</th></tr></thead>
+        <tbody>${sellRows}</tbody>
+      </table></div>
+    </details>
+          ${patientSellHtml(data)}
+        </div>
+      </li>
+    </ol>
+    ${data.tierComparison && data.tierComparison.length ? `<div class="craft-whatif">
+      <h3 class="whatif-title">Что если <small>другой тир — решается до закупки, вне цикла</small></h3>
+      ${tierComparisonHtml(data)}
+    </div>` : ''}
     </div>
-    ${tierComparisonHtml(data)}
-    ${baseChoiceHtml(data)}
-    ${enchantAfterHtml(data)}
-    ${patientSellHtml(data)}
-    ${teleportHtml(data)}
   `;
+
   craftEl.result.querySelectorAll('tr.tier-row').forEach((tr) => tr.addEventListener('click', () => switchCraftTier(tr.dataset.itemId)));
   bindSalePlanEditing();
   bindManualPrices();
   bindPurchaseLog();
-  const craftTables = craftEl.result.querySelectorAll('table');
-  wireTableSort(craftTables[0], 'craft-recipe');
-  wireTableSort(craftTables[1], 'craft-sell');
+  wireTableSort(craftEl.result.querySelector('#craft-recipe-table'), 'craft-recipe');
+  wireTableSort(craftEl.result.querySelector('#craft-sell-table'), 'craft-sell');
 }
 
 
@@ -577,19 +622,51 @@ function tierComparisonHtml(data) {
 }
 
 // План закупки материала по городам (ценовой допуск динамический): где сколько покупать по терпеливым ордерам.
-function acquirePlanHtml(data, resource) {
-  const row = data.acquire && data.acquire.byResource.find((a) => a.resource === resource);
+// Строки плана закупки материала рецепта: одна (купить готовый) или две (сырьё + материал пред. тира, если переработка). Если источник
+// после смены ставки переработки на месте уже другой — плана под него нет (нужен новый расчёт), строки не показываем.
+function acquireRowsFor(data, r) {
+  const rows = data.acquire ? data.acquire.byResource.filter((a) => (a.parent || a.resource) === r.resource) : [];
+  const wanted = r.materialSource === 'refine' ? 'refine' : 'buy';
+  return rows.every((a) => (a.source || 'buy') === wanted) ? rows : [];
+}
+function acquirePlanHtml(data, r) {
+  return acquireRowsFor(data, r).map((row) => acquireRowPlanHtml(row, acquireRowsFor(data, r).length > 1)).join('');
+}
+function acquireRowPlanHtml(row, labelled) {
   const plan = row && row.plan;
   if (!plan || plan.cities.length === 0) return '';
+  const label = labelled ? `${row.role === 'raw' ? 'сырьё' : 'материал пред. тира'} — ${itemLabel(row.queryId)}: ` : '';
   const cities = plan.cities.map((c) => `<li>${c.city}: ${fmtNum(c.qty)} шт по ${fmtNum(c.avgPrice)} <small>(допуск ${(c.tolerance * 100).toFixed(0)}%, ${fmtDays(c.days)})</small></li>`).join('');
   const skipped = plan.excluded.length ? `<li class="plan-skipped">вне плана: ${plan.excluded.map((e) => `${e.city} (${e.reason})`).join('; ')}</li>` : '';
-  return `<details class="acquire-plan"><summary>план закупки${plan.cities.length > 1 ? ` (${plan.cities.length} гор., +${plan.overpayPct.toFixed(1)}% к лучшей цене)` : ''}</summary><ul>${cities}${skipped}</ul></details>`;
+  return `<details class="acquire-plan"><summary>${label}план закупки${plan.cities.length > 1 ? ` (${plan.cities.length} гор., +${plan.overpayPct.toFixed(1)}% к лучшей цене)` : ''}</summary><ul>${cities}${skipped}</ul></details>`;
 }
 
 // Дней на закупку материала (по истории торгов, с учётом доли рынка); null — нет данных.
-function acquireDaysFor(data, resource) {
-  const row = data.acquire && data.acquire.byResource.find((a) => a.resource === resource);
-  return row && row.daysToAcquire !== null ? row.daysToAcquire : null;
+function acquireDaysFor(data, r) {
+  const rows = acquireRowsFor(data, r);
+  if (rows.length === 0 || rows.some((row) => row.daysToAcquire === null)) return null;
+  return Math.max(...rows.map((row) => row.daysToAcquire));      // материал из двух закупок готов, когда куплено и то и другое
+}
+
+// Сводка цикла сверху: сколько денег уйдёт на весь цикл и сколько маржи получится — сразу (Buy Order) и терпеливо (Sell Order, по плану
+// продажи). Цена и профит за штуку — мелкой подписью. Перерисовывается вместе с результатом, поэтому любая правка плана её обновляет.
+function scoreboardHtml(data) {
+  const money = (n) => (n === null || n === undefined ? '—' : Math.round(n).toLocaleString('ru-RU'));
+  const cls = (n) => (n === null || n === undefined ? '' : n > 0 ? 'profit-pos' : 'profit-neg');
+  const p = data.patientSell;
+  const st = p ? salePlanState(p, data) : null;
+  const live = st && st.totalQty > 0 ? st : null;
+  const patientUnit = p ? (live ? live.profitUnit : p.profitPerUnit) : null;
+  const patientQty = live ? live.totalQty : data.quantity;
+  const patientTotal = patientUnit === null || patientUnit === undefined ? null : patientUnit * patientQty;
+  const sellDays = p ? (live ? live.planDays : p.daysToSellBatch) : null;
+  const cycle = data.acquire && data.acquire.days !== null && sellDays !== null && sellDays !== undefined ? data.acquire.days + sellDays : null;
+  return `
+    <div class="craft-scoreboard">
+      <div class="sb-cell sb-cost"><span class="sb-label">Нужно денег на весь цикл</span><b class="sb-value">${money(data.totalCost)}</b><small>${money(data.effectiveCostPerUnit)} за штуку · ${data.quantity.toLocaleString('ru-RU')} шт${cycle !== null ? ` · цикл ${fmtDays(cycle)}` : ''}</small></div>
+      <div class="sb-cell"><span class="sb-label">Маржа всего · сразу (Buy Order)</span><b class="sb-value ${cls(data.totalProfit)}">${money(data.totalProfit)}</b><small>${money(data.profitPerUnit)} за штуку</small></div>
+      <div class="sb-cell"><span class="sb-label">Маржа всего · терпеливо (Sell Order)</span><b class="sb-value ${cls(patientTotal)}">${money(patientTotal)}</b><small>${money(patientUnit)} за штуку${sellDays !== null && sellDays !== undefined ? ` · продажа ${fmtDays(sellDays)}` : ''}</small></div>
+    </div>`;
 }
 
 // Разбивка продажи через Sell Order по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
@@ -847,7 +924,7 @@ function cycleRowsHtml(data, planDays) {
   const a = data.acquire;
   if (!a || a.days === null) return '';
   const cycleDays = planDays !== undefined && planDays !== null ? a.days + planDays : a.cycleDays;
-  const bottleneck = a.byResource.find((r) => r.resource === a.bottleneckResource);
+  const bottleneck = a.byResource.find((r) => r.resource === a.bottleneckResource);   // resourceName у строк переработки уже с пояснением
   return `
       <div class="craft-summary-row"><span>Дней на закупку сырья (узкое место: ${bottleneck ? bottleneck.resourceName : '—'}, по доле рынка ${(data.marketShare * 100).toFixed(0)}%)</span><span>${fmtDays(a.days)}</span></div>
       <div class="craft-summary-row"><strong>Весь цикл: закупка + продажа</strong><strong>${cycleDays !== null ? fmtDays(cycleDays) : '—'}</strong></div>`;

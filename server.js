@@ -1022,10 +1022,23 @@ app.get('/api/craft-calc', async (req, res) => {
       if (enchantAfterCraft && enchantAfterCraft.baseSource === 'buy') {
         rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city, priceByCity: baseBuyByCity });
       } else {
-        recipeBreakdown.forEach((r) => rows.push({
-          resource: r.resource, resourceName: r.resourceName, queryId: r.queryId, needed: r.neededToBuy, city: r.cheapestCity,
-          priceByCity: pricesOf(materialByCity[r.queryId]),
-        }));
+        recipeBreakdown.forEach((r) => {
+          if (r.materialSource === 'refine' && r.refineOption) {
+            // Материал перерабатываем сами — закупаем не готовый слиток/кожу, а сырьё и материал предыдущего тира: столько, чтобы после
+            // возврата при переработке хватило ровно на нужное число материала (neededToBuy уже учитывает возврат при крафте гира).
+            r.refineOption.components.forEach((comp, i) => rows.push({
+              resource: `${r.resource}|${comp.id}`, parent: r.resource, source: 'refine', role: i === 0 ? 'raw' : 'prev',
+              resourceName: `${r.resourceName} — ${i === 0 ? 'сырьё' : 'материал пред. тира'} (переработка)`, queryId: comp.id,
+              needed: Math.ceil(r.neededToBuy * comp.count * (1 - r.refineOption.rate)), city: comp.city,
+              priceByCity: pricesOf(materialByCity[comp.id]),
+            }));
+            return;
+          }
+          rows.push({
+            resource: r.resource, parent: r.resource, source: 'buy', resourceName: r.resourceName, queryId: r.queryId, needed: r.neededToBuy, city: r.cheapestCity,
+            priceByCity: pricesOf(materialByCity[r.queryId]),
+          });
+        });
       }
       if (enchantAfterCraft) {
         for (const st of enchantAfterCraft.steps) rows.push({
@@ -1654,20 +1667,20 @@ function computeAcquireTime({ rows, history, days, marketShare = 1, priceToleran
         });
       const plan = planCityAllocation(cityList, r.needed, { side: 'buy', priceTolerance, marketShare });
       if (plan.cities.length) {
-        return { resource: r.resource, resourceName: r.resourceName, needed: r.needed, city: plan.cities[0].city, avgDailyVolume: plan.cities.reduce((sum, c) => sum + c.avgDailyVolume, 0), daysToAcquire: plan.totalDays, plan };
+        return { resource: r.resource, parent: r.parent, source: r.source, role: r.role, queryId: r.queryId, resourceName: r.resourceName, needed: r.needed, city: plan.cities[0].city, avgDailyVolume: plan.cities.reduce((sum, c) => sum + c.avgDailyVolume, 0), daysToAcquire: plan.totalDays, plan };
       }
     }
     // Оборот берём в городе покупки; если там сделок нет — по всем выбранным городам.
     const cityStat = r.city && Object.entries(stats).find(([c]) => normLocation(c) === normLocation(r.city));
     const avgDailyVolume = cityStat ? cityStat[1].avgDailyVolume : Object.values(stats).reduce((sum, st) => sum + st.avgDailyVolume, 0);
     return {
-      resource: r.resource, resourceName: r.resourceName, needed: r.needed, city: r.city, avgDailyVolume,
+      resource: r.resource, parent: r.parent, source: r.source, role: r.role, queryId: r.queryId, resourceName: r.resourceName, needed: r.needed, city: r.city, avgDailyVolume,
       daysToAcquire: avgDailyVolume > 0 ? r.needed / (avgDailyVolume * marketShare) : null,
     };
   });
   let bottleneck = null;
   for (const r of byResource) if (r.daysToAcquire !== null && (!bottleneck || r.daysToAcquire > bottleneck.daysToAcquire)) bottleneck = r;
-  return { byResource, days: bottleneck ? bottleneck.daysToAcquire : null, bottleneckResource: bottleneck ? bottleneck.resource : null };
+  return { byResource, days: bottleneck ? bottleneck.daysToAcquire : null, bottleneckResource: bottleneck ? bottleneck.resource : null, bottleneckParent: bottleneck ? bottleneck.parent || bottleneck.resource : null };
 }
 
 // Порог терпеливой продажи: вместо одного лучшего города — все города, где средняя цена не ниже порога
