@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 const require = createRequire(import.meta.url);
 const {
   planCityAllocation, returnFactor, computeAcquireTime, requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
-  freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
+  freshnessDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
 const RECIPES = require('../data/recipes.json');
@@ -58,10 +58,6 @@ describe('скор и штрафы', () => {
     expect(freshnessDecay(180)).toBe(0.5);
     expect(freshnessDecay(999)).toBe(0.5);
     expect(freshnessDecay(null)).toBe(0.5);
-  });
-  it('длина цикла партии: ступени 1 / 0.8 / 0.5 / 0.2 / 0.05', () => {
-    expect([5, 10, 20, 60, 200].map(bulkCycleDecay)).toEqual([1, 0.8, 0.5, 0.2, 0.05]);
-    expect(bulkCycleDecay(null)).toBe(0);
   });
   it('opportunityScore: процент × log2(2 + объём)', () => {
     expect(opportunityScore(100, 0)).toBeCloseTo(100, 6);

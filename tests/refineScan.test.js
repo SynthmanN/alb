@@ -9,7 +9,7 @@ process.env.JUG_DB_PATH = ':memory:';
 process.env.DISABLE_RATE_LIMIT = 'true';
 process.env.DISABLE_JUG_CRAWLER = 'true';
 const require = createRequire(import.meta.url);
-const { app, jugDb, resetCaches, batchAdjustedDailyProfit } = require('../server.js');
+const { app, jugDb, resetCaches } = require('../server.js');
 const { upsertPriceSnapshots, upsertHistoryBatch } = require('../lib/jugStore.js');
 
 const NOW = Date.now();
@@ -37,12 +37,6 @@ beforeEach(() => {
   seed('T3_METALBAR', 'Martlock', 150);
   seed('T4_METALBAR', 'Fort Sterling', 500, 300);
   seed('T4_METALBAR', 'Martlock', 480, 500);
-});
-
-describe('batchAdjustedDailyProfit: профит в день с потолком по минимуму дней', () => {
-  it('быстрая партия считается за минимум дней — фантастика срезается', () => {
-    expect(batchAdjustedDailyProfit({ profitPerUnit: 50, quantity: 1000, cycleDays: 0.003, minDays: 1 })).toEqual({ batchProfit: 50000, effectiveDays: 1, dailyProfit: 50000 });
-  });
 });
 
 describe('GET /api/refine-scan', () => {

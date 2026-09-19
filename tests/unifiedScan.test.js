@@ -55,15 +55,37 @@ describe('GET /api/unified-scan', () => {
     expect(res.body.jug).toMatchObject({ lastFullPass: null, oldestPriceAgeMinutes: null });
   });
 
-  it('ранжирует по честному дневному профиту, а не по проценту маржи', async () => {
-    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 2 });      // маржа (4000·0.895 − 2400)/2400 = 49%, но всего 2 шт/день
+  it('ранжирует по «профит % × log₂(2 + оборот)»: ликвидность взвешивается, дневной профит и капитал в скане не участвуют', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 2 });      // маржа (4000·0.895 − 2460)/2460 = 46%, но всего 2 шт/день
     seedSales('T4_2H_BOW', { avg: 1900, perDay: 200 });        // маржа ≈ 6%, зато 200 шт/день
     const rows = (await scan({ mode: 'patient' })).results;
     const sword = rows.find((r) => r.itemId === 'T4_MAIN_SWORD');
     const bow = rows.find((r) => r.itemId === 'T4_2H_BOW');
-    expect(sword.profitPct).toBeGreaterThan(bow.profitPct * 5);
-    expect(bow.dailyProfit).toBeGreaterThan(sword.dailyProfit);
+    const raw = sword.profitPct * Math.log2(2 + sword.dailyVolume);                 // множитель свежести цен — от 0.5 до 1
+    expect(sword.rankScore).toBeGreaterThan(raw * 0.5 - 1e-6);
+    expect(sword.rankScore).toBeLessThanOrEqual(raw + 1e-6);
+    for (const r of rows) for (const k of ['quantity', 'positionCost', 'dailyProfit', 'premiumDays', 'daysToAcquire', 'cycleDays', 'effectiveDays']) expect(r).not.toHaveProperty(k);
+    expect(rows.every((r, i) => i === 0 || rows[i - 1].rankScore >= r.rankScore)).toBe(true);
+  });
+
+  it('ликвидность взвешивается: при той же марже впереди тот, что торгуется быстрее (мёртвая позиция с раздутым % внизу)', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 5000, perDay: 3 });
+    seedSales('T4_2H_BOW', { avg: 5000 * 1640 / 2460, perDay: 300 });     // тот же % маржи, оборот ×100
+    const rows = (await scan({ mode: 'patient' })).results;
+    const sword = rows.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    const bow = rows.find((r) => r.itemId === 'T4_2H_BOW');
+    expect(bow.profitPct).toBeCloseTo(sword.profitPct, -1);
     expect(rows.indexOf(bow)).toBeLessThan(rows.indexOf(sword));
+  });
+
+  it('«Профит рынка/день» = профит/шт × оборот/день (масштаб в серебре без выдуманного капитала); в ответе нет капитала и минимума дней', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
+    const res = await scan({ mode: 'patient' });
+    const row = res.results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(row.marketProfitPerDay).toBeCloseTo(row.profitPerUnit * row.dailyVolume, 6);
+    expect(res).not.toHaveProperty('capital');
+    expect(res).not.toHaveProperty('minDays');
+    expect(res).not.toHaveProperty('premiumPrice');
   });
 
   it('ликвидность — часть отбора комбинации: качество с лучшим % без оборота не побеждает ликвидное', async () => {
@@ -79,18 +101,12 @@ describe('GET /api/unified-scan', () => {
     expect((await scan({ mode: 'patient' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
   });
 
-  it('терпеливый режим: сбор за размещение 2.5% учтён; позиция из капитала: штук = капитал ÷ себестоимость; дни = закупка + продажа', async () => {
+  it('терпеливый режим: сбор за размещение 2.5% учтён; оборот — сделки прибыльных городов за окно «История»', async () => {
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
-    const res = await scan({ mode: 'patient', capital: 492_000 });                                // 492 000 / 2460 = 200 мечей (себестоимость 2400 + комиссия 2.5% на материалы)
+    const res = await scan({ mode: 'patient' });
     const row = res.results.find((r) => r.itemId === 'T4_MAIN_SWORD');
     expect(row.profitPerUnit).toBeCloseTo(4000 * (1 - 0.08 - 0.025) - COST, 0);
-    expect(row.quantity).toBe(200);
-    expect(row.positionCost).toBeCloseTo(492_000, 6);
-    expect(row.daysToSell).toBeCloseTo(200 / (6 * 40 / 7), 5);    // позиция / полный оборот (без «доли рынка»); оборот = сделки за 6 дней / окно 7 дней
-    expect(row.daysToAcquire).toBeGreaterThan(0);                 // закупка 200×16 слитков при обороте 500/день
-    expect(row.cycleDays).toBeCloseTo(row.daysToAcquire + row.daysToSell, 5);
-    expect(row.effectiveDays).toBeCloseTo(Math.max(row.cycleDays, 1), 9);
-    expect(row.dailyProfit).toBeCloseTo((row.profitPerUnit * 200) / row.effectiveDays, 6);
+    expect(row.dailyVolume).toBeCloseTo(6 * 40 / 7, 5);           // оборот = сделки за 6 дней / окно 7 дней
     expect(res.setupFeeRate).toBe(0.025);
     expect(res).not.toHaveProperty('marketShare');
   });
@@ -102,8 +118,6 @@ describe('GET /api/unified-scan', () => {
     expect(row.avgSellPrice).toBe(3800);
     expect(row.profitPerUnit).toBeCloseTo(3800 * 0.92 - COST, 0);
     expect(row.sellCities).toEqual([CITY]);
-    expect(row.daysToAcquire).toBeNull();                       // мгновенно: закупки по материалам не считаем, только продажа позиции
-    expect(row.daysToSell).toBeCloseTo(row.quantity / row.dailyVolume, 9);
     expect(res.setupFeeRate).toBe(0);
   });
 
@@ -119,37 +133,6 @@ describe('GET /api/unified-scan', () => {
     const row = res.results.find((r) => r.itemId === 'T4_MAIN_SWORD');
     expect(row.sellCities).toEqual(['Martlock']);
     expect(row.avgSellPrice).toBeCloseTo(3200, 0);
-  });
-
-  it('капитал: один и тот же капитал даёт МНОГО штук дешёвого и МАЛО дорогого предмета; «доли рынка» больше нет', async () => {
-    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });                                       // себестоимость 2400
-    seedSales('T4_2H_BOW', { avg: 2200, perDay: 40 });                                            // себестоимость 1600
-    const rows = (await scan({ mode: 'patient', capital: 492_000 })).results;
-    expect(rows.find((r) => r.itemId === 'T4_MAIN_SWORD').quantity).toBe(200);
-    expect(rows.find((r) => r.itemId === 'T4_2H_BOW').quantity).toBe(300);
-    const small = (await scan({ mode: 'patient', capital: 49_200 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    expect(small.quantity).toBe(20);
-    const share = (await scan({ mode: 'patient', capital: 492_000, marketShare: 0.1 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    expect(share.dailyProfit).toBeCloseTo(rows.find((r) => r.itemId === 'T4_MAIN_SWORD').dailyProfit, 9);   // marketShare игнорируется
-  });
-
-  it('минимум дней срезает нереально быстрый цикл: огромный оборот не даёт фантастического профита в день', async () => {
-    seedMaterial('T4_METALBAR', 100, 5_000_000);
-    seedMaterial('T4_LEATHER', 100, 5_000_000);
-    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 900_000 });
-    const fast = (await scan({ mode: 'patient', capital: 2_460_000, minDays: 1 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    expect(fast.cycleDays).toBeLessThan(0.1);
-    expect(fast.cappedByMinDays).toBe(true);
-    expect(fast.effectiveDays).toBe(1);
-    expect(fast.dailyProfit).toBeCloseTo(fast.profitPerUnit * 1000, 4);                          // позиция на 1000 штук за минимум 1 день
-    const slower = (await scan({ mode: 'patient', capital: 2_460_000, minDays: 5 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
-    expect(slower.dailyProfit).toBeCloseTo(fast.dailyProfit / 5, 4);
-  });
-
-  it('материал без оборота за период: закупку партии оценить нельзя — предмет в терпеливом режиме не показывается', async () => {
-    jugDb.exec("DELETE FROM history WHERE item_id = 'T4_LEATHER'");
-    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
-    expect((await scan({ mode: 'patient' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
   });
 
   it('выброс в истории AODP (цена в 100 раз выше рынка) не превращается в выдуманный профит', async () => {
@@ -217,8 +200,7 @@ describe('GET /api/unified-scan', () => {
     expect(row.profitPerUnit).toBeCloseTo(profitPerUnit, 6);
     expect(row.sellCities).toEqual(['Martlock']);
     expect(row.dailyVolume).toBeCloseTo(60 / 7, 6);                                   // оборот только прибыльного города
-    expect(row.daysToSell).toBeCloseTo(row.quantity / (60 / 7), 6);                    // и срок продажи — по обороту ТОЛЬКО прибыльного города (не 5000+ убыточного)
-    expect(row.dailyProfit).toBeCloseTo((profitPerUnit * row.quantity) / row.effectiveDays, 4);
+    expect(row.marketProfitPerDay).toBeCloseTo(profitPerUnit * (60 / 7), 4);
   });
 
   it('Чёрный Рынок: только в мгновенном режиме и только по флагу; налог ЧР выше (налог + сбор), лучший город — по прибыли после налога', async () => {
@@ -276,9 +258,9 @@ describe('GET /api/unified-scan', () => {
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
     const wide = (await scan({ mode: 'patient', materialHours: 168 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
     expect(wide.cost).toBeCloseTo((16 * 130 + 8 * 100) * FEE, 6);                       // слитки по средней 130, кожа 100
-    const res = await scan({ mode: 'patient', materialHours: 1 });              // за последний час сделок нет → закупку (оборот) оценить нельзя: строки нет, а не выдуманные сроки
+    const res = await scan({ mode: 'patient', materialHours: 1 });              // за последний час сделок нет → цена сырья — текущая котировка (100 + комиссия)
     expect(res.materialHours).toBe(1);
-    expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
+    expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD').cost).toBeCloseTo(24 * 100 * FEE, 6);
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40, buyOrder: 3800 });
     resetCaches();
     expect((await scan({ mode: 'instant', materialHours: 1 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD').cost).toBeCloseTo(24 * 100 * FEE, 6);
@@ -305,14 +287,13 @@ describe('комиссия 2.5% на материалы', () => {
 });
 
 describe('окно сырья и «История» продажи — независимы', () => {
-  it('«История» (days) не двигает ни цену сырья, ни срок закупки: они считаются по окну сырья', async () => {
+  it('«История» (days) не двигает цену сырья: она считается по окну сырья', async () => {
     seedMaterial('T4_METALBAR', 100, 500, 130);
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
     const pick = async (d) => (await scan({ mode: 'patient', days: d })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
     const three = await pick(3);
     const seven = await pick(7);
     expect(three.cost).toBeCloseTo(seven.cost, 6);
-    expect(three.daysToAcquire).toBeCloseTo(seven.daysToAcquire, 6);
   });
 });
 
@@ -376,5 +357,29 @@ describe('ликвидность сырья и доверие по сырью �
     expect(weak.tradeHours).toBe(1);                                                   // кожа — один час: слабое звено
     expect(weak.confidence).toBeCloseTo(1 / 21, 6);
     expect(weak.confidence).toBeLessThan(plain.confidence);
+  });
+});
+
+describe('свежесть цены в строке скана', () => {
+  it('freshMinutes заполнен (возраст самой старой цены цепочки), а не null; влияет на рейтинг, но виден', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40, buyOrder: 3800 });
+    for (const mode of ['patient', 'instant']) {
+      const row = (await scan({ mode })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+      expect(row.freshMinutes).not.toBeNull();
+      expect(row.freshMinutes).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('«зачаровать после крафта»: себестоимость не зависит от «Истории» продажи (ход 252)', () => {
+  it('руны и материалы считаются по окну сырья: days=3 и days=7 дают одну себестоимость для одних и тех же позиций', async () => {
+    seedMaterial('T4_RUNE', 20, 5000);
+    seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 50 });
+    seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 50 });
+    const pick = async (d) => (await scan({ mode: 'patient', enchantMode: 'after', days: d })).results.filter((r) => r.itemId === 'T4_MAIN_SWORD');
+    const a = await pick(3);
+    const b = await pick(7);
+    expect(a.length).toBeGreaterThan(0);
+    expect(a.map((r) => [r.enchant, Math.round(r.cost)])).toEqual(b.map((r) => [r.enchant, Math.round(r.cost)]));
   });
 });

@@ -162,24 +162,22 @@ describe('2. находка: профит не считается наивным
 });
 
 describe('3. находка: скан маржи не завышает дневной профит (весь оборот ≠ прибыльный оборот)', () => {
-  it('dailyProfit считается только по обороту прибыльных городов', async () => {
+  it('профит рынка/день считается только по обороту прибыльных городов', async () => {
     installMarket({
       materialPrice: 100,
       finished: { [ITEM]: { Martlock: { price: 1500, dailyVolume: 200 }, Lymhurst: { price: 4000, dailyVolume: 10 } } },
     });
     await warmJug();
-    const scan = (await request(app).get(`/api/unified-scan?gearRrr=none&mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&minDays=0.1&capital=246000&cities=${CITIES.join(',')}`)).body;
+    const scan = (await request(app).get(`/api/unified-scan?gearRrr=none&mode=patient&category=weapon&days=7&liquidity=sum&minDaily=1&cities=${CITIES.join(',')}`)).body;
     const row = scan.results.find((r) => r.itemId === ITEM && r.enchant === 0);
     expect(row).toBeTruthy();
     const netUnit = 4000 * (1 - TAX - FEE) - costByHand(100);                      // прибыльный только Lymhurst
     expect(row.profitPerUnit).toBeCloseTo(netUnit, 6);
     expect(row.dailyVolume).toBe(10);                                   // оборот прибыльных городов
     expect(row.marketDailyVolume).toBe(210);                            // весь оборот — только справочно
-    // позиция из капитала: 246 000 / 2460 (2400 + комиссия на материалы) = 100 мечей; срок — по обороту ПРИБЫЛЬНОГО города (10 в день), а не всех 210
-    expect(row.quantity).toBe(100);
-    expect(row.daysToSell).toBeCloseTo(100 / 10, 6);
-    expect(row.dailyProfit).toBeCloseTo((netUnit * 100) / row.effectiveDays, 6);
-    expect(row.dailyProfit).toBeLessThan((netUnit * 100) / (100 / 210));  // а не «сбыть за 0.48 дня по обороту всех городов» (завышение в 21 раз)
+    // «профит рынка/день» — по обороту ПРИБЫЛЬНОГО города (10 в день), а не всех 210: иначе завышение в 21 раз
+    expect(row.marketProfitPerDay).toBeCloseTo(netUnit * 10, 6);
+    expect(row.marketProfitPerDay).toBeLessThan(netUnit * 210);
   });
 });
 

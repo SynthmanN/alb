@@ -557,7 +557,7 @@ function renderCraftResult(rawData) {
 function volumeCell(r, showCount) {
   const main = `${fmtNum(r.dailyVolume, 1)}${showCount ? ` <small>(${r.sellCities.length} гор.)</small>` : ''}`;
   if (!r.byCity || r.byCity.length < 2) return main;
-  const list = r.byCity.map((c) => `<li class="${c.inPlan ? '' : 'city-out'}">${c.city}: ${fmtNum(c.dailyVolume, 1)}/день <small>${c.inPlan ? 'в расчёте' : 'вне расчёта'}</small></li>`).join('');
+  const list = r.byCity.map((c) => `<li class="${c.inPlan ? '' : 'city-out'}">${c.city}: ${fmtNum(c.dailyVolume, 1)}/день · цена ${fmtNum(c.avgPrice)} <small>${c.inPlan ? 'в расчёте' : 'вне расчёта'}</small></li>`).join('');
   return `<details class="city-prices"><summary>${main}</summary><ul>${list}</ul></details>`;
 }
 
@@ -1266,10 +1266,7 @@ const marginEl = {
   category: document.getElementById('margin-category'),
   enchantMode: document.getElementById('margin-enchant-mode'),
   liquidity: document.getElementById('margin-liquidity'),
-  capital: document.getElementById('margin-capital'),
-  hoursPerDay: document.getElementById('margin-hours-per-day'),
   materialHours: document.getElementById('margin-material-hours'),
-  minDays: document.getElementById('margin-min-days'),
   minDaily: document.getElementById('margin-min-daily'),
   days: document.getElementById('margin-days'),
   run: document.getElementById('margin-run'),
@@ -1283,8 +1280,6 @@ function syncMarginMode() {
 }
 marginEl.mode.addEventListener('change', syncMarginMode);
 let marginLastData = null;
-// Эксперимент ★: смена «часов в день» только перерисовывает таблицу, запроса нет
-marginEl.hoursPerDay.addEventListener('input', () => { if (marginLastData) renderMarginScan(marginLastData); });
 syncMarginMode();
 
 async function runMarginScan() {
@@ -1294,7 +1289,7 @@ async function runMarginScan() {
     const params = new URLSearchParams({
       mode: marginEl.mode.value, blackMarket: String(marginEl.blackMarket.checked),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
-      capital: readGroupedNumber(marginEl.capital) || '500000', minDays: marginEl.minDays.value || '1', materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom), ...refineRrrParams(marginEl.refineRrr, marginEl.refineRrrCustom),
+      materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom), ...refineRrrParams(marginEl.refineRrr, marginEl.refineRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/unified-scan?${params}`);
@@ -1324,7 +1319,6 @@ function fmtAgeMinutes(minutes) {
 
 function renderMarginScan(data) {
   const patient = data.mode === 'patient';
-  const hoursPerDay = Math.max(parseFloat(marginEl.hoursPerDay.value) || 2, 0.25);
   const jugNote = data.jug && data.jug.lastPricePass
     ? `Кувшин: цены обновлены ${fmtAgeMinutes((Date.now() - data.jug.lastPricePass) / 60000)}, история — ${fmtAgeMinutes(data.jug.lastHistoryPass ? (Date.now() - data.jug.lastHistoryPass) / 60000 : null)}.`
     : 'Кувшин ещё пуст — фоновый краулер только начал работу, подожди пару минут.';
@@ -1335,9 +1329,7 @@ function renderMarginScan(data) {
   const rows = data.results.map((r) => {
     const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
     const stale = r.freshMinutes !== null && r.freshMinutes > 180;
-    const long = r.effectiveDays > 30;
-    const premiumDays = r.premiumDays === null ? '—' : r.premiumDays < 1000 ? fmtNum(r.premiumDays, 0) : '>1000';
-    const action = `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-quantity="${r.quantity || ''}" data-black-market="${r.blackMarket ? 'true' : ''}">в калькулятор</button>`;
+    const action = `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-black-market="${r.blackMarket ? 'true' : ''}">в калькулятор</button>`;
     return `
       <tr>
         <td><span class="scan-item"><img class="item-icon-lg" src="${iconUrl(item.id, 96, r.enchant, r.quality)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /><span>${item.name}${enchantTag(r.enchant)}<br><small class="scan-item-sub">T${item.tier || '?'} · .${r.enchant} · ${QUALITY_NAMES[r.quality]}</small></span></span></td>
@@ -1345,13 +1337,9 @@ function renderMarginScan(data) {
         <td>${fmtNum(r.cost)}${refinedNote(r)}</td>
         <td>${fmtNum(r.avgSellPrice)}${patient ? '' : `<br><small>${r.blackMarket ? '⚫ ' : ''}${r.sellCities[0]}${r.blackMarket ? ` (налог ${(r.sellTaxRate * 100).toFixed(1)}%)` : ''}</small>`}</td>
         <td data-sort-value="${r.dailyVolume}">${volumeCell(r, patient && data.liquidity !== 'best')}</td>
-        <td data-sort-value="${r.quantity}" title="Позиция на ${fmtNum(data.capital)} серебра: штук = капитал ÷ себестоимость (${fmtNum(r.positionCost)} серебра)">${fmtNum(r.quantity)}</td>
         <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
-        <td data-sort-value="${r.dailyProfit}">${fmtNum(r.dailyProfit)}</td>
-        <td data-sort-value="${r.dailyProfit / hoursPerDay}" title="Эксперимент ★: профит/день ÷ ${hoursPerDay} ч в день">${fmtNum(r.dailyProfit / hoursPerDay)}</td>
-        <td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.effectiveDays}" title="${patient ? `закупка узкого материала ${fmtDays(r.daysToAcquire)} + ` : ''}распродажа ${fmtDays(r.daysToSell)}${r.cappedByMinDays ? `; по рынку быстрее минимума — профит в день считаем за ${fmtDays(data.minDays)}` : ''}">${fmtDays(r.effectiveDays)}${r.cappedByMinDays ? ' <small>(минимум)</small>' : ''}${long ? ' ⚠' : ''}</td>
-        <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит — только шкала масштаба">${premiumDays}</td>
-        <td data-sort-value="${r.premiumDays === null ? '' : r.premiumDays * hoursPerDay}" title="Эксперимент ★: дней на премиум × ${hoursPerDay} ч торговли в день">${r.premiumDays === null ? '—' : fmtNum(r.premiumDays * hoursPerDay, 0)}</td>
+        <td data-sort-value="${r.marketProfitPerDay}" title="Профит/шт × оборот/день: сколько серебра в день, если бы забрал весь оборот рынка по этой позиции — масштаб без выдуманного капитала. Количество вводится в калькуляторе">${fmtNum(r.marketProfitPerDay)}</td>
+        <td data-sort-value="${r.rankScore}">${fmtNum(r.rankScore, 0)}</td>
         <td class="${confidenceClass(r.confidence)}" data-sort-value="${r.confidence}" title="Цифры стоят на ${r.tradeHours} разных часах торговли за период (индекс доверия = n / (n + 20))">${Math.round(r.confidence * 100)}%<br><small>${r.tradeHours} ч</small></td>
         <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}" title="Возраст самой старой цены в расчёте (материалы и продажа). Влияет на порядок списка">${fmtAgeMinutes(r.freshMinutes)}${stale ? ' ⚠' : ''}</td>
         <td>${action}</td>
@@ -1361,11 +1349,12 @@ function renderMarginScan(data) {
     ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней цикла» — закупка узкого материала + распродажа позиции`
     : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. Материал берётся дешевле из двух путей: купить готовым или переработать самому (♻) из сырья и полуфабриката предыдущего тира с возвратом при переработке ${(data.refineRate * 100).toFixed(1)}%. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Скан считает ОДНУ штуку: профит/шт и оборот; масштаб («сколько сделать») вводится в калькуляторе. Отбор — по рейтингу «профит % × log₂(2 + оборот)» с поправкой на свежесть котировок: ликвидность взвешена, а не отсечена порогом. Таблица открывается отсортированной по «Профиту рынка/день» (профит/шт × оборот/день) — солидные позиции сверху, дешёвый гир с раздутым % ниже; клик по заголовку — другая сортировка. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. Материал берётся дешевле из двух путей: купить готовым или переработать самому (♻) из сырья и полуфабриката предыдущего тира с возвратом при переработке ${(data.refineRate * 100).toFixed(1)}%. ${jugNote}</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит/день</th><th title="Эксперимент">Профит/час ★</th><th>Дней цикла</th><th>Дней на премиум</th><th title="Эксперимент">Часов на премиум ★</th><th title="По слабому звену — предмету и его сырью">Доверие</th><th>Свежесть</th><th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th title="Профит/шт × оборот/день">Профит рынка/день</th><th title="Рейтинг: профит % × log₂(2 + оборот) — по нему список отобран, ликвидность взвешена">Рейтинг</th><th title="По слабому звену — предмету и его сырью">Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
+  tableSortStates['margin-scan'] = { label: 'Профит рынка/день', dir: 'desc' };     // после каждого скана — сразу по масштабу в серебре
   wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');
   highlightBestRow(marginEl.result.querySelector('table'), data.results);
   marginEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {

@@ -255,11 +255,11 @@ test('скан маржи и ликвидности: параметры в за�
   expect(calcQuery.get('item')).toBe('T4_2H_BOW');
   expect(calcQuery.get('enchant')).toBe('2');
   expect(calcQuery.get('quality')).toBe('4');
-  expect(calcQuery.get('quantity')).toBe('1000');                                  // партия из скана переносится в калькулятор
+  expect(calcQuery.get('quantity')).toBe('1');                                     // скан считает одну штуку — количество вводится в калькуляторе
   expect(calcQuery.get('enchantAfterCraft')).toBe('true');
 });
 
-test('скан маржи: капитал и минимум дней вместо доли рынка, мгновенный режим прячет ликвидность, в запросе нет сырья (оно ушло в скан рефайна на странице «Рефайн»)', async ({ page }) => {
+test('скан маржи: без капитала, минимума дней и доли рынка — профит/шт; мгновенный режим прячет ликвидность, в запросе нет сырья (оно ушло в скан рефайна на странице «Рефайн»)', async ({ page }) => {
   let scanQuery = null;
   await page.route('**/api/unified-scan*', (route) => {
     scanQuery = new URL(route.request().url()).searchParams;
@@ -271,17 +271,17 @@ test('скан маржи: капитал и минимум дней вмест�
   });
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
-  await expect(page.locator('#margin-capital')).toBeVisible();                     // размер позиции — из капитала (а не «партия» и не «доля рынка»)
+  await expect(page.locator('#margin-capital')).toHaveCount(0);                    // ни капитала, ни минимума дней, ни «часов в день», ни доли рынка
+  await expect(page.locator('#margin-min-days')).toHaveCount(0);
   await expect(page.locator('#margin-market-share')).toHaveCount(0);
   await page.locator('#margin-mode').selectOption('instant');
-  await expect(page.locator('#margin-capital')).toBeVisible();                     // и в мгновенном режиме тоже
   await expect(page.locator('#margin-liquidity')).toBeHidden();
   await expect(page.locator('#margin-include-materials')).toHaveCount(0);          // сырьё и рефайн — на странице «Рефайн»
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
   expect(scanQuery.get('mode')).toBe('instant');
-  expect(scanQuery.get('capital')).toBe('1000000');
-  expect(scanQuery.get('minDays')).toBe('1');
+  expect(scanQuery.has('capital')).toBe(false);
+  expect(scanQuery.has('minDays')).toBe(false);
   expect(scanQuery.has('marketShare')).toBe(false);
   expect(scanQuery.has('includeMaterials')).toBe(false);
 });
@@ -698,43 +698,29 @@ test('«в калькулятор» у строки, найденной чере
 });
 
 
-test('скан: капитал вводится с разделителями разрядов («1 000 000»), уходит на сервер цифрами; оборот раскрывается списком городов; «часов в день» пересчитывает профит/час без запроса', async ({ page }) => {
-  let requests = 0;
-  let scanQuery = null;
-  await page.route('**/api/unified-scan*', (route) => {
-    requests++;
-    scanQuery = new URL(route.request().url()).searchParams;
-    route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', liquidity: 'sum', days: 7, capital: 1000000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 5,
-      enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null },
-      jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
-      { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 1000, avgSellPrice: 1300, dailyVolume: 80, marketDailyVolume: 380, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 250, profitPct: 25, dailyProfit: 100000, premiumDays: 280, quantity: 1000, positionCost: 1000000, daysToAcquire: 1, daysToSell: 3, cycleDays: 4, effectiveDays: 4, cappedByMinDays: false, freshMinutes: 5, rankScore: 100000, tradeHours: 90, confidence: 90 / 110,
-        byCity: [{ city: 'Thetford', dailyVolume: 300, avgPrice: 900, inPlan: false }, { city: 'Martlock', dailyVolume: 50, avgPrice: 1300, inPlan: true }, { city: 'Lymhurst', dailyVolume: 30, avgPrice: 1290, inPlan: true }] },
-    ] } });
-  });
+test('скан гира: оборот раскрывается списком городов с ценой; таблица сразу отсортирована по «Профиту рынка/день» по убыванию, дешёвый гир с раздутым % — ниже', async ({ page }) => {
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', liquidity: 'sum', days: 3, taxRate: 0.08, setupFeeRate: 0.025, scanned: 5,
+    enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367,
+    jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
+      // сервер отдаёт по рейтингу (дешёвый T2 с огромным % — первым), клиент сам сортирует по масштабу в серебре
+      { kind: 'gear', itemId: 'T2_2H_BOW', enchant: 0, quality: 1, tier: 2, cost: 100, avgSellPrice: 300, dailyVolume: 900, marketDailyVolume: 900, sellCities: ['Martlock'], profitPerUnit: 150, profitPct: 150, marketProfitPerDay: 135000, freshMinutes: 10, rankScore: 1500, tradeHours: 6, confidence: 0.2, byCity: [] },
+      { kind: 'gear', itemId: 'T5_2H_BOW', enchant: 0, quality: 1, tier: 5, cost: 20000, avgSellPrice: 30000, dailyVolume: 80, marketDailyVolume: 380, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 6000, profitPct: 30, marketProfitPerDay: 480000, freshMinutes: 20, rankScore: 300, tradeHours: 6, confidence: 0.2,
+        byCity: [{ city: 'Thetford', dailyVolume: 300, avgPrice: 900, inPlan: false }, { city: 'Martlock', dailyVolume: 50, avgPrice: 30100, inPlan: true }, { city: 'Lymhurst', dailyVolume: 30, avgPrice: 29800, inPlan: true }] },
+    ] } }));
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
-  const capital = page.locator('#margin-capital');
-  await expect(capital).toHaveValue(/^1\s000\s000$/);                                // по умолчанию — 1 000 000, с разделителем
-  await capital.fill('');
-  await capital.pressSequentially('1234567');
-  await expect(capital).toHaveValue(/^1\s234\s567$/);
-  await capital.fill('1000000');
-  await capital.dispatchEvent('input');
-  await expect(capital).toHaveValue(/^1\s000\s000$/);
   await page.locator('#margin-run').click();
-  await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
-  expect(scanQuery.get('capital')).toBe('1000000');                                  // на сервер — чистые цифры
-  await expect(page.locator('#margin-result details.city-prices summary')).toContainText('80');
-  await page.locator('#margin-result details.city-prices summary').click();
-  await expect(page.locator('#margin-result details.city-prices li').first()).toContainText('Thetford: 300');
-  await expect(page.locator('#margin-result details.city-prices li').first()).toContainText('вне расчёта');
-  const perHour = page.locator('#margin-result tbody td[title*="ч в день"]');
-  await expect(perHour).toContainText('50');                                         // 100 000 ÷ 2 ч
-  await page.locator('#margin-hours-per-day').fill('4');
-  await expect(perHour).toContainText('25');                                         // 100 000 ÷ 4 ч, без нового запроса
-  expect(requests).toBe(1);
+  await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
+  await expect(page.locator('#margin-result tbody tr').first()).toContainText('480 000');         // по «Профиту рынка/день» первым — солидный T5, а не T2
+  await expect(page.locator('#margin-result thead')).not.toContainText('Профит/день ');
+  await expect(page.locator('#margin-result thead')).not.toContainText('Штук');
+  await expect(page.locator('#margin-result thead')).not.toContainText('премиум');
+  await expect(page.locator('#margin-result thead')).toContainText('Свежесть');
+  const first = page.locator('#margin-result tbody tr').first();
+  await first.locator('details.city-prices summary').click();
+  await expect(first.locator('details.city-prices li').first()).toContainText('Thetford: 300,0/день · цена 900');   // рядом с оборотом города — его цена
+  await expect(first.locator('details.city-prices li').first()).toContainText('вне расчёта');
 });
-
 
 test('свои цены: вписал реальную цену сырья и продажи — материалы, себестоимость, профит и города пересчитываются на месте, без запроса', async ({ page }) => {
   let requests = 0;
@@ -943,7 +929,7 @@ test('выбор предмета по категории — ровные ко�
   await expect(page.locator('#craft-suggestions .suggestion-column')).toHaveCount(0);                // без категории — прежний плоский список
 });
 
-test('иконки: выбранный предмет и строки скана показывают тир, зачарование и качество; в скане по умолчанию 3 дня, капитал 1 000 000 и «зачаровать после крафта»', async ({ page }) => {
+test('иконки: выбранный предмет и строки скана показывают тир, зачарование и качество; в скане по умолчанию 3 дня и «зачаровать после крафта»', async ({ page }) => {
   await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', enchantMode: 'after', liquidity: 'best', days: 3, capital: 1000000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 1,
     enchantRange: '.0–.3', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367,
     jug: { lastPricePass: Date.now() - 120000, lastHistoryPass: Date.now() - 300000, lastFullPass: null, oldestPriceAgeMinutes: 5 }, results: [
@@ -952,7 +938,6 @@ test('иконки: выбранный предмет и строки скана
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-days')).toHaveValue('3');
-  await expect(page.locator('#margin-capital')).toHaveValue(/1[\s ]?000[\s ]?000/);
   await expect(page.locator('#margin-enchant-mode')).toHaveValue('after');
   await page.locator('#margin-run').click();
   const icon = page.locator('#margin-result tbody tr img.item-icon-lg').first();

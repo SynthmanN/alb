@@ -1327,14 +1327,6 @@ app.get('/api/bm-opportunities', async (req, res) => {
 
 // Множитель скора за длину цикла (закупка + распродажа): чем дольше капитал заморожен, тем хуже.
 // Дольше 30 дней — предупреждение в интерфейсе, дольше 90 — скор почти обнуляется.
-function bulkCycleDecay(totalDays) {
-  if (totalDays === null || totalDays === undefined) return 0;
-  if (totalDays <= 7) return 1;
-  if (totalDays <= 14) return 0.8;
-  if (totalDays <= 30) return 0.5;
-  if (totalDays <= 90) return 0.2;
-  return 0.05;
-}
 
 // Статистика по городам за период: средневзвешенная цена и объём/день.
 // quality — необязательный фильтр: история, запрошенная сразу по всем 5 качествам, приходит рядами с полем quality.
@@ -2282,22 +2274,6 @@ function instantSellChoice(priceRecords, seriesOfItem, itemId, quality, days, co
   return best;
 }
 
-// Дней на закупку партии: узкое место — материал с наименьшим оборотом (оборот по выбранным городам, доля рынка).
-// null — если у какого-то материала нет сделок за период (закупку честно оценить нельзя).
-function unifiedAcquire(needs, materialIndex, days, marketShare, queryCities) {
-  let worstDays = 0;
-  let maxUnits = Infinity;
-  for (const need of needs) {
-    const stats = cityStats(materialIndex.get(need.id) || [], need.id, days, 1);
-    const allowed = new Set(queryCities.map(normLocation));
-    const dailyVolume = Object.entries(stats).filter(([c]) => allowed.has(normLocation(c))).reduce((sum, [, st]) => sum + st.avgDailyVolume, 0);
-    if (!(dailyVolume > 0)) return null;
-    worstDays = Math.max(worstDays, need.total / (dailyVolume * marketShare));
-    maxUnits = Math.min(maxUnits, (dailyVolume * marketShare) / need.perUnit);
-  }
-  return { days: worstDays, unitsPerDay: maxUnits };
-}
-
 app.get('/api/unified-scan', (req, res) => {
   try {
     const mode = req.query.mode === 'instant' ? 'instant' : 'patient';
@@ -2307,8 +2283,6 @@ app.get('/api/unified-scan', (req, res) => {
     const liquidity = req.query.liquidity === 'best' ? 'best' : 'sum';
     const minDaily = Math.max(parseFloat(req.query.minDaily) || 1, 0);
     // Капитал на одну позицию (серебро) и минимум дней на цикл — вместо «доли рынка»: явные параметры, а не спрятанный процент.
-    const capital = Math.min(Math.max(parseFloat(req.query.capital) || 500_000, 1000), 100_000_000_000);
-    const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
     const materialHours = parseMaterialHours(req);            // окно цен сырья (по умолчанию 24 ч), отдельное от «Истории» продажи
     // Находки аудита скана теперь — штатное поведение (ход 244–246; отключаются только явным =false, для сравнения «было/стало»):
     const materialLiquidity = req.query.materialLiquidity !== 'false';     // материал с почти нулевым оборотом не задаёт цену
@@ -2324,7 +2298,7 @@ app.get('/api/unified-scan', (req, res) => {
 
     const fresh = jugFreshness(jugDb, now);
     const refineParams = parseRefineRate(req);
-    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, capital, minDays, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2377,7 +2351,6 @@ app.get('/api/unified-scan', (req, res) => {
     const finishedHistory = indexByItem(cleaned.series);
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
     // Оборот сырья/полуфабрикатов для закупки — по тому же окну, что и их цены (materialHours), а не по «Истории» продажи гира.
-    const materialHistory = mode === 'patient' ? indexByItem(readHistory(jugDb, [...materialIds], materialHours, { locations, qualities: [1], now })) : null;
     // Для эксперимента «Доверие с учётом сырья»: часы торговли материалов за период «Истории»
     const materialConfidenceHistory = confidenceMaterials ? indexByItem(readHistory(jugDb, [...materialIds], days * 24, { locations, qualities: [1], now })) : new Map();
     const finishedPrices = new Map();
@@ -2419,22 +2392,12 @@ app.get('/api/unified-scan', (req, res) => {
         blackMarketRow = sell.cities.some((c) => normLocation(c) === 'blackmarket');
         sellTax = null;
       }
-      // Размер позиции — из КАПИТАЛА: штук = капитал / себестоимость (дешёвый предмет — много штук, дорогой — мало; один параметр на весь
-      // список вместо угадывания партии для каждой позиции и вместо «доли рынка»). Сроки — по ПОЛНОМУ обороту прибыльных городов.
-      const quantity = Math.max(Math.floor(capital / cost), 1);
-      let daysToAcquire = null;
-      const daysToSell = quantity / dailyVolume;
-      if (mode === 'patient') {
-        const acquire = unifiedAcquire(needs.map((n) => ({ id: n.id, total: Math.ceil(n.perUnit * quantity), perUnit: n.perUnit })), materialHistory, materialHours / 24, 1, queryCities);
-        if (!acquire) return null;      // у какого-то материала нет сделок за период — закупку честно оценить нельзя
-        daysToAcquire = acquire.days;
-      }
-      const cycleDays = (daysToAcquire || 0) + daysToSell;
-      const adjusted = batchAdjustedDailyProfit({ profitPerUnit, quantity, cycleDays, minDays });
-      const dailyProfit = adjusted.dailyProfit;
       const freshMinutes = dealAgeMinutes([...quoteDates, ...(sellDate ? [sellDate] : [])], now);
-      const rankScore = dailyProfit * freshnessDecay(freshMinutes);
       const profitPct = (profitPerUnit / cost) * 100;
+      // Рейтинг: профит % × log₂(2 + оборот) — тот же opportunityScore, что у Флиппинга и Чёрного рынка (с поправкой на свежесть цен): ликвидность
+      // взвешивается, а не отсекается порогом. Количество и капитал в скане не участвуют — масштаб вводится в калькуляторе.
+      const rankScore = opportunityScore(profitPct, dailyVolume) * freshnessDecay(freshMinutes);
+      const marketProfitPerDay = profitPerUnit * dailyVolume;        // «профит рынка/день»: профит/шт × оборот/день — масштаб в серебре, если бы забрал весь оборот
       let tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
       if (confidenceMaterials && needs.length) {
         // слабое звено: доверие определяет самый «тонкий» материал (разные часы торговли за период «Истории»), если он тоньше самого предмета
@@ -2443,10 +2406,7 @@ app.get('/api/unified-scan', (req, res) => {
       }
       return {
         kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
-        dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, dailyProfit,
-        quantity, batchProfit: adjusted.batchProfit, positionCost: quantity * cost,
-        daysToAcquire, daysToSell, cycleDays, effectiveDays: adjusted.effectiveDays, cappedByMinDays: cycleDays < minDays,
-        premiumDays: premiumPaybackDays(dailyProfit, 1),
+        dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, marketProfitPerDay,
         freshMinutes, rankScore,
         refined,   // материалы, которые выгоднее переработать самому: [{ id, city, buyPrice, price }]
       };
@@ -2496,8 +2456,8 @@ app.get('/api/unified-scan', (req, res) => {
 
     rows.sort((a, b) => b.rankScore - a.rankScore);
     const data = {
-      mode, enchantMode, liquidity, days, materialHours, capital, minDays, taxRate,
-      setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
+      mode, enchantMode, liquidity, days, materialHours, taxRate,
+      setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       rrrOptions: rrrOpts, refineRate: refineParams.rate, experiments: { materialLiquidity, confidenceMaterials }, enchantRange: enchantMode === 'after' ? '.0–.3' : '.0–.4',
       scanned: combos.length, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
@@ -2510,13 +2470,6 @@ app.get('/api/unified-scan', (req, res) => {
   }
 });
 
-
-// Профит в день с потолком по минимуму дней (партионная модель скана гира)
-function batchAdjustedDailyProfit({ profitPerUnit, quantity, cycleDays, minDays }) {
-  const batchProfit = profitPerUnit * quantity;
-  const effectiveDays = Math.max(cycleDays, minDays);
-  return { batchProfit, effectiveDays, dailyProfit: effectiveDays > 0 ? batchProfit / effectiveDays : 0 };
-}
 
 // --- Рефайн: скан выгодных переработок и калькулятор (терпеливая модель, кувшин) ---
 // Модель одна для скана и калькулятора. Играем по-настоящему: сырьё и полуфабрикат предыдущего тира закупаем в САМЫХ ДЕШЁВЫХ ЛИКВИДНЫХ
@@ -3039,7 +2992,6 @@ module.exports = {
   paretoFrontier,
   findCheapestOutfits,
   freshnessDecay,
-  bulkCycleDecay,
   opportunityScore,
   scaledMinVolume,
   getSalesTaxRate,
@@ -3059,7 +3011,6 @@ module.exports = {
   computeAcquireTime,
   planCityAllocation,
   maxProfitCityAllocation,
-  batchAdjustedDailyProfit,
   computeSellThreshold,
   teleportDistance,
   teleportStackCost,
