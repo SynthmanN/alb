@@ -1054,3 +1054,11 @@ test('ошибки API: вместо «Unexpected token <» — понятное
   await expect(page.locator('#refine-scan-result')).toContainText('HTTP 502');
   await expect(page.locator('#refine-scan-result')).not.toContainText('Unexpected token');
 });
+
+test('скан гира: по умолчанию включён «Учитывать ЧР» и возврат при крафте — 24.8%', async ({ page }) => {
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await expect(page.locator('#margin-black-market')).toBeChecked();
+  await expect(page.locator('#margin-gear-rrr')).toHaveValue('city_bonus');
+  await expect(page.locator('#margin-gear-rrr option:checked')).toContainText('24.8%');
+});

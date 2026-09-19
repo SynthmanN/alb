@@ -7,6 +7,8 @@ module.exports = {
     {
       name: 'albion-market',
       script: 'server.js',
+      // pm2 сам перезапускает сервер при правке кода (игнорируем данные и служебное, чтобы запись базы кувшина не вызывала перезапуск)
+      watch: ['server.js', 'lib', 'data/items.js', 'data/refining.js', 'data/gear-rrr.js', 'data/resource-names.js'],
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
