@@ -4,7 +4,7 @@
   "description": "Таблица цен предметов Albion Online по всем городам для спекуляции и закупки под крафт",
   "main": "server.js",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.5"
   },
   "scripts": {
     "start": "node server.js",

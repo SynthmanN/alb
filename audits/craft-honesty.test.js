@@ -17,6 +17,7 @@ import request from 'supertest';
 const require = createRequire(import.meta.url);
 process.env.USER_MASTERIES_PATH = path.join(os.tmpdir(), `albion-audit-masteries-${process.pid}.json`);
 process.env.DISABLE_RATE_LIMIT = 'true';
+process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не ждёт очереди в регуляторе бюджета
 const { app, resetCaches, returnFactor } = require('../server.js');
 const RECIPES = require('../data/recipes.json');
 const TRAVEL_WEIGHTS = require('../data/travel-weights.json');

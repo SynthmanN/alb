@@ -26,6 +26,7 @@ module.exports = defineConfig({
     env: {
       PORT: String(PORT),
       DISABLE_RATE_LIMIT: 'true', // десятки запросов с одного IP за секунды в тестах — норма
+      DISABLE_JUG_CRAWLER: 'true', // фоновый краулер в e2e не нужен
       // тесты мастерок пишут во временный файл, а не в data/user-masteries.json пользователя
       USER_MASTERIES_PATH: path.join(os.tmpdir(), `albion-masteries-e2e-${process.pid}.json`),
     },

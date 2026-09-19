@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url);
 const masteriesFile = path.join(os.tmpdir(), `albion-masteries-test-${process.pid}.json`);
 process.env.USER_MASTERIES_PATH = masteriesFile;
 process.env.DISABLE_RATE_LIMIT = 'true'; // десятки запросов с одного IP за секунды — норма для тестов
+process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не должен ждать своей очереди в регуляторе бюджета
 const { app, resetCaches } = require('../server.js');
 
 const CITIES = ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford'];

@@ -1,6 +1,9 @@
 const express = require('express');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const { AodpBudget } = require('./lib/aodpBudget');
+const { openJug, jugStats } = require('./lib/jugStore');
+const { startJugCrawler } = require('./lib/jugCrawler');
 const path = require('path');
 const fs = require('fs');
 const { ITEMS } = require('./data/items');
@@ -180,6 +183,15 @@ function getBmTaxRate(req) {
   return req.query.premium === 'true' ? BM_TAX.premium : BM_TAX.free;
 }
 
+// Регулятор бюджета AODP: ВСЕ походы в AODP (живые запросы и фоновый краулер) идут через aodpFetch. Живые — приоритет 1,
+// фоновые — 0. По умолчанию 45 запросов в минуту при лимите AODP 180/мин и 300/5 мин (в среднем 60/мин).
+const AODP_RATE_PER_MINUTE = Number(process.env.AODP_RATE_PER_MINUTE) || 45;
+const aodpBudget = new AodpBudget({ ratePerMinute: AODP_RATE_PER_MINUTE });
+async function aodpFetch(url, priority = 1) {
+  await aodpBudget.acquire(priority);
+  return fetch(url);
+}
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map();
 
@@ -191,7 +203,7 @@ async function fetchPrices(itemIds, quality) {
     return cached.data;
   }
   const url = `${AODP_BASE}/${encodeURIComponent(itemIds.join(','))}?locations=${CITIES.join(',')}&qualities=${q}`;
-  const res = await fetch(url);
+  const res = await aodpFetch(url);
   if (!res.ok) throw new Error(`AODP responded ${res.status}`);
   const data = await res.json();
   cache.set(key, { ts: Date.now(), data });
@@ -307,7 +319,7 @@ async function fetchHistoryBatched(itemIds, hours, quality, locations) {
       const cached = historyCache.get(key);
       if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL_MS) return cached.data;
       const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(chunk.join(','))}?date=${fmtDate(start)}&end_date=${fmtDate(now)}&locations=${locKey}&qualities=${quality}&time-scale=1`;
-      const response = await fetch(url);
+      const response = await aodpFetch(url);
       if (!response.ok) throw new Error(`AODP history responded ${response.status}`);
       const data = await response.json();
       historyCache.set(key, { ts: Date.now(), data });
@@ -387,7 +399,7 @@ app.get('/api/history', async (req, res) => {
       return res.json(cached.data);
     }
     const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(item)}?date=${fmtDate(start)}&end_date=${fmtDate(now)}&locations=${CITIES.join(',')}&qualities=${quality}&time-scale=1`;
-    const response = await fetch(url);
+    const response = await aodpFetch(url);
     if (!response.ok) throw new Error(`AODP responded ${response.status}`);
     const data = await response.json();
     historyCache.set(key, { ts: Date.now(), data });
@@ -1021,7 +1033,7 @@ app.get('/api/bm-opportunities', async (req, res) => {
         data = cached.data;
       } else {
         const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${bmLocations.join(',')}&qualities=1`;
-        const response = await fetch(url);
+        const response = await aodpFetch(url);
         if (!response.ok) throw new Error(`AODP responded ${response.status}`);
         data = await response.json();
         cache.set(key, { ts: Date.now(), data });
@@ -2268,7 +2280,7 @@ async function fetchGearPrices(queryIds, qualities) {
     const cached = cache.get(key);
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
     const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${CITIES.join(',')}&qualities=${qualities.join(',')}`;
-    const response = await fetch(url);
+    const response = await aodpFetch(url);
     if (!response.ok) throw new Error(`AODP responded ${response.status}`);
     const data = await response.json();
     cache.set(key, { ts: Date.now(), data });
@@ -2424,11 +2436,70 @@ app.get('/api/fitting-room', async (req, res) => {
   }
 });
 
+// --- Кувшин: каталог id для фонового краулера ---
+// Всё, что могут запросить калькулятор и сканы: весь гир (.0–.4 на T4+), сырьё и переработанные ресурсы (с зачарованными версиями),
+// материалы рецептов на всех уровнях зачарования, руны/души/реликвии для зачарования вещей. Дубликаты убираются.
+function buildJugCatalog() {
+  const ids = new Set();
+  for (const item of ITEMS) {
+    for (const v of enchantVariants(item)) ids.add(v.queryId);
+  }
+  for (const recipe of Object.values(RECIPES)) {
+    for (let e = 0; e <= 4; e++) {
+      for (const r of recipe.resources) ids.add(effectiveRecipeResourceId(r.resource, e));
+    }
+  }
+  for (let tier = 4; tier <= 8; tier++) {
+    for (const level of [1, 2, 3]) ids.add(`T${tier}_${ENCHANT_MATERIAL_BY_LEVEL[level]}`);
+  }
+  return [...ids].sort();
+}
+
+// Фоновый краулер ходит теми же общими функциями (со своим приоритетом 0 в регуляторе бюджета и общим кэшем ответов),
+// что и живые запросы. Данные кладёт в локальную базу — сканеры по ней пока не работают (это следующие шаги).
+const JUG_DB_PATH = process.env.JUG_DB_PATH || path.join(__dirname, 'data', 'jug.db');
+let jugDb = null;
+let jugCrawler = null;
+function startJug() {
+  if (process.env.DISABLE_JUG_CRAWLER === 'true' || jugCrawler) return;
+  jugDb = openJug(JUG_DB_PATH);
+  const historyStart = () => new Date(Date.now() - 7 * 24 * 3600 * 1000);
+  jugCrawler = startJugCrawler({
+    db: jugDb,
+    ids: buildJugCatalog(),
+    log: (msg) => console.log(msg),
+    fetchPrices: async (chunk) => {
+      const key = `jug:prices:${chunk.join(',')}`;
+      const cached = cache.get(key);
+      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+      const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${CITIES.join(',')}&qualities=${ALL_QUALITIES.join(',')}`;
+      const response = await aodpFetch(url, 0);
+      if (!response.ok) throw new Error(`AODP responded ${response.status}`);
+      const data = await response.json();
+      cache.set(key, { ts: Date.now(), data });
+      return data;
+    },
+    // История — один раз на самое широкое окно (7 дней): короткие окна (12ч/24ч/72ч) агрегируются из тех же точек локально.
+    fetchHistory: async (chunk) => {
+      const key = `jug:history:${chunk.join(',')}`;
+      const cached = historyCache.get(key);
+      if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL_MS) return cached.data;
+      const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(chunk.join(','))}?date=${fmtDate(historyStart())}&end_date=${fmtDate(new Date())}&locations=${CITIES.join(',')}&qualities=${ALL_QUALITIES.join(',')}&time-scale=1`;
+      const response = await aodpFetch(url, 0);
+      if (!response.ok) throw new Error(`AODP history responded ${response.status}`);
+      const data = await response.json();
+      historyCache.set(key, { ts: Date.now(), data });
+      return data;
+    },
+  });
+}
+
 // Порт занимаем только при прямом запуске (node server.js); при require() из тестов — нет.
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Albion market table запущен на http://localhost:${PORT}`);
   });
+  startJug();
 }
 
 // Тесты подменяют AODP по-разному — кэши ответов между тестами сбрасываем, чтобы не было «отравления» кэша.
@@ -2484,4 +2555,6 @@ module.exports = {
   allocateBudget,
   lazyStrategyScore,
   effectiveRecipeResourceId,
+  buildJugCatalog,
+  aodpBudget,
 };

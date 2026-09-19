@@ -10,6 +10,11 @@ export/
 # личные данные пользователя
 data/user-masteries.json
 
+# локальная база «кувшина» (наполняется краулером)
+data/jug.db
+data/jug.db-shm
+data/jug.db-wal
+
 # результаты Playwright
 test-results/
 playwright-report/
