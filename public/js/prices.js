@@ -331,11 +331,11 @@ el.search.addEventListener('input', (e) => renderSuggestions(e.target.value));
 el.categoryFilter.addEventListener('change', () => renderSuggestions(el.search.value));
 el.tierFilter.addEventListener('change', () => renderSuggestions(el.search.value));
 
-el.addFilteredBtn.addEventListener('click', () => {
+el.addFilteredBtn.addEventListener('click', async () => {
   const matches = ALL_ITEMS.filter(matchesFilters);
   if (matches.length === 0) return;
   if (matches.length > 100) {
-    const ok = confirm(`Это добавит ${matches.length} предметов в таблицу — цены будут грузиться заметно дольше. Продолжить?`);
+    const ok = await confirmDialog(`Это добавит ${matches.length} предметов в таблицу — цены будут грузиться заметно дольше. Продолжить?`);
     if (!ok) return;
   }
   for (const item of matches) if (!tracked.includes(item.id)) tracked.push(item.id);

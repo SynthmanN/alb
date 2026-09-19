@@ -239,6 +239,45 @@ function enchantTag(enchant) {
 
 const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
 
+// Стилизованные замены нативным alert()/confirm(): не выбиваются из общего стиля и не блокируют страницу.
+function showToast(message, kind = 'info') {
+  let box = document.getElementById('toast-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'toast-box';
+    document.body.appendChild(box);
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${kind}`;
+  toast.textContent = message;
+  box.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+// Возвращает Promise<boolean>: true — «Продолжить», false — «Отмена» (или Esc / клик мимо окна).
+function confirmDialog(message, { okText = 'Продолжить', cancelText = 'Отмена' } = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog" role="dialog" aria-modal="true">
+        <p></p>
+        <div class="dialog-buttons"><button type="button" class="dialog-cancel"></button><button type="button" class="dialog-ok"></button></div>
+      </div>`;
+    overlay.querySelector('p').textContent = message;
+    overlay.querySelector('.dialog-ok').textContent = okText;
+    overlay.querySelector('.dialog-cancel').textContent = cancelText;
+    const close = (result) => { document.removeEventListener('keydown', onKey); overlay.remove(); resolve(result); };
+    const onKey = (e) => { if (e.key === 'Escape') close(false); };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+    overlay.querySelector('.dialog-ok').addEventListener('click', () => close(true));
+    overlay.querySelector('.dialog-cancel').addEventListener('click', () => close(false));
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(overlay);
+    overlay.querySelector('.dialog-ok').focus();
+  });
+}
+
 // Список предметов нужен почти всем страницам — грузим один раз, страницы ждут itemsReady.
 const itemsReady = fetch('/api/items').then((r) => r.json()).then((items) => { ALL_ITEMS = items; });
 

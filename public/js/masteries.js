@@ -28,12 +28,15 @@ async function saveMasteryLevel(kind, id, value) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [kind]: { [id]: level } }),
     });
+    // fetch() не бросает исключение на 4xx/5xx — проверяем статус сами, иначе ошибка сохранения молча сочтётся успехом
+    if (!res.ok) throw new Error(`сервер ответил ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     masteryData.levels = { masteries: data.masteries, specializations: data.specializations };
     masteryEl.status.textContent = 'Сохранено';
   } catch (err) {
     masteryEl.status.textContent = `Ошибка сохранения: ${err.message}`;
+    showToast(`Уровень не сохранён: ${err.message}`, 'error');
   }
 }
 

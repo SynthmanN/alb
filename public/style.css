@@ -250,3 +250,15 @@ tr.tier-row:hover td { background: #22262d; }
 details.city-prices summary { cursor: pointer; }
 details.city-prices ul { margin: 4px 0 0; padding-left: 16px; text-align: left; font-size: 12px; color: #9aa0aa; }
 details.city-prices small { color: #cc8844; }
+
+/* Всплывающие уведомления и диалог подтверждения (вместо alert/confirm) */
+#toast-box { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 100; max-width: min(360px, calc(100vw - 32px)); }
+.toast { background: #1e2126; border: 1px solid #333740; border-left: 4px solid #3a6df0; color: #e6e6e6; padding: 10px 14px; border-radius: 6px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+.toast-error { border-left-color: #ff6b6b; }
+.toast-ok { border-left-color: #7ee787; }
+.dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+.dialog { background: #1a1d22; border: 1px solid #333740; border-radius: 10px; padding: 18px 20px; max-width: 420px; width: 100%; }
+.dialog p { margin: 0 0 16px; font-size: 14px; line-height: 1.45; }
+.dialog-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+.dialog-cancel { background: #2a2d33; }
+.dialog-cancel:hover { background: #363a42; }
