@@ -284,11 +284,12 @@ describe('8. стресс-кейсы', () => {
     expect(d.patientSell.profitPerUnit).toBeCloseTo(3580 - costByHand(100), 6);
     expect(d.patientSell.daysToSellBatch).toBeCloseTo(qty / (10 * 0.25), 6);
   });
-  it('охотничий плащ .2: считается как «обычный плащ + герб + энергия, затем руны/души» — материалы рецепта без зачарования', async () => {
+  it('охотничий плащ .2: без галочки — прямой крафт из плаща .2, с галочкой — база .0 + руны; цены не совпадают', async () => {
     installMarket({ materialPrice: 100 });
-    const d = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=2&quantity=10')).body;
-    expect(d.enchantAfterCraft.forced).toBe(true);
-    expect(d.recipe.every((r) => !r.enchanted)).toBe(true);
-    expect(d.enchantAfterCraft.steps).toHaveLength(2);
+    const direct = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=2&quantity=10&gearRrr=none')).body;
+    expect(direct.recipe.map((r) => r.queryId)).toEqual(['T4_CAPE@2', 'T4_CAPEITEM_AVALON_BP', 'QUESTITEM_TOKEN_AVALON']);
+    const after = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=2&quantity=10&gearRrr=none&enchantAfterCraft=true')).body;
+    expect(after.recipe.every((r) => !r.enchanted)).toBe(true);
+    expect(after.enchantAfterCraft.steps).toHaveLength(2);
   });
 });

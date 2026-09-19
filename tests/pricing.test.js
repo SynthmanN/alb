@@ -428,13 +428,9 @@ describe('скан маржи и ликвидности', () => {
   });
 });
 
-describe('охотничьи и фракционные плащи: зачарование только после крафта', () => {
-  it('слоты «плащ (охотник)» и «плащ (фракция)» — принудительно; обычный плащ и остальной гир — нет', () => {
-    expect(requiresEnchantAfterCraft('T4_CAPEITEM_AVALON')).toBe(true);
-    expect(requiresEnchantAfterCraft('T6_CAPEITEM_KEEPER')).toBe(true);
-    expect(requiresEnchantAfterCraft('T4_CAPEITEM_FW_CAERLEON')).toBe(true);
-    expect(requiresEnchantAfterCraft('T4_CAPE')).toBe(false);
-    expect(requiresEnchantAfterCraft('T4_MAIN_SWORD')).toBe(false);
+describe('охотничьи и фракционные плащи: оба пути зачарования равноправны', () => {
+  it('принудительного «только после крафта» нет: по игровым данным есть рецепт зачарованного плаща (плащ того же зачарования + герб + жетон)', () => {
+    for (const id of ['T4_CAPEITEM_AVALON', 'T6_CAPEITEM_KEEPER', 'T4_CAPEITEM_FW_CAERLEON', 'T4_CAPE', 'T4_MAIN_SWORD']) expect(requiresEnchantAfterCraft(id)).toBe(false);
   });
 });
 

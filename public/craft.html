@@ -140,17 +140,9 @@
                 <label class="craft-field">Категория
           <select id="margin-category"><option value="all">Всё</option><option value="weapon">Оружие</option><option value="armor">Броня</option><option value="cape">Плащи</option></select>
         </label>
-        <label class="craft-field">Зачарование
-          <select id="margin-enchant-mode">
-            <option value="direct">Крафт сразу из зачарованного сырья</option>
-            <option value="after" selected>Зачаровать после крафта рунами</option>
-          </select>
-        </label>
-        <label class="craft-field" title="Только терпеливый режим: считать оборот по всем выбранным городам или только по лучшему">Ликвидность
-          <select id="margin-liquidity">
-            <option value="sum">Сумма по всем городам</option>
-            <option value="best">Только лучший город</option>
-          </select>
+        <label class="craft-field craft-check" title="Галочка: крафтим .0 и зачаровываем рунами/душами/реликвиями (у охотничьих и фракционных плащей — тоже). Без галочки: крафт сразу из зачарованных материалов (у плащей — из зачарованного плаща). Для каждой комбинации берётся выгоднее">
+          <span>Зачарование</span>
+          <span class="check-inline"><input id="margin-enchant-after" type="checkbox" checked /> Зачаровать после крафта</span>
         </label>
         <label class="craft-field">Оборот от, шт/день<input id="margin-min-daily" type="number" min="0" step="0.5" value="1" /></label>
         <label class="craft-field">История

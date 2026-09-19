@@ -242,13 +242,13 @@ test('скан маржи и ликвидности: параметры в за�
   await page.route('**/api/craft-calc*', (route) => { calcQuery = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
-  await page.locator('#margin-enchant-mode').selectOption('after');
-  await page.locator('#margin-liquidity').selectOption('best');
+  await expect(page.locator('#margin-enchant-after')).toBeChecked();                 // «зачаровать после крафта» — галочка, по умолчанию включена
+  await expect(page.locator('#margin-liquidity')).toHaveCount(0);                    // выпадающего «ликвидность» больше нет
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
   expect(scanQuery.get('mode')).toBe('patient');                                   // по умолчанию терпеливая продажа
   expect(scanQuery.get('enchantMode')).toBe('after');
-  expect(scanQuery.get('liquidity')).toBe('best');
+  expect(scanQuery.get('liquidity')).toBe('sum');                                  // оборот — всегда сумма по всем городам
   await expect(page.locator('#margin-result')).toContainText('Кувшин: цены обновлены');
   await page.locator('#margin-result .scan-add-btn').first().click();
   await expect.poll(() => calcQuery).not.toBeNull();
@@ -275,7 +275,6 @@ test('скан маржи: без капитала, минимума дней и
   await expect(page.locator('#margin-min-days')).toHaveCount(0);
   await expect(page.locator('#margin-market-share')).toHaveCount(0);
   await page.locator('#margin-mode').selectOption('instant');
-  await expect(page.locator('#margin-liquidity')).toBeHidden();
   await expect(page.locator('#margin-include-materials')).toHaveCount(0);          // сырьё и рефайн — на странице «Рефайн»
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
@@ -938,7 +937,7 @@ test('иконки: выбранный предмет и строки скана
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-days')).toHaveValue('3');
-  await expect(page.locator('#margin-enchant-mode')).toHaveValue('after');
+  await expect(page.locator('#margin-enchant-after')).toBeChecked();
   await page.locator('#margin-run').click();
   const icon = page.locator('#margin-result tbody tr img.item-icon-lg').first();
   await expect(icon).toHaveAttribute('src', /T5_CAPEITEM_HERETIC%40?@?3\.png\?quality=4|T5_CAPEITEM_HERETIC(%40|@)3\.png\?quality=4/);   // иконка честная: зачарование .3 и качество «Отличное»
@@ -1025,4 +1024,33 @@ test('клик по предмету копирует игровое назва�
   await row.locator('td.copyable').click();
   await expect(page.locator('.toast').last()).toContainText('Скопировано: Слиток стали — в поиске аукциона выбери фильтры: зачарование 2');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Слиток стали');
+});
+
+test('скан: галочка «зачаровать после крафта» переключает режим зачарования в запросе; возврат по умолчанию — гир 24.8%', async ({ page }) => {
+  const queries = [];
+  await page.route('**/api/unified-scan*', (route) => {
+    queries.push(new URL(route.request().url()).searchParams);
+    route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', days: 3, taxRate: 0.08, setupFeeRate: 0.025, scanned: 0, enchantRange: '.0–.4', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367, jug: {}, results: [] } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await expect(page.locator('#margin-gear-rrr')).toHaveValue('city_bonus');
+  await page.locator('#margin-run').click();
+  await expect.poll(() => queries.length).toBe(1);
+  expect(queries[0].get('enchantMode')).toBe('after');
+  expect(queries[0].get('gearRrr')).toBe('city_bonus');
+  await page.locator('#margin-enchant-after').uncheck();
+  await page.locator('#margin-run').click();
+  await expect.poll(() => queries.length).toBe(2);
+  expect(queries[1].get('enchantMode')).toBe('direct');
+});
+
+test('ошибки API: вместо «Unexpected token <» — понятное сообщение (сервер отдал HTML / не обновлён)', async ({ page }) => {
+  await page.route('**/api/refine-scan*', (route) => route.fulfill({ status: 502, contentType: 'text/html', body: '<html>Bad Gateway</html>' }));
+  await page.route('**/api/refining-calc*', (route) => route.fulfill({ json: { perCity: [] } }));   // ответ старого сервера — без состава переработки
+  await page.goto('/refine.html');
+  await expect(page.locator('#calc-result')).toContainText('сервер не обновлён');
+  await page.locator('#refine-scan-run').click();
+  await expect(page.locator('#refine-scan-result')).toContainText('HTTP 502');
+  await expect(page.locator('#refine-scan-result')).not.toContainText('Unexpected token');
 });

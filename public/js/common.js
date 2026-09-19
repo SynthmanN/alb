@@ -481,3 +481,22 @@ async function copyAuctionName(id, filters = []) {
   const ok = await copyText(name);
   showToast(ok ? `Скопировано: ${name}${filters.length ? ` — в поиске аукциона выбери фильтры: ${filters.join(', ')}` : ''}` : 'Не удалось скопировать: браузер запретил доступ к буферу обмена', ok ? 'ok' : 'error');
 }
+
+// Запрос к API с понятной ошибкой: если сервер вместо JSON отдал страницу (502/504 от прокси, 404 у не обновлённого сервера, падение на
+// запросе), вместо «Unexpected token '<'» показываем, что случилось и что делать.
+async function fetchJson(url) {
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (err) {
+    throw new Error('нет связи с сервером — проверь, что он запущен');
+  }
+  const type = res.headers.get('content-type') || '';
+  if (!type.includes('json')) {
+    const hint = res.status === 404 ? 'этого запроса нет на сервере — сервер не обновлён, перезапусти его после обновления кода'
+      : res.status >= 500 ? 'сервер упал или перезапускается (или запрос не уложился в таймаут прокси) — подожди минуту и повтори; если повторяется — смотри логи сервера'
+      : 'сервер ответил не JSON';
+    throw new Error(`сервер ответил HTTP ${res.status}: ${hint}`);
+  }
+  return res.json();
+}

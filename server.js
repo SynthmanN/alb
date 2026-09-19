@@ -64,13 +64,9 @@ function enchantVariants(item) {
   return out;
 }
 
-// Охотничьи (Avalon/Demon/Heretic/…) и фракционные плащи в зачарованном виде не крафтятся напрямую: сначала
-// делается обычный плащ .0 (обычный плащ + герб + жетон/энергия), а дальше он зачаровывается рунами/душами вручную.
-// Рецепт «зачарованный плащ + герб + …» в игре не работает, поэтому для этих слотов зачарование ТОЛЬКО после крафта.
-const FORCED_ENCHANT_AFTER_CRAFT_SLOTS = new Set(['плащ (фракция)', 'плащ (охотник)']);
-function requiresEnchantAfterCraft(itemId) {
-  return FORCED_ENCHANT_AFTER_CRAFT_SLOTS.has(ITEM_SLOT_BY_ID.get(itemId));
-}
+// ВАЖНО: раньше считали, что зачарованный охотничий плащ напрямую не крафтится. По игровым данным (items.xml) это не так: у каждого
+// зачарования свой рецепт — плащ ТОГО ЖЕ зачарования (T4_CAPE@2) + герб + жетон. Поэтому оба пути равноправны (с галочкой и без).
+function requiresEnchantAfterCraft() { return false; }
 
 // Возврат ресурсов (RRR) распространяется не на все материалы рецепта: артефакты, гербы, жетоны фракций и базовый
 // плащ (maxreturnamount="0" в items.xml, помечены noReturn в recipes.json) не возвращаются. Коэффициент, на который
@@ -185,6 +181,42 @@ function parseRefineRate(req) {
   return { rate: rrrFromBonus(preset.bonus), refineRrr: req.query.refineRrr || null, refineRrrCustom: null };
 }
 
+// --- Ингредиент-гир: купить или скрафтить самому ---
+// У охотничьих и фракционных плащей ингредиент — обычный плащ того же тира и зачарования (T4_CAPE@2). Сам плащ-ингредиент в рецепте НЕ возвращается
+// (maxreturnamount=0), но его можно скрафтить самому из ткани и кожи (T4 ткань/кожа .2) — и там возврат при крафте действует. Берётся дешевле:
+// купить готовый плащ или скрафтить. units — сколько штук нужно (цена компонентов — за реальное количество, как у полуфабрикатов).
+function subcraftComponents(resourceId, queryId) {
+  const rec = RECIPES[resourceId];
+  if (!rec || !GEAR_IDS.has(resourceId)) return null;
+  const m = String(queryId).match(/@(\d)$/);
+  const enchant = m ? Number(m[1]) : 0;
+  return { rec, enchant, parts: rec.resources.map((x) => ({ id: effectiveRecipeResourceId(x.resource, enchant), count: x.count, noReturn: !!x.noReturn })) };
+}
+function subcraftAlternative(resourceId, queryId, priceOf, gearRate, units) {
+  const c = subcraftComponents(resourceId, queryId);
+  if (!c) return null;
+  const components = [];
+  let price = c.rec.silver || 0;
+  let oldest = null;
+  for (const part of c.parts) {
+    const factor = part.noReturn ? 1 : 1 - gearRate;
+    const p = priceOf(part.id, units ? Math.ceil(units * part.count * factor) : undefined);
+    if (!p) return null;
+    price += part.count * factor * p.price;
+    components.push({ id: part.id, count: part.count, factor, price: p.price, city: p.city });
+    if (p.date && (!oldest || p.date < oldest)) oldest = p.date;
+  }
+  return { price, city: components[0].city, date: oldest, components };
+}
+// Добавляет в набор id компонентов, из которых можно скрафтить ингредиент-гир
+function addSubcraftComponentIds(idSet, ids) {
+  for (const id of ids) {
+    const base = String(id).replace(/@\d$/, '');
+    const c = subcraftComponents(base, id);
+    if (c) for (const part of c.parts) idSet.add(part.id);
+  }
+}
+
 // Лучшая котировка материала с учётом возврата в городе покупки: минимум цена × (1 − RRR города). quotes = [{ city, price }].
 function bestMaterialQuote(quotes, resource, opts) {
   let best = null;
@@ -202,6 +234,17 @@ function bestMaterialQuote(quotes, resource, opts) {
       const rrr = resource.noReturn ? 0 : opts.gearRate;
       if (!best || alt.price < best.price) {
         best = { city: alt.city, price: alt.price, date: alt.date, rrr, factor: 1 - rrr, effective: alt.price * (1 - rrr), cityBonus: false, source: 'refine', refineOption: alt, buyPrice: best ? best.price : null };
+      }
+    }
+  }
+  // Ингредиент-гир (плащ в рецепте охотничьего плаща): готовый или скрафтить самому с возвратом при крафте
+  if (opts.subcraft && opts.gearRate !== undefined) {
+    const id = resource.queryId || resource.resource;
+    const alt = subcraftAlternative(resource.resource, id, opts.subcraft.priceOf, opts.gearRate, resource.units);
+    if (alt) {
+      if (best) best.craftOption = alt;
+      if (!best || alt.price < best.price) {
+        best = { city: alt.city, price: alt.price, date: alt.date, rrr: 0, factor: 1, effective: alt.price, cityBonus: false, source: 'craft', craftOption: alt, buyPrice: best ? best.price : null };
       }
     }
   }
@@ -749,6 +792,7 @@ app.get('/api/craft-calc', async (req, res) => {
     const refineParams = parseRefineRate(req);
     const materialIdSet = new Set([...resourceQueryIds, ...enchantStepIds]);
     addRefineComponentIds(materialIdSet, resourceQueryIds);   // сырьё и предыдущий тир — для сравнения «купить готовый vs переработать»
+    addSubcraftComponentIds(materialIdSet, resourceQueryIds); // ткань и кожа плаща-ингредиента — «купить плащ или скрафтить самому»
     const materialIds = [...materialIdSet];
     // Сырьё, полуфабрикаты и материалы зачарования — из кувшина (его непрерывно наполняет краулер): пересчёт дешёвый и не зависит от лимитов AODP.
     // Готовый предмет (решающая цифра продажи) по-прежнему смотрим по живому AODP.
@@ -818,10 +862,11 @@ app.get('/api/craft-calc', async (req, res) => {
       const unitsNeeded = Math.ceil(r.count * quantity * returnFactor(r, rrrOpts.gearRate !== undefined ? rrrOpts.gearRate : 0));
       const buyPlan = unitPlan(queryId, unitsNeeded);
       const quotes = buyPlan ? [{ city: buyPlan.city, price: buyPlan.price, date: buyPlan.date }] : [];
-      const cheapest = bestMaterialQuote(quotes, { ...r, queryId, units: unitsNeeded }, { ...rrrOpts, refine: { priceOf: unitPlan, rate: refineParams.rate } });
+      const cheapest = bestMaterialQuote(quotes, { ...r, queryId, units: unitsNeeded }, { ...rrrOpts, refine: { priceOf: unitPlan, rate: refineParams.rate }, subcraft: { priceOf: unitPlan } });
       const factor = cheapest ? cheapest.factor : returnFactor(r, 0);
       const refineOption = cheapest ? cheapest.refineOption || null : null;
-      const materialSource = cheapest && cheapest.source === 'refine' ? 'refine' : 'buy';
+      const craftOption = cheapest ? cheapest.craftOption || null : null;
+      const materialSource = cheapest && cheapest.source === 'refine' ? 'refine' : cheapest && cheapest.source === 'craft' ? 'craft' : 'buy';
       if (!cheapest) hasAllPrices = false;
       else {
         materialCostPerUnit += cheapest.price * r.count;
@@ -843,11 +888,11 @@ app.get('/api/craft-calc', async (req, res) => {
         cheapestCity: cheapest ? cheapest.city : null,
         cheapestPrice: cheapest ? cheapest.price : null,
         // Откуда материал: 'buy' — готовый с рынка, 'refine' — сырьё + предыдущий тир и переработка самому (выгоднее по цене).
-        materialSource,
-        buyPrice: materialSource === 'refine' ? (cheapest.buyPrice ?? null) : (cheapest ? cheapest.price : null),
-        buyCity: materialSource === 'refine' ? null : (cheapest ? cheapest.city : null),
+        materialSource, craftOption,
+        buyPrice: materialSource !== 'buy' ? (cheapest.buyPrice ?? null) : (cheapest ? cheapest.price : null),
+        buyCity: materialSource !== 'buy' ? null : (cheapest ? cheapest.city : null),
         refineOption,                                        // { city, rate, rawCost, price, components[] } — если материал можно переработать
-        priceSource: cheapest ? (materialSource === 'refine' ? 'refine' : (cityPrices[cheapest.city] || {}).priceSource || null) : null,   // 'history' — средняя по сделкам за окно, 'quote' — сделок нет, текущая котировка
+        priceSource: cheapest ? (materialSource !== 'buy' ? materialSource : (cityPrices[cheapest.city] || {}).priceSource || null) : null,   // 'history' — средняя по сделкам за окно, 'quote' — сделок нет, текущая котировка
         // Цены во всех активных городах (от дешёвых к дорогим): чтобы раскидать терпеливые ордера на закупку по нескольким городам.
         cityPrices: cityPriceList(cityPrices, queryCities),
       };
@@ -992,6 +1037,16 @@ app.get('/api/craft-calc', async (req, res) => {
         rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city, priceByCity: baseBuyByCity });
       } else {
         recipeBreakdown.forEach((r) => {
+          if (r.materialSource === 'craft' && r.craftOption) {
+            // Ингредиент-гир (плащ) крафтим сами: покупаем ткань и кожу; возврат при крафте уменьшает их количество (сам плащ-ингредиент не возвращается)
+            r.craftOption.components.forEach((comp) => rows.push({
+              resource: `${r.resource}|${comp.id}`, parent: r.resource, source: 'craft', role: 'craft',
+              resourceName: `${resolveItemNameWithEnchant(comp.id)} (для крафта: ${r.resourceName})`, queryId: comp.id,
+              needed: Math.ceil(r.neededToBuy * comp.count * comp.factor), city: comp.city,
+              priceByCity: pricesOf(materialByCity[comp.id]),
+            }));
+            return;
+          }
           if (r.materialSource === 'refine' && r.refineOption) {
             // Материал перерабатываем сами — закупаем не готовый слиток/кожу, а сырьё и материал предыдущего тира: столько, чтобы после
             // возврата при переработке хватило ровно на нужное число материала (neededToBuy уже учитывает возврат при крафте гира).
@@ -2323,6 +2378,7 @@ app.get('/api/unified-scan', (req, res) => {
       if (c.after) for (let lvl = 1; lvl <= c.enchant; lvl++) materialIds.add(enchantMaterialId(c.item.tier, lvl));
     }
     addRefineComponentIds(materialIds, [...materialIds]);   // сырьё и предыдущий тир — для сравнения «купить готовый vs переработать самому»
+    addSubcraftComponentIds(materialIds, [...materialIds]); // ткань и кожа плаща-ингредиента — «купить плащ или скрафтить самому»
     const finishedIds = [...new Set(combos.map((c) => gearEnchantId(c.itemId, c.enchant)))];
 
     const snapshotQuotes = quotesById(readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] }));
@@ -2346,7 +2402,7 @@ app.get('/api/unified-scan', (req, res) => {
       }
       materialQuotes[id] = quotes.map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
     }
-    const refineOpts = { ...rrrOpts, refine: { priceOf: (id) => cheapestOf(materialQuotes[id]), rate: refineParams.rate } };
+    const refineOpts = { ...rrrOpts, refine: { priceOf: (id) => cheapestOf(materialQuotes[id]), rate: refineParams.rate }, subcraft: { priceOf: (id) => cheapestOf(materialQuotes[id]) } };
     const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations: blackMarket ? [...locations, BM_QUERY_LOCATION] : locations, qualities: ALL_QUALITIES, now }));
     const finishedHistory = indexByItem(cleaned.series);
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
@@ -2431,6 +2487,9 @@ app.get('/api/unified-scan', (req, res) => {
           // Материал перерабатываем сами: закупаем сырьё и предыдущий тир, на переработку возвращается refineRate.
           for (const comp of q.refineOption.components) needs.push({ id: comp.id, perUnit: r.count * q.factor * comp.count * (1 - q.refineOption.rate) });
           refined.push({ id, city: q.city, buyPrice: q.buyPrice, price: q.price });
+        } else if (q.source === 'craft') {
+          for (const comp of q.craftOption.components) needs.push({ id: comp.id, perUnit: r.count * comp.count * comp.factor });
+          refined.push({ id, city: q.city, buyPrice: q.buyPrice, price: q.price, crafted: true });
         } else needs.push({ id, perUnit: r.count * q.factor });
         quoteDates.push(q.date);
       }
@@ -2960,6 +3019,14 @@ function startJug() {
 }
 
 // Порт занимаем только при прямом запуске (node server.js); при require() из тестов — нет.
+// API всегда отвечает JSON: неизвестный запрос и необработанная ошибка не превращаются в HTML-страницу (клиент разбирает ответ как JSON)
+app.use('/api', (req, res) => res.status(404).json({ error: `нет такого запроса: ${req.path}` }));
+app.use((err, req, res, next) => {
+  console.error(err);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({ error: 'внутренняя ошибка сервера', details: err.message });
+});
+
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Albion market table запущен на http://localhost:${PORT}`);
@@ -2982,6 +3049,7 @@ module.exports = {
   app,
   resetCaches,
   refineComponents,
+  subcraftAlternative,
   refineAlternative,
   bestMaterialQuote,
   itemIP,

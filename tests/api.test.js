@@ -322,14 +322,43 @@ describe('калькулятор крафта: сравнение по тира�
   });
 });
 
-describe('калькулятор крафта: охотничий плащ .3 — только после крафта', () => {
-  it('зачарование принудительно после крафта: база .0 + руны/души/реликвии, материалы рецепта без зачарования', async () => {
-    const d = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=3&quantity=10')).body;
-    expect(d.enchantAfterCraft.forced).toBe(true);
-    expect(d.enchantAfterCraft.steps.map((s) => s.materialId)).toEqual(['T4_RUNE', 'T4_SOUL', 'T4_RELIC']);
-    expect(d.recipe.every((r) => r.enchanted === false)).toBe(true);           // обычный плащ .0 + герб + энергия
-    expect(d.recipe.map((r) => r.queryId)).toEqual(['T4_CAPE', 'T4_CAPEITEM_AVALON_BP', 'QUESTITEM_TOKEN_AVALON']);
-    expect(d.enchantAfterCraft.steps.every((s) => s.count === 96)).toBe(true);
+describe('калькулятор крафта: охотничий плащ — два пути зачарования, плащ-ингредиент можно скрафтить самому', () => {
+  it('без галочки — прямой крафт: плащ ТОГО ЖЕ зачарования (T4_CAPE@3) + герб + жетон; с галочкой — база .0 + руны/души/реликвии; цены разные', async () => {
+    const direct = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=3&quantity=10&gearRrr=none')).body;
+    expect(direct.enchantAfterCraft).toBeNull();
+    expect(direct.recipe.map((r) => r.queryId)).toEqual(['T4_CAPE@3', 'T4_CAPEITEM_AVALON_BP', 'QUESTITEM_TOKEN_AVALON']);
+    const after = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=3&quantity=10&gearRrr=none&enchantAfterCraft=true')).body;
+    expect(after.enchantAfterCraft.forced).toBe(false);
+    expect(after.enchantAfterCraft.steps.map((s) => s.materialId)).toEqual(['T4_RUNE', 'T4_SOUL', 'T4_RELIC']);
+    expect(after.recipe.every((r) => r.enchanted === false)).toBe(true);
+    expect(after.recipe.map((r) => r.queryId)).toEqual(['T4_CAPE', 'T4_CAPEITEM_AVALON_BP', 'QUESTITEM_TOKEN_AVALON']);
+    expect(after.enchantAfterCraft.steps.every((s) => s.count === 96)).toBe(true);
+    expect(after.effectiveCostPerUnit).not.toBeCloseTo(direct.effectiveCostPerUnit, 0);       // «так не может быть, чтобы цены были одни и те же»
+  });
+  it('плащ-ингредиент: дорогой готовый T4_CAPE@2 — выгоднее скрафтить из ткани и кожи .2 с возвратом; купить нужно ткань и кожу «без остатка»', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => (String(url).includes('/history/') ? [] : fakeAodp(url)) }));
+    setJugAll(100, ['Martlock']);
+    setJug({ 'T4_CAPE@2': 5000, 'T4_CLOTH_LEVEL2@2': 100, 'T4_LEATHER_LEVEL2@2': 100, T4_CAPEITEM_AVALON_BP: 10, QUESTITEM_TOKEN_AVALON: 10 }, { cities: ['Martlock'] });
+    const d = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=2&quantity=100&cities=Martlock&gearRrr=city_bonus&refineRrr=none')).body;
+    const cape = d.recipe.find((r) => r.resource === 'T4_CAPE');
+    expect(cape.materialSource).toBe('craft');
+    const rate = 1 - 1 / 1.33;
+    // плащ: 4 ткани + 4 кожи с возвратом при крафте; сам плащ-ингредиент в рецепте не возвращается
+    expect(cape.cheapestPrice).toBeCloseTo((4 * 102.5 + 4 * 102.5) * (1 - rate), 4);
+    expect(cape.refineOption).toBeNull();
+    expect(cape.craftOption.components.map((c) => c.id)).toEqual(['T4_CLOTH_LEVEL2@2', 'T4_LEATHER_LEVEL2@2']);
+    const rows = d.acquire.byResource.filter((r) => r.parent === 'T4_CAPE');
+    expect(rows.map((r) => r.queryId)).toEqual(['T4_CLOTH_LEVEL2@2', 'T4_LEATHER_LEVEL2@2']);
+    expect(rows.every((r) => r.source === 'craft' && r.needed === Math.ceil(100 * 4 * (1 - rate)))).toBe(true);   // 400 × 0.752 = 300.5 → 301
+  });
+  it('плащ-ингредиент: дешёвый готовый — покупаем его, возврата нет (в рецепте не возвращается)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => (String(url).includes('/history/') ? [] : fakeAodp(url)) }));
+    setJugAll(100, ['Martlock']);
+    setJug({ 'T4_CAPE@2': 50, T4_CAPEITEM_AVALON_BP: 10, QUESTITEM_TOKEN_AVALON: 10 }, { cities: ['Martlock'] });
+    const cape = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=2&quantity=100&cities=Martlock&gearRrr=city_bonus')).body.recipe.find((r) => r.resource === 'T4_CAPE');
+    expect(cape.materialSource).toBe('buy');
+    expect(cape.neededToBuy).toBe(100);
+    expect(cape.cheapestPrice).toBeCloseTo(50 * 1.025, 6);
   });
   it('обычный меч .3 без галочки — прямой крафт из зачарованного сырья, блока зачарования нет', async () => {
     const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&enchant=3&quantity=10')).body;
@@ -797,5 +826,14 @@ describe('калькулятор крафта: руны/души/реликви�
     expect(step.materialId).toBe('T4_RUNE');
     expect(step.cheapestPrice).toBeCloseTo(5 * 1.025, 9);
     expect(step.count * 100 * step.cheapestPrice).toBeCloseTo(step.count * 100 * 5 * 1.025, 6);   // сумма партии — с комиссией (у плаща 96 рун × 100 шт = 9600 рун по 5 → 49 200)
+  });
+});
+
+describe('API всегда отвечает JSON', () => {
+  it('неизвестный запрос к /api — JSON 404, а не HTML-страница', async () => {
+    const res = await request(app).get('/api/no-such-thing');
+    expect(res.status).toBe(404);
+    expect(res.headers['content-type']).toContain('json');
+    expect(res.body.error).toContain('/no-such-thing');
   });
 });

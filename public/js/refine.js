@@ -86,9 +86,9 @@ async function runCalc() {
       type: sel.type, tier: String(sel.tier), enchant: String(sel.enchant), hours: readCustomizable(calcEl.hours),
       ...rrrParams(calcEl.rrr, calcEl.rrrCustom), cities: activeCities().join(','), premium: premiumParam(),
     });
-    const res = await fetch(`/api/refining-calc?${params}`);
-    const data = await res.json();
+    const data = await fetchJson(`/api/refining-calc?${params}`);
     if (data.error) throw new Error(data.error);
+    if (!Array.isArray(data.components)) throw new Error('ответ сервера устарел (нет состава переработки) — сервер не обновлён, перезапусти его после обновления кода');
     calcData = data;
     renderCalc();
   } catch (err) {
@@ -234,9 +234,9 @@ async function runScan() {
     });
     if (scanEl.type.value) params.set('type', scanEl.type.value);
     if (scanEl.tier.value) params.set('tier', scanEl.tier.value);
-    const res = await fetch(`/api/refine-scan?${params}`);
-    const data = await res.json();
+    const data = await fetchJson(`/api/refine-scan?${params}`);
     if (data.error) throw new Error(data.error);
+    if (!Array.isArray(data.results)) throw new Error('ответ сервера устарел — сервер не обновлён, перезапусти его после обновления кода');
     renderScan(data);
   } catch (err) {
     scanEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
