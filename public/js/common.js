@@ -129,6 +129,22 @@ function syncMobileSortBar(key) {
   });
 }
 
+// Подсветка лучшей находки сканера: строка с максимальным скором получает бейдж «★ лучшее».
+// rows — данные в том же порядке, что и строки tbody (до сортировки); score должен быть числом.
+function highlightBestRow(table, rows) {
+  if (!table || !rows || rows.length === 0) return;
+  let bestIdx = -1;
+  let bestScore = -Infinity;
+  rows.forEach((r, i) => {
+    if (typeof r.score === 'number' && Number.isFinite(r.score) && r.score > bestScore) { bestScore = r.score; bestIdx = i; }
+  });
+  const tr = bestIdx === -1 ? null : table.querySelectorAll('tbody > tr')[bestIdx];
+  if (!tr) return;
+  tr.classList.add('top-find');
+  const first = tr.querySelector('td');
+  if (first) first.insertAdjacentHTML('beforeend', ' <span class="top-badge" title="Лучшая находка по скору (профит × ликвидность)">★ лучшее</span>');
+}
+
 function wireTableSort(table, key) {
   if (!table) return;
   labelTableCells(table);

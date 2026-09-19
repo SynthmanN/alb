@@ -56,6 +56,7 @@ function renderRefineScanResult(rows) {
     </table></div>
   `;
   wireTableSort(refineScanResult.querySelector('table'), 'refine-scan');
+  highlightBestRow(refineScanResult.querySelector('table'), rows);
   // «в калькулятор»: тип ресурса и тир переносятся в калькулятор себестоимости и считаются на месте
   refineScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {

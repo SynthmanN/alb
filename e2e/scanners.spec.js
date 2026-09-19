@@ -81,3 +81,22 @@ test('сканер флиппинга показывает уровень зач
   await expect(page.locator('#scan-result .ench-tag')).toHaveCount(1);
   await expect(page.locator('#scan-result .ench-tag')).toHaveText('.2');
 });
+
+test('лучшая находка сканера подсвечена бейджем «★ лучшее» и остаётся на своей строке при сортировке', async ({ page }) => {
+  await page.route('**/api/opportunities*', (route) => route.fulfill({ json: OPPORTUNITIES }));
+  await page.goto('/scanners.html');
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-result tbody tr')).toHaveCount(3);
+  await expect(page.locator('#scan-result .top-badge')).toHaveCount(1);
+  await expect(page.locator('#scan-result tr.top-find')).toContainText('Дерево'); // score 900 — у T6_WOOD
+  await sortBy(page, '#scan-result', 'Свежесть');
+  await expect(page.locator('#scan-result tr.top-find')).toContainText('Дерево');
+});
+
+test('если у результатов нет числового скора — подсветки нет (и ничего не ломается)', async ({ page }) => {
+  await page.route('**/api/opportunities*', (route) => route.fulfill({ json: OPPORTUNITIES.map(({ score, ...rest }) => rest) }));
+  await page.goto('/scanners.html');
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-result tbody tr')).toHaveCount(3);
+  await expect(page.locator('#scan-result .top-badge')).toHaveCount(0);
+});

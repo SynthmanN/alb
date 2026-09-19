@@ -456,6 +456,7 @@ function renderCraftScanResult(rows) {
     </table></div>
   `;
   wireTableSort(craftScanResult.querySelector('table'), 'craft-scan');
+  highlightBestRow(craftScanResult.querySelector('table'), rows);
   craftScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const item = findItem(btn.dataset.id);
@@ -528,6 +529,7 @@ function renderBulkScanResult(rows) {
     </table></div>
   `;
   wireTableSort(bulkScanEl.result.querySelector('table'), 'bulk-scan');
+  highlightBestRow(bulkScanEl.result.querySelector('table'), rows);
   bulkScanEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const item = findItem(btn.dataset.id);
@@ -670,6 +672,7 @@ function renderMarginScan(data) {
       <tbody>${rows}</tbody>
     </table></div>`;
   wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');
+  highlightBestRow(marginEl.result.querySelector('table'), data.results);
   marginEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const item = findItem(btn.dataset.id);

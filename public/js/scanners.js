@@ -52,6 +52,7 @@ function renderScanResult(rows) {
     </table></div>
   `;
   wireTableSort(scanResult.querySelector('table'), 'scan');
+  highlightBestRow(scanResult.querySelector('table'), rows.slice(0, 25));
   scanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
@@ -115,6 +116,7 @@ function renderBmScanResult(rows) {
     </table></div>
   `;
   wireTableSort(bmScanResult.querySelector('table'), 'bm-scan');
+  highlightBestRow(bmScanResult.querySelector('table'), rows.slice(0, 25));
   bmScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
@@ -179,5 +181,6 @@ function renderEnchantScanResult(rows) {
     </table></div>
   `;
   wireTableSort(enchantScanResult.querySelector('table'), 'enchant-scan');
+  highlightBestRow(enchantScanResult.querySelector('table'), rows);
 }
 
