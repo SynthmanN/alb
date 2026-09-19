@@ -209,5 +209,36 @@ describe('GET /api/unified-scan', () => {
     expect(row.dailyVolume).toBeCloseTo(60 / 7, 6);                                   // оборот только прибыльного города
     expect(row.dailyProfit).toBeCloseTo(profitPerUnit * (60 / 7) * 1, 4);             // и профит в день — только с него
   });
+
+  it('Чёрный Рынок: только в мгновенном режиме и только по флагу; налог ЧР выше (налог + сбор), лучший город — по прибыли после налога', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40, buyOrder: 3800 });                       // город: 3800·0.92 − 2400 = 1096
+    seedSales('T4_MAIN_SWORD', { avg: 4400, perDay: 40, buyOrder: 4300, city: 'Black Market' });  // ЧР: 4300·(1 − 0.105) − 2400 = 1448.5
+    const without = await scan({ mode: 'instant', cities: 'Martlock' });
+    expect(without.results.find((r) => r.itemId === 'T4_MAIN_SWORD').sellCities).toEqual([CITY]);
+    const withBm = await scan({ mode: 'instant', cities: 'Martlock', blackMarket: 'true' });
+    const row = withBm.results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(row).toMatchObject({ blackMarket: true, sellCities: ['Black Market'], avgSellPrice: 4300 });
+    expect(row.profitPerUnit).toBeCloseTo(4300 * (1 - 0.08 - 0.025) - 2400, 6);                  // Sales Tax 8% + Setup Fee 2.5% = 10.5%
+    expect(row.sellTaxRate).toBeCloseTo(0.105, 9);
+    expect(withBm.bmTaxRate).toBeCloseTo(0.105, 9);
+    const premium = (await scan({ mode: 'instant', cities: 'Martlock', blackMarket: 'true', premium: 'true' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(premium.sellTaxRate).toBeCloseTo(0.065, 9);                                           // с премиумом 4% + 2.5%
+  });
+
+  it('Чёрный Рынок не выигрывает по одной «красивой» цене: после более высокого налога обычный город может дать больше', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40, buyOrder: 4100 });                        // город: 4100·0.92 = 3772
+    seedSales('T4_MAIN_SWORD', { avg: 4200, perDay: 40, buyOrder: 4200, city: 'Black Market' });   // ЧР: 4200·0.895 = 3759 — дороже, но на руки меньше
+    const row = (await scan({ mode: 'instant', cities: 'Martlock', blackMarket: 'true' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    expect(row.blackMarket).toBe(false);
+    expect(row.sellCities).toEqual([CITY]);
+  });
+
+  it('в терпеливом режиме Чёрный Рынок игнорируется даже с флагом (терпеливой модели у него нет)', async () => {
+    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
+    seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 40, buyOrder: 9000, city: 'Black Market' });
+    const res = await scan({ mode: 'patient', cities: 'Martlock', blackMarket: 'true', quantity: 100 });
+    expect(res.blackMarket).toBe(false);
+    expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD').sellCities).toEqual([CITY]);
+  });
 });
 

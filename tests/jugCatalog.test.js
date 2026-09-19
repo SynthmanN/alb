@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 process.env.DISABLE_JUG_CRAWLER = 'true';
 process.env.JUG_DB_PATH = ':memory:';
 const require = createRequire(import.meta.url);
-const { buildJugCatalog } = require('../server.js');
+const { buildJugCatalog, buildJugJobs } = require('../server.js');
 
 // Каталог кувшина не должен тратить бюджет AODP на несуществующие id и не должен терять существующие.
 describe('кувшин: каталог id для краулера', () => {
@@ -39,3 +39,22 @@ describe('кувшин: каталог id для краулера', () => {
     for (const tier of [4, 8]) for (const m of ['RUNE', 'SOUL', 'RELIC']) expect(set.has(`T${tier}_${m}`)).toBe(true);
   });
 });
+
+describe('кувшин: задания краулера', () => {
+  const jobs = buildJugJobs();
+  const gear = jobs.find((j) => j.name === 'gear');
+  const materials = jobs.find((j) => j.name === 'materials');
+  it('готовый гир ходит и в Чёрный Рынок, сырьё и руны — только в города', () => {
+    expect(gear.cities).toContain('BlackMarket');
+    expect(materials.cities).not.toContain('BlackMarket');
+    expect(gear.ids).toContain('T4_MAIN_SWORD@2');
+    expect(materials.ids).toContain('T4_METALBAR');
+    expect(materials.ids).toContain('T5_RUNE');
+  });
+  it('задания вместе покрывают весь каталог без пересечений — число запросов не выросло из-за ЧР', () => {
+    const all = buildJugCatalog();
+    expect(gear.ids.length + materials.ids.length).toBe(all.length);
+    expect(new Set([...gear.ids, ...materials.ids]).size).toBe(all.length);
+  });
+});
+

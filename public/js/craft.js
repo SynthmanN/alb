@@ -674,6 +674,8 @@ const marginEl = {
   mode: document.getElementById('margin-mode'),
   includeMaterials: document.getElementById('margin-include-materials'),
   includeAwakened: document.getElementById('margin-include-awakened'),
+  blackMarket: document.getElementById('margin-black-market'),
+  blackMarketField: document.getElementById('margin-black-market-field'),
   royalBonus: document.getElementById('margin-royal-bonus'),
   focus: document.getElementById('margin-focus'),
   category: document.getElementById('margin-category'),
@@ -692,6 +694,7 @@ function syncMarginMode() {
   const patient = marginEl.mode.value === 'patient';
   marginEl.quantityField.hidden = !patient;
   marginEl.liquidity.closest('label').hidden = !patient;
+  marginEl.blackMarketField.hidden = patient;                       // Чёрный Рынок — только мгновенная продажа
 }
 marginEl.mode.addEventListener('change', syncMarginMode);
 syncMarginMode();
@@ -701,7 +704,7 @@ async function runMarginScan() {
   marginEl.result.innerHTML = 'Считаю по данным кувшина: весь гир × зачарование × качество, это может занять несколько секунд...';
   try {
     const params = new URLSearchParams({
-      mode: marginEl.mode.value, includeMaterials: String(marginEl.includeMaterials.checked), includeAwakened: String(marginEl.includeAwakened.checked),
+      mode: marginEl.mode.value, includeMaterials: String(marginEl.includeMaterials.checked), includeAwakened: String(marginEl.includeAwakened.checked), blackMarket: String(marginEl.blackMarket.checked && marginEl.mode.value === 'instant'),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
       quantity: marginEl.quantity.value || '1000', minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), royalBonus: String(marginEl.royalBonus.checked), focus: String(marginEl.focus.checked),
       marketShare: readCustomizable(document.getElementById('margin-market-share')),
@@ -754,7 +757,7 @@ function renderMarginScan(data) {
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}${material ? ' <small>(рефайн)</small>' : ''}</td>
         <td data-sort-value="${r.quality}">${material ? '—' : QUALITY_NAMES[r.quality]}</td>
         <td>${fmtNum(r.cost)}</td>
-        <td>${fmtNum(r.avgSellPrice)}${patient ? '' : `<br><small>${r.sellCities[0]}</small>`}</td>
+        <td>${fmtNum(r.avgSellPrice)}${patient ? '' : `<br><small>${r.blackMarket ? '⚫ ' : ''}${r.sellCities[0]}${r.blackMarket ? ` (налог ${(r.sellTaxRate * 100).toFixed(1)}%)` : ''}</small>`}</td>
         <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${patient && data.liquidity !== 'best' ? ` <small>(${r.sellCities.length} гор.)</small>` : ''}<br><small>тебе ~${fmtNum(r.yourDailyVolume, 1)}</small></td>
         <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
         <td data-sort-value="${r.dailyProfit}">${fmtNum(r.dailyProfit)}</td>
@@ -769,7 +772,7 @@ function renderMarginScan(data) {
     ? `свой Sell Order по средней цене сделок за ${data.days} дн. только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор за размещение ${(data.setupFeeRate * 100).toFixed(1)}%), оборот — ${data.liquidity === 'best' ? 'лучший город' : 'сумма по выбранным городам'}; «Дней» — закупка узкого материала + распродажа партии из ${fmtNum(data.quantity)} шт`
     : `продажа в текущий Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%, без сбора за размещение), оборот — сделки за ${data.days} дн. в этом городе`;
   marginEl.result.innerHTML = `
-    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Доля рынка ${(data.marketShare * 100).toFixed(0)}% — профит в день и «дней на премиум» по твоей доле, а не по всему обороту. Список отсортирован по дневному профиту с поправкой на свежесть котировок${patient ? ' и длину цикла' : ''}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. Возврат ресурсов: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
+    <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Доля рынка ${(data.marketShare * 100).toFixed(0)}% — профит в день и «дней на премиум» по твоей доле, а не по всему обороту. Список отсортирован по дневному профиту с поправкой на свежесть котировок${patient ? ' и длину цикла' : ''}. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}${data.includeAwakened ? '' : ' (.4 не искали — включи галочку «Искать и .4»)'}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат ресурсов: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
     <div class="table-scroll"><table class="scan-table">
       <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит/день (твоя доля)</th>${patient ? '<th>Дней (закупка+продажа)</th>' : ''}<th>Дней на премиум</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>

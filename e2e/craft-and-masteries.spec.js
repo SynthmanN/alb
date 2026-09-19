@@ -600,3 +600,27 @@ test('возврат ресурсов: галочки «Бонус города�
   expect(query.get('royalBonus')).toBe('true');
   expect(query.get('focus')).toBe('true');
 });
+
+
+test('Чёрный Рынок в скане: галочка видна только в мгновенном режиме, уходит в запрос, строка ЧР помечена ⚫ с налогом', async ({ page }) => {
+  let scanQuery = null;
+  await page.route('**/api/unified-scan*', (route) => {
+    scanQuery = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: { mode: 'instant', includeMaterials: false, enchantMode: 'direct', liquidity: 'sum', days: 7, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 5,
+      blackMarket: true, bmTaxRate: 0.105, enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { royalBonus: true, focus: false },
+      jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
+      { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: 2400, avgSellPrice: 4300, sellCities: ['Black Market'], blackMarket: true, sellTaxRate: 0.105, dailyVolume: 40, yourDailyVolume: 10, profitPerUnit: 1448, profitPct: 60, dailyProfit: 14480, premiumDays: 1900, daysToAcquire: null, daysToSell: null, totalDays: null, quantity: null, freshMinutes: 5, rankScore: 14000, tradeHours: 100, confidence: 100 / 120 },
+    ] } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await expect(page.locator('#margin-black-market')).toBeHidden();                 // по умолчанию терпеливо — ЧР недоступен
+  await page.locator('#margin-mode').selectOption('instant');
+  await expect(page.locator('#margin-black-market')).toBeVisible();
+  await page.locator('#margin-black-market').check();
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
+  expect(scanQuery.get('blackMarket')).toBe('true');
+  await expect(page.locator('#margin-result tbody')).toContainText('⚫ Black Market (налог 10.5%)');
+  await expect(page.locator('#margin-result')).toContainText('Чёрный Рынок учтён');
+});

@@ -69,4 +69,22 @@ describe('кувшин: краулер', () => {
     expect(historyCalls).toBe(0);
     expect(jugStats(db).lastFullPass).toBeNull();
   });
+
+  it('у задания может быть свой список городов: готовый гир ходит и в Чёрный Рынок, сырьё — нет; число чанков не растёт', async () => {
+    const db = openJug();
+    const calls = [];
+    const jobs = [
+      { name: 'gear', ids: ids(130), cities: ['Martlock', 'BlackMarket'] },
+      { name: 'materials', ids: ids(10).map((id) => `M_${id}`), cities: ['Martlock'] },
+    ];
+    await crawlPricesOnce({ db, jobs, fetchPrices: async (chunk, cities) => { calls.push({ n: chunk.length, cities }); return chunk.map(priceFor); } });
+    expect(calls).toEqual([
+      { n: PRICE_CHUNK, cities: ['Martlock', 'BlackMarket'] }, { n: 10, cities: ['Martlock', 'BlackMarket'] },
+      { n: 10, cities: ['Martlock'] },
+    ]);
+    const historyCalls = [];
+    await crawlHistoryOnce({ db, jobs, fetchHistory: async (chunk, cities) => { historyCalls.push(cities.length); return []; } });
+    expect(historyCalls).toEqual([2, 2, 2, 2, 2, 2, 1]);                    // 130 id гира по 25 → 6 чанков с ЧР, 10 материалов → 1 чанк без
+  });
 });
+

@@ -1978,7 +1978,7 @@ function tradeHoursOf(seriesOfItem, quality, sellCities) {
 const confidenceOf = (tradeHours) => tradeHours / (tradeHours + CONFIDENCE_K);
 
 // Лучший город мгновенной продажи (в Buy Order): максимум дневного профита, а не цены — иначе побеждал бы город без спроса.
-function instantSellChoice(priceRecords, seriesOfItem, itemId, quality, days, cost, taxRate, medianPrice) {
+function instantSellChoice(priceRecords, seriesOfItem, itemId, quality, days, cost, taxRate, medianPrice, bmTaxRate = null) {
   const stats = cityStats(seriesOfItem || [], itemId, days, quality);
   let best = null;
   for (const rec of priceRecords || []) {
@@ -1987,11 +1987,16 @@ function instantSellChoice(priceRecords, seriesOfItem, itemId, quality, days, co
     if (medianPrice !== null && rec.buy_price_max > medianPrice * 3) continue;
     const st = Object.entries(stats).find(([c]) => normLocation(c) === normLocation(rec.city));
     if (!st) continue;
-    const profitPerUnit = rec.buy_price_max * (1 - taxRate) - cost;
+    // Чёрный Рынок — особая точка: только покупает (мгновенная продажа в его ордер), налог выше (налог + Setup Fee всегда).
+    // Лучший город выбираем по прибыли ПОСЛЕ налога города, а не по сырой цене: у ЧР цена выше, но и налог выше.
+    const isBlackMarket = normLocation(rec.city) === 'blackmarket';
+    if (isBlackMarket && bmTaxRate === null) continue;
+    const cityTax = isBlackMarket ? bmTaxRate : taxRate;
+    const profitPerUnit = rec.buy_price_max * (1 - cityTax) - cost;
     if (profitPerUnit <= 0) continue;
     const dailyVolume = st[1].avgDailyVolume;
     if (!best || profitPerUnit * dailyVolume > best.profitPerUnit * best.dailyVolume) {
-      best = { city: rec.city, price: rec.buy_price_max, date: rec.buy_price_max_date, profitPerUnit, dailyVolume };
+      best = { city: rec.city, price: rec.buy_price_max, date: rec.buy_price_max_date, profitPerUnit, dailyVolume, blackMarket: isBlackMarket, taxRate: cityTax };
     }
   }
   return best;
@@ -2027,13 +2032,16 @@ app.get('/api/unified-scan', (req, res) => {
     const rrrOpts = parseRrrOptions(req, 'none');
     // Зачарование .4 (Awakening): по умолчанию не ищем, но это явный выбор игрока (галочка), а не молчаливое умолчание движка.
     const includeAwakened = req.query.includeAwakened === 'true';
+    // Чёрный Рынок — только в мгновенном режиме (терпеливой модели у него нет: ордер туда «выставить и ждать» нельзя).
+    const blackMarket = mode === 'instant' && req.query.blackMarket === 'true';
     const taxRate = getSalesTaxRate(req);
+    const bmTaxRate = getBmTaxRate(req);
     const queryCities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
     const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
     const now = Date.now();
 
     const fresh = jugFreshness(jugDb, now);
-    const cacheKey = JSON.stringify([mode, includeMaterials, category, days, enchantMode, liquidity, minDaily, marketShare, quantity, rrrOpts, includeAwakened, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, includeMaterials, category, days, enchantMode, liquidity, minDaily, marketShare, quantity, rrrOpts, includeAwakened, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2068,13 +2076,13 @@ app.get('/api/unified-scan', (req, res) => {
     const finishedIds = [...new Set([...combos.map((c) => gearEnchantId(c.itemId, c.enchant)), ...refineCombos.map((c) => c.refinedId)])];
 
     const materialQuotes = quotesById(readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] }));
-    const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations, qualities: ALL_QUALITIES, now }));
+    const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, days * 24, { locations: blackMarket ? [...locations, BM_QUERY_LOCATION] : locations, qualities: ALL_QUALITIES, now }));
     const finishedHistory = indexByItem(cleaned.series);
     const medianPrice = (itemId, quality) => cleaned.medians.get(`${itemId}|${quality}`) ?? null;
     const materialHistory = mode === 'patient' ? indexByItem(readHistory(jugDb, [...materialIds], days * 24, { locations, qualities: [1], now })) : null;
     const finishedPrices = new Map();
     if (mode === 'instant') {
-      for (const rec of readPrices(jugDb, finishedIds, { cities: queryCities })) {
+      for (const rec of readPrices(jugDb, finishedIds, { cities: blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities })) {
         let list = finishedPrices.get(rec.item_id);
         if (!list) { list = []; finishedPrices.set(rec.item_id, list); }
         list.push(rec);
@@ -2092,12 +2100,16 @@ app.get('/api/unified-scan', (req, res) => {
     const buildRow = ({ kind, itemId, finishedId, enchant, quality, tier, type, cost, quoteDates, needs }) => {
       const seriesOfItem = finishedHistory.get(finishedId) || [];
       let sellPrice, dailyVolume, sellCities, profitPerUnit, marketDailyVolume, sellDate = null;
+      let blackMarketRow = false;
+      let sellTax = taxRate;
       if (mode === 'instant') {
-        const choice = instantSellChoice(finishedPrices.get(finishedId), seriesOfItem, finishedId, quality, days, cost, taxRate, medianPrice(finishedId, quality));
+        const choice = instantSellChoice(finishedPrices.get(finishedId), seriesOfItem, finishedId, quality, days, cost, taxRate, medianPrice(finishedId, quality), blackMarket ? bmTaxRate : null);
         if (!choice || choice.dailyVolume < minDaily) return null;
         sellPrice = choice.price; dailyVolume = choice.dailyVolume; sellCities = [choice.city]; profitPerUnit = choice.profitPerUnit;
         marketDailyVolume = Object.values(cityStats(seriesOfItem, finishedId, days, quality)).reduce((sum, st) => sum + st.avgDailyVolume, 0);
         sellDate = choice.date;
+        blackMarketRow = choice.blackMarket;
+        sellTax = choice.taxRate;
       } else {
         const sell = marginSellStats(seriesOfItem, finishedId, days, quality, queryCities, liquidity, { taxRate, setupFee: SETUP_FEE_RATE, cost, minShareOfMax: UNIFIED_MIN_CITY_SHARE });
         if (!sell || sell.dailyVolume < minDaily) return null;
@@ -2124,7 +2136,7 @@ app.get('/api/unified-scan', (req, res) => {
       const profitPct = (profitPerUnit / cost) * 100;
       const tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
       return {
-        kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, tradeHours, confidence: confidenceOf(tradeHours),
+        kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
         dailyVolume, yourDailyVolume, marketDailyVolume, profitPerUnit, profitPct, dailyProfit,
         premiumDays: premiumPaybackDays(profitPerUnit, throughput),
         daysToAcquire, daysToSell, totalDays, quantity: mode === 'patient' ? quantity : null,
@@ -2189,6 +2201,7 @@ app.get('/api/unified-scan', (req, res) => {
     const data = {
       mode, includeMaterials, enchantMode, liquidity, days, marketShare, quantity: mode === 'patient' ? quantity : null, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0, premiumPrice: PREMIUM_PRICE_SILVER,
+      blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       rrrOptions: rrrOpts, enchantRange: includeAwakened ? '.0–.4' : '.0–.3', includeAwakened,
       scanned: combos.length + refineCombos.length, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
     };
@@ -2433,6 +2446,21 @@ app.get('/api/fitting-room', async (req, res) => {
 // --- Кувшин: каталог id для фонового краулера ---
 // Всё, что могут запросить калькулятор и сканы: весь гир (.0–.4 на T4+), сырьё и переработанные ресурсы (с зачарованными версиями),
 // материалы рецептов на всех уровнях зачарования, руны/души/реликвии для зачарования вещей. Дубликаты убираются.
+// Задания краулера: готовый гир ходит во все города И в Чёрный Рынок (ЧР только покупает гир — sell_price_min у него пустой),
+// остальное (сырьё, ресурсы, руны/души) — только в города. Число запросов не меняется: чанкуется по предметам, а не по городам.
+function buildJugJobs() {
+  const all = buildJugCatalog();
+  const gear = new Set();
+  for (const item of ITEMS) {
+    if (item.category !== 'weapon' && item.category !== 'armor' && item.category !== 'cape') continue;
+    for (const v of enchantVariants(item)) gear.add(v.queryId);
+  }
+  return [
+    { name: 'gear', ids: all.filter((id) => gear.has(id)), cities: [...CITIES, BM_QUERY_LOCATION] },
+    { name: 'materials', ids: all.filter((id) => !gear.has(id)), cities: CITIES },
+  ];
+}
+
 function buildJugCatalog() {
   const ids = new Set();
   for (const item of ITEMS) {
@@ -2471,13 +2499,13 @@ function startJug() {
   const historyStart = () => new Date(Date.now() - 7 * 24 * 3600 * 1000);
   jugCrawler = startJugCrawler({
     db: jugDb,
-    ids: catalog,
+    jobs: buildJugJobs(),
     log: (msg) => console.log(msg),
-    fetchPrices: async (chunk) => {
-      const key = `jug:prices:${chunk.join(',')}`;
+    fetchPrices: async (chunk, cities = CITIES) => {
+      const key = `jug:prices:${cities.join(',')}:${chunk.join(',')}`;
       const cached = cache.get(key);
       if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return tagFetchedAt(cached.data, cached.ts);
-      const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${CITIES.join(',')}&qualities=${ALL_QUALITIES.join(',')}`;
+      const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${cities.join(',')}&qualities=${ALL_QUALITIES.join(',')}`;
       const response = await aodpFetch(url, 0);
       if (!response.ok) throw new Error(`AODP responded ${response.status}`);
       const ts = Date.now();
@@ -2486,11 +2514,11 @@ function startJug() {
       return data;
     },
     // История — один раз на самое широкое окно (7 дней): короткие окна (12ч/24ч/72ч) агрегируются из тех же точек локально.
-    fetchHistory: async (chunk) => {
-      const key = `jug:history:${chunk.join(',')}`;
+    fetchHistory: async (chunk, cities = CITIES) => {
+      const key = `jug:history:${cities.join(',')}:${chunk.join(',')}`;
       const cached = historyCache.get(key);
       if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL_MS) return tagFetchedAt(cached.data, cached.ts);
-      const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(chunk.join(','))}?date=${fmtDate(historyStart())}&end_date=${fmtDate(new Date())}&locations=${CITIES.join(',')}&qualities=${ALL_QUALITIES.join(',')}&time-scale=1`;
+      const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(chunk.join(','))}?date=${fmtDate(historyStart())}&end_date=${fmtDate(new Date())}&locations=${cities.join(',')}&qualities=${ALL_QUALITIES.join(',')}&time-scale=1`;
       const response = await aodpFetch(url, 0);
       if (!response.ok) throw new Error(`AODP history responded ${response.status}`);
       const ts = Date.now();
@@ -2562,6 +2590,7 @@ module.exports = {
   lazyStrategyScore,
   effectiveRecipeResourceId,
   buildJugCatalog,
+  buildJugJobs,
   aodpBudget,
   jugDb,
   materialRrr,
