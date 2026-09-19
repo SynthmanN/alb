@@ -674,10 +674,9 @@ function renderLazyCrafter(data) {
   wireTableSort(lazyEl.result.querySelector('table'), 'lazy');
 }
 
-// --- Скан маржи и ликвидности (объединённый: гир, партии, рефайн — по данным кувшина) ---
+// --- Скан маржи и ликвидности (гир — по данным кувшина; сырьё и рефайн — отдельный скан на странице «Рефайн») ---
 const marginEl = {
   mode: document.getElementById('margin-mode'),
-  includeMaterials: document.getElementById('margin-include-materials'),
   includeAwakened: document.getElementById('margin-include-awakened'),
   blackMarket: document.getElementById('margin-black-market'),
   blackMarketField: document.getElementById('margin-black-market-field'),
@@ -709,7 +708,7 @@ async function runMarginScan() {
   marginEl.result.innerHTML = 'Считаю по данным кувшина: весь гир × зачарование × качество, это может занять несколько секунд...';
   try {
     const params = new URLSearchParams({
-      mode: marginEl.mode.value, includeMaterials: String(marginEl.includeMaterials.checked), includeAwakened: String(marginEl.includeAwakened.checked), blackMarket: String(marginEl.blackMarket.checked && marginEl.mode.value === 'instant'),
+      mode: marginEl.mode.value, includeAwakened: String(marginEl.includeAwakened.checked), blackMarket: String(marginEl.blackMarket.checked && marginEl.mode.value === 'instant'),
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
       quantity: marginEl.quantity.value || '1000', minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), royalBonus: String(marginEl.royalBonus.checked), focus: String(marginEl.focus.checked),
       marketShare: readCustomizable(document.getElementById('margin-market-share')),
@@ -749,18 +748,15 @@ function renderMarginScan(data) {
     return;
   }
   const rows = data.results.map((r) => {
-    const material = r.kind === 'material';
     const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
     const stale = r.freshMinutes !== null && r.freshMinutes > 180;
     const long = patient && r.totalDays !== null && r.totalDays > 30;
     const premiumDays = r.premiumDays === null ? '—' : r.premiumDays < 1000 ? fmtNum(r.premiumDays, 0) : '>1000';
-    const action = material
-      ? `<button class="scan-add-btn" data-kind="material" data-type="${r.type}" data-tier="${r.tier}">в калькулятор</button>`
-      : `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-quantity="${r.quantity || ''}" data-black-market="${r.blackMarket ? 'true' : ''}">в калькулятор</button>`;
+    const action = `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-quantity="${r.quantity || ''}" data-black-market="${r.blackMarket ? 'true' : ''}">в калькулятор</button>`;
     return `
       <tr>
-        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}${material ? ' <small>(рефайн)</small>' : ''}</td>
-        <td data-sort-value="${r.quality}">${material ? '—' : QUALITY_NAMES[r.quality]}</td>
+        <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
+        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality]}</td>
         <td>${fmtNum(r.cost)}</td>
         <td>${fmtNum(r.avgSellPrice)}${patient ? '' : `<br><small>${r.blackMarket ? '⚫ ' : ''}${r.sellCities[0]}${r.blackMarket ? ` (налог ${(r.sellTaxRate * 100).toFixed(1)}%)` : ''}</small>`}</td>
         <td data-sort-value="${r.dailyVolume}">${fmtNum(r.dailyVolume, 1)}${patient && data.liquidity !== 'best' ? ` <small>(${r.sellCities.length} гор.)</small>` : ''}<br><small>тебе ~${fmtNum(r.yourDailyVolume, 1)}</small></td>
@@ -786,11 +782,6 @@ function renderMarginScan(data) {
   highlightBestRow(marginEl.result.querySelector('table'), data.results);
   marginEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      if (btn.dataset.kind === 'material') {
-        // Сырьё считается калькулятором рефайна на своей странице: тип и тир переносятся в адрес и считаются сразу.
-        window.location.href = `refine.html?type=${encodeURIComponent(btn.dataset.type)}&tier=${encodeURIComponent(btn.dataset.tier)}`;
-        return;
-      }
       const item = findItem(btn.dataset.id);
       if (!item) return;
       selectCraftItem(item);

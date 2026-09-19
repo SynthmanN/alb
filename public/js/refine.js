@@ -1,4 +1,99 @@
-// Страница «Рефайн»: калькулятор себестоимости. Сканер выгодности переехал в общий скан маржи и ликвидности на странице «Крафт».
+// Страница «Рефайн»: скан выгодности переработки (кувшин) и калькулятор себестоимости.
+
+// --- Скан рефайна (кувшин): партия и минимум дней вместо «доли рынка» ---
+const refineScan = {
+  mode: document.getElementById('refine-scan-mode'),
+  quantity: document.getElementById('refine-scan-quantity'),
+  minDays: document.getElementById('refine-scan-min-days'),
+  minDaily: document.getElementById('refine-scan-min-daily'),
+  days: document.getElementById('refine-scan-days'),
+  royalBonus: document.getElementById('refine-scan-royal-bonus'),
+  focus: document.getElementById('refine-scan-focus'),
+  run: document.getElementById('refine-scan-run'),
+  result: document.getElementById('refine-scan-result'),
+};
+refineScan.run.addEventListener('click', runRefineScan);
+
+const scanNum = (n, digits = 0) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('ru-RU', { maximumFractionDigits: digits }));
+const scanDays = (d) => (d === null || d === undefined ? '—' : d < 1 ? `${(d * 24).toFixed(1)} ч` : `${d.toFixed(1)} дн.`);
+function scanAge(minutes) {
+  if (minutes === null || minutes === undefined) return '—';
+  if (minutes < 1) return 'только что';
+  return minutes < 60 ? `${Math.round(minutes)} мин назад` : `${(minutes / 60).toFixed(1)} ч назад`;
+}
+const RESOURCE_TYPE_RU = { WOOD: 'Дерево', ORE: 'Руда', FIBER: 'Волокно', HIDE: 'Шкура', ROCK: 'Камень' };
+
+async function runRefineScan() {
+  refineScan.run.disabled = true;
+  refineScan.result.innerHTML = 'Считаю по данным кувшина: 5 типов × 7 тиров...';
+  try {
+    const params = new URLSearchParams({
+      mode: refineScan.mode.value, quantity: refineScan.quantity.value || '1000', minDays: refineScan.minDays.value || '1',
+      minDaily: refineScan.minDaily.value || '0', days: readCustomizable(refineScan.days),
+      royalBonus: String(refineScan.royalBonus.checked), focus: String(refineScan.focus.checked),
+      cities: activeCities().join(','), premium: premiumParam(),
+    });
+    const res = await fetch(`/api/refine-scan?${params}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderRefineScan(data);
+  } catch (err) {
+    refineScan.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
+  } finally {
+    refineScan.run.disabled = false;
+  }
+}
+
+function renderRefineScan(data) {
+  const patient = data.mode === 'patient';
+  const jugNote = data.jug && data.jug.lastPricePass
+    ? `Кувшин: цены обновлены ${scanAge((Date.now() - data.jug.lastPricePass) / 60000)}.`
+    : 'Кувшин ещё пуст — фоновый краулер только начал работу, подожди пару минут.';
+  if (data.results.length === 0) {
+    refineScan.result.innerHTML = `<div class="chart-empty">Ничего не нашлось — нет прибыльной переработки с таким оборотом. Попробуй снизить «Оборот от» или сменить режим. ${jugNote}</div>`;
+    return;
+  }
+  const rows = data.results.map((r) => {
+    const stale = r.freshMinutes !== null && r.freshMinutes > 180;
+    const confClass = r.confidence < 0.5 ? 'scan-stale' : r.confidence >= 0.8 ? 'scan-spread-hot' : '';
+    return `
+      <tr>
+        <td><img class="item-icon-sm" src="${iconUrl(r.itemId, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${itemName(r.itemId)}${r.cityBonus ? ' <span class="city-bonus" title="Город закупки даёт спец-бонус этому типу ресурса">★ бонус</span>' : ''}</td>
+        <td>${scanNum(r.cost)}</td>
+        <td>${scanNum(r.avgSellPrice)}<br><small>${r.sellCities.join(', ')}</small></td>
+        <td data-sort-value="${r.dailyVolume}">${scanNum(r.dailyVolume, 0)}</td>
+        <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${scanNum(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
+        <td data-sort-value="${r.batchProfit}">${scanNum(r.batchProfit)}</td>
+        <td data-sort-value="${r.effectiveDays}" title="закупка ${scanDays(r.daysToAcquire)} + продажа ${scanDays(r.daysToSell)}${r.cappedByMinDays ? `; по рынку быстрее минимума — считаем ${data.minDays} дн.` : ''}">${scanDays(r.effectiveDays)}${r.cappedByMinDays ? ' <small>(минимум)</small>' : ''}</td>
+        <td data-sort-value="${r.dailyProfit}">${scanNum(r.dailyProfit)}</td>
+        <td class="${confClass}" data-sort-value="${r.confidence}" title="Цифры стоят на ${r.tradeHours} разных часах торговли (n / (n + 20))">${Math.round(r.confidence * 100)}%<br><small>${r.tradeHours} ч</small></td>
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${scanAge(r.freshMinutes)}${stale ? ' ⚠' : ''}</td>
+        <td><button class="scan-add-btn" data-type="${r.type}" data-tier="${r.tier}">в калькулятор</button></td>
+      </tr>`;
+  }).join('');
+  const sellNote = patient
+    ? `закупка по средней цене сделок за ${data.days} дн., продажа своим Sell Order только в прибыльных городах (налог ${(data.taxRate * 100).toFixed(0)}% + сбор ${(data.setupFeeRate * 100).toFixed(1)}%)`
+    : `закупка по текущим ценам, продажа в Buy Order лучшего города (налог ${(data.taxRate * 100).toFixed(0)}%)`;
+  refineScan.result.innerHTML = `
+    <p class="calc-note">Просмотрено комбинаций: ${data.scanned}. ${patient ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Партия ${scanNum(data.quantity)} шт, минимум ${data.minDays} дн. на цикл: профит в день = профит с партии ÷ max(дни цикла, минимум). Возврат: ${data.rrrOptions.royalBonus ? 'бонус города' : 'без бонуса города'}, ${data.rrrOptions.focus ? 'с Фокусом' : 'без Фокуса'}. ${jugNote}</p>
+    <div class="table-scroll"><table class="scan-table">
+      <thead><tr><th>Материал</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Профит/шт</th><th>Профит с партии</th><th>Дней цикла</th><th>Профит/день</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  wireTableSort(refineScan.result.querySelector('table'), 'refine-scan');
+  highlightBestRow(refineScan.result.querySelector('table'), data.results);
+  // «в калькулятор»: тип и тир переносятся в калькулятор ниже и считаются на месте (без перезагрузки страницы)
+  refineScan.result.querySelectorAll('.scan-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      calcEl.type.value = btn.dataset.type;
+      calcEl.tier.value = btn.dataset.tier;
+      calcEl.royalBonus.checked = refineScan.royalBonus.checked;
+      calcEl.focus.checked = refineScan.focus.checked;
+      calcEl.result.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      runCalc();
+    });
+  });
+}
 
 // --- Калькулятор рефайна ---
 const calcEl = {

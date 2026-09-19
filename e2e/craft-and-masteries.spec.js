@@ -247,7 +247,6 @@ test('скан маржи и ликвидности: параметры в за�
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
   expect(scanQuery.get('mode')).toBe('patient');                                   // по умолчанию терпеливая продажа
-  expect(scanQuery.get('includeMaterials')).toBe('false');
   expect(scanQuery.get('enchantMode')).toBe('after');
   expect(scanQuery.get('liquidity')).toBe('best');
   await expect(page.locator('#margin-result')).toContainText('Кувшин: цены обновлены');
@@ -260,14 +259,14 @@ test('скан маржи и ликвидности: параметры в за�
   expect(calcQuery.get('enchantAfterCraft')).toBe('true');
 });
 
-test('объединённый скан: мгновенный режим прячет партию и ликвидность, «сырьё и рефайн» — опция, строка сырья ведёт в калькулятор рефайна', async ({ page }) => {
+test('скан маржи: мгновенный режим прячет партию и ликвидность, в запросе нет сырья (оно ушло в скан рефайна на странице «Рефайн»)', async ({ page }) => {
   let scanQuery = null;
   await page.route('**/api/unified-scan*', (route) => {
     scanQuery = new URL(route.request().url()).searchParams;
-    route.fulfill({ json: { mode: 'instant', includeMaterials: true, enchantMode: 'direct', liquidity: 'sum', days: 7, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 40,
+    route.fulfill({ json: { mode: 'instant', enchantMode: 'direct', liquidity: 'sum', days: 7, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 40,
       enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { royalBonus: true, focus: false },
       jug: { lastPricePass: Date.now() - 60000, lastHistoryPass: null, lastFullPass: null, oldestPriceAgeMinutes: 1 }, results: [
-      { kind: 'material', itemId: 'T5_METALBAR', enchant: 0, quality: 1, tier: 5, type: 'ORE', cost: 900, avgSellPrice: 1300, dailyVolume: 400, yourDailyVolume: 100, sellCities: ['Martlock'], profitPerUnit: 250, profitPct: 28, dailyProfit: 25000, premiumDays: 1120, daysToAcquire: null, daysToSell: null, totalDays: null, quantity: null, freshMinutes: 20, rankScore: 25000, tradeHours: 80, confidence: 0.8 },
+      { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 900, avgSellPrice: 1300, dailyVolume: 400, yourDailyVolume: 100, sellCities: ['Martlock'], profitPerUnit: 250, profitPct: 28, dailyProfit: 25000, premiumDays: 1120, daysToAcquire: null, daysToSell: null, totalDays: null, quantity: null, freshMinutes: 20, rankScore: 25000, tradeHours: 80, confidence: 0.8 },
     ] } });
   });
   await page.goto('/craft.html');
@@ -276,14 +275,11 @@ test('объединённый скан: мгновенный режим пря�
   await page.locator('#margin-mode').selectOption('instant');
   await expect(page.locator('#margin-quantity')).toBeHidden();                     // в мгновенном режиме партии нет
   await expect(page.locator('#margin-liquidity')).toBeHidden();
-  await page.locator('#margin-include-materials').check();
+  await expect(page.locator('#margin-include-materials')).toHaveCount(0);          // сырьё и рефайн — на странице «Рефайн»
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(1);
   expect(scanQuery.get('mode')).toBe('instant');
-  expect(scanQuery.get('includeMaterials')).toBe('true');
-  await expect(page.locator('#margin-result')).toContainText('(рефайн)');
-  await page.locator('#margin-result .scan-add-btn').click();
-  await expect(page).toHaveURL(/refine\.html\?type=ORE&tier=5/);
+  expect(scanQuery.has('includeMaterials')).toBe(false);
 });
 
 test('потолок и полоса цены живут в калькуляторе: поля уходят в запрос, результат — в блоке Sell Order', async ({ page }) => {

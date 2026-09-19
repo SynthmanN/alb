@@ -110,27 +110,6 @@ describe('GET /api/unified-scan', () => {
     expect(row.avgSellPrice).toBeCloseTo(3200, 0);
   });
 
-  it('сырьё/рефайн — опция: без includeMaterials его нет, с ним строка kind=material', async () => {
-    seedMaterial('T2_ORE', 10);                                  // T2: 1 руда → 1 слиток
-    seedSales('T2_METALBAR', { avg: 40, perDay: 300, buyOrder: 38 });
-    const without = await scan({ mode: 'instant', category: 'all' });
-    expect(without.results.some((r) => r.kind === 'material')).toBe(false);
-    const withMaterials = await scan({ mode: 'instant', category: 'all', includeMaterials: 'true' });
-    const row = withMaterials.results.find((r) => r.kind === 'material' && r.itemId === 'T2_METALBAR');
-    expect(row).toBeTruthy();
-    expect(row).toMatchObject({ type: 'ORE', tier: 2, enchant: 0, quality: 1, cost: 10 });
-    expect(row.profitPerUnit).toBeCloseTo(38 * 0.92 - 10, 2);
-  });
-
-  it('рефайн в терпеливом режиме и гир ранжируются вместе по одному правилу (дневной профит)', async () => {
-    seedMaterial('T2_ORE', 10);
-    seedSales('T2_METALBAR', { avg: 40, perDay: 300 });
-    seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
-    const rows = (await scan({ mode: 'patient', category: 'all', includeMaterials: 'true', quantity: 100 })).results;
-    expect(rows.map((r) => r.kind).sort()).toEqual(['gear', 'material']);
-    for (let i = 1; i < rows.length; i++) expect(rows[i - 1].rankScore).toBeGreaterThanOrEqual(rows[i].rankScore);
-  });
-
   it('доля рынка масштабирует дневной профит (конкуренты тоже продают)', async () => {
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });
     const full = (await scan({ mode: 'patient', marketShare: 1 })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');

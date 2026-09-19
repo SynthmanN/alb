@@ -10,11 +10,42 @@
   <div id="site-chrome"></div>
   <main>
     <section class="calc-panel">
+      <h2>📈 Что выгодно перерабатывать</h2>
+      <p class="calc-note">
+        Скан сырья и переработки: 5 типов ресурсов × 7 тиров. Читает локальную базу («кувшин»), считает мгновенно; каждую находку
+        проверь калькулятором ниже. Здесь нет «доли рынка»: сырьё торгуется десятками тысяч штук в день, и процент от такого оборота даёт
+        нереальное число сделок. Вместо неё — два понятных параметра: <b>Партия</b> (сколько реально планируешь переработать и продать) и
+        <b>Минимум дней</b> (быстрее этого срока цикл не идёт). Профит в день = профит с партии ÷ max(дней цикла партии, минимум дней).
+        «Доверие» — на скольких разных часах торговли стоят цифры: n / (n + 20).
+      </p>
+      <div class="craft-controls-row">
+        <label class="craft-field" title="Терпеливо: закупка по средней цене сделок за период и продажа своим Sell Order (налог + сбор 2.5%) в прибыльных городах. Мгновенно: закупка по текущим ценам и продажа в Buy Order">Режим
+          <select id="refine-scan-mode">
+            <option value="patient">Терпеливая продажа (свой Sell Order)</option>
+            <option value="instant">Мгновенно (в Buy Order)</option>
+          </select>
+        </label>
+        <label class="craft-field" title="Сколько штук переработанного материала планируешь получить и продать за один цикл. Влияет на дни цикла и профит в день, не на профит с одной штуки">Партия, шт<input id="refine-scan-quantity" type="number" min="1" value="1000" /></label>
+        <label class="craft-field" title="Быстрее этого срока цикл не идёт (заказы, походы, перевыставление). Если партия «по рынку» продаётся быстрее, профит в день считается по этому минимуму — так дешёвое массовое сырьё не даёт фантастических цифр">Минимум дней на цикл<input id="refine-scan-min-days" type="number" min="0.1" step="0.5" value="1" /></label>
+        <label class="craft-field">Оборот от, шт/день<input id="refine-scan-min-daily" type="number" min="0" step="0.5" value="1" /></label>
+        <label class="craft-field">История
+          <select id="refine-scan-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+        </label>
+        <label class="craft-field craft-check" title="«Бонус города» = переработка в royal-городе: возврат 15.3%; в городе со спец-бонусом этого ресурса — 36.7%. «Фокус»: 15.3% → 43.5%, 36.7% → 53.9%. Город закупки выбирается по цене после возврата в нём">
+          <span>Возврат ресурсов</span>
+          <span class="check-inline"><input id="refine-scan-royal-bonus" type="checkbox" checked /> Бонус города</span>
+          <span class="check-inline"><input id="refine-scan-focus" type="checkbox" /> Фокус</span>
+        </label>
+        <button id="refine-scan-run">Сканировать</button>
+      </div>
+      <div id="refine-scan-result"></div>
+    </section>
+
+    <section class="calc-panel">
       <h2>Калькулятор себестоимости рефайна</h2>
       <p class="calc-note">
         Пропорции сырья сверены с дампом игровых файлов. RRR-формула подтверждена вики.
-        Искать, что выгодно перерабатывать, теперь можно в общем сканере на странице «<a href="craft.html">Крафт</a>»
-        (🎯 Скан маржи и ликвидности → «Включить сырьё и рефайн»): кнопка «в калькулятор» оттуда открывает эту страницу с готовым расчётом.
+        Кнопка «в калькулятор» в скане выше переносит тип и тир сюда и считает на месте.
       </p>
       <div class="calc-controls">
         <select id="calc-type"></select>
