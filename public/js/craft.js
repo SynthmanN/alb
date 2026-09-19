@@ -20,6 +20,8 @@ let craftSelectedItem = null;
 let lastCraftData = null;          // последний результат калькулятора — для пересчёта плана продажи без запроса к серверу
 const manualSalePlan = new Map();  // город -> штук, введённых вручную в плане продажи (сбрасывается при новом расчёте)
 const saleCityToggles = new Map(); // город -> true/false: включён/выключен в плане чекбоксом (пусто — автоплан)
+let saleStrategy = 'even';         // стратегия распределения партии: 'even' — равный срок продажи, 'profit' — баланс маржи и скорости
+const PROFIT_STRATEGY_HORIZON = 1.5; // «в пределах разумного»: при стратегии «профит» город может держать партию до 1.5× срока равномерного плана
 
 async function initCraft() {
   const res = await fetch('/api/refining-meta');
@@ -258,6 +260,8 @@ function bindSalePlanEditing() {
       renderCraftResult(lastCraftData);
     });
   });
+  const strategy = craftEl.result.querySelector('#sale-strategy');
+  if (strategy) strategy.addEventListener('change', () => { saleStrategy = strategy.value; renderCraftResult(lastCraftData); });
   const reset = craftEl.result.querySelector('.plan-reset');
   if (reset) reset.addEventListener('click', () => { manualSalePlan.clear(); saleCityToggles.clear(); renderCraftResult(lastCraftData); });
 }
@@ -329,8 +333,37 @@ function salePlanByCity(byCity, quantity, marketShare, minPrice) {
   return { rows, totalVolume, days: quantity / (totalVolume * marketShare) };
 }
 
-function byCityHtml(p, data) {
-  if (!p.byCity || p.byCity.length === 0) return '';
+// Раздача остатка партии свободным городам. 'even' — пропорционально обороту (срок продажи у всех одинаковый);
+// 'profit' — жадно: города с лучшей маржой берут партию первыми, но не больше своей «разумной вместимости»
+// (оборот × доля рынка × 1.5 срока равномерного плана), остаток сверх вместимости делится по обороту.
+function distributeQty(free, remaining, marketShare, strategy) {
+  const out = new Map();
+  if (free.length === 0) return out;
+  const spread = (list, amount) => {
+    const volume = list.reduce((sum, c) => sum + c.avgDailyVolume, 0);
+    let assigned = 0;
+    list.forEach((c) => { const q = Math.floor((amount * c.avgDailyVolume) / volume); out.set(c.city, (out.get(c.city) || 0) + q); assigned += q; });
+    const top = list.reduce((a, b) => (b.avgDailyVolume > a.avgDailyVolume ? b : a));
+    out.set(top.city, (out.get(top.city) || 0) + amount - assigned); // остаток округления — самому ликвидному
+  };
+  if (strategy !== 'profit') { spread(free, remaining); return out; }
+  const evenDays = remaining / (free.reduce((sum, c) => sum + c.avgDailyVolume, 0) * marketShare);
+  let left = remaining;
+  [...free].sort((a, b) => b.profitPerUnit - a.profitPerUnit).forEach((c) => {
+    const capacity = Math.floor(c.avgDailyVolume * marketShare * evenDays * PROFIT_STRATEGY_HORIZON);
+    const q = Math.min(capacity, left);
+    out.set(c.city, q);
+    left -= q;
+  });
+  if (left > 0) spread(free, left);
+  return out;
+}
+
+// Итоговый план продажи: города включаются чекбоксом («В плане»), партия делится между включёнными по стратегии;
+// поверх этого можно вписать своё количество в любой город (он фиксируется, остальные делят остаток). Всё считается на лету
+// и питает и таблицу по городам, и сводку сверху — чтобы любая правка плана меняла цену, профит и сроки везде сразу.
+function salePlanState(p, data) {
+  if (!p.byCity || p.byCity.length === 0) return null;
   const minPrice = p.threshold ? p.threshold.value : null;
   const marketShare = p.marketShare ?? 1;
   const serverPlan = p.plan && p.plan.cities.length ? p.plan : null;
@@ -338,23 +371,15 @@ function byCityHtml(p, data) {
     ? { rows: new Map(serverPlan.cities.map((c) => [c.city, { qty: c.qty, days: c.days, tolerance: c.tolerance }])), days: serverPlan.totalDays }
     : salePlanByCity(p.byCity, data.quantity, marketShare, minPrice);
 
-  // Итоговый план: города включаются чекбоксом («В плане»), партия делится между включёнными пропорционально обороту;
-  // поверх этого можно вписать своё количество в любой город (он фиксируется, остальные делят остаток). Всё считается на лету.
   const anyToggle = saleCityToggles.size > 0;
   const enabledOf = (c) => (saleCityToggles.has(c.city) ? saleCityToggles.get(c.city) : auto.rows.has(c.city));
   const enabled = p.byCity.filter((c) => c.avgDailyVolume > 0 && enabledOf(c));
   let baseQty = new Map();
-  if (anyToggle) {
+  if (anyToggle || saleStrategy === 'profit') {
     const fixed = enabled.filter((c) => manualSalePlan.has(c.city));
     const free = enabled.filter((c) => !manualSalePlan.has(c.city));
     const remaining = Math.max(data.quantity - fixed.reduce((sum, c) => sum + manualSalePlan.get(c.city), 0), 0);
-    const freeVolume = free.reduce((sum, c) => sum + c.avgDailyVolume, 0);
-    let assigned = 0;
-    free.forEach((c) => { const q = Math.floor((remaining * c.avgDailyVolume) / freeVolume); baseQty.set(c.city, q); assigned += q; });
-    if (free.length) {
-      const top = free.reduce((a, b) => (b.avgDailyVolume > a.avgDailyVolume ? b : a));
-      baseQty.set(top.city, baseQty.get(top.city) + remaining - assigned);
-    }
+    baseQty = distributeQty(free, remaining, marketShare, saleStrategy);
   } else {
     baseQty = new Map([...auto.rows].map(([city, r]) => [city, r.qty]));
   }
@@ -373,13 +398,20 @@ function byCityHtml(p, data) {
   const profitUnit = netPrice === null ? null : netPrice - data.effectiveCostPerUnit;
   const anyManual = rowsData.some((r) => r.manual) || anyToggle;
   const noVolume = rowsData.some((r) => r.qty > 0 && !(r.c.avgDailyVolume > 0));
+  return { minPrice, marketShare, serverPlan, auto, anyManual, rowsData, totalQty, planDays, avgPrice, netPrice, profitUnit, noVolume };
+}
+
+function byCityHtml(p, data, st) {
+  if (!st) return '';
+  const { minPrice, marketShare, serverPlan, auto, anyManual, rowsData, totalQty, planDays, avgPrice, netPrice, profitUnit, noVolume } = st;
 
   const rows = rowsData.map(({ c, qty, days, manual, tolerance, inPlan, enabled: isOn }) => {
     const dim = (minPrice !== null && c.avgSellPrice < minPrice && !manual) || !isOn;
     const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
     return `<tr class="${dim ? 'below-threshold' : ''}"><td class="plan-check"><input type="checkbox" class="plan-toggle" data-city="${c.city}" ${isOn ? 'checked' : ''} ${c.avgDailyVolume > 0 ? '' : 'disabled'} title="${c.avgDailyVolume > 0 ? 'Включить/выключить город в плане продажи — партия пересчитается' : 'В этом городе нет сделок за период'}" /></td><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
       <td data-sort-value="${qty}"><input class="plan-qty ${manual ? 'is-manual' : ''}" type="number" min="0" step="1" value="${qty}" data-city="${c.city}" title="Сколько штук планируешь продать в этом городе (введи своё — остальное пересчитается)" /></td>
-      <td data-sort-value="${days}">${qty > 0 ? fmtDays(days) : '—'}${inPlan && tolerance && !manual ? ` <small>(допуск ${(tolerance * 100).toFixed(0)}%)</small>` : ''}</td></tr>`;
+      <td data-sort-value="${days}">${qty > 0 ? fmtDays(days) : '—'}${inPlan && tolerance && !manual ? ` <small>(допуск ${(tolerance * 100).toFixed(0)}%)</small>` : ''}</td>
+      <td data-sort-value="${c.profitPerUnit * qty}" class="${cls}">${qty > 0 ? fmtNum(c.profitPerUnit * qty) : '—'}</td></tr>`;
   }).join('');
 
   const sumOk = totalQty === data.quantity;
@@ -387,8 +419,14 @@ function byCityHtml(p, data) {
   return `
     <details open class="by-city">
       <summary>План продажи через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)}, в автоплан не входят)` : ''}</summary>
+      <label class="craft-field" title="«Равномерно по времени» — партия делится пропорционально обороту, во всех городах она распродаётся за один срок. «Максимизировать профит» — города с лучшей маржой берут партию первыми, но не больше разумной вместимости (до 1.5× срока равномерного плана)">Распределение партии
+        <select id="sale-strategy">
+          <option value="even" ${saleStrategy === 'even' ? 'selected' : ''}>Равномерно по времени (по умолчанию)</option>
+          <option value="profit" ${saleStrategy === 'profit' ? 'selected' : ''}>Баланс маржи и скорости — максимизировать профит</option>
+        </select>
+      </label>
       <div class="table-scroll"><table class="craft-recipe-table">
-        <thead><tr><th>В плане</th><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th></tr></thead>
+        <thead><tr><th>В плане</th><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th><th>Профит с города</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
       <div class="plan-summary">
@@ -504,13 +542,14 @@ function sellPlanHtml(data) {
 }
 
 // Время закупки сырья и весь цикл: закупка (узкое место) + продажа — отдельной графой рядом со временем на продажу.
-function cycleRowsHtml(data) {
+function cycleRowsHtml(data, planDays) {
   const a = data.acquire;
   if (!a || a.days === null) return '';
+  const cycleDays = planDays !== undefined && planDays !== null ? a.days + planDays : a.cycleDays;
   const bottleneck = a.byResource.find((r) => r.resource === a.bottleneckResource);
   return `
       <div class="craft-summary-row"><span>Дней на закупку сырья (узкое место: ${bottleneck ? bottleneck.resourceName : '—'}, по доле рынка ${(data.marketShare * 100).toFixed(0)}%)</span><span>${fmtDays(a.days)}</span></div>
-      <div class="craft-summary-row"><strong>Весь цикл: закупка + продажа</strong><strong>${a.cycleDays !== null ? fmtDays(a.cycleDays) : '—'}</strong></div>`;
+      <div class="craft-summary-row"><strong>Весь цикл: закупка + продажа</strong><strong>${cycleDays !== null ? fmtDays(cycleDays) : '—'}</strong></div>`;
 }
 
 // Продажа через Sell Order: свой ордер на продажу по средней цене истории; объём и дни на распродажу защищают
@@ -520,23 +559,31 @@ function patientSellHtml(data) {
   if (!p) {
     return '<div class="craft-summary patient-sell"><div class="craft-summary-row"><span>Продажа через Sell Order</span><span>нет истории сделок за период</span></div></div>';
   }
-  const cls = p.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
-  const totalProfit = p.profitPerUnit * data.quantity;
-  const slow = p.daysToSellBatch !== null && p.daysToSellBatch > 30;
+  // Сводка сверху питается тем же планом, что и таблица по городам: правка плана пересчитывает всё сразу.
+  const st = salePlanState(p, data);
+  const live = st && st.totalQty > 0 ? st : null;
+  const avgPrice = live ? live.avgPrice : p.avgSellPrice;
+  const netPrice = live ? live.netPrice : p.netSellPrice;
+  const profitUnit = live ? live.profitUnit : p.profitPerUnit;
+  const sellDays = live ? live.planDays : p.daysToSellBatch;
+  const soldQty = live ? live.totalQty : data.quantity;
+  const cls = profitUnit > 0 ? 'profit-pos' : 'profit-neg';
+  const totalProfit = profitUnit * soldQty;
+  const slow = sellDays !== null && sellDays > 30;
   return `
-    <div class="craft-summary patient-sell">
+    <div class="craft-summary patient-sell" id="craft-patient-section">
       <div class="craft-summary-row"><strong>Продажа через Sell Order (свой ордер, история за ${p.days} дн.)</strong><span></span></div>
-      <div class="craft-summary-row"><span>Средняя цена сделок за период</span><span>${fmtNum(p.avgSellPrice)}</span></div>
+      <div class="craft-summary-row"><span>Средняя цена сделок за период${live ? ' (по плану продажи)' : ''}</span><span>${fmtNum(avgPrice)}</span></div>
       <div class="craft-summary-row"><span>Лучший город по цене</span><span>${p.bestCity.city}: ${fmtNum(p.bestCity.avgPrice)}</span></div>
       <div class="craft-summary-row"><span>Спрос: сделок в день (по выбранным городам)</span><span>${fmtNum(p.avgDailyVolume, 1)}</span></div>
-      <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(data.quantity)} шт (по доле рынка ${(p.marketShare * 100).toFixed(0)}%: тебе достаётся ~${fmtNum(p.avgDailyVolume * p.marketShare, 1)} из ${fmtNum(p.avgDailyVolume, 1)} сделок в день)</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(p.daysToSellBatch)}${slow ? ' ⚠' : ''}</span></div>
-      ${cycleRowsHtml(data)}
+      <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(soldQty)} шт (по доле рынка ${(p.marketShare * 100).toFixed(0)}%: тебе достаётся ~${fmtNum(p.avgDailyVolume * p.marketShare, 1)} из ${fmtNum(p.avgDailyVolume, 1)} сделок в день)</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(sellDays)}${slow ? ' ⚠' : ''}</span></div>
+      ${cycleRowsHtml(data, live ? live.planDays : undefined)}
       ${sellPlanHtml(data)}
-      <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(p.netSellPrice)}</span></div>
-      <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(p.profitPerUnit)}</span></div>
-      <div class="craft-summary-row"><strong>Итого на ${fmtNum(data.quantity)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
+      <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(netPrice)}</span></div>
+      <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(profitUnit)}</span></div>
+      <div class="craft-summary-row"><strong>Итого на ${fmtNum(soldQty)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
       ${thresholdHtml(p)}
-      ${byCityHtml(p, data)}
+      ${byCityHtml(p, data, st)}
       ${qualityComparisonHtml(data)}
     </div>`;
 }

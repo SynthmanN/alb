@@ -451,3 +451,66 @@ test('чекбоксы городов в плане продажи: включе
   await expect(box('Lymhurst')).toBeChecked();
   await expect(box('Martlock')).not.toBeChecked();
 });
+
+// Общий мок для проверок реактивности плана продажи: три города с разной маржой и оборотом, автоплан — только Lymhurst.
+async function openSalePlanMock(page) {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, marketShare: 1, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+    cities: ['Lymhurst', 'Martlock', 'Thetford'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 100000, recipe: [], sellPrices: [],
+    bestSell: null, taxRate: 0, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+    acquire: { days: 1, cycleDays: 6, byResource: [], bottleneckResource: null },
+    patientSell: { days: 7, marketShare: 1, avgSellPrice: 3000, bestCity: { city: 'Lymhurst', avgPrice: 3000 }, avgDailyVolume: 40, daysToSellBatch: 5, netSellPrice: 3000, profitPerUnit: 2000,
+      byCity: [{ city: 'Lymhurst', avgSellPrice: 3000, avgDailyVolume: 20, profitPerUnit: 2000 }, { city: 'Martlock', avgSellPrice: 2000, avgDailyVolume: 10, profitPerUnit: 1000 }, { city: 'Thetford', avgSellPrice: 1500, avgDailyVolume: 10, profitPerUnit: 500 }],
+      cities: [], plan: { bestPrice: 3000, avgPrice: 3000, overpayPct: 0, totalDays: 5, excluded: [{ city: 'Martlock', reason: 'ниже допуска' }, { city: 'Thetford', reason: 'ниже допуска' }],
+        cities: [{ city: 'Lymhurst', avgPrice: 3000, avgDailyVolume: 20, tolerance: 0.02, qty: 100, days: 5 }] } },
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  await page.locator('#craft-patient-section').waitFor();
+}
+const digits = (text) => text.replace(/[^\d-]/g, '');
+
+test('сводка плана продажи реактивна: включение города пересчитывает цену, профит, дни продажи и весь цикл, а не только таблицу', async ({ page }) => {
+  await openSalePlanMock(page);
+  const section = page.locator('#craft-patient-section');
+  const rowValue = async (label) => (await section.locator('.craft-summary-row', { hasText: label }).first().locator('span, strong').last().textContent()).trim();
+  expect(digits(await rowValue('Профит / шт'))).toBe('2000');                       // всё в Lymhurst
+  expect(await rowValue('Дней на распродажу')).toContain('5.0');
+  await page.locator('input.plan-toggle[data-city="Martlock"]').check();            // 67 / 33 шт
+  expect(digits(await rowValue('Профит / шт'))).toBe('1670');                       // (3000·67 + 2000·33) / 100 − 1000
+  expect(await rowValue('Дней на распродажу')).toContain('3.4');
+  expect(await rowValue('Весь цикл')).toMatch(/4\.[34]/);                            // закупка 1 дн. + продажа 3.35 (граница округления)
+  expect(digits(await rowValue('Итого на'))).toBe('167000');
+  await expect(section.locator('.craft-summary-row', { hasText: 'Итого на 100 шт' })).toBeVisible();
+});
+
+test('план продажи: колонка «Профит с города» = профит/шт × штук, отданных городу', async ({ page }) => {
+  await openSalePlanMock(page);
+  await page.locator('input.plan-toggle[data-city="Martlock"]').check();
+  const cell = (city) => page.locator(`tr:has(input.plan-toggle[data-city="${city}"]) td`).last();
+  expect(digits(await cell('Lymhurst').textContent())).toBe('134000');              // 2000 × 67
+  expect(digits(await cell('Martlock').textContent())).toBe('33000');               // 1000 × 33
+  expect((await cell('Thetford').textContent()).trim()).toBe('—');                  // городу ничего не отдано
+});
+
+test('стратегия распределения: по умолчанию равномерно по времени, «максимизировать профит» отдаёт партию городам с лучшей маржой', async ({ page }) => {
+  await openSalePlanMock(page);
+  const strategy = page.locator('#sale-strategy');
+  await expect(strategy).toHaveValue('even');
+  await page.locator('input.plan-toggle[data-city="Martlock"]').check();
+  await page.locator('input.plan-toggle[data-city="Thetford"]').check();            // 20 : 10 : 10 → 50 / 25 / 25, все продают за 2.5 дня
+  const qty = (city) => page.locator(`input.plan-qty[data-city="${city}"]`);
+  await expect(qty('Lymhurst')).toHaveValue('50');
+  await expect(qty('Thetford')).toHaveValue('25');
+  const section = page.locator('#craft-patient-section');
+  await strategy.selectOption('profit');                                            // вместимость = оборот × 3.75 дня → 75 / 25 / 0
+  await expect(qty('Lymhurst')).toHaveValue('75');
+  await expect(qty('Martlock')).toHaveValue('25');
+  await expect(qty('Thetford')).toHaveValue('0');
+  await expect(section).toContainText('100 из 100 шт');
+  expect(digits(await section.locator('.craft-summary-row', { hasText: 'Итого на' }).locator('strong').last().textContent())).toBe('175000'); // против 137 500 при равномерном
+  await page.locator('#sale-strategy').selectOption('even');
+  await expect(qty('Lymhurst')).toHaveValue('50');
+});
