@@ -272,6 +272,19 @@ async function mapLimit(items, limit, fn) {
   return results;
 }
 
+// Цены по своему списку локаций (например, города + Чёрный Рынок): нужны там, где общие функции с фиксированным списком городов не годятся.
+async function fetchPricesAt(itemIds, quality, locations) {
+  const key = `at:${quality}:${locations.join(',')}:${itemIds.slice().sort().join(',')}`;
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
+  const url = `${AODP_BASE}/${encodeURIComponent(itemIds.join(','))}?locations=${locations.join(',')}&qualities=${quality}`;
+  const res = await aodpFetch(url);
+  if (!res.ok) throw new Error(`AODP responded ${res.status}`);
+  const data = await res.json();
+  cache.set(key, { ts: Date.now(), data });
+  return data;
+}
+
 async function fetchPricesBatched(itemIds, quality) {
   const CHUNK = 120; // расширение каталога зачарованными версиями (~5×) не должно во столько же раз умножать число запросов
   const chunks = [];
@@ -706,7 +719,9 @@ app.get('/api/craft-calc', async (req, res) => {
 
     const materialIds = [...new Set([...resourceQueryIds, ...enchantStepIds])];
     const materialData = await fetchPricesBatched(materialIds, 1);
-    const finishedData = await fetchPricesBatched([finishedQueryId], quality);
+    const finishedData = blackMarket
+      ? await fetchPricesAt([finishedQueryId], quality, [...CITIES, BM_QUERY_LOCATION])
+      : await fetchPricesBatched([finishedQueryId], quality);
     // Базовый предмет .0: купить готовый или скрафтить — сравнение нужно и при «зачаровать после крафта», и для обычного .0-предмета
     // (галочка «после крафта» на предмете без зачарования не должна менять расчёт).
     const baseChoiceWanted = enchantAfterRequested || enchant === 0;
@@ -806,12 +821,21 @@ app.get('/api/craft-calc', async (req, res) => {
       const rec = finishedCityData[city];
       return { city, sellMin: rec?.sell_price_min || null, buyMax: rec?.buy_price_max || null };
     });
+    const taxRate = getSalesTaxRate(req);
+    // Чёрный Рынок (по галочке): только покупает, налог свой — мгновенная продажа в его Buy Order. Лучшее место выбираем по цене ПОСЛЕ
+    // налога города: у ЧР цена выше, но и налог выше.
+    if (blackMarket) {
+      const bmRec = Object.values(finishedCityData).find((rec) => normLocation(rec.city) === 'blackmarket');
+      if (bmRec) sellPrices.push({ city: bmRec.city, sellMin: null, buyMax: bmRec.buy_price_max || null, blackMarket: true });
+    }
+    const instantTax = (sp) => (sp.blackMarket ? bmTaxRate : taxRate);
     let bestSell = null;
     for (const sp of sellPrices) {
-      if (sp.buyMax && (!bestSell || sp.buyMax > bestSell.price)) bestSell = { city: sp.city, price: sp.buyMax };
+      if (sp.buyMax && (!bestSell || sp.buyMax * (1 - instantTax(sp)) > bestSell.price * (1 - bestSell.taxRate))) {
+        bestSell = { city: sp.city, price: sp.buyMax, blackMarket: !!sp.blackMarket, taxRate: instantTax(sp) };
+      }
     }
-    const taxRate = getSalesTaxRate(req);
-    const netSellPrice = bestSell ? bestSell.price * (1 - taxRate) : null;
+    const netSellPrice = bestSell ? bestSell.price * (1 - bestSell.taxRate) : null;
     const profitPerUnit = netSellPrice !== null ? netSellPrice - effectiveCostPerUnit : null;
 
     // Вторая цифра рядом с мгновенной: терпеливая продажа по истории сделок. Не роняем весь расчёт,

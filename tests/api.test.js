@@ -475,6 +475,55 @@ describe('калькулятор крафта: Чёрный Рынок и инд
   });
 });
 
+describe('калькулятор крафта: мгновенная продажа и Чёрный Рынок', () => {
+  // меч продаётся в Buy Order: Martlock 3000, Чёрный Рынок 3300; материалы по 10
+  const install = () => vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+    const u = String(url);
+    if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
+    const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+    const locs = new URL(u).searchParams.get('locations').split(',');
+    const out = [];
+    for (const id of ids) {
+      const sword = id === 'T4_MAIN_SWORD';
+      out.push({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: sword ? 0 : 10, sell_price_min_date: NOW(), buy_price_max: sword ? 3000 : 0, buy_price_max_date: NOW() });
+      if (sword && locs.includes('BlackMarket')) out.push({ item_id: id, city: 'Black Market', quality: 1, sell_price_min: 0, sell_price_min_date: NOW(), buy_price_max: 3300, buy_price_max_date: NOW() });
+    }
+    return { ok: true, status: 200, json: async () => out };
+  });
+  const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock${extra}`);
+
+  it('без галочки ЧР мгновенная продажа — только обычные города; с галочкой — лучшая цена ПОСЛЕ налога, с пометкой и своей ставкой', async () => {
+    install();
+    const plain = (await get()).body;
+    expect(plain.bestSell).toMatchObject({ city: 'Martlock', price: 3000, blackMarket: false });
+    expect(plain.netSellPrice).toBeCloseTo(3000 * 0.92, 6);
+    const withBm = (await get('&blackMarket=true')).body;
+    expect(withBm.bestSell).toMatchObject({ city: 'Black Market', price: 3300, blackMarket: true });
+    expect(withBm.bestSell.taxRate).toBeCloseTo(0.105, 9);
+    expect(withBm.netSellPrice).toBeCloseTo(3300 * (1 - 0.105), 6);          // 2953.5 > 2760
+    expect(withBm.sellPrices.map((p) => p.city)).toEqual(['Martlock', 'Black Market']);
+    expect(withBm.profitPerUnit).toBeGreaterThan(plain.profitPerUnit);
+  });
+
+  it('ЧР с более высокой ценой, но большим налогом не выигрывает у города, где «на руки» больше', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
+      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+      return { ok: true, status: 200, json: async () => ids.flatMap((id) => {
+        const sword = id === 'T4_MAIN_SWORD';
+        return [
+          { item_id: id, city: 'Martlock', quality: 1, sell_price_min: sword ? 0 : 10, sell_price_min_date: NOW(), buy_price_max: sword ? 3000 : 0, buy_price_max_date: NOW() },
+          ...(sword ? [{ item_id: id, city: 'Black Market', quality: 1, sell_price_min: 0, sell_price_min_date: NOW(), buy_price_max: 3050, buy_price_max_date: NOW() }] : []),
+        ];
+      }) };
+    });
+    const d = (await get('&blackMarket=true')).body;                          // ЧР: 3050·0.895 = 2729.75 < Martlock: 3000·0.92 = 2760
+    expect(d.bestSell).toMatchObject({ city: 'Martlock', blackMarket: false });
+    expect(d.netSellPrice).toBeCloseTo(2760, 6);
+  });
+});
+
 describe('план продажи «максимизировать профит»: maxProfitCityAllocation', () => {
   const { maxProfitCityAllocation } = require('../server.js');
   const city = (name, vol, profit, index) => ({ city: name, avgPrice: 1000, avgDailyVolume: vol, profitPerUnit: profit, profitIndex: index });

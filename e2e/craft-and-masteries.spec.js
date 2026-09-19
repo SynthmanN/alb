@@ -662,3 +662,23 @@ test('своё время вписывается с единицей: 12ч / 2д
   await expect.poll(() => queries.length).toBe(4);
   expect(queries[3].get('days')).toBe('30');
 });
+
+
+test('«в калькулятор» у строки, найденной через Чёрный Рынок, сам включает ЧР в калькуляторе — иначе профита там не видно', async ({ page }) => {
+  let calcQuery = null;
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'instant', includeMaterials: false, enchantMode: 'direct', liquidity: 'sum', days: 7, quantity: null, taxRate: 0.08, setupFeeRate: 0, premiumPrice: 28000000, scanned: 3,
+    blackMarket: true, bmTaxRate: 0.105, enchantRange: '.0–.3', includeAwakened: false, rrrOptions: { royalBonus: true, focus: false },
+    jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: Date.now(), oldestPriceAgeMinutes: 1 }, results: [
+    { kind: 'gear', itemId: 'T4_CAPEITEM_AVALON', enchant: 0, quality: 2, tier: 4, cost: 72786, avgSellPrice: 161000, sellCities: ['Black Market'], blackMarket: true, sellTaxRate: 0.105, dailyVolume: 9, yourDailyVolume: 2, profitPerUnit: 8621, profitPct: 11.8, dailyProfit: 138793, premiumDays: 200, daysToAcquire: null, daysToSell: null, totalDays: null, quantity: null, freshMinutes: 5, rankScore: 138000, tradeHours: 40, confidence: 40 / 60 },
+  ] } }));
+  await page.route('**/api/craft-calc*', (route) => { calcQuery = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-mode').selectOption('instant');
+  await page.locator('#margin-black-market').check();
+  await page.locator('#margin-run').click();
+  await page.locator('#margin-result .scan-add-btn').first().click();
+  await expect.poll(() => calcQuery).not.toBeNull();
+  expect(calcQuery.get('blackMarket')).toBe('true');
+  await expect(page.locator('#craft-black-market')).toBeChecked();
+});

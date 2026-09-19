@@ -203,8 +203,8 @@ function renderCraftResult(data) {
     <div class="craft-summary">
       <div class="craft-summary-row"><span>Себестоимость материала / шт (сырое)</span><span>${Math.round(data.materialCostPerUnit).toLocaleString('ru-RU')}</span></div>
       <div class="craft-summary-row"><span title="${data.rrrPreset.label}; у каждого материала своя ставка (см. таблицу материалов)">Себестоимость с учётом RRR (в среднем ${(data.rrrPreset.rrr * 100).toFixed(1)}%) / шт</span><span>${Math.round(data.effectiveCostPerUnit).toLocaleString('ru-RU')}</span></div>
-      <div class="craft-summary-row"><span>Продажа в Buy Order: лучшая цена (мгновенно, в чужой ордер на покупку)</span><span>${data.bestSell ? `${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
-      <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${data.netSellPrice !== null ? Math.round(data.netSellPrice).toLocaleString('ru-RU') : '—'}</span></div>
+      <div class="craft-summary-row"><span>Продажа в Buy Order: лучшая цена (мгновенно, в чужой ордер на покупку)</span><span>${data.bestSell ? `${data.bestSell.blackMarket ? '⚫ ' : ''}${data.bestSell.city}: ${data.bestSell.price.toLocaleString('ru-RU')}` : 'нет данных'}</span></div>
+      <div class="craft-summary-row"><span>После налога с продажи (${((data.bestSell && data.bestSell.taxRate !== undefined ? data.bestSell.taxRate : data.taxRate) * 100).toFixed(data.bestSell && data.bestSell.blackMarket ? 1 : 0)}%${data.bestSell && data.bestSell.blackMarket ? ', Чёрный Рынок' : ''})</span><span>${data.netSellPrice !== null ? Math.round(data.netSellPrice).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
@@ -755,7 +755,7 @@ function renderMarginScan(data) {
     const premiumDays = r.premiumDays === null ? '—' : r.premiumDays < 1000 ? fmtNum(r.premiumDays, 0) : '>1000';
     const action = material
       ? `<button class="scan-add-btn" data-kind="material" data-type="${r.type}" data-tier="${r.tier}">в калькулятор</button>`
-      : `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-quantity="${r.quantity || ''}">в калькулятор</button>`;
+      : `<button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}" data-quantity="${r.quantity || ''}" data-black-market="${r.blackMarket ? 'true' : ''}">в калькулятор</button>`;
     return `
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}${material ? ' <small>(рефайн)</small>' : ''}</td>
@@ -796,6 +796,8 @@ function renderMarginScan(data) {
       craftEl.enchant.value = btn.dataset.enchant;
       craftEl.quality.value = btn.dataset.quality;
       if (btn.dataset.quantity) craftEl.quantity.value = btn.dataset.quantity;
+      // Находка выгодна именно через Чёрный Рынок — включаем его и в калькуляторе, иначе он увидит только обычные города (и «нет профита»).
+      if (btn.dataset.blackMarket === 'true') craftEl.blackMarket.checked = true;
       document.getElementById('craft-enchant-after').checked = data.enchantMode === 'after' && btn.dataset.enchant !== '0';
       document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
       runCraftCalc();
