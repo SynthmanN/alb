@@ -372,3 +372,18 @@ describe('калькулятор крафта: многогородовой пл
     }
   });
 });
+
+describe('свои значения: период истории и допуск цены', () => {
+  it('период истории можно задать своим (дни 0.5–30), допуск по умолчанию 2%', async () => {
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&days=10')).body;
+    expect(d.patientSell === null || d.patientSell.days === 10).toBe(true);
+    expect(d.priceTolerance).toBeCloseTo(0.02, 6);
+    const clamped = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&days=999')).body;
+    expect(clamped.patientSell === null || clamped.patientSell.days === 30).toBe(true);
+  });
+  it('часы для сканеров тоже свои: 1–720', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => (String(url).includes('/history/') ? [] : fakeAodp(url)) }));
+    const res = await request(app).get('/api/craft-opportunities?hours=48&cities=Martlock');
+    expect(res.status).toBe(200);
+  });
+});

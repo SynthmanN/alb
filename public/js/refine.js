@@ -18,7 +18,7 @@ async function runRefineScan() {
   refineScanBtn.disabled = true;
   refineScanResult.innerHTML = 'Считаю по всем 35 комбинациям ресурс×тир...';
   try {
-    const params = new URLSearchParams({ hours: refineScanHours.value, rrr: refineScanRrr.value, cities: activeCities().join(','), premium: premiumParam(), marketShare: document.getElementById('refine-market-share').value });
+    const params = new URLSearchParams({ hours: readCustomizable(refineScanHours), rrr: refineScanRrr.value, cities: activeCities().join(','), premium: premiumParam(), marketShare: readCustomizable(document.getElementById('refine-market-share')) });
     const res = await fetch(`/api/refining-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);

@@ -44,10 +44,10 @@
         <label class="craft-field">Возврат ресурсов<select id="craft-rrr"></select></label>
         <label class="craft-field">Количество<input id="craft-quantity" type="number" min="1" value="1" title="Сколько штук крафтим" /></label>
         <label class="craft-field" title="Какую долю дневного оборота рынка ты реально сможешь продать: другие игроки тоже торгуют и перевыставляют ордера, чтобы быть первыми. Влияет на срок распродажи">Доля рынка
-          <select id="craft-market-share"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
+          <select id="craft-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
         </label>
         <label class="craft-field" title="Ценовой допуск плана по городам, %: город входит в план закупки/продажи, если его цена не хуже лучшей больше чем на допуск. У ликвидных городов допуск динамически растёт (до ×3), у совсем тонких рынков цена не считается надёжной">Допуск цены, %
-          <input id="craft-price-tolerance" type="number" min="0" max="50" step="1" value="5" />
+          <input id="craft-price-tolerance" type="number" min="0" max="50" step="1" value="2" />
         </label>
         <label class="craft-field craft-check" title="Крафтим (или покупаем, если дешевле) базовый предмет .0, дальше поднимаем зачарование рунами/душами/реликвиями до выбранного уровня. Без галочки — крафт сразу из зачарованных материалов">
           <span>Зачарование</span>
@@ -64,7 +64,7 @@
         <summary>Дополнительно: история, потолок себестоимости, полоса цены продажи</summary>
         <div class="craft-controls-row">
           <label class="craft-field">История цен
-            <select id="craft-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+            <select id="craft-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
           </label>
           <label class="craft-field" title="Схема «закупаю по Buy Order, продаю партией»: проверить, укладывается ли себестоимость в потолок">Потолок себестоимости/шт<input id="craft-ceiling" type="number" min="0" placeholder="без потолка" /></label>
           <label class="craft-field">Продажа от<input id="craft-sell-low" type="number" min="0" placeholder="рынок" /></label>
@@ -80,7 +80,7 @@
         готового предмета. Проверяются все 5 качеств — показано лучшее по профиту и ликвидности.
       </p>
       <div class="calc-controls">
-        <select id="craft-scan-hours">
+        <select id="craft-scan-hours" data-custom="hours">
           <option value="12">12ч</option><option value="24" selected>24ч</option>
           <option value="72">3 дня</option><option value="168">7 дней</option>
         </select>
@@ -102,7 +102,7 @@
           <option value="armor">Броня</option><option value="cape">Плащи</option>
         </select>
         <label class="craft-field">Партия, шт<input id="bulk-scan-quantity" type="number" min="1" value="1000" /></label>
-        <select id="bulk-scan-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+        <select id="bulk-scan-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
         <button id="bulk-scan-run">Сканировать партии</button>
       </div>
       <div id="bulk-scan-result"></div>
@@ -133,11 +133,11 @@
           </select>
         </label>
         <label class="craft-field" title="Доля дневного оборота рынка, которую реально удастся продать (конкуренты тоже торгуют)">Доля рынка
-          <select id="margin-market-share"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
+          <select id="margin-market-share" data-custom="percent"><option value="0.1">10%</option><option value="0.25" selected>25%</option><option value="0.5">50%</option><option value="1">100%</option></select>
         </label>
         <label class="craft-field">Оборот от, шт/день<input id="margin-min-daily" type="number" min="0" step="0.5" value="1" /></label>
         <label class="craft-field">История
-          <select id="margin-days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+          <select id="margin-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
         </label>
         <button id="margin-run">Сканировать</button>
       </div>
@@ -164,7 +164,7 @@
           </select>
         </label>
         <label class="craft-field">История
-          <select id="lazy-history"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
+          <select id="lazy-history" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
         </label>
         <button id="lazy-run">Подобрать план</button>
       </div>

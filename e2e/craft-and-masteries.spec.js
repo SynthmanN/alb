@@ -307,8 +307,8 @@ test('план продажи по городам: партия делится �
   await page.locator('#craft-run').click();
   const rows = page.locator('#craft-result .by-city tbody tr');
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0)).toContainText('100');            // Lymhurst: 120 × 100/120 = 100 шт
-  await expect(rows.nth(1).locator('td').nth(4)).toHaveText('20'); // Martlock: 20 шт
+  await expect(rows.nth(0).locator('input.plan-qty')).toHaveValue('100');  // Lymhurst: 120 × 100/120 = 100 шт
+  await expect(rows.nth(1).locator('input.plan-qty')).toHaveValue('20');   // Martlock: 20 шт
   const days = await rows.locator('td:nth-child(6)').allTextContents();
   expect(new Set(days).size).toBe(1);                         // у всех городов один срок: 100/(100·0.5) = 2 дн.
   expect(days[0]).toContain('2.0');
@@ -364,5 +364,55 @@ test('многогородовой план: допуск цены уходит 
   await page.locator('#craft-result details.acquire-plan summary').click();
   await expect(materials).toContainText('Martlock: 6 573 шт');
   await expect(materials).toContainText('допуск 15%');
-  await expect(page.locator('#craft-result .by-city')).toContainText('Вне плана: Thetford');
+  await expect(page.locator('#craft-result .by-city')).toContainText('Вне автоплана: Thetford');
+});
+
+test('ручной план продажи: ввод количества в город пересчитывает срок, цену и профит на лету; «Сбросить» возвращает автоплан', async ({ page }) => {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, marketShare: 0.5, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+    cities: ['Lymhurst', 'Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 100000, recipe: [], sellPrices: [],
+    bestSell: null, taxRate: 0, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+    acquire: { days: 3, cycleDays: 5, bottleneckResource: 'X', byResource: [] },
+    patientSell: { days: 7, marketShare: 0.5, avgSellPrice: 3000, bestCity: { city: 'Lymhurst', avgPrice: 3000 }, avgDailyVolume: 30, daysToSellBatch: 3.3, netSellPrice: 3000, profitPerUnit: 2000,
+      byCity: [{ city: 'Lymhurst', avgSellPrice: 3000, avgDailyVolume: 20, profitPerUnit: 2000 }, { city: 'Martlock', avgSellPrice: 2000, avgDailyVolume: 10, profitPerUnit: 1000 }], cities: [] },
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  const summary = page.locator('#craft-result .plan-summary');
+  await expect(summary).toContainText('100 из 100 шт');
+  // автоплан: 67 / 33 шт; вручную кладём всё в Lymhurst: 100 шт при 20·0.5 = 10 в день → 10 дн., цена 3000, профит 2000
+  await page.locator('input.plan-qty[data-city="Lymhurst"]').fill('100');
+  await page.locator('input.plan-qty[data-city="Martlock"]').fill('0');
+  await expect(summary).toContainText('Срок распродажи по плану: 10.0 дн.');
+  await expect(summary).toContainText('весь цикл (закупка 3.0 дн. + продажа): 13.0 дн.');
+  await expect(summary).toContainText('200 000');                     // итого 2000 × 100
+  await expect(page.locator('input.plan-qty[data-city="Lymhurst"]')).toHaveClass(/is-manual/);
+  // рассинхрон суммы с партией предупреждается
+  await page.locator('input.plan-qty[data-city="Martlock"]').fill('50');
+  await expect(summary).toContainText('150 из 100 шт');
+  await expect(summary).toContainText('сумма плана не равна партии');
+  await page.locator('.plan-reset').click();
+  await expect(summary).toContainText('100 из 100 шт');
+  await expect(page.locator('.plan-reset')).toHaveCount(0);
+});
+
+test('доля рынка и период истории: можно вписать своё значение — оно уходит в запрос (доля как 0..1)', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/craft-calc*', (route) => { query = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('меч');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-market-share').selectOption('__custom__');
+  await page.locator('#craft-market-share ~ .custom-value input').fill('15');
+  await page.locator('#craft-extra summary').click();
+  await page.locator('#craft-days').selectOption('__custom__');
+  await page.locator('#craft-days ~ .custom-value input').fill('10');
+  await expect(page.locator('#craft-price-tolerance')).toHaveValue('2');   // допуск по умолчанию 2%
+  await page.locator('#craft-run').click();
+  await expect.poll(() => query).not.toBeNull();
+  expect(query.get('marketShare')).toBe('0.15');
+  expect(query.get('days')).toBe('10');
+  expect(query.get('priceTolerance')).toBe('2');
 });

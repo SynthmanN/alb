@@ -138,7 +138,7 @@ async function runEnchantScan() {
   enchantScanBtn.disabled = true;
   enchantScanResult.innerHTML = 'Считаю цепочки «купить → зачаровать → продать» по всему гиру, это может занять несколько секунд...';
   try {
-    const params = new URLSearchParams({ hours: enchantScanHours.value, cities: activeCities().join(','), premium: premiumParam() });
+    const params = new URLSearchParams({ hours: readCustomizable(enchantScanHours), cities: activeCities().join(','), premium: premiumParam() });
     const res = await fetch(`/api/enchant-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);

@@ -294,3 +294,15 @@ details.acquire-plan { margin-top: 4px; }
 details.acquire-plan summary { cursor: pointer; font-size: 11px; color: #9aa0aa; }
 details.acquire-plan ul { margin: 4px 0 0; padding-left: 14px; text-align: left; font-size: 12px; }
 details.acquire-plan small, .plan-skipped { color: #9aa0aa; }
+
+/* «Своё…» значение рядом с выпадающим списком (доля рынка, период истории) */
+.custom-value { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #9aa0aa; }
+.custom-value input { width: 80px; }
+.craft-field .custom-value { margin-top: 4px; }
+
+/* Ручной план продажи */
+input.plan-qty { width: 90px; padding: 4px 6px; background: transparent; border: 1px dashed #333740; text-align: right; }
+input.plan-qty:hover, input.plan-qty:focus { background: #1e2126; border-style: solid; }
+input.plan-qty.is-manual { border-color: #cc8844; color: #ffd8a8; }
+.plan-summary { margin-top: 8px; font-size: 13px; display: grid; gap: 4px; }
+.plan-reset { margin-left: 10px; padding: 3px 10px; font-size: 12px; background: #2a2d33; }

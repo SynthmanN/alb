@@ -1032,8 +1032,7 @@ let craftScanCache = null;
 
 app.get('/api/craft-opportunities', async (req, res) => {
   try {
-    const ALLOWED_HOURS = [12, 24, 72, 168];
-    const hours = ALLOWED_HOURS.includes(parseInt(req.query.hours, 10)) ? parseInt(req.query.hours, 10) : 24;
+    const hours = parseHistoryHours(req);
     const rrrId = req.query.rrr || 'none';
     const citiesParam = req.query.cities;
     const taxRate = getSalesTaxRate(req);
@@ -1150,8 +1149,7 @@ let refiningScanCache = null;
 
 app.get('/api/refining-opportunities', async (req, res) => {
   try {
-    const ALLOWED_HOURS = [12, 24, 72, 168];
-    const hours = ALLOWED_HOURS.includes(parseInt(req.query.hours, 10)) ? parseInt(req.query.hours, 10) : 24;
+    const hours = parseHistoryHours(req);
     const rrrId = req.query.rrr || 'none';
     const citiesParam = req.query.cities;
     const taxRate = getSalesTaxRate(req);
@@ -1262,7 +1260,6 @@ app.get('/api/refining-opportunities', async (req, res) => {
 // Схема "закупаю бай-ордерами, продаю партией за несколько дней": цены берутся не из мгновенных
 // котировок, а как средневзвешенные по объёму за период истории, а вместо "есть ли спред" считаем,
 // сколько дней уйдёт на закупку сырья и на распродажу партии, не обваливая рынок.
-const BULK_ALLOWED_DAYS = [3, 7];
 
 // Множитель скора за длину цикла (закупка + распродажа): чем дольше капитал заморожен, тем хуже.
 // Дольше 30 дней — предупреждение в интерфейсе, дольше 90 — скор почти обнуляется.
@@ -1479,10 +1476,10 @@ function planCityAllocation(cities, quantity, { side, priceTolerance = 0.05, mar
   };
 }
 
-// Ценовой допуск плана, % (по умолчанию 5): 0–50.
+// Ценовой допуск плана, % (по умолчанию 2): 0–50.
 function parsePriceTolerance(req) {
   const v = parseFloat(req.query.priceTolerance);
-  return Math.min(Math.max(Number.isFinite(v) ? v : 5, 0), 50) / 100;
+  return Math.min(Math.max(Number.isFinite(v) ? v : 2, 0), 50) / 100;
 }
 
 // Время закупки сырья: даже если закупаешь по Sell Order'ам других игроков, собрать нужное количество можно лишь
@@ -1636,8 +1633,14 @@ function parseMarketShare(req) {
   return Math.min(Math.max(parseFloat(req.query.marketShare) || 0.25, 0.01), 1);
 }
 
+// Период истории можно вписать свой: дни 0.5–30 (по умолчанию 7) и часы 1–720 (по умолчанию 24) — не только 3/7 дней.
 function parseBulkDays(req) {
-  return BULK_ALLOWED_DAYS.includes(parseInt(req.query.days, 10)) ? parseInt(req.query.days, 10) : 7;
+  const v = parseFloat(req.query.days);
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 0.5), 30) : 7;
+}
+function parseHistoryHours(req) {
+  const v = parseFloat(req.query.hours);
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), 720) : 24;
 }
 
 app.get('/api/craft-bulk-plan', async (req, res) => {
@@ -1870,8 +1873,7 @@ let enchantScanCache = null;
 
 app.get('/api/enchant-opportunities', async (req, res) => {
   try {
-    const ALLOWED_HOURS = [12, 24, 72, 168];
-    const hours = ALLOWED_HOURS.includes(parseInt(req.query.hours, 10)) ? parseInt(req.query.hours, 10) : 24;
+    const hours = parseHistoryHours(req);
     const citiesParam = req.query.cities;
     const taxRate = getSalesTaxRate(req);
     const cacheKey = `${hours}:${citiesParam || 'default'}:${taxRate}`;

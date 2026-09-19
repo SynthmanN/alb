@@ -255,6 +255,40 @@ function enchantTag(enchant) {
 
 const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
 
+// Выпадающий список с возможностью вписать своё значение (доля рынка в %, период истории в днях/часах):
+// последний пункт «Своё…» показывает поле ввода. Читать значение — readCustomizable(select): готовая строка для запроса
+// (доля — доля 0..1, дни — дни, часы — часы). Включается атрибутом data-custom="percent|days|hours".
+const CUSTOM_LIMITS = { percent: { min: 1, max: 100, step: 1, suffix: '%', placeholder: 'например, 15' }, days: { min: 0.5, max: 30, step: 0.5, suffix: 'дн.', placeholder: 'дней' }, hours: { min: 1, max: 720, step: 1, suffix: 'ч', placeholder: 'часов' } };
+function makeCustomizable(select) {
+  const kind = select.dataset.custom;
+  const lim = CUSTOM_LIMITS[kind];
+  if (!lim || select.dataset.customReady) return;
+  select.dataset.customReady = '1';
+  const opt = document.createElement('option');
+  opt.value = '__custom__';
+  opt.textContent = 'Своё…';
+  select.appendChild(opt);
+  const wrap = document.createElement('span');
+  wrap.className = 'custom-value';
+  wrap.hidden = true;
+  wrap.innerHTML = `<input type="number" min="${lim.min}" max="${lim.max}" step="${lim.step}" placeholder="${lim.placeholder}" /><span>${lim.suffix}</span>`;
+  select.after(wrap);
+  select.addEventListener('change', () => {
+    wrap.hidden = select.value !== '__custom__';
+    if (!wrap.hidden) wrap.querySelector('input').focus();
+  });
+  select._customInput = wrap.querySelector('input');
+}
+function readCustomizable(select) {
+  if (select.value !== '__custom__') return select.value;
+  const lim = CUSTOM_LIMITS[select.dataset.custom];
+  let v = parseFloat(select._customInput.value);
+  if (!Number.isFinite(v)) v = parseFloat(select.querySelector('option:not([value="__custom__"])').value) * (select.dataset.custom === 'percent' ? 100 : 1);
+  v = Math.min(Math.max(v, lim.min), lim.max);
+  return String(select.dataset.custom === 'percent' ? v / 100 : v);
+}
+document.querySelectorAll('select[data-custom]').forEach(makeCustomizable);
+
 // Стилизованные замены нативным alert()/confirm(): не выбиваются из общего стиля и не блокируют страницу.
 function showToast(message, kind = 'info') {
   let box = document.getElementById('toast-box');

@@ -17,6 +17,8 @@ const craftEl = {
 };
 
 let craftSelectedItem = null;
+let lastCraftData = null;          // последний результат калькулятора — для пересчёта плана продажи без запроса к серверу
+const manualSalePlan = new Map();  // город -> штук, введённых вручную в плане продажи (сбрасывается при новом расчёте)
 
 async function initCraft() {
   const res = await fetch('/api/refining-meta');
@@ -114,9 +116,9 @@ async function runCraftCalc() {
       quantity: craftEl.quantity.value || '1', rrr: craftEl.rrr.value, cities: activeCities().join(','),
       premium: premiumParam(),
     });
-    params.set('marketShare', document.getElementById('craft-market-share').value);
-    params.set('priceTolerance', document.getElementById('craft-price-tolerance').value || '5');
-    params.set('days', document.getElementById('craft-days').value);
+    params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
+    params.set('priceTolerance', document.getElementById('craft-price-tolerance').value || '2');
+    params.set('days', readCustomizable(document.getElementById('craft-days')));
     for (const [id, name] of [['craft-ceiling', 'ceiling'], ['craft-sell-low', 'sellLow'], ['craft-sell-high', 'sellHigh']]) {
       const v = document.getElementById(id).value;
       if (v) params.set(name, v);
@@ -128,6 +130,8 @@ async function runCraftCalc() {
     const res = await fetch(`/api/craft-calc?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    manualSalePlan.clear();
+    lastCraftData = data;
     renderCraftResult(data);
   } catch (err) {
     craftEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
@@ -206,6 +210,7 @@ function renderCraftResult(data) {
     ${teleportHtml(data)}
   `;
   craftEl.result.querySelectorAll('tr.tier-row').forEach((tr) => tr.addEventListener('click', () => switchCraftTier(tr.dataset.itemId)));
+  bindSalePlanEditing();
   const craftTables = craftEl.result.querySelectorAll('table');
   wireTableSort(craftTables[0], 'craft-recipe');
   wireTableSort(craftTables[1], 'craft-sell');
@@ -219,6 +224,27 @@ function cityPricesCell(cheapestCity, cheapestPrice, cityPrices) {
   if (!cityPrices || cityPrices.length < 2) return main;
   const list = cityPrices.map((c) => `<li>${c.city}: ${fmtNum(c.price)}${c.price > cheapestPrice ? ` <small>(+${((c.price / cheapestPrice - 1) * 100).toFixed(0)}%)</small>` : ''}</li>`).join('');
   return `<details class="city-prices"><summary>${main}</summary><ul>${list}</ul></details>`;
+}
+
+// Ручное редактирование плана продажи: ввод количества в любом городе пересчитывает срок, цикл и профит в реальном времени.
+function bindSalePlanEditing() {
+  let timer = null;
+  craftEl.result.querySelectorAll('input.plan-qty').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      // значение запоминаем сразу (иначе быстрый ввод в два города потеряет первый), а перерисовку откладываем
+      manualSalePlan.set(inp.dataset.city, Math.max(Math.floor(Number(inp.value) || 0), 0));
+      const city = inp.dataset.city;
+      const caret = inp.selectionStart;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        renderCraftResult(lastCraftData);
+        const again = craftEl.result.querySelector(`input.plan-qty[data-city="${city}"]`);
+        if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (e) { /* number input */ } }
+      }, 250);
+    });
+  });
+  const reset = craftEl.result.querySelector('.plan-reset');
+  if (reset) reset.addEventListener('click', () => { manualSalePlan.clear(); renderCraftResult(lastCraftData); });
 }
 
 // Сравнение по тирам: себестоимость и лучшая цена продажи в Buy Order для каждого тира того же предмета.
@@ -291,25 +317,53 @@ function salePlanByCity(byCity, quantity, marketShare, minPrice) {
 function byCityHtml(p, data) {
   if (!p.byCity || p.byCity.length === 0) return '';
   const minPrice = p.threshold ? p.threshold.value : null;
+  const marketShare = p.marketShare ?? 1;
   const serverPlan = p.plan && p.plan.cities.length ? p.plan : null;
-  const plan = serverPlan
+  const auto = serverPlan
     ? { rows: new Map(serverPlan.cities.map((c) => [c.city, { qty: c.qty, days: c.days, tolerance: c.tolerance }])), days: serverPlan.totalDays }
-    : salePlanByCity(p.byCity, data.quantity, p.marketShare ?? 1, minPrice);
-  const rows = p.byCity.map((c) => {
-    const dim = minPrice !== null && c.avgSellPrice < minPrice;
+    : salePlanByCity(p.byCity, data.quantity, marketShare, minPrice);
+
+  // Итоговый план = автоплан, поверх которого — вручную введённые количества (город -> штук). Всё считается на лету.
+  const rowsData = p.byCity.map((c) => {
+    const a = auto.rows.get(c.city);
+    const manual = manualSalePlan.has(c.city);
+    const qty = manual ? manualSalePlan.get(c.city) : (a ? a.qty : 0);
+    const days = qty > 0 && c.avgDailyVolume > 0 ? qty / (c.avgDailyVolume * marketShare) : 0;
+    return { c, qty, days, manual, tolerance: a ? a.tolerance : null, inPlan: !!a };
+  });
+  const totalQty = rowsData.reduce((sum, r) => sum + r.qty, 0);
+  const planDays = rowsData.reduce((m, r) => Math.max(m, r.days), 0);       // города продают параллельно — срок по самому медленному
+  const avgPrice = totalQty > 0 ? rowsData.reduce((sum, r) => sum + r.c.avgSellPrice * r.qty, 0) / totalQty : null;
+  const netPrice = avgPrice === null ? null : avgPrice * (1 - data.taxRate);
+  const profitUnit = netPrice === null ? null : netPrice - data.effectiveCostPerUnit;
+  const anyManual = rowsData.some((r) => r.manual);
+  const noVolume = rowsData.some((r) => r.qty > 0 && !(r.c.avgDailyVolume > 0));
+
+  const rows = rowsData.map(({ c, qty, days, manual, tolerance, inPlan }) => {
+    const dim = minPrice !== null && c.avgSellPrice < minPrice && !manual;
     const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
-    const pr = plan.rows.get(c.city);
     return `<tr class="${dim ? 'below-threshold' : ''}"><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
-      <td data-sort-value="${pr ? pr.qty : ''}">${pr ? fmtNum(pr.qty) : '—'}</td><td data-sort-value="${pr ? pr.days : ''}">${pr ? fmtDays(pr.days) : '—'}${pr && pr.tolerance ? ` <small>(допуск ${(pr.tolerance * 100).toFixed(0)}%)</small>` : ''}</td></tr>`;
+      <td data-sort-value="${qty}"><input class="plan-qty ${manual ? 'is-manual' : ''}" type="number" min="0" step="1" value="${qty}" data-city="${c.city}" title="Сколько штук планируешь продать в этом городе (введи своё — остальное пересчитается)" /></td>
+      <td data-sort-value="${days}">${qty > 0 ? fmtDays(days) : '—'}${inPlan && tolerance && !manual ? ` <small>(допуск ${(tolerance * 100).toFixed(0)}%)</small>` : ''}</td></tr>`;
   }).join('');
+
+  const sumOk = totalQty === data.quantity;
+  const acquireDays = data.acquire && data.acquire.days !== null ? data.acquire.days : null;
   return `
     <details open class="by-city">
-      <summary>План продажи через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)}, в план не входят)` : ''}</summary>
+      <summary>План продажи через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)}, в автоплан не входят)` : ''}</summary>
       <div class="table-scroll"><table class="craft-recipe-table">
         <thead><tr><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-      <p class="calc-note">Партия ${fmtNum(data.quantity)} шт делится между городами пропорционально их дневному обороту; при доле рынка ${((p.marketShare ?? 1) * 100).toFixed(0)}% весь план занимает ${fmtDays(plan.days)} — так продаётся партия целиком, а не «по одному лучшему городу».${serverPlan ? ` В план вошли города с ценой не хуже лучшей больше чем на допуск (у ликвидных он динамически больше).${serverPlan.excluded.length ? ` Вне плана: ${serverPlan.excluded.map((e) => `${e.city} — ${e.reason}`).join('; ')}.` : ''}` : ''}</p>
+      <div class="plan-summary">
+        <div>Распределено: <strong class="${sumOk ? '' : 'scan-stale'}">${fmtNum(totalQty)} из ${fmtNum(data.quantity)} шт</strong>${sumOk ? '' : ' ⚠ (сумма плана не равна партии)'}
+          ${anyManual ? '<button type="button" class="plan-reset">Сбросить к автоплану</button>' : ''}</div>
+        <div>Срок распродажи по плану: <strong>${totalQty > 0 ? fmtDays(planDays) : '—'}</strong>${acquireDays !== null && totalQty > 0 ? ` · весь цикл (закупка ${fmtDays(acquireDays)} + продажа): <strong>${fmtDays(acquireDays + planDays)}</strong>` : ''}</div>
+        <div>Средняя цена: <strong>${avgPrice !== null ? fmtNum(avgPrice) : '—'}</strong> · после налога ${netPrice !== null ? fmtNum(netPrice) : '—'} · профит / шт: <strong class="${profitUnit !== null && profitUnit > 0 ? 'profit-pos' : 'profit-neg'}">${profitUnit !== null ? fmtNum(profitUnit) : '—'}</strong> · итого: <strong class="${profitUnit !== null && profitUnit > 0 ? 'profit-pos' : 'profit-neg'}">${profitUnit !== null ? fmtNum(profitUnit * totalQty) : '—'}</strong></div>
+        ${noVolume ? '<div class="scan-stale">⚠ В одном из городов нет сделок за период — срок продажи там посчитать нельзя.</div>' : ''}
+      </div>
+      <p class="calc-note">Партия делится между городами пропорционально дневному обороту; при доле рынка ${(marketShare * 100).toFixed(0)}% автоплан занимает ${fmtDays(auto.days)}.${serverPlan ? ` В автоплан вошли города с ценой не хуже лучшей больше чем на допуск (у ликвидных он динамически больше).${serverPlan.excluded.length ? ` Вне автоплана: ${serverPlan.excluded.map((e) => `${e.city} — ${e.reason}`).join('; ')}.` : ''}` : ''} Введи своё количество в любой город — всё пересчитается сразу.</p>
     </details>`;
 }
 
@@ -461,7 +515,7 @@ async function runCraftScan() {
   craftScanBtn.disabled = true;
   craftScanResult.innerHTML = 'Считаю себестоимость по всем рецептам, это может занять несколько секунд...';
   try {
-    const params = new URLSearchParams({ hours: craftScanHours.value, cities: activeCities().join(','), rrr: 'none', premium: premiumParam() });
+    const params = new URLSearchParams({ hours: readCustomizable(craftScanHours), cities: activeCities().join(','), rrr: 'none', premium: premiumParam() });
     const res = await fetch(`/api/craft-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -531,7 +585,7 @@ async function runBulkScan() {
   bulkScanEl.result.innerHTML = 'Считаю партионную модель по всем рецептам, это может занять несколько секунд...';
   try {
     const params = new URLSearchParams({
-      category: bulkScanEl.category.value, quantity: bulkScanEl.quantity.value || '1000', days: bulkScanEl.days.value,
+      category: bulkScanEl.category.value, quantity: bulkScanEl.quantity.value || '1000', days: readCustomizable(bulkScanEl.days),
       rrr: craftEl.rrr.value, cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/craft-bulk-opportunities?${params}`);
@@ -607,7 +661,7 @@ async function runLazyCrafter() {
   try {
     const params = new URLSearchParams({
       budget: lazyEl.budget.value || '0', share: lazyEl.share.value || '25', sellDays: lazyEl.sellDays.value || '1',
-      strategy: lazyEl.strategy.value, days: lazyEl.history.value, rrr: craftEl.rrr.value,
+      strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), rrr: craftEl.rrr.value,
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/lazy-crafter?${params}`);
@@ -674,8 +728,8 @@ async function runMarginScan() {
   try {
     const params = new URLSearchParams({
       category: marginEl.category.value, enchantMode: marginEl.enchantMode.value, liquidity: marginEl.liquidity.value,
-      minDaily: marginEl.minDaily.value || '0', days: marginEl.days.value, rrr: craftEl.rrr.value,
-      marketShare: document.getElementById('margin-market-share').value,
+      minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), rrr: craftEl.rrr.value,
+      marketShare: readCustomizable(document.getElementById('margin-market-share')),
       cities: activeCities().join(','), premium: premiumParam(),
     });
     const res = await fetch(`/api/craft-margin-opportunities?${params}`);
