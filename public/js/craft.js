@@ -1285,7 +1285,6 @@ marginEl.mode.addEventListener('change', syncMarginMode);
 let marginLastData = null;
 // Эксперимент ★: смена «часов в день» только перерисовывает таблицу, запроса нет
 marginEl.hoursPerDay.addEventListener('input', () => { if (marginLastData) renderMarginScan(marginLastData); });
-document.getElementById('margin-exp-fresh').addEventListener('change', () => { if (marginLastData) renderMarginScan(marginLastData); });   // колонка — чисто отображение
 syncMarginMode();
 
 async function runMarginScan() {
@@ -1298,9 +1297,6 @@ async function runMarginScan() {
       capital: readGroupedNumber(marginEl.capital) || '500000', minDays: marginEl.minDays.value || '1', materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom), ...refineRrrParams(marginEl.refineRrr, marginEl.refineRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
     });
-    // эксперименты — уходят на сервер только когда включены (без флагов запрос и поведение прежние)
-    if (document.getElementById('margin-exp-liquidity').checked) params.set('materialLiquidity', 'true');
-    if (document.getElementById('margin-exp-confidence').checked) params.set('confidenceMaterials', 'true');
     const res = await fetch(`/api/unified-scan?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1328,7 +1324,6 @@ function fmtAgeMinutes(minutes) {
 
 function renderMarginScan(data) {
   const patient = data.mode === 'patient';
-  const showFresh = document.getElementById('margin-exp-fresh').checked;   // эксперимент: колонка «Свежесть» (по умолчанию скрыта)
   const hoursPerDay = Math.max(parseFloat(marginEl.hoursPerDay.value) || 2, 0.25);
   const jugNote = data.jug && data.jug.lastPricePass
     ? `Кувшин: цены обновлены ${fmtAgeMinutes((Date.now() - data.jug.lastPricePass) / 60000)}, история — ${fmtAgeMinutes(data.jug.lastHistoryPass ? (Date.now() - data.jug.lastHistoryPass) / 60000 : null)}.`
@@ -1358,7 +1353,7 @@ function renderMarginScan(data) {
         <td data-sort-value="${r.premiumDays ?? ''}" title="28 000 000 ÷ дневной профит — только шкала масштаба">${premiumDays}</td>
         <td data-sort-value="${r.premiumDays === null ? '' : r.premiumDays * hoursPerDay}" title="Эксперимент ★: дней на премиум × ${hoursPerDay} ч торговли в день">${r.premiumDays === null ? '—' : fmtNum(r.premiumDays * hoursPerDay, 0)}</td>
         <td class="${confidenceClass(r.confidence)}" data-sort-value="${r.confidence}" title="Цифры стоят на ${r.tradeHours} разных часах торговли за период (индекс доверия = n / (n + 20))">${Math.round(r.confidence * 100)}%<br><small>${r.tradeHours} ч</small></td>
-        ${showFresh ? `<td class="exp-value ${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}" title="Эксперимент: возраст самой старой цены в расчёте (материалы и продажа). Влияет на порядок списка">${fmtAgeMinutes(r.freshMinutes)}${stale ? ' ⚠' : ''}</td>` : ''}
+        <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}" title="Возраст самой старой цены в расчёте (материалы и продажа). Влияет на порядок списка">${fmtAgeMinutes(r.freshMinutes)}${stale ? ' ⚠' : ''}</td>
         <td>${action}</td>
       </tr>`;
   }).join('');
@@ -1368,7 +1363,7 @@ function renderMarginScan(data) {
   marginEl.result.innerHTML = `
     <p class="calc-note">Просмотрено комбинаций: ${fmtNum(data.scanned)}. ${data.mode === 'patient' ? 'Терпеливый режим' : 'Мгновенный режим'}: ${sellNote}. Размер позиции — из капитала ${fmtNum(data.capital)} серебра (штук = капитал ÷ себестоимость); профит в день = профит с позиции ÷ max(дни цикла, минимум ${fmtDays(data.minDays)}) — «доли рынка» больше нет. Список отсортирован по дневному профиту с поправкой на свежесть котировок. Способ зачарования: ${data.enchantMode === 'after' ? 'после крафта рунами' : 'крафт из зачарованного сырья'}; проверенный диапазон зачарования: ${data.enchantRange}. ${data.blackMarket ? `Чёрный Рынок учтён (налог ${(data.bmTaxRate * 100).toFixed(1)}%, помечен ⚫). ` : ''}Возврат при крафте: ${(data.rrrOptions.gearRate * 100).toFixed(1)}%${data.rrrOptions.gearRrrCustom !== null ? ' (своя ставка)' : ''}. Материал берётся дешевле из двух путей: купить готовым или переработать самому (♻) из сырья и полуфабриката предыдущего тира с возвратом при переработке ${(data.refineRate * 100).toFixed(1)}%. ${jugNote} <b>★ — эксперимент</b> (под вопросом): профит/час и часы на премиум — просто профит/день и дни на премиум, пересчитанные под «часов в день на торговлю»; на отбор и порядок не влияют.</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит/день</th><th title="Эксперимент">Профит/час ★</th><th>Дней цикла</th><th>Дней на премиум</th><th title="Эксперимент">Часов на премиум ★</th><th>Доверие${data.experiments && data.experiments.confidenceMaterials ? ' <span class="exp-badge" title="Эксперимент: по слабому звену — предмету и сырью">ЭКСП.</span>' : ''}</th>${showFresh ? '<th class="exp-value">Свежесть <span class="exp-badge">ЭКСП.</span></th>' : ''}<th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Качество</th><th>Себестоимость</th><th>${patient ? 'Ср. цена продажи' : 'Buy Order'}</th><th>Оборот/день (рынок)</th><th>Штук</th><th>Профит/шт</th><th>Профит/день</th><th title="Эксперимент">Профит/час ★</th><th>Дней цикла</th><th>Дней на премиум</th><th title="Эксперимент">Часов на премиум ★</th><th title="По слабому звену — предмету и его сырью">Доверие</th><th>Свежесть</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   wireTableSort(marginEl.result.querySelector('table'), 'margin-scan');

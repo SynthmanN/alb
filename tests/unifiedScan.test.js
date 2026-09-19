@@ -351,7 +351,7 @@ describe('скан гира: купить готовый материал или
   });
 });
 
-describe('эксперименты (выключены по умолчанию): находки аудита скана', () => {
+describe('ликвидность сырья и доверие по сырью — штатно включены (отключаются явным =false)', () => {
   const both = { cities: 'Martlock,Lymhurst', mode: 'patient' };
   beforeEach(() => {
     seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 50 });
@@ -361,18 +361,17 @@ describe('эксперименты (выключены по умолчанию):
   });
   const sword = async (extra = {}) => (await scan({ ...both, ...extra })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
 
-  it('«Проверять ликвидность сырья»: без флага цену задаёт самый дешёвый город, с флагом — только город с реальным оборотом', async () => {
-    const plain = await sword();
-    expect(plain.cost).toBeCloseTo((16 * 50 + 8 * 100) * FEE, 6);                     // как было: слитки по 50 из города с одной сделкой
-    const checked = await sword({ materialLiquidity: 'true' });
+  it('ликвидность сырья: по умолчанию цену задаёт только город с реальным оборотом; materialLiquidity=false возвращает «самый дешёвый город»', async () => {
+    const checked = await sword();
     expect(checked.cost).toBeCloseTo((16 * 100 + 8 * 100) * FEE, 6);                   // слитки по 100 — из Martlock, где они реально торгуются
-    expect((await scan({ ...both, materialLiquidity: 'true' })).experiments.materialLiquidity).toBe(true);
+    const plain = await sword({ materialLiquidity: 'false' });
+    expect(plain.cost).toBeCloseTo((16 * 50 + 8 * 100) * FEE, 6);                     // слитки по 50 из города с одной сделкой
   });
-  it('«Доверие с учётом сырья»: без флага — по предмету, с флагом — слабое звено (минимум по предмету и материалам)', async () => {
+  it('«Доверие»: по умолчанию слабое звено (минимум по предмету и материалам); confidenceMaterials=false — только по предмету', async () => {
     jugDb.exec("DELETE FROM history WHERE item_id = 'T4_LEATHER'");
     upsertHistoryBatch(jugDb, [{ item_id: 'T4_LEATHER', location: 'Martlock', quality: 1, data: [{ timestamp: iso(NOW - 2 * 3600000), item_count: 500, avg_price: 100 }] }], NOW);   // кожа: сделки только в один час
-    const plain = await sword({ cities: 'Martlock' });
-    const weak = await sword({ cities: 'Martlock', confidenceMaterials: 'true' });
+    const plain = await sword({ cities: 'Martlock', confidenceMaterials: 'false' });
+    const weak = await sword({ cities: 'Martlock' });
     expect(plain.tradeHours).toBe(6);                                                  // предмет торгуется 6 разных часов (дней)
     expect(weak.tradeHours).toBe(1);                                                   // кожа — один час: слабое звено
     expect(weak.confidence).toBeCloseTo(1 / 21, 6);

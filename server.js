@@ -2310,9 +2310,9 @@ app.get('/api/unified-scan', (req, res) => {
     const capital = Math.min(Math.max(parseFloat(req.query.capital) || 500_000, 1000), 100_000_000_000);
     const minDays = Math.min(Math.max(parseFloat(req.query.minDays) || 1, 0.1), 60);
     const materialHours = parseMaterialHours(req);            // окно цен сырья (по умолчанию 24 ч), отдельное от «Истории» продажи
-    // ЭКСПЕРИМЕНТАЛЬНО (выключено по умолчанию — без флагов поведение прежнее): находки аудита скана.
-    const materialLiquidity = req.query.materialLiquidity === 'true';     // материал с почти нулевым оборотом не задаёт цену
-    const confidenceMaterials = req.query.confidenceMaterials === 'true'; // «Доверие» — слабое звено: минимум по предмету и по его материалам
+    // Находки аудита скана теперь — штатное поведение (ход 244–246; отключаются только явным =false, для сравнения «было/стало»):
+    const materialLiquidity = req.query.materialLiquidity !== 'false';     // материал с почти нулевым оборотом не задаёт цену
+    const confidenceMaterials = req.query.confidenceMaterials !== 'false'; // «Доверие» — слабое звено: минимум по предмету и по его материалам
     const rrrOpts = parseGearRrrOptions(req);
     // Чёрный Рынок — в обоих режимах: мгновенно — в его Buy Order, терпеливо — по средней цене сделок ЧР; налог свой (налог + Setup Fee).
     const blackMarket = req.query.blackMarket === 'true';
