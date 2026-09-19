@@ -1233,7 +1233,8 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
   }
 
   // Готовый предмет: спрос суммируется по всем выбранным городам, цена — средневзвешенная по объёму.
-  const finishedStats = inScope(cityStats(finishedHistory, finishedQueryId, days));
+  // filterQuality: история запрошена сразу по всем качествам (сканеры) — берём только ряды нужного качества
+  const finishedStats = inScope(cityStats(finishedHistory, finishedQueryId, days, opts.filterQuality ? opts.quality : undefined));
   let totalVol = 0;
   let weighted = 0;
   let bestSellCity = null;
@@ -1349,33 +1350,40 @@ app.get('/api/craft-bulk-opportunities', async (req, res) => {
 
     const [materialHistory, finishedHistory] = await Promise.all([
       fetchHistoryBatched(materialIds, days * 24, 1, locations),
-      fetchHistoryBatched(itemIds, days * 24, 1, locations),
+      // История готовых сразу по всем качествам: Отличное может продаваться в сотни раз быстрее Обычного.
+      fetchHistoryBatched(itemIds, days * 24, ALL_QUALITIES.join(','), locations),
     ]);
 
     const results = [];
     for (const itemId of itemIds) {
-      const plan = computeBulkPlan(
-        { itemId, enchant: 0, quality: 1, quantity, days, preset, rrr, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
-        materialHistory, finishedHistory,
-      );
-      if (!plan.hasAllMaterialPrices || plan.profitPerUnitLow === null || plan.profitPerUnitLow <= 0) continue;
-      if (plan.totalDaysEstimate === null) continue;
-      const profitPct = (plan.profitPerUnitLow / plan.effectiveCostPerUnit) * 100;
-      results.push({
-        itemId,
-        cost: plan.effectiveCostPerUnit,
-        marketAvgSellPrice: plan.marketAvgSellPrice,
-        bestSellCity: plan.bestSellCity,
-        profit: plan.profitPerUnitLow,
-        profitPct,
-        bottleneckResource: plan.bottleneckResource,
-        daysToAcquireBatch: plan.daysToAcquireBatch,
-        daysToSellBatch: plan.daysToSellBatch,
-        totalDays: plan.totalDaysEstimate,
-        avgDailySellVolume: plan.avgDailySellVolume,
-        quantity,
-        score: opportunityScore(profitPct, plan.avgDailySellVolume) * bulkCycleDecay(plan.totalDaysEstimate),
-      });
+      let bestForItem = null;
+      for (const quality of ALL_QUALITIES) {
+        const plan = computeBulkPlan(
+          { itemId, enchant: 0, quality, filterQuality: true, quantity, days, preset, rrr, taxRate, costCeiling: null, sellLow: null, sellHigh: null, queryCities },
+          materialHistory, finishedHistory,
+        );
+        if (!plan.hasAllMaterialPrices || plan.profitPerUnitLow === null || plan.profitPerUnitLow <= 0) continue;
+        if (plan.totalDaysEstimate === null) continue;
+        const profitPct = (plan.profitPerUnitLow / plan.effectiveCostPerUnit) * 100;
+        const row = {
+          itemId,
+          quality,
+          cost: plan.effectiveCostPerUnit,
+          marketAvgSellPrice: plan.marketAvgSellPrice,
+          bestSellCity: plan.bestSellCity,
+          profit: plan.profitPerUnitLow,
+          profitPct,
+          bottleneckResource: plan.bottleneckResource,
+          daysToAcquireBatch: plan.daysToAcquireBatch,
+          daysToSellBatch: plan.daysToSellBatch,
+          totalDays: plan.totalDaysEstimate,
+          avgDailySellVolume: plan.avgDailySellVolume,
+          quantity,
+          score: opportunityScore(profitPct, plan.avgDailySellVolume) * bulkCycleDecay(plan.totalDaysEstimate),
+        };
+        if (!bestForItem || row.score > bestForItem.score) bestForItem = row; // на предмет — лучшее по скору качество
+      }
+      if (bestForItem) results.push(bestForItem);
     }
     results.sort((a, b) => b.score - a.score);
     res.json(results.slice(0, 25));
@@ -1531,24 +1539,29 @@ app.get('/api/enchant-opportunities', async (req, res) => {
       for (let lvl = 0; lvl <= 3; lvl++) gearIds.add(gearEnchantId(item.id, lvl));
       for (let lvl = 1; lvl <= 3; lvl++) materialIds.add(enchantMaterialId(item.tier, lvl));
     }
-    const data = await fetchPricesBatched([...gearIds, ...materialIds], 1);
+    // Качество вещи сохраняется при зачаровании, поэтому цепочка «купить → зачаровать → продать» берётся в ОДНОМ
+    // качестве и не смешивается между сторонами. Гир — по всем 5 качествам, материалы (руны/души/реликвии) — Обычные.
+    const [gearData, materialData] = await Promise.all([
+      fetchGearPrices([...gearIds], ALL_QUALITIES),
+      fetchPricesBatched([...materialIds], 1),
+    ]);
 
-    const byItemCity = {};
-    for (const rec of data) {
+    const byItemCity = {}; // ключ `${id}|${quality}`
+    for (const rec of [...gearData, ...materialData]) {
       if (!allowedCities.has(normLocation(rec.city))) continue;
-      if (!byItemCity[rec.item_id]) byItemCity[rec.item_id] = [];
-      byItemCity[rec.item_id].push(rec);
+      const key = `${rec.item_id}|${rec.quality}`;
+      (byItemCity[key] || (byItemCity[key] = [])).push(rec);
     }
-    const cheapest = (id) => {
+    const cheapest = (id, quality = 1) => {
       let best = null;
-      for (const rec of byItemCity[id] || []) {
+      for (const rec of byItemCity[`${id}|${quality}`] || []) {
         if (rec.sell_price_min && (!best || rec.sell_price_min < best.price)) best = { city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date };
       }
       return best;
     };
-    const bestSellOf = (id) => {
+    const bestSellOf = (id, quality = 1) => {
       let best = null;
-      for (const rec of byItemCity[id] || []) {
+      for (const rec of byItemCity[`${id}|${quality}`] || []) {
         if (rec.buy_price_max && (!best || rec.buy_price_max > best.price)) best = { city: rec.city, price: rec.buy_price_max, date: rec.buy_price_max_date };
       }
       return best;
@@ -1560,20 +1573,23 @@ app.get('/api/enchant-opportunities', async (req, res) => {
       const count = ENCHANT_MATERIAL_COUNT[item.slot];
       for (let to = 1; to <= 3; to++) {
         const from = to - 1;
-        const buy = cheapest(gearEnchantId(item.id, from));
-        const material = cheapest(enchantMaterialId(item.tier, to));
-        const sell = bestSellOf(gearEnchantId(item.id, to));
-        if (!buy || !material || !sell) continue;
+        const material = cheapest(enchantMaterialId(item.tier, to), 1);
+        if (!material) continue;
+        for (const quality of ALL_QUALITIES) {
+        const buy = cheapest(gearEnchantId(item.id, from), quality);
+        const sell = bestSellOf(gearEnchantId(item.id, to), quality);
+        if (!buy || !sell) continue;
         const materialCost = count * material.price;
         const cost = buy.price + materialCost;
         const profit = sell.price * (1 - taxRate) - cost;
         if (profit <= 0) continue;
         candidates.push({
-          itemId: item.id, fromLevel: from, toLevel: to, buy,
+          itemId: item.id, quality, fromLevel: from, toLevel: to, buy,
           materialId: enchantMaterialId(item.tier, to), materialCount: count, materialPrice: material.price, materialCost,
           bestSell: sell, taxRate, cost, profit, profitPct: (profit / cost) * 100,
           freshMinutes: dealAgeMinutes([buy.date, material.date, sell.date], now),
         });
+        }
       }
     }
 
@@ -1582,15 +1598,21 @@ app.get('/api/enchant-opportunities', async (req, res) => {
     let result = candidates;
     try {
       const targetIds = [...new Set(candidates.map((c) => gearEnchantId(c.itemId, c.toLevel)))];
-      const history = await fetchHistoryBatched(targetIds, hours, 1, locations);
-      result = candidates
-        .map((c) => ({ ...c, volume: totalVolume(history, gearEnchantId(c.itemId, c.toLevel), [c.bestSell.city]) }))
+      const history = await fetchHistoryBatched(targetIds, hours, ALL_QUALITIES.join(','), locations);
+      const scored = candidates
+        // Ликвидность — целевого уровня, этого качества и в городе продажи.
+        .map((c) => ({ ...c, volume: totalVolume(history, gearEnchantId(c.itemId, c.toLevel), [c.bestSell.city], c.quality) }))
         .filter((c) => c.volume >= minVolume)
         .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
+      // Одна строка на (вещь, шаг): лучшее по скору качество.
+      const seen = new Set();
+      result = scored.filter((c) => { const k = `${c.itemId}|${c.toLevel}`; return seen.has(k) ? false : (seen.add(k), true); });
     } catch (err) {
       console.error('не удалось проверить историю для сканера зачарования:', err.message);
-      result = candidates.map((c) => ({ ...c, volume: null, score: 0 })).sort((a, b) => b.profitPct - a.profitPct);
+      const seenFallback = new Set();
+      result = candidates.map((c) => ({ ...c, volume: null, score: 0 })).sort((a, b) => b.profitPct - a.profitPct)
+        .filter((c) => { const k = `${c.itemId}|${c.toLevel}`; return seenFallback.has(k) ? false : (seenFallback.add(k), true); });
     }
     const top = result.slice(0, 25);
     enchantScanCache = { key: cacheKey, ts: Date.now(), data: top };

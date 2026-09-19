@@ -231,6 +231,8 @@ const SITE_PAGES = [
   { href: 'masteries.html', label: '🎖 Мастерки' },
 ];
 
+const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
+
 // Список предметов нужен почти всем страницам — грузим один раз, страницы ждут itemsReady.
 const itemsReady = fetch('/api/items').then((r) => r.json()).then((items) => { ALL_ITEMS = items; });
 

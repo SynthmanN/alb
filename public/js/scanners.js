@@ -162,6 +162,7 @@ function renderEnchantScanResult(rows) {
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
         <td data-sort-value="${r.toLevel}">.${r.fromLevel} → .${r.toLevel}</td>
+        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality] || '—'}</td>
         <td>${r.buy.city}: ${fmt(r.buy.price)}</td>
         <td data-sort-value="${r.materialCost}">${r.materialCount} × ${itemName(r.materialId)} = ${fmt(r.materialCost)}</td>
         <td>${r.bestSell.city}: ${fmt(r.bestSell.price)}</td>
@@ -173,7 +174,7 @@ function renderEnchantScanResult(rows) {
   enchantScanResult.innerHTML = `
     <p class="calc-note">Профит — после налога с продажи (${(rows[0].taxRate * 100).toFixed(0)}%). Себестоимость = вещь уровнем ниже + материалы зачарования.</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Шаг</th><th>Купить</th><th>Материалы</th><th>Продать</th><th>Профит</th><th>Объём</th><th>Свежесть</th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Шаг</th><th>Качество</th><th>Купить</th><th>Материалы</th><th>Продать</th><th>Профит</th><th>Объём</th><th>Свежесть</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>
   `;

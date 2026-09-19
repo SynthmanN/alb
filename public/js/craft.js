@@ -181,7 +181,7 @@ function qualityComparisonHtml(data) {
     const cls = r.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
     const slow = r.daysToSellBatch !== null && r.daysToSellBatch > 30;
     return `<tr class="${r.quality === data.quality ? 'calc-best-row' : ''}">
-      <td>${QUALITY_NAMES_CRAFT[r.quality]}${r.quality === best.quality ? ' ⚡' : ''}</td>
+      <td>${QUALITY_NAMES[r.quality]}${r.quality === best.quality ? ' ⚡' : ''}</td>
       <td>${fmtNum(r.avgSellPrice)}</td><td>${fmtNum(r.avgDailyVolume, 1)}</td>
       <td class="${slow ? 'scan-stale' : ''}">${fmtDays(r.daysToSellBatch)}${slow ? ' ⚠' : ''}</td><td class="${cls}">${fmtNum(r.profitPerUnit)}</td></tr>`;
   }).join('');
@@ -194,7 +194,6 @@ function qualityComparisonHtml(data) {
       </table></div>
     </details>`;
 }
-const QUALITY_NAMES_CRAFT = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
 
 // Порог продажи: все города, где терпеливая цена не ниже порога, — партию можно развезти по нескольким рынкам.
 function thresholdHtml(p) {
@@ -422,7 +421,7 @@ function renderCraftScanResult(rows) {
     return `
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
-        <td data-sort-value="${r.quality}">${QUALITY_NAMES_CRAFT[r.quality] || '—'}</td>
+        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality] || '—'}</td>
         <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
         <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
         <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
@@ -494,11 +493,12 @@ function renderBulkScanResult(rows) {
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}</td>
         <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
+        <td data-sort-value="${r.quality}">${QUALITY_NAMES[r.quality] || '—'}</td>
         <td>${r.bestSellCity.city}: ${Math.round(r.bestSellCity.avgPrice).toLocaleString('ru-RU')}</td>
         <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
         <td>${itemName(r.bottleneckResource)}</td>
         <td class="${long ? 'scan-stale' : ''}" data-sort-value="${r.totalDays}">${r.totalDays.toFixed(1)} дн.${long ? ' ⚠' : ''}</td>
-        <td><button class="scan-add-btn" data-id="${item.id}" data-quantity="${r.quantity}">в план партии</button></td>
+        <td><button class="scan-add-btn" data-id="${item.id}" data-quantity="${r.quantity}" data-quality="${r.quality}">в план партии</button></td>
       </tr>
     `;
   }).join('');
@@ -506,7 +506,7 @@ function renderBulkScanResult(rows) {
   bulkScanEl.result.innerHTML = `
     <p class="calc-note">Цены — средневзвешенные за период, профит — после налога с продажи. «Дней» — закупка узкого материала + распродажа партии из ${rows[0].quantity.toLocaleString('ru-RU')} шт.</p>
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Предмет</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Узкое место</th><th>Дней</th><th></th></tr></thead>
+      <thead><tr><th>Предмет</th><th>Себестоимость/шт</th><th>Качество</th><th>Продать</th><th>Профит/шт</th><th>Узкое место</th><th>Дней</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>
   `;
@@ -517,6 +517,7 @@ function renderBulkScanResult(rows) {
       if (!item) return;
       selectCraftItem(item);
       bulkEl.quantity.value = btn.dataset.quantity;
+      if (btn.dataset.quality) craftEl.quality.value = btn.dataset.quality;
       bulkEl.panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   });

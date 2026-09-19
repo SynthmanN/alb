@@ -406,3 +406,30 @@ describe('терпеливая продажа: качество и разбив�
     expect(p.byCity[0].profitPerUnit).toBeCloseTo(2000 - 500, 6);
   });
 });
+
+describe('план партии: фильтр качества для сканеров', () => {
+  const itemId = Object.keys(RECIPES).find((id) => id.startsWith('T4_') && RECIPES[id].resources.length >= 2);
+  const recipe = RECIPES[itemId];
+  const materialHistory = recipe.resources.map((r) => ({ item_id: r.resource, location: 'Martlock', data: [{ item_count: 70, avg_price: 100 }] }));
+  const finishedHistory = [
+    { item_id: itemId, location: 'Martlock', quality: 1, data: [{ item_count: 7, avg_price: 200000 }] },
+    { item_id: itemId, location: 'Martlock', quality: 4, data: [{ item_count: 700, avg_price: 300000 }] },
+  ];
+  const base = {
+    itemId, enchant: 0, quantity: 100, days: 7, preset: RRR_PRESETS[0], rrr: 0, taxRate: 0, costCeiling: null,
+    sellLow: null, sellHigh: null, queryCities: ['Martlock'], filterQuality: true,
+  };
+  it('с filterQuality берутся только ряды нужного качества: спрос и цена у Отличного и Обычного разные', () => {
+    const q1 = computeBulkPlan({ ...base, quality: 1 }, materialHistory, finishedHistory);
+    const q4 = computeBulkPlan({ ...base, quality: 4 }, materialHistory, finishedHistory);
+    expect(q1.avgDailySellVolume).toBe(1);
+    expect(q1.marketAvgSellPrice).toBeCloseTo(200000, 6);
+    expect(q4.avgDailySellVolume).toBe(100);
+    expect(q4.marketAvgSellPrice).toBeCloseTo(300000, 6);
+    expect(q4.daysToSellBatch).toBeLessThan(q1.daysToSellBatch / 50);
+  });
+  it('без filterQuality (одиночный план, история запрошена под одно качество) ряды не отбрасываются', () => {
+    const plan = computeBulkPlan({ ...base, filterQuality: false, quality: 1 }, materialHistory, finishedHistory);
+    expect(plan.avgDailySellVolume).toBe(101);
+  });
+});
