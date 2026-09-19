@@ -28,6 +28,7 @@ const manualSalePlan = new Map();  // город -> штук, введённых
 const manualMaterialPrice = new Map(); // id материала -> своя цена, вписанная в таблице материалов (сбрасывается при новом расчёте)
 const purchaseLots = new Map();       // id материала -> [{ qty, price }]: реально купленные стаки (режим «Лог закупок по лотам»)
 let manualSellPrice = null;         // своя цена продажи готового предмета в мгновенном блоке «Продажа в Buy Order»
+const manualCityPrice = new Map();  // город -> своя цена продажи (видел в игре): для городов без сделок за период и для правки цены любого города
 const saleCityToggles = new Map(); // город -> true/false: включён/выключен в плане чекбоксом (пусто — автоплан)
 let saleStrategy = 'profit';       // распределение партии: 'profit' — максимизировать профит по индексу города (по умолчанию), 'even' — равный срок продажи
 const PROFIT_STRATEGY_HORIZON = 1.5; // «в пределах разумного»: при стратегии «профит» город может держать партию до 1.5× срока равномерного плана
@@ -110,6 +111,8 @@ async function initCraft() {
   craftEl.categoryFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
   craftEl.tierFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
   craftEl.run.addEventListener('click', () => runCraftCalc());
+  craftEl.result.addEventListener('click', onCopyClick);
+  craftEl.selected.addEventListener('click', onCopyClick);
   // Любая правка параметров, которые считает сервер (количество, доля рынка, окна, порог, зачарование, качество, галочки…), сама
   // пересчитывает результат. Ставки возврата и свои цены/лоты/план продажи пересчитываются на месте, без запроса (см. rerender выше).
   const AUTO_FIELDS = new Set(['craft-enchant', 'craft-quality', 'craft-quantity', 'craft-enchant-after', 'craft-market-share', 'craft-price-tolerance', 'craft-sell-threshold',
@@ -216,7 +219,7 @@ function selectCraftItem(item, keep = false) {
   const tierSwitch = tiers.length > 1
     ? `<label class="tier-switch">Тир <select id="craft-tier-switch">${tiers.map((t) => `<option value="${t.id}" ${t.id === item.id ? 'selected' : ''}>T${t.tier}</option>`).join('')}</select></label>`
     : '';
-  craftEl.selected.innerHTML = `<img id="craft-selected-icon" src="${iconUrl(item.id, 128, 0, 1)}" alt="" onerror="this.style.visibility='hidden'" /><strong>${item.name}</strong>${tierSwitch}`;
+  craftEl.selected.innerHTML = `<img id="craft-selected-icon" src="${iconUrl(item.id, 128, 0, 1)}" alt="" onerror="this.style.visibility='hidden'" /><strong class="copyable" data-copy-id="${item.id}" data-copy-gear="1" title="Клик — скопировать название для поиска в аукционе">${item.name}</strong>${tierSwitch}`;
   const sw = document.getElementById('craft-tier-switch');
   if (sw) sw.addEventListener('change', () => switchCraftTier(sw.value));
 
@@ -227,8 +230,37 @@ function selectCraftItem(item, keep = false) {
 
   craftEl.controls.style.display = 'grid';
   refreshSelectedIcon();
+  refreshGearBonusHint();
   document.getElementById('craft-extra').style.display = 'block';
   if (!keep) { craftEl.result.innerHTML = ''; lastCraftData = null; }   // новый предмет — старый результат не пересчитываем
+}
+
+// Где крафтить гир, чтобы получить бонус города (максимальный возврат): у каждого типа предмета свой бонус-город (меч — Лимхёрст, топор —
+// Мартлок…), а не один на все: по игровой таблице специализаций крафта. Это только подсказка — ставку выбираешь сам, где ты стоишь, инструмент не гадает.
+const GEAR_BONUS_BY_WEAPON_GROUP = {
+  COMBAT_SWORDS: 'Лимхёрст', COMBAT_BOWS: 'Лимхёрст', COMBAT_ARCANESTAFFS: 'Лимхёрст', COMBAT_AXES: 'Мартлок', COMBAT_QUARTERSTAFFS: 'Мартлок', COMBAT_FROSTSTAFFS: 'Мартлок',
+  COMBAT_HAMMERS: 'Форт Стерлинг', COMBAT_SPEARS: 'Форт Стерлинг', COMBAT_HOLYSTAFFS: 'Форт Стерлинг', COMBAT_MACES: 'Тетфорд', COMBAT_FIRESTAFFS: 'Тетфорд', COMBAT_NATURESTAFFS: 'Тетфорд',
+  COMBAT_CROSSBOWS: 'Бридгуотч', COMBAT_DAGGERS: 'Бридгуотч', COMBAT_CURSEDSTAFFS: 'Бридгуотч', COMBAT_SHAPESHIFTER: 'Каэрлеон', COMBAT_KNUCKLES: 'Каэрлеон',
+  COMBAT_BOOKS: 'Мартлок', COMBAT_TORCHES: 'Мартлок', COMBAT_SHIELDS: 'Мартлок',
+};
+const GEAR_BONUS_BY_ARMOR = {
+  ARMOR_CLOTH: 'Форт Стерлинг', HEAD_CLOTH: 'Тетфорд', SHOES_CLOTH: 'Бридгуотч', ARMOR_LEATHER: 'Тетфорд', HEAD_LEATHER: 'Лимхёрст', SHOES_LEATHER: 'Лимхёрст',
+  ARMOR_PLATE: 'Бридгуотч', HEAD_PLATE: 'Форт Стерлинг', SHOES_PLATE: 'Мартлок',
+};
+function gearBonusCity(item) {
+  if (!item) return null;
+  if (item.category === 'cape') return 'Бресилиен';
+  const fam = familyOf(item.id);
+  if (item.category === 'armor') { const m = fam.match(/^(ARMOR|HEAD|SHOES)_(CLOTH|LEATHER|PLATE)/); return m ? GEAR_BONUS_BY_ARMOR[`${m[1]}_${m[2]}`] || null : null; }
+  const group = weaponGroups.find((g) => g.families.includes(fam));
+  return group ? GEAR_BONUS_BY_WEAPON_GROUP[group.id] || null : null;
+}
+function refreshGearBonusHint() {
+  const el = document.getElementById('craft-gear-bonus');
+  if (!el) return;
+  const city = gearBonusCity(craftSelectedItem);
+  el.textContent = city ? `бонус: ${city}` : '';
+  el.title = city ? `Город, где крафт этого предмета даёт бонус к возврату (пресеты «бонус-город»). Ставку выбираешь ты — инструмент не гадает, где ты стоишь` : '';
 }
 
 // Быстрая смена тира без повторного поиска: тот же предмет на другом тире, зачарование/качество/количество те же.
@@ -275,6 +307,7 @@ async function runCraftCalc(keepManual = false) {
     manualSalePlan.clear();
     saleCityToggles.clear();
     if (!keepManual) {
+      manualCityPrice.clear();
       manualMaterialPrice.clear();
       purchaseLots.clear();
       manualSellPrice = null;
@@ -316,7 +349,7 @@ function applyManualPrices(data) {
   // идут уже по выбранному источнику и по ставке возврата гира.
   const newRefine = currentRefineRate();
   const refineChanged = data.refineRate !== undefined && newRefine !== null && Math.abs(newRefine - data.refineRate) > 1e-9;
-  if (!hasOwnPrices() && manualSellPrice === null && !rateChanged && !refineChanged) return data;
+  if (!hasOwnPrices() && manualSellPrice === null && manualCityPrice.size === 0 && !rateChanged && !refineChanged) return data;
   const d = { ...data, recipe: data.recipe.map((r) => ({ ...r })) };
   if (refineChanged) d.refineRate = newRefine;
   if (rateChanged) d.rrrPreset = { ...data.rrrPreset, gearRate: newRate, rrr: newRate, label: `возврат при крафте: ${(newRate * 100).toFixed(1)}%${craftEl.gearRrr.value === 'custom' ? ' (своя ставка)' : ''}` };
@@ -386,16 +419,27 @@ function applyManualPrices(data) {
   }
   d.profitPerUnit = d.netSellPrice === null || d.netSellPrice === undefined ? null : d.netSellPrice - effective;
   d.totalProfit = d.profitPerUnit === null ? null : d.profitPerUnit * data.quantity;
-  // Терпеливая продажа: цены продажи те же, но себестоимость другая — профит городов, плана и итога сдвигается на разницу
-  if (data.patientSell && costDelta !== 0) {
+  // Терпеливая продажа: цены продажи те же, но себестоимость другая — профит городов, плана и итога сдвигается на разницу;
+  // своя цена города (вписана в план продажи) заменяет среднюю цену истории и пересчитывает чистую цену и профит города.
+  if (data.patientSell && (costDelta !== 0 || manualCityPrice.size > 0)) {
     const ps = { ...data.patientSell };
     const index = (profit, vol) => (profit > 0 && effective > 0 ? ((profit / effective) * 100) * Math.log2(2 + vol) : 0);
-    ps.byCity = ps.byCity.map((c) => { const profit = c.profitPerUnit - costDelta; return { ...c, profitPerUnit: profit, profitIndex: index(profit, c.avgDailyVolume) }; });
+    ps.byCity = ps.byCity.map((c) => {
+      const own = manualCityPrice.get(c.city);
+      if (own !== undefined) {
+        const net = own * (1 - c.taxRate);
+        const profit = net - effective;
+        return { ...c, avgSellPrice: own, netPrice: net, profitPerUnit: profit, profitIndex: index(profit, c.avgDailyVolume), ownPrice: true };
+      }
+      if (c.noData) return c;
+      const profit = c.profitPerUnit - costDelta;
+      return { ...c, profitPerUnit: profit, profitIndex: index(profit, c.avgDailyVolume) };
+    });
     ps.profitPerUnit = data.patientSell.profitPerUnit - costDelta;
     if (ps.plan) ps.plan = { ...ps.plan, profitPerUnit: ps.plan.profitPerUnit === undefined ? undefined : ps.plan.profitPerUnit - costDelta };
     d.patientSell = ps;
   }
-  d.manualPrices = hasOwnPrices() || manualSellPrice !== null;
+  d.manualPrices = hasOwnPrices() || manualSellPrice !== null || manualCityPrice.size > 0;
   return d;
 }
 
@@ -424,7 +468,7 @@ function renderCraftResult(rawData) {
     const subtotal = missing ? null : r.cheapestPrice * needed;
     return `
       <tr>
-        <td>${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
+        <td class="copyable" data-copy-id="${r.queryId || r.resource}" title="Клик — скопировать название для поиска в аукционе"><img class="item-icon-sm" src="${iconUrl(r.queryId || r.resource, 40)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
         <td>${needed.toLocaleString('ru-RU')}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU')}</small>` : ''}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : `${r.materialSource === 'refine' && !r.manualPrice ? refineSourceHtml(r) : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}${r.priceSource === 'quote' ? '<br><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>' : ''}${craftEl.purchaseLog.checked ? lotLogHtml(r) : `<br><input class="manual-price ${r.manualPrice ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${r.resource}" placeholder="своя цена" value="${manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : ''}" title="Видишь другую цену в игре — впиши её: расчёт обновится сразу" />`}`}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
@@ -594,6 +638,52 @@ function bindPurchaseLog() {
   }));
 }
 
+// --- Копирование названия для поиска в аукционе ---
+// Клик по предмету (выбранный гир, материал в таблице рецепта или плана закупки) копирует его игровое название без тира («Палаш (знаток)»,
+// «Слиток стали»): аукцион ищет по названию, а не по техническому id. Зачарование и качество в игре — отдельные фильтры интерфейса, а не часть
+// строки поиска, поэтому вместо них в подсказке говорим, какие фильтры выбрать.
+const QUALITY_WORDS = { 1: 'обычное', 2: 'хорошее', 3: 'выдающееся', 4: 'отличное', 5: 'шедевр' };
+function auctionName(id) {
+  const base = String(id).replace(/_LEVEL\d@\d$/, '').replace(/@\d$/, '');
+  return itemName(base).replace(/^T\d+\s+/, '');
+}
+function auctionFilters(el) {
+  const id = String(el.dataset.copyId);
+  let enchant = 0;
+  let quality = 1;
+  if (el.dataset.copyGear) { enchant = Number(craftEl.enchant.value) || 0; quality = Number(craftEl.quality.value) || 1; }
+  else { const m = id.match(/_LEVEL(\d)@\d$/) || id.match(/@(\d)$/); if (m) enchant = Number(m[1]); }
+  const parts = [];
+  if (enchant > 0) parts.push(`зачарование ${enchant}`);
+  if (quality > 1) parts.push(`качество ${QUALITY_WORDS[quality]}`);
+  return parts;
+}
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+}
+async function onCopyClick(e) {
+  const el = e.target.closest('[data-copy-id]');
+  if (!el || e.target.closest('select, input, button, a')) return;
+  const name = auctionName(el.dataset.copyId);
+  const filters = auctionFilters(el);
+  const ok = await copyText(name);
+  showToast(ok ? `Скопировано: ${name}${filters.length ? ` — в поиске аукциона выбери фильтры: ${filters.join(', ')}` : ''}` : 'Не удалось скопировать: браузер запретил доступ к буферу обмена', ok ? 'ok' : 'error');
+}
+
 // Свои цены: значение запоминаем сразу, перерисовку откладываем (быстрый ввод не теряется), фокус и курсор возвращаем на то же поле.
 function bindManualPrices() {
   let timer = null;
@@ -617,7 +707,14 @@ function bindManualPrices() {
   const sell = craftEl.result.querySelector('#manual-sell-price');
   if (sell) sell.addEventListener('input', () => commit(sell, () => { const v = parseFloat(sell.value); manualSellPrice = Number.isFinite(v) && v >= 0 ? v : null; }));
   const reset = craftEl.result.querySelector('.manual-reset');
-  if (reset) reset.addEventListener('click', () => { manualMaterialPrice.clear(); purchaseLots.clear(); manualSellPrice = null; renderCraftResult(lastCraftData); });
+  if (reset) reset.addEventListener('click', () => { manualMaterialPrice.clear(); purchaseLots.clear(); manualSellPrice = null; manualCityPrice.clear(); renderCraftResult(lastCraftData); });
+}
+
+// Первая правка набора городов фиксирует набор автоплана как «галочки», дальше набор ведёт пользователь.
+function ensureCityToggles() {
+  if (saleCityToggles.size > 0) return;
+  const auto = lastCraftData.patientSell && lastCraftData.patientSell.plan ? lastCraftData.patientSell.plan.cities.map((c) => c.city) : [];
+  for (const c of lastCraftData.patientSell.byCity) saleCityToggles.set(c.city, auto.includes(c.city));
 }
 
 // Ручное редактирование плана продажи: ввод количества в любом городе пересчитывает срок, цикл и профит в реальном времени.
@@ -627,7 +724,11 @@ function bindSalePlanEditing() {
     inp.addEventListener('input', () => {
       // значение запоминаем сразу (иначе быстрый ввод в два города потеряет первый), а перерисовку откладываем
       manualSalePlan.set(inp.dataset.city, Math.max(Math.floor(Number(inp.value) || 0), 0));
-      if (saleCityToggles.size > 0) saleCityToggles.set(inp.dataset.city, true); // вписанное количество включает город в план
+      // вписанное количество включает город в план (в том числе тот, что автоплан не взял — например, город без сделок со своей ценой)
+      if (Number(inp.value) > 0) {
+        ensureCityToggles();
+        saleCityToggles.set(inp.dataset.city, true);
+      }
       const city = inp.dataset.city;
       const caret = inp.selectionStart;
       clearTimeout(timer);
@@ -641,19 +742,30 @@ function bindSalePlanEditing() {
   craftEl.result.querySelectorAll('input.plan-toggle').forEach((box) => {
     box.addEventListener('change', () => {
       // первое включение/выключение фиксирует набор городов автоплана, дальше набор ведёт пользователь
-      if (saleCityToggles.size === 0) {
-        const auto = lastCraftData.patientSell && lastCraftData.patientSell.plan ? lastCraftData.patientSell.plan.cities.map((c) => c.city) : [];
-        for (const c of lastCraftData.patientSell.byCity) saleCityToggles.set(c.city, auto.includes(c.city));
-      }
+      ensureCityToggles();
       saleCityToggles.set(box.dataset.city, box.checked);
       if (!box.checked) manualSalePlan.delete(box.dataset.city);
       renderCraftResult(lastCraftData);
     });
   });
+  craftEl.result.querySelectorAll('input.plan-city-price').forEach((inp) => {
+    inp.addEventListener('input', () => {
+      const v = parseFloat(inp.value);
+      if (Number.isFinite(v) && v >= 0) manualCityPrice.set(inp.dataset.city, v); else manualCityPrice.delete(inp.dataset.city);
+      const city = inp.dataset.city;
+      const caret = inp.selectionStart;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        renderCraftResult(lastCraftData);
+        const again = craftEl.result.querySelector(`input.plan-city-price[data-city="${city}"]`);
+        if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (e) { /* number input */ } }
+      }, 350);
+    });
+  });
   const strategy = craftEl.result.querySelector('#sale-strategy');
   if (strategy) strategy.addEventListener('change', () => { saleStrategy = strategy.value; renderCraftResult(lastCraftData); });
   const reset = craftEl.result.querySelector('.plan-reset');
-  if (reset) reset.addEventListener('click', () => { manualSalePlan.clear(); saleCityToggles.clear(); renderCraftResult(lastCraftData); });
+  if (reset) reset.addEventListener('click', () => { manualSalePlan.clear(); saleCityToggles.clear(); manualCityPrice.clear(); renderCraftResult(lastCraftData); });
 }
 
 // Сравнение по тирам: себестоимость и лучшая цена продажи в Buy Order для каждого тира того же предмета.
@@ -717,17 +829,17 @@ function acquisitionRowsData(data) {
         const role = i === 0 ? 'raw' : 'prev';
         const needed = Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate));
         const srv = planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role);
-        rows.push({ key: cp.id, name: `${itemLabel(cp.id)} <small>(${role === 'raw' ? 'сырьё' : 'полуфабрикат пред. тира'} → ${r.resourceName})</small>`, needed, srv, fallbackPrice: cp.price, fallbackCity: cp.city });
+        rows.push({ key: cp.id, id: cp.id, name: `${itemLabel(cp.id)} <small>(${role === 'raw' ? 'сырьё' : 'полуфабрикат пред. тира'} → ${r.resourceName})</small>`, needed, srv, fallbackPrice: cp.price, fallbackCity: cp.city });
       });
     } else {
       const srv = planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy');
-      rows.push({ key: r.resource, name: r.resourceName, needed: r.neededToBuy, srv, fallbackPrice: r.buyPrice || r.cheapestPrice, fallbackCity: r.cheapestCity });
+      rows.push({ key: r.resource, id: r.queryId || r.resource, name: r.resourceName, needed: r.neededToBuy, srv, fallbackPrice: r.buyPrice || r.cheapestPrice, fallbackCity: r.cheapestCity });
     }
   }
   if (data.enchantAfterCraft) {
     for (const st of data.enchantAfterCraft.steps) {
       const srv = planFor((a) => a.resource === st.materialId);
-      rows.push({ key: st.materialId, name: `${st.materialName} <small>(зачарование .${st.level - 1} → .${st.level})</small>`, needed: st.count * data.quantity, srv, fallbackPrice: st.cheapestPrice, fallbackCity: st.cheapestCity });
+      rows.push({ key: st.materialId, id: st.materialId, name: `${st.materialName} <small>(зачарование .${st.level - 1} → .${st.level})</small>`, needed: st.count * data.quantity, srv, fallbackPrice: st.cheapestPrice, fallbackCity: st.cheapestCity });
     }
   }
   return rows;
@@ -751,7 +863,7 @@ function acquisitionPlanHtml(data) {
       ? lotLogHtml({ resource: row.key, needed: row.needed }, 'plan')
       : `<input class="manual-price ${own !== undefined ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${row.key}" data-scope="plan" placeholder="своя цена" value="${manualMaterialPrice.has(row.key) ? manualMaterialPrice.get(row.key) : ''}" title="Видишь другую цену в игре — впиши её: расчёт обновится сразу" />`;
     return `<tr>
-        <td>${row.name}</td>
+        <td class="copyable" data-copy-id="${row.id}" title="Клик — скопировать название для поиска в аукционе"><img class="item-icon-sm" src="${iconUrl(row.id, 40)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${row.name}</td>
         <td>${fmtNum(row.needed)}</td>
         <td class="plan-cities">${cities}</td>
         <td data-sort-value="${unit ?? ''}">${unit === null || unit === undefined ? 'нет цены' : `${fmtNum(unit, unit < 100 ? 1 : 0)}${own !== undefined ? ' <small class="is-manual-note">своя</small>' : ''}`}</td>
@@ -862,7 +974,9 @@ function salePlanState(p, data) {
 
   const anyToggle = saleCityToggles.size > 0;
   const enabledOf = (c) => (saleCityToggles.has(c.city) ? saleCityToggles.get(c.city) : auto.rows.has(c.city));
-  const enabled = p.byCity.filter((c) => c.avgDailyVolume > 0 && enabledOf(c));
+  // город без оборота попадает в план только с вписанным количеством (и своей ценой — иначе цены нет)
+  const sellable = (c) => (c.avgDailyVolume > 0 || manualSalePlan.has(c.city)) && c.avgSellPrice !== null;
+  const enabled = p.byCity.filter((c) => sellable(c) && enabledOf(c));
   let baseQty = new Map();
   if (anyToggle || saleStrategy === 'profit') {
     const fixed = enabled.filter((c) => manualSalePlan.has(c.city));
@@ -874,7 +988,7 @@ function salePlanState(p, data) {
   }
   const rowsData = p.byCity.map((c) => {
     const a = auto.rows.get(c.city);
-    const isEnabled = enabledOf(c) && (c.avgDailyVolume > 0 || manualSalePlan.has(c.city));
+    const isEnabled = enabledOf(c) && sellable(c);
     const manual = manualSalePlan.has(c.city) && isEnabled;
     const qty = !isEnabled ? 0 : manual ? manualSalePlan.get(c.city) : (baseQty.get(c.city) || 0);
     const days = qty > 0 && c.avgDailyVolume > 0 ? qty / (c.avgDailyVolume * marketShare) : 0;
@@ -882,7 +996,7 @@ function salePlanState(p, data) {
   });
   const totalQty = rowsData.reduce((sum, r) => sum + r.qty, 0);
   const planDays = rowsData.reduce((m, r) => Math.max(m, r.days), 0);       // города продают параллельно — срок по самому медленному
-  const avgPrice = totalQty > 0 ? rowsData.reduce((sum, r) => sum + r.c.avgSellPrice * r.qty, 0) / totalQty : null;
+  const avgPrice = totalQty > 0 ? rowsData.reduce((sum, r) => sum + (r.c.avgSellPrice || 0) * r.qty, 0) / totalQty : null;
   // Чистая цена — по налогу КАЖДОГО города (Чёрный Рынок берёт свой, выше); одну общую ставку на смесь цен не применяем.
   const cityNet = (c) => (c.netPrice !== undefined ? c.netPrice : c.avgSellPrice * (1 - data.taxRate - (data.setupFeeRate || 0)));
   const netPrice = avgPrice === null ? null : rowsData.reduce((sum, r) => sum + cityNet(r.c) * r.qty, 0) / totalQty;
@@ -897,12 +1011,16 @@ function byCityHtml(p, data, st) {
   const { minPrice, marketShare, serverPlan, auto, anyManual, rowsData, totalQty, planDays, avgPrice, netPrice, profitUnit, noVolume } = st;
 
   const rows = rowsData.map(({ c, qty, days, manual, tolerance, inPlan, enabled: isOn }) => {
-    const dim = (minPrice !== null && c.avgSellPrice < minPrice && !manual) || !isOn;
+    const priced = c.avgSellPrice !== null;                 // у города без сделок за период цены нет, пока не впишешь свою
+    const dim = (priced && minPrice !== null && c.avgSellPrice < minPrice && !manual) || !isOn;
     const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
-    return `<tr class="${dim ? 'below-threshold' : ''}"><td class="plan-check"><input type="checkbox" class="plan-toggle" data-city="${c.city}" ${isOn ? 'checked' : ''} ${c.avgDailyVolume > 0 ? '' : 'disabled'} title="${c.avgDailyVolume > 0 ? 'Включить/выключить город в плане продажи — партия пересчитается' : 'В этом городе нет сделок за период'}" /></td><td>${c.blackMarket ? `<span title="Чёрный Рынок: другой налог (${(c.taxRate * 100).toFixed(1)}%), не обычный город">⚫ ${c.city}</span>` : c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
-      <td data-sort-value="${qty}"><input class="plan-qty ${manual ? 'is-manual' : ''}" type="number" min="0" step="1" value="${qty}" data-city="${c.city}" title="Сколько штук планируешь продать в этом городе (введи своё — остальное пересчитается)" /></td>
+    const canToggle = c.avgDailyVolume > 0 || (priced && manualSalePlan.has(c.city));
+    const ownVal = manualCityPrice.has(c.city) ? manualCityPrice.get(c.city) : '';
+    const priceCell = `${priced ? fmtNum(c.avgSellPrice) : '<small class="scan-stale">нет данных</small>'}${c.blackMarket ? '' : `<br><input class="plan-city-price ${c.ownPrice ? 'is-manual' : ''}" type="number" min="0" step="1" value="${ownVal}" data-city="${c.city}" placeholder="своя цена" title="${priced ? 'Видишь в игре другую цену продажи в этом городе — впиши её' : 'Сделок за период нет — впиши цену, которую видишь в игре, и город войдёт в план'}" />`}`;
+    return `<tr class="${dim ? 'below-threshold' : ''}"><td class="plan-check"><input type="checkbox" class="plan-toggle" data-city="${c.city}" ${isOn ? 'checked' : ''} ${canToggle ? '' : 'disabled'} title="${canToggle ? 'Включить/выключить город в плане продажи — партия пересчитается' : c.noData ? 'Нет сделок за период: впиши свою цену и количество' : 'В этом городе нет сделок за период'}" /></td><td>${c.blackMarket ? `<span title="Чёрный Рынок: другой налог (${(c.taxRate * 100).toFixed(1)}%), не обычный город">⚫ ${c.city}</span>` : c.city}</td><td data-sort-value="${c.avgSellPrice ?? ''}">${priceCell}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${priced ? fmtNum(c.profitPerUnit) : '—'}</td>
+      <td data-sort-value="${qty}"><input class="plan-qty ${manual ? 'is-manual' : ''}" type="number" min="0" step="1" value="${qty}" data-city="${c.city}" ${priced ? '' : 'disabled'} title="Сколько штук планируешь продать в этом городе (введи своё — остальное пересчитается)" /></td>
       <td data-sort-value="${days}">${qty > 0 ? fmtDays(days) : '—'}${inPlan && tolerance && !manual ? ` <small>(допуск ${(tolerance * 100).toFixed(0)}%)</small>` : ''}</td>
-      <td data-sort-value="${c.profitPerUnit * qty}" class="${cls}">${qty > 0 ? fmtNum(c.profitPerUnit * qty) : '—'}</td>
+      <td data-sort-value="${(c.profitPerUnit || 0) * qty}" class="${cls}">${qty > 0 && priced ? fmtNum(c.profitPerUnit * qty) : '—'}</td>
       <td data-sort-value="${c.profitIndex ?? 0}" title="Индекс профита = профит% × log2(2 + оборот): по нему города берут партию при «максимизировать профит»">${c.profitIndex ? fmtNum(c.profitIndex, 0) : '—'}</td></tr>`;
   }).join('');
 
@@ -1282,6 +1400,7 @@ function renderMarginScan(data) {
       selectCraftItem(item);
       craftEl.enchant.value = btn.dataset.enchant;
       craftEl.quality.value = btn.dataset.quality;
+      refreshSelectedIcon();                                       // иконка — с зачарованием и качеством найденной позиции, а не базовая
       if (btn.dataset.quantity) craftEl.quantity.value = btn.dataset.quantity;
       // Находка выгодна именно через Чёрный Рынок — включаем его и в калькуляторе, иначе он увидит только обычные города (и «нет профита»).
       if (btn.dataset.blackMarket === 'true') craftEl.blackMarket.checked = true;

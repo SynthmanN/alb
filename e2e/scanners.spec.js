@@ -36,7 +36,7 @@ test('кнопка «+ добавить» из сканера кладёт пр�
   const tracked = await page.evaluate(() => JSON.parse(localStorage.getItem('albion_tracked_items')));
   expect(tracked).toContain('T6_WOOD');
   await page.goto('/index.html');
-  await expect(page.locator('#table-body')).toContainText('Дерево');
+  await expect(page.locator('#table-body')).toContainText('Бревна');
 });
 
 test('сканер Чёрного рынка отправляет запрос только с выбранными городами (регрессия: раньше всегда тянул Brecilien)', async ({ page }) => {
@@ -88,9 +88,9 @@ test('лучшая находка сканера подсвечена бейдж
   await page.locator('#scan-run').click();
   await expect(page.locator('#scan-result tbody tr')).toHaveCount(3);
   await expect(page.locator('#scan-result .top-badge')).toHaveCount(1);
-  await expect(page.locator('#scan-result tr.top-find')).toContainText('Дерево'); // score 900 — у T6_WOOD
+  await expect(page.locator('#scan-result tr.top-find')).toContainText('Бревна'); // score 900 — у T6_WOOD
   await sortBy(page, '#scan-result', 'Свежесть');
-  await expect(page.locator('#scan-result tr.top-find')).toContainText('Дерево');
+  await expect(page.locator('#scan-result tr.top-find')).toContainText('Бревна');
 });
 
 test('если у результатов нет числового скора — подсветки нет (и ничего не ломается)', async ({ page }) => {

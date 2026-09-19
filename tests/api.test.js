@@ -731,8 +731,8 @@ describe('калькулятор крафта: купить готовый ма�
     expect(rows.map((r) => [r.queryId, r.role, r.source])).toEqual([['T4_ORE', 'raw', 'refine'], ['T3_METALBAR', 'prev', 'refine']]);
     expect(rows[0].needed).toBe(Math.ceil(160 * 2 * (1 - d.refineRate)));      // 16 слитков × 10 шт, без возврата гира (gearRrr=none)
     expect(rows[1].needed).toBe(Math.ceil(160 * 1 * (1 - d.refineRate)));
-    expect(rows[0].resourceName).toBe('T4 Руда (IV) (сырьё → T4 Слитки (IV))');    // строка называется по тому, что реально покупается, а не по целевому полуфабрикату
-    expect(rows[1].resourceName).toBe('T3 Слитки (III) (полуфабрикат пред. тира → T4 Слитки (IV))');
+    expect(rows[0].resourceName).toBe('T4 Железная руда (сырьё → T4 Слиток стали)');    // строка называется по тому, что реально покупается, а не по целевому полуфабрикату
+    expect(rows[1].resourceName).toBe('T3 Слиток бронзы (полуфабрикат пред. тира → T4 Слиток стали)');
     expect(d.acquire.byResource.some((r) => r.resource === 'T4_METALBAR')).toBe(false);   // готового слитка в плане нет
   });
   it('план закупки: если дешевле готовый — одна строка на сам материал', async () => {
@@ -777,5 +777,27 @@ describe('калькулятор крафта: цена материала в з
     expect(row.plan.cities.length).toBe(2);                                          // в один город партию не купить — план разносит по двум
     expect(row.plan.avgPrice).toBeGreaterThan(100 * 1.025);                          // средняя дороже самого дешёвого города
     expect(bar.cheapestPrice).toBeCloseTo(row.plan.avgPrice, 6);                     // заголовок и план — одна и та же цифра, не «близкая»
+  });
+});
+
+describe('калькулятор крафта: план продажи показывает ВСЕ активные города', () => {
+  it('города без сделок за период приходят строками noData (без цены) — свою цену игрок вписывает сам', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/history/')) {
+        const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
+        return { ok: true, status: 200, json: async () => ids.filter((id) => id === 'T4_MAIN_SWORD').map((id) => ({ item_id: id, location: 'Martlock', quality: 1, data: [{ item_count: 300, avg_price: 9000 }] })) };
+      }
+      return { ok: true, status: 200, json: async () => fakeAodp(url).map((r) => ({ ...r, sell_price_min: r.item_id === 'T4_MAIN_SWORD' ? 0 : r.sell_price_min })) };
+    });
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock,Lymhurst,Thetford&gearRrr=none')).body;
+    const by = d.patientSell.byCity;
+    expect(by.map((c) => c.city).sort()).toEqual(['Lymhurst', 'Martlock', 'Thetford']);
+    expect(by.find((c) => c.city === 'Martlock')).toMatchObject({ avgDailyVolume: expect.any(Number) });
+    expect(by.find((c) => c.city === 'Martlock').noData).toBeUndefined();
+    const empty = by.filter((c) => c.noData);
+    expect(empty.map((c) => c.city).sort()).toEqual(['Lymhurst', 'Thetford']);
+    expect(empty.every((c) => c.avgSellPrice === null && c.avgDailyVolume === 0 && c.profitPerUnit === null)).toBe(true);
+    expect(d.patientSell.plan.cities.map((c) => c.city)).toEqual(['Martlock']);       // в автоплан города без данных не входят
   });
 });

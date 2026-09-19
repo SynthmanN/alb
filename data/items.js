@@ -10,7 +10,7 @@ const RESOURCE_TYPES = [
 ];
 
 const TIERS = [2, 3, 4, 5, 6, 7, 8];
-const TIER_ROMAN = { 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII' };
+const { RESOURCE_NAMES } = require('./resource-names');
 
 function buildItems() {
   const items = [];
@@ -18,13 +18,13 @@ function buildItems() {
     for (const r of RESOURCE_TYPES) {
       items.push({
         id: `T${t}_${r.raw}`,
-        name: `T${t} ${r.nameRu.split(' / ')[0]} (${TIER_ROMAN[t]})`,
+        name: `T${t} ${RESOURCE_NAMES[`T${t}_${r.raw}`]}`,
         category: 'raw',
         tier: t,
       });
       items.push({
         id: `T${t}_${r.refined}`,
-        name: `T${t} ${r.nameRu.split(' / ')[1]} (${TIER_ROMAN[t]})`,
+        name: `T${t} ${RESOURCE_NAMES[`T${t}_${r.refined}`]}`,
         category: 'refined',
         tier: t,
       });

@@ -965,3 +965,79 @@ test('иконки: выбранный предмет и строки скана
   await page.locator('#craft-quality').selectOption('4');
   await expect(page.locator('#craft-selected-icon')).toHaveAttribute('src', /CAPEITEM_HERETIC(%40|@)3\.png\?quality=4/);
 });
+
+test('план продажи: города без сделок видны, в них можно вписать свою цену; «Маржа всего · терпеливо» реагирует на свои цены сырья и городов; из скана иконка — с зачарованием и качеством', async ({ page }) => {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, marketShare: 1, materialHours: 24, refineRate: 0.367,
+    rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+    cities: ['Martlock', 'Lymhurst'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 100000,
+    recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 10, returnable: true, rrr: 0, neededToBuy: 1000, cheapestCity: 'Martlock', cheapestPrice: 100, priceSource: 'history', cityPrices: [] }],
+    sellPrices: [], bestSell: null, taxRate: 0, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+    acquire: { days: 1, cycleDays: 4, bottleneckResource: 'T4_METALBAR', byResource: [] },
+    patientSell: { days: 7, marketShare: 1, avgSellPrice: 3000, bestCity: { city: 'Martlock', avgPrice: 3000 }, avgDailyVolume: 50, daysToSellBatch: 2, netSellPrice: 3000, profitPerUnit: 2000,
+      byCity: [{ city: 'Martlock', avgSellPrice: 3000, avgDailyVolume: 50, netPrice: 3000, taxRate: 0, profitPerUnit: 2000, profitIndex: 100 },
+               { city: 'Lymhurst', avgSellPrice: null, avgDailyVolume: 0, netPrice: null, taxRate: 0, profitPerUnit: null, profitIndex: 0, noData: true }], cities: [],
+      plan: { strategy: 'maxProfit', bestPrice: 3000, avgPrice: 3000, totalDays: 2, excluded: [], netPricePerUnit: 3000, profitPerUnit: 2000, cities: [{ city: 'Martlock', avgPrice: 3000, avgDailyVolume: 50, tolerance: null, qty: 100, days: 2 }] } },
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-gear-rrr').selectOption('none');
+  await page.locator('#craft-run').click();
+  const byCity = page.locator('#craft-result .by-city');
+  await expect(byCity).toContainText('Lymhurst');                                              // город без сделок виден
+  await expect(byCity).toContainText('нет данных');
+  await expect(byCity.locator('input.plan-toggle[data-city="Lymhurst"]')).toBeDisabled();       // пока нет своей цены — в план не включить
+  await expect(page.locator('.craft-scoreboard')).toContainText('200 000');                      // терпеливо: (3000 − 1000) × 100
+  // сырьё в игре дороже: слитки 150 вместо 100 → себестоимость +500 за штуку — и «терпеливо», и «сразу» пересчитаны
+  await page.locator('#craft-recipe-table input.manual-price[data-res="T4_METALBAR"]').fill('150');
+  await expect(page.locator('.craft-scoreboard')).toContainText('150 000');                      // терпеливо: (3000 − 1500) × 100
+  // в Lymhurst в игре видишь 4000: вписываешь цену и количество 40 — город входит в план
+  await byCity.locator('input.plan-city-price[data-city="Lymhurst"]').fill('4000');
+  await expect(byCity.locator('input.plan-qty[data-city="Lymhurst"]')).toBeEnabled();
+  await byCity.locator('input.plan-qty[data-city="Lymhurst"]').fill('40');
+  // 60 шт в Martlock по 3000, 40 в Lymhurst по 4000: (60 × 1500 + 40 × 2500) = 190 000
+  await expect(page.locator('.craft-scoreboard')).toContainText('190 000');
+  await expect(byCity.locator('tr', { hasText: 'Lymhurst' })).not.toContainText('нет данных');
+});
+
+test('«в калькулятор» из скана: иконка выбранного предмета сразу с зачарованием и качеством найденной позиции', async ({ page }) => {
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', liquidity: 'best', days: 3, capital: 1000000, minDays: 1, taxRate: 0.08, setupFeeRate: 0.025, premiumPrice: 28000000, scanned: 1,
+    enchantRange: '.0–.4', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367,
+    jug: { lastPricePass: Date.now(), lastHistoryPass: Date.now(), lastFullPass: null, oldestPriceAgeMinutes: 1 }, results: [
+      { kind: 'gear', itemId: 'T5_CAPEITEM_HERETIC', enchant: 3, quality: 4, tier: 5, cost: 40000, avgSellPrice: 60000, dailyVolume: 12, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 47000, premiumDays: 147, daysToAcquire: 2, daysToSell: 8, cycleDays: 10, effectiveDays: 10, cappedByMinDays: false, positionCost: 1000000, quantity: 25, freshMinutes: 12, rankScore: 47000, tradeHours: 6, confidence: 0.2 },
+    ] } }));
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ status: 404, json: { error: 'нет' } }));
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-run').click();
+  await page.locator('#margin-result .scan-add-btn').first().click();
+  await expect(page.locator('#craft-selected-icon')).toHaveAttribute('src', /CAPEITEM_HERETIC(%40|@)3\.png\?quality=4/);
+});
+
+test('клик по предмету копирует игровое название (без тира) и подсказывает фильтры аукциона; у материалов — иконки; у гира — подсказка бонус-города', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_2H_TORCH', enchant: 2, quality: 4, quantity: 1, marketShare: 1, materialHours: 24, refineRate: 0.367,
+    rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+    cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 100, effectiveCostPerUnit: 100, totalCost: 100,
+    recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слиток стали', queryId: 'T4_METALBAR_LEVEL2@2', enchanted: true, count: 1, returnable: true, rrr: 0, neededToBuy: 1, cheapestCity: 'Martlock', cheapestPrice: 100, priceSource: 'history', cityPrices: [] }],
+    sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
+    baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 100, baseCostPerUnit: 100 },
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('факел');
+  await page.locator('#craft-suggestions .suggestion-item').filter({ hasText: 'T4' }).first().click();
+  await page.locator('#craft-enchant').selectOption('2');
+  await page.locator('#craft-quality').selectOption('4');
+  await expect(page.locator('#craft-gear-bonus')).toContainText('бонус: Мартлок');             // факел — офф-хенд: бонус-город Мартлок
+  await page.locator('#craft-selected strong').click();
+  await expect(page.locator('.toast').last()).toContainText('Скопировано: Факел (знаток) — в поиске аукциона выбери фильтры: зачарование 2, качество отличное');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Факел (знаток)');
+  await page.locator('#craft-run').click();
+  const row = page.locator('#craft-recipe-table tbody tr').first();
+  await expect(row.locator('img.item-icon-sm')).toHaveAttribute('src', /T4_METALBAR_LEVEL2(%40|@)2\.png/);   // иконка материала — с зачарованием
+  await row.locator('td.copyable').click();
+  await expect(page.locator('.toast').last()).toContainText('Скопировано: Слиток стали — в поиске аукциона выбери фильтры: зачарование 2');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('Слиток стали');
+});

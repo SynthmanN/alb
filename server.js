@@ -1003,6 +1003,13 @@ app.get('/api/craft-calc', async (req, res) => {
           patientSell.plan.netPricePerUnit = patientSell.plan.cities.reduce((s, c) => s + c.qty * net(c.city), 0) / total;   // по налогу каждого города
           patientSell.plan.profitPerUnit = patientSell.plan.netPricePerUnit - effectiveCostPerUnit;
         }
+        // Все активные города показываем в плане продажи: где за период сделок нет — строкой «нет данных»; свою цену в такой город
+        // игрок вписывает сам (видел её в игре), и город участвует в плане наравне с остальными.
+        const have = new Set(patientSell.byCity.map((c) => normLocation(c.city)));
+        for (const city of queryCities) {
+          if (have.has(normLocation(city))) continue;
+          patientSell.byCity.push({ city, avgSellPrice: null, avgDailyVolume: 0, netPrice: null, taxRate: taxRate + SETUP_FEE_RATE, blackMarket: false, profitPerUnit: null, profitIndex: 0, noData: true });
+        }
       }
       qualityComparison = ALL_QUALITIES.map((q) => {
         const p = forQuality(q);

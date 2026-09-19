@@ -216,7 +216,7 @@ describe('5. телепорт: нет молчаливых нулей', () => {
     delete TRAVEL_WEIGHTS.T4_LEATHER;                                    // имитируем «данных о весе нет»
     try {
       const d = (await request(app).get(`/api/craft-calc?item=${ITEM}&gearRrr=none&quantity=10&teleport=true&cities=${CITIES.join(',')}`)).body;
-      expect(d.teleport.unweighted).toContain('T4 Кожа (IV)');
+      expect(d.teleport.unweighted).toContain('T4 Обработанная кожа');
       expect(d.teleport.materialLegs.map((l) => l.resource)).not.toContain('T4_LEATHER');
     } finally { TRAVEL_WEIGHTS.T4_LEATHER = saved; }
   });

@@ -391,3 +391,6 @@ td.plan-check input { width: auto; }
 .craft-calc-shell .plan-title small { font: 400 12px system-ui, sans-serif; color: #8b919c; margin-left: 6px; }
 .plan-cities { text-align: left; font-size: 12px; }
 .is-manual-note { color: #7ecba1; }
+.gear-bonus-hint { color: #7ecba1; font-size: 11px; }
+.copyable { cursor: copy; }
+.copyable:hover { text-decoration: underline dotted; }

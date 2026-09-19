@@ -58,6 +58,7 @@
           <label class="craft-field" title="Возврат ресурсов при КРАФТЕ гира. Город не угадываем (где ты стоишь — неизвестно, а бонус города зависит от типа предмета: топор в Martlock — 24.8%, лук там же — 15.3%): ставку выбираешь ты. По умолчанию 24.8% — город с бонусом для предмета, без Фокуса. «Своя ставка» — впиши свой процент (мастерки и гильдейские бонусы двигают его дополнительно). Не путать с переработкой сырья на странице «Рефайн»: там ставка считается по городу и типу ресурса">Возврат ресурсов (крафт)
           <select id="craft-gear-rrr"><option value="city_bonus" selected>Город с бонусом предмета — 24.8%</option></select>
           <input id="craft-gear-rrr-custom" type="number" min="0" max="95" step="0.1" placeholder="свой %, 0–95" hidden />
+          <small id="craft-gear-bonus" class="gear-bonus-hint"></small>
           </label>
           <label class="craft-field" title="Возврат ресурсов при ПЕРЕРАБОТКЕ сырья (руда, шкуры, древесина, волокно, камень) в полуфабрикаты (слитки, кожа, брусья, ткань, блоки) — отдельная ставка от крафта гира. Полуфабрикат рецепта можно купить готовым или собрать самому из сырья и полуфабриката предыдущего тира: калькулятор сам берёт дешевле. По умолчанию 36.7% — город со спец-бонусом ресурса без Фокуса (Тэтфорд — руда, Мартлок — кожа и т. д.). «Своя ставка» — впиши свой процент. Смена ставки пересчитывает всё на месте">Возврат ресурсов (переработка)
           <select id="craft-refine-rrr"><option value="city_bonus" selected>Город со спец-бонусом ресурса — 36.7%</option></select>
@@ -98,7 +99,7 @@
             <select id="craft-days" data-custom="days"><option value="3">3 дня</option><option value="7" selected>7 дней</option></select>
           </label>
           <label class="craft-field" title="За какое время усреднять цену СЫРЬЯ: средняя цена сделок за окно, а не цена одного самого дешёвого лота. Свежее окно честнее: 7 дней цен — старые. Одно окно на сырьё и полуфабрикаты: по нему выбирается «купить или переработать», считаются цены и оборот в плане закупки. «История» — только продажа готового предмета. Кувшин хранит 7 дней, поэтому окно до 7 дней. Нет сделок за окно — берётся текущая котировка">Окно цен сырья
-            <select id="craft-material-hours" data-custom="hours"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
+            <select id="craft-material-hours" data-custom="hours" data-custom-max="168"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
           </label>
           <label class="craft-field" title="Схема «закупаю по Buy Order, продаю партией»: проверить, укладывается ли себестоимость в потолок">Потолок себестоимости/шт<input id="craft-ceiling" type="number" min="0" placeholder="без потолка" /></label>
           <label class="craft-field">Продажа от<input id="craft-sell-low" type="number" min="0" placeholder="рынок" /></label>
@@ -159,7 +160,7 @@
           <select id="margin-days" data-custom="days"><option value="3" selected>3 дня</option><option value="7">7 дней</option></select>
         </label>
         <label class="craft-field" title="За какое время усреднять цену СЫРЬЯ: средняя цена сделок за окно, а не цена одного самого дешёвого лота. Свежее окно честнее: 7 дней цен — старые. Одно окно на сырьё и полуфабрикаты: по нему выбирается «купить или переработать», считаются цены и оборот в плане закупки. «История» — только продажа готового предмета. Кувшин хранит 7 дней, поэтому окно до 7 дней. Нет сделок за окно — берётся текущая котировка">Окно цен сырья
-          <select id="margin-material-hours" data-custom="hours"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
+          <select id="margin-material-hours" data-custom="hours" data-custom-max="168"><option value="12">12ч</option><option value="24" selected>24ч</option><option value="72">3 дня</option><option value="168">7 дней</option></select>
         </label>
         <button id="margin-run">Сканировать</button>
       </div>

@@ -318,7 +318,9 @@ function readCustomizable(select) {
       return String(fallback);
     }
     const value = kind === 'days' ? hours / 24 : hours;
-    return String(Math.min(Math.max(value, lim.min), lim.max));
+    // свой потолок списка (окно сырья — не больше 7 дней: столько хранит кувшин), иначе общий
+    const max = Number(select.dataset.customMax) || lim.max;
+    return String(Math.min(Math.max(value, lim.min), max));
   }
   let v = parseFloat(select._customInput.value);
   if (!Number.isFinite(v)) v = fallback * 100;
