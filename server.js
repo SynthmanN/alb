@@ -88,12 +88,16 @@ function resourceTypeOf(resourceId) {
   return m ? RESOURCE_TYPE_BY_TOKEN[m[1]] || null : null;
 }
 // opts = { royalBonus, focus }: royalBonus — «крафчу в royal-городе» (база 18% + спец-бонус города для «своего» ресурса), focus — тратится Фокус.
+// Даёт ли этот город спец-бонус именно этому типу ресурса (руда — Thetford и т.д.).
+function hasCityBonus(resourceId, city) {
+  const type = resourceTypeOf(resourceId);
+  return !!(type && BONUS_CITY[type] && normLocation(BONUS_CITY[type]) === normLocation(city));
+}
 function materialRrr(resourceId, city, opts) {
   let bonus = 0;
   if (opts.royalBonus) {
     bonus += RRR_ROYAL_BASE;
-    const type = resourceTypeOf(resourceId);
-    if (type && BONUS_CITY[type] && normLocation(BONUS_CITY[type]) === normLocation(city)) bonus += RRR_CITY_SPECIAL;
+    if (hasCityBonus(resourceId, city)) bonus += RRR_CITY_SPECIAL;
   }
   if (opts.focus) bonus += RRR_FOCUS;
   return rrrFromBonus(bonus);
@@ -114,7 +118,7 @@ function bestMaterialQuote(quotes, resource, opts) {
   for (const q of quotes) {
     const rrr = resource.noReturn ? 0 : materialRrr(resource.resource, q.city, opts);
     const effective = q.price * (1 - rrr);
-    if (!best || effective < best.effective) best = { ...q, rrr, factor: 1 - rrr, effective };
+    if (!best || effective < best.effective) best = { ...q, rrr, factor: 1 - rrr, effective, cityBonus: !resource.noReturn && !!opts.royalBonus && hasCityBonus(resource.resource, q.city) };
   }
   return best;
 }
@@ -763,6 +767,7 @@ app.get('/api/craft-calc', async (req, res) => {
         // Сколько реально закупать: после возврата (RRR) остаток от крафта не нужен, но невозвращаемое берётся по номиналу
         neededToBuy: Math.ceil(r.count * quantity * factor),
         rrr: cheapest ? cheapest.rrr : 0,                    // ставка возврата в городе покупки именно для этого материала
+        cityBonus: cheapest ? cheapest.cityBonus : false,    // сработал ли спец-бонус города (город закупки бонусный для этого типа ресурса)
         resource: r.resource,
         resourceName: resolveItemName(r.resource),
         queryId,

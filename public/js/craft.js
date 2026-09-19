@@ -166,11 +166,12 @@ function renderCraftResult(data) {
     const subtotal = missing ? null : r.cheapestPrice * needed;
     return `
       <tr>
-        <td>${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : r.rrr > 0 ? `<br><small title="Ставка возврата в городе покупки для этого материала">возврат ${(r.rrr * 100).toFixed(1)}%</small>` : ''}</td>
+        <td>${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
         <td>${needed.toLocaleString('ru-RU')}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU')}</small>` : ''}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
         <td data-sort-value="${acquireDaysFor(data, r.resource) ?? ''}">${acquireDaysFor(data, r.resource) !== null ? fmtDays(acquireDaysFor(data, r.resource)) : '—'}${data.acquire && data.acquire.bottleneckResource === r.resource ? ' 🐢' : ''}${acquirePlanHtml(data, r.resource)}</td>
+        <td data-sort-value="${r.rrr ?? 0}">${r.returnable === false ? '—' : `${((r.rrr || 0) * 100).toFixed(1)}%${r.cityBonus ? ` <span class="city-bonus" title="Город закупки (${r.cheapestCity}) даёт спец-бонус именно этому типу ресурса: возврат выше базового">★ бонус</span>` : ''}`}</td>
       </tr>
     `;
   }).join('');
@@ -189,7 +190,7 @@ function renderCraftResult(data) {
   craftEl.result.innerHTML = `
     ${warning}
     <div class="table-scroll"><table class="craft-recipe-table">
-      <thead><tr><th>Материал</th><th>Нужно всего</th><th>Где дешевле</th><th>Сумма</th><th>Дней на закупку</th></tr></thead>
+      <thead><tr><th>Материал</th><th>Нужно всего</th><th>Где дешевле</th><th>Сумма</th><th>Дней на закупку</th><th title="Ставка возврата ресурсов для этого материала в городе его покупки">Возврат</th></tr></thead>
       <tbody>${recipeRows}</tbody>
       <tfoot><tr class="materials-total"><td colspan="3">Итого материалы к закупке (с учётом возврата)</td><td>${fmtNum(materialsTotal)}</td><td></td></tr></tfoot>
     </table></div>

@@ -608,6 +608,19 @@ describe('возврат ресурсов (RRR) по материалу и го�
     expect(best.effective).toBeCloseTo(110 * (1 - rrrFromBonus(58)), 9);
     expect(bestMaterialQuote(quotes, { resource: 'T4_METALBAR' }, { royalBonus: false, focus: false }).city).toBe('Lymhurst');
   });
+  it('сценарий из жизни: руда в Thetford на 2 дороже (101 против 99 в Bridgewatch) — Thetford выгоднее за счёт бонуса, отмечен cityBonus', () => {
+    const best = bestMaterialQuote([{ city: 'Bridgewatch', price: 99 }, { city: 'Thetford', price: 101 }], { resource: 'T4_ORE' }, ROYAL);
+    expect(best.city).toBe('Thetford');
+    expect(best.cityBonus).toBe(true);
+    expect(best.effective).toBeCloseTo(101 * (1 - rrrFromBonus(58)), 9);          // ≈ 64 против ≈ 84 в Bridgewatch
+    const bridgewatch = bestMaterialQuote([{ city: 'Bridgewatch', price: 99 }], { resource: 'T4_ORE' }, ROYAL);
+    expect(bridgewatch.cityBonus).toBe(false);
+    expect(bridgewatch.effective).toBeCloseTo(99 * (1 - rrrFromBonus(18)), 9);
+  });
+  it('бонус не «раздувается»: город с бонусом за 500 не обгоняет город без бонуса за 99', () => {
+    const best = bestMaterialQuote([{ city: 'Bridgewatch', price: 99 }, { city: 'Thetford', price: 500 }], { resource: 'T4_ORE' }, ROYAL);
+    expect(best.city).toBe('Bridgewatch');
+  });
   it('невозвращаемый материал (герб, жетон) выбирается по номиналу и возврата не получает', () => {
     const best = bestMaterialQuote([{ city: 'Lymhurst', price: 100 }, { city: 'Thetford', price: 95 }], { resource: 'T4_METALBAR', noReturn: true }, ROYAL);
     expect(best).toMatchObject({ city: 'Thetford', rrr: 0, factor: 1 });

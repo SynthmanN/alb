@@ -590,7 +590,7 @@ test('возврат ресурсов: галочки «Бонус города�
     route.fulfill({ json: {
       itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, rrrPreset: { id: 'custom', label: 'бонус города: да · Фокус: да', royalBonus: true, focus: true, rrr: 0.5 },
       cities: ['Thetford'], hasAllMaterialPrices: true, materialCostPerUnit: 8000, effectiveCostPerUnit: 4000, totalCost: 400000,
-      recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, rrr: 0.5299, neededToBuy: 752, cheapestCity: 'Thetford', cheapestPrice: 500, cityPrices: [] }],
+      recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, rrr: 0.5299, cityBonus: true, neededToBuy: 752, cheapestCity: 'Thetford', cheapestPrice: 500, cityPrices: [] }],
       sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
     } });
   });
@@ -602,7 +602,9 @@ test('возврат ресурсов: галочки «Бонус города�
   await page.locator('#craft-focus').check();
   await page.locator('#craft-black-market').check();                                 // Чёрный Рынок — место продажи в плане
   await page.locator('#craft-run').click();
-  await expect(page.locator('#craft-result .craft-recipe-table').first()).toContainText('возврат 53.0%');
+  await expect(page.locator('#craft-result .craft-recipe-table').first()).toContainText('53.0%');
+  await expect(page.locator('#craft-result .craft-recipe-table thead').first()).toContainText('Возврат');
+  await expect(page.locator('#craft-result .craft-recipe-table .city-bonus').first()).toContainText('★ бонус');   // спец-бонус города сработал
   expect(query.get('blackMarket')).toBe('true');
   expect(query.get('royalBonus')).toBe('true');
   expect(query.get('focus')).toBe('true');
