@@ -1114,7 +1114,8 @@ app.get('/api/refining-opportunities', async (req, res) => {
     const rrrId = req.query.rrr || 'none';
     const citiesParam = req.query.cities;
     const taxRate = getSalesTaxRate(req);
-    const cacheKey = `${hours}:${rrrId}:${citiesParam || 'default'}:${taxRate}`;
+    const marketShare = parseMarketShare(req);
+    const cacheKey = `${hours}:${rrrId}:${citiesParam || 'default'}:${taxRate}:${marketShare}`;
 
     if (refiningScanCache && refiningScanCache.key === cacheKey && Date.now() - refiningScanCache.ts < SCAN_CACHE_TTL_MS) {
       return res.json(refiningScanCache.data);
@@ -1199,7 +1200,8 @@ app.get('/api/refining-opportunities', async (req, res) => {
       withVolume = candidates
         .map((c) => ({ ...c, volume: totalVolume(historyData, c.itemId, [c.bestSell.city]) }))
         .filter((c) => c.volume >= minVolume)
-        .map((c) => ({ ...c, score: opportunityScore(c.profitPct, c.volume) * freshnessDecay(c.freshMinutes) }))
+        // Оборот рынка ≠ твой объём (конкуренты тоже продают): в скор идёт доля оборота, а не весь.
+        .map((c) => ({ ...c, yourVolume: c.volume * marketShare, score: opportunityScore(c.profitPct, c.volume * marketShare) * freshnessDecay(c.freshMinutes) }))
         .sort((a, b) => b.score - a.score);
     } catch (err) {
       console.error('не удалось проверить историю для сканера рефайна:', err.message);

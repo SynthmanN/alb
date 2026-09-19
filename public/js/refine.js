@@ -18,7 +18,7 @@ async function runRefineScan() {
   refineScanBtn.disabled = true;
   refineScanResult.innerHTML = 'Считаю по всем 35 комбинациям ресурс×тир...';
   try {
-    const params = new URLSearchParams({ hours: refineScanHours.value, rrr: refineScanRrr.value, cities: activeCities().join(','), premium: premiumParam() });
+    const params = new URLSearchParams({ hours: refineScanHours.value, rrr: refineScanRrr.value, cities: activeCities().join(','), premium: premiumParam(), marketShare: document.getElementById('refine-market-share').value });
     const res = await fetch(`/api/refining-opportunities?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -44,17 +44,27 @@ function renderRefineScanResult(rows) {
         <td>${Math.round(r.cost).toLocaleString('ru-RU')}</td>
         <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
         <td class="scan-spread-hot">+${Math.round(r.profit).toLocaleString('ru-RU')} (${r.profitPct.toFixed(1)}%)</td>
-        <td>${volumeText}</td>
+        <td data-sort-value="${r.volume ?? ''}">${volumeText}${r.yourVolume !== undefined ? `<br><small>тебе ~${Math.round(r.yourVolume)}</small>` : ''}</td>
+        <td><button class="scan-add-btn" data-type="${r.type}" data-tier="${r.tier}">в калькулятор</button></td>
       </tr>
     `;
   }).join('');
   refineScanResult.innerHTML = `
     <div class="table-scroll"><table class="scan-table">
-      <thead><tr><th>Материал</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Объём</th></tr></thead>
+      <thead><tr><th>Материал</th><th>Себестоимость/шт</th><th>Продать</th><th>Профит/шт</th><th>Объём</th><th></th></tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table></div>
   `;
   wireTableSort(refineScanResult.querySelector('table'), 'refine-scan');
+  // «в калькулятор»: тип ресурса и тир переносятся в калькулятор себестоимости и считаются на месте
+  refineScanResult.querySelectorAll('.scan-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      calcEl.type.value = btn.dataset.type;
+      calcEl.tier.value = btn.dataset.tier;
+      calcEl.result.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      runCalc();
+    });
+  });
 }
 
 // --- Калькулятор рефайна ---

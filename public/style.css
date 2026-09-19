@@ -272,3 +272,5 @@ details.tool-accordion[open] > summary::before { transform: rotate(90deg); }
 details.tool-accordion > summary:hover { color: #7ee787; }
 details.tool-accordion > *:not(summary) { margin-left: 14px; margin-right: 14px; }
 details.tool-accordion[open] { padding-bottom: 14px; }
+
+.inline-field { flex-direction: row; align-items: center; gap: 6px; }
