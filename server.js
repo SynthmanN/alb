@@ -676,6 +676,9 @@ app.get('/api/craft-calc', async (req, res) => {
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1, 1), 100000);
     const citiesParam = req.query.cities;
     const rrrOpts = parseRrrOptions(req, 'none');
+    // Чёрный Рынок как ещё одно место продажи в плане (свой налог: налог + Setup Fee всегда — getBmTaxRate).
+    const blackMarket = req.query.blackMarket === 'true';
+    const bmTaxRate = getBmTaxRate(req);
 
     if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `не найден рецепт для предмета "${itemId}"` });
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
@@ -820,20 +823,22 @@ app.get('/api/craft-calc', async (req, res) => {
       const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
       // Один запрос истории по всем 5 качествам: качество сильно влияет на ликвидность (Отличное может продаваться
       // в 100+ раз быстрее Обычного), а себестоимость от качества не зависит — поэтому сравнение бесплатное.
-      const history = await fetchHistoryBatched([finishedQueryId], days * 24, ALL_QUALITIES.join(','), locations);
-      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare });
+      const history = await fetchHistoryBatched([finishedQueryId], days * 24, ALL_QUALITIES.join(','), blackMarket ? [...locations, BM_QUERY_LOCATION] : locations);
+      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare, blackMarketTaxRate: blackMarket ? bmTaxRate : null });
       patientSell = forQuality(quality);
       if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity, marketShare);
-      // Многогородовой план продажи: цена и оборот по каждому городу, допуск динамический (см. planCityAllocation).
+      // План продажи по умолчанию: ВСЕ прибыльные города (у каждого свой налог: у ЧР — свой), партия по индексу профита (maxProfitCityAllocation).
+      // Допуск цены относится к плану закупки, а не продажи.
       if (patientSell) {
-        // В автоплан входят только города, где продажа прибыльна (после налога и сбора за размещение)
-        const profitableCities = patientSell.cities.filter((c) => c.avgPrice * (1 - taxRate - patientSell.setupFee) - effectiveCostPerUnit > 0);
-        patientSell.plan = planCityAllocation(
-          (profitableCities.length ? profitableCities : patientSell.cities).map((c) => ({ city: c.city, avgPrice: c.avgPrice, avgDailyVolume: c.avgDailyVolume })),
-          quantity, { side: 'sell', priceTolerance, marketShare },
+        const profitableCities = patientSell.byCity.filter((c) => c.profitPerUnit > 0);
+        patientSell.plan = maxProfitCityAllocation(
+          (profitableCities.length ? profitableCities : patientSell.byCity).map((c) => ({ city: c.city, avgPrice: c.avgSellPrice, avgDailyVolume: c.avgDailyVolume, profitPerUnit: c.profitPerUnit, profitIndex: c.profitIndex })),
+          quantity, { marketShare },
         );
         if (patientSell.plan.cities.length) {
-          patientSell.plan.netPricePerUnit = patientSell.plan.avgPrice * (1 - taxRate - patientSell.setupFee);
+          const total = patientSell.plan.cities.reduce((s, c) => s + c.qty, 0);
+          const net = (city) => patientSell.byCity.find((b) => b.city === city).netPrice;
+          patientSell.plan.netPricePerUnit = patientSell.plan.cities.reduce((s, c) => s + c.qty * net(c.city), 0) / total;   // по налогу каждого города
           patientSell.plan.profitPerUnit = patientSell.plan.netPricePerUnit - effectiveCostPerUnit;
         }
       }
@@ -963,7 +968,7 @@ app.get('/api/craft-calc', async (req, res) => {
     }
 
     res.json({
-      itemId, enchant, quality, quantity, marketShare, priceTolerance, setupFeeRate: SETUP_FEE_RATE,
+      itemId, enchant, quality, quantity, marketShare, priceTolerance, setupFeeRate: SETUP_FEE_RATE, blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       // rrr — средняя ставка возврата по возвращаемым материалам (у каждого материала своя, см. recipe[].rrr)
       rrrPreset: { id: 'custom', label: rrrOptionsLabel(rrrOpts), ...rrrOpts, rrr: returnableNominal > 0 ? returnableSaved / returnableNominal : 0 },
       rrrOptions: rrrOpts,
@@ -1224,12 +1229,16 @@ function cityStats(historyData, itemId, days, quality) {
 // свой ордер на продажу и ждём. Цену берём по истории сделок (средневзвешенная по объёму за период),
 // а не по текущему sell_price_min — иначе получится красивая маржа на предмете, который висит неделями
 // («стать инвестором предмета»). Объём/день и дни на распродажу партии показывают, насколько это реально.
-function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities, quality, marketShare = 1, setupFee = SETUP_FEE_RATE }) {
+function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities, quality, marketShare = 1, setupFee = SETUP_FEE_RATE, blackMarketTaxRate = null }) {
   const allowed = new Set(queryCities.map(normLocation));
+  if (blackMarketTaxRate !== null) allowed.add('blackmarket');
   const stats = Object.entries(cityStats(history, itemId, days, quality)).filter(([city]) => allowed.has(normLocation(city)));
   if (stats.length === 0) return null;
   // Свой Sell Order: налог с продажи + сбор за размещение (Setup Fee 2.5% от цены ордера, не возвращается).
   const netFactor = 1 - taxRate - setupFee;
+  // Чёрный Рынок: своя ставка (налог + Setup Fee уже внутри, второй раз сбор не берём); у обычных городов — налог + сбор.
+  const isBm = (city) => normLocation(city) === 'blackmarket';
+  const netFactorOf = (city) => (isBm(city) ? 1 - blackMarketTaxRate : netFactor);
 
   let bestCity = null;
   let allVolume = 0;
@@ -1243,14 +1252,15 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
   // ЧЕСТНОЕ усреднение: продавать по плану имеет смысл только там, где после налога и сбора выходит прибыль. Наивное среднее по ВСЕМ
   // городам смешивало убыточные рынки с прибыльными (на T4-мече знак профита выходил перевёрнутым: −2427 вместо +459 за штуку).
   // Если прибыльных городов нет — показываем лучший по цене (честный минус), а не выдуманное среднее.
-  const profitable = stats.filter(([, st]) => st.avgPrice * netFactor - costPerUnit > 0);
+  const profitable = stats.filter(([city, st]) => st.avgPrice * netFactorOf(city) - costPerUnit > 0);
   const used = profitable.length ? profitable : stats.filter(([city]) => city === bestCity.city);
   let usedVolume = 0;
   let usedWeighted = 0;
-  for (const [, st] of used) { usedVolume += st.totalVolume; usedWeighted += st.avgPrice * st.totalVolume; }
+  let usedNetWeighted = 0;
+  for (const [city, st] of used) { usedVolume += st.totalVolume; usedWeighted += st.avgPrice * st.totalVolume; usedNetWeighted += st.avgPrice * netFactorOf(city) * st.totalVolume; }
   const avgSellPrice = usedWeighted / usedVolume;
   const avgDailyVolume = usedVolume / days;
-  const netSellPrice = avgSellPrice * netFactor;
+  const netSellPrice = usedNetWeighted / usedVolume;                    // чистая цена — по налогу КАЖДОГО города (ЧР ≠ обычный)
   return {
     days,
     avgSellPrice,                                  // средняя цена ПЛАНА (только прибыльные города)
@@ -1260,10 +1270,17 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
     planCities: used.map(([city]) => city),
     skippedCities: profitable.length ? stats.filter(([city]) => !used.some(([c]) => c === city)).map(([city]) => city) : [],
     bestCity,
-    cities: stats.map(([city, st]) => ({ city, avgPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume })),
+    cities: stats.map(([city, st]) => ({ city, avgPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, netFactor: netFactorOf(city) })),
     // Разбивка по всем активным городам (порог продажи — лишь необязательный фильтр сверху).
     byCity: stats
-      .map(([city, st]) => ({ city, avgSellPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, profitPerUnit: st.avgPrice * netFactor - costPerUnit }))
+      .map(([city, st]) => {
+        const netPrice = st.avgPrice * netFactorOf(city);
+        const profitPerUnit = netPrice - costPerUnit;
+        // Индекс профита города: тот же opportunityScore, что ранжирует сканеры (профит% × log2(2 + оборот)) — город с двумя сделками
+        // в неделю не обходит честно ликвидный, но чуть менее маржинальный.
+        const profitIndex = profitPerUnit > 0 && costPerUnit > 0 ? opportunityScore((profitPerUnit / costPerUnit) * 100, st.avgDailyVolume) : 0;
+        return { city, avgSellPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, netPrice, taxRate: 1 - netFactorOf(city), blackMarket: isBm(city), profitPerUnit, profitIndex };
+      })
       .sort((a, b) => b.avgSellPrice - a.avgSellPrice),
     avgDailyVolume,
     // Дневной оборот по истории — оборот ВСЕГО рынка, а не гарантированно доступный лично тебе объём: конкуренты тоже
@@ -1422,6 +1439,60 @@ function planCityAllocation(cities, quantity, { side, priceTolerance = 0.05, mar
 }
 
 // Ценовой допуск плана, % (по умолчанию 2): 0–50.
+// План ПРОДАЖИ «максимизировать профит»: по умолчанию в план входят ВСЕ прибыльные города (не только узкая полоса вокруг лучшей цены),
+// а партия раздаётся по индексу профита города: лучший индекс берёт первым, но не больше «разумной вместимости» — оборот × доля рынка ×
+// срок равномерного плана × horizon; остаток сверх вместимости делится по обороту. Тонкие рынки (меньше minDaily сделок в день или
+// меньше minShareOfMax от самого ликвидного прибыльного) не считаются надёжным местом продажи и в план не входят.
+// cities: [{ city, avgPrice, avgDailyVolume, profitPerUnit, profitIndex }] — уже только прибыльные.
+function maxProfitCityAllocation(cities, quantity, { marketShare = 1, minDaily = 1, minShareOfMax = 0.02, horizon = 1.5 } = {}) {
+  const withVolume = cities.filter((c) => c.avgDailyVolume > 0);
+  const maxVolume = withVolume.reduce((m, c) => Math.max(m, c.avgDailyVolume), 0);
+  const excluded = [];
+  let eligible = [];
+  for (const c of cities) {
+    if (!(c.avgDailyVolume > 0)) excluded.push({ city: c.city, reason: 'нет сделок за период' });
+    else if (c.avgDailyVolume < minDaily || c.avgDailyVolume < maxVolume * minShareOfMax) excluded.push({ city: c.city, reason: `слишком тонкий рынок (${c.avgDailyVolume.toFixed(1)} сделок в день)` });
+    else eligible.push(c);
+  }
+  if (eligible.length === 0 && withVolume.length > 0) {                     // все города тонкие — берём самый ликвидный, план не должен быть пустым
+    const top = withVolume.reduce((a, b) => (b.avgDailyVolume > a.avgDailyVolume ? b : a));
+    eligible = [top];
+    excluded.splice(0, excluded.length, ...cities.filter((c) => c !== top).map((c) => ({ city: c.city, reason: 'слишком тонкий рынок' })));
+  }
+  if (eligible.length === 0) return { side: 'sell', strategy: 'maxProfit', bestPrice: null, avgPrice: null, overpayPct: 0, totalDays: null, cities: [], excluded };
+  const qty = new Map();
+  const spread = (list, amount) => {                                        // по обороту; остаток округления — самому ликвидному
+    const volume = list.reduce((s, c) => s + c.avgDailyVolume, 0);
+    let assigned = 0;
+    for (const c of list) { const q = Math.floor((amount * c.avgDailyVolume) / volume); qty.set(c.city, (qty.get(c.city) || 0) + q); assigned += q; }
+    const top = list.reduce((a, b) => (b.avgDailyVolume > a.avgDailyVolume ? b : a));
+    qty.set(top.city, (qty.get(top.city) || 0) + amount - assigned);
+  };
+  const evenDays = quantity / (eligible.reduce((s, c) => s + c.avgDailyVolume, 0) * marketShare);
+  let left = quantity;
+  for (const c of [...eligible].sort((a, b) => b.profitIndex - a.profitIndex || b.profitPerUnit - a.profitPerUnit)) {
+    const capacity = Math.floor(c.avgDailyVolume * marketShare * evenDays * horizon);
+    const q = Math.min(capacity, left);
+    qty.set(c.city, q);
+    left -= q;
+  }
+  if (left > 0) spread(eligible, left);
+  const rows = eligible.map((c) => {
+    const q = qty.get(c.city) || 0;
+    return { city: c.city, avgPrice: c.avgPrice, avgDailyVolume: c.avgDailyVolume, tolerance: null, qty: q, days: q > 0 ? q / (c.avgDailyVolume * marketShare) : 0, profitPerUnit: c.profitPerUnit, profitIndex: c.profitIndex };
+  }).filter((r) => r.qty > 0);
+  const total = rows.reduce((s, r) => s + r.qty, 0);
+  return {
+    side: 'sell', strategy: 'maxProfit',
+    bestPrice: Math.max(...rows.map((r) => r.avgPrice)),
+    avgPrice: rows.reduce((s, r) => s + r.avgPrice * r.qty, 0) / total,
+    overpayPct: 0,
+    totalDays: rows.reduce((m, r) => Math.max(m, r.days), 0),
+    cities: rows,
+    excluded: [...excluded, ...eligible.filter((c) => !rows.some((r) => r.city === c.city)).map((c) => ({ city: c.city, reason: 'партию забрали города с лучшим индексом' }))],
+  };
+}
+
 function parsePriceTolerance(req) {
   const v = parseFloat(req.query.priceTolerance);
   return Math.min(Math.max(Number.isFinite(v) ? v : 2, 0), 50) / 100;
@@ -2577,6 +2648,7 @@ module.exports = {
   computePatientSell,
   computeAcquireTime,
   planCityAllocation,
+  maxProfitCityAllocation,
   computeSellThreshold,
   teleportDistance,
   teleportStackCost,

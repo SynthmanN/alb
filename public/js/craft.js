@@ -12,6 +12,7 @@ const craftEl = {
   quality: document.getElementById('craft-quality'),
   royalBonus: document.getElementById('craft-royal-bonus'),
   focus: document.getElementById('craft-focus'),
+  blackMarket: document.getElementById('craft-black-market'),
   quantity: document.getElementById('craft-quantity'),
   run: document.getElementById('craft-run'),
   result: document.getElementById('craft-result'),
@@ -21,7 +22,7 @@ let craftSelectedItem = null;
 let lastCraftData = null;          // последний результат калькулятора — для пересчёта плана продажи без запроса к серверу
 const manualSalePlan = new Map();  // город -> штук, введённых вручную в плане продажи (сбрасывается при новом расчёте)
 const saleCityToggles = new Map(); // город -> true/false: включён/выключен в плане чекбоксом (пусто — автоплан)
-let saleStrategy = 'even';         // стратегия распределения партии: 'even' — равный срок продажи, 'profit' — баланс маржи и скорости
+let saleStrategy = 'profit';       // распределение партии: 'profit' — максимизировать профит по индексу города (по умолчанию), 'even' — равный срок продажи
 const PROFIT_STRATEGY_HORIZON = 1.5; // «в пределах разумного»: при стратегии «профит» город может держать партию до 1.5× срока равномерного плана
 
 async function initCraft() {
@@ -115,7 +116,7 @@ async function runCraftCalc() {
   try {
     const params = new URLSearchParams({
       item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
-      quantity: craftEl.quantity.value || '1', royalBonus: String(craftEl.royalBonus.checked), focus: String(craftEl.focus.checked), cities: activeCities().join(','),
+      quantity: craftEl.quantity.value || '1', royalBonus: String(craftEl.royalBonus.checked), focus: String(craftEl.focus.checked), blackMarket: String(craftEl.blackMarket.checked), cities: activeCities().join(','),
       premium: premiumParam(),
     });
     params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
@@ -334,7 +335,7 @@ function salePlanByCity(byCity, quantity, marketShare, minPrice) {
 }
 
 // Раздача остатка партии свободным городам. 'even' — пропорционально обороту (срок продажи у всех одинаковый);
-// 'profit' — жадно: города с лучшей маржой берут партию первыми, но не больше своей «разумной вместимости»
+// 'profit' — жадно: города с лучшим ИНДЕКСОМ ПРОФИТА (профит% × log2(2 + оборот)) берут партию первыми, но не больше своей «разумной вместимости»
 // (оборот × доля рынка × 1.5 срока равномерного плана), остаток сверх вместимости делится по обороту.
 function distributeQty(free, remaining, marketShare, strategy) {
   const out = new Map();
@@ -349,7 +350,7 @@ function distributeQty(free, remaining, marketShare, strategy) {
   if (strategy !== 'profit') { spread(free, remaining); return out; }
   const evenDays = remaining / (free.reduce((sum, c) => sum + c.avgDailyVolume, 0) * marketShare);
   let left = remaining;
-  [...free].sort((a, b) => b.profitPerUnit - a.profitPerUnit).forEach((c) => {
+  [...free].sort((a, b) => (b.profitIndex ?? 0) - (a.profitIndex ?? 0) || b.profitPerUnit - a.profitPerUnit).forEach((c) => {
     const capacity = Math.floor(c.avgDailyVolume * marketShare * evenDays * PROFIT_STRATEGY_HORIZON);
     const q = Math.min(capacity, left);
     out.set(c.city, q);
@@ -394,7 +395,9 @@ function salePlanState(p, data) {
   const totalQty = rowsData.reduce((sum, r) => sum + r.qty, 0);
   const planDays = rowsData.reduce((m, r) => Math.max(m, r.days), 0);       // города продают параллельно — срок по самому медленному
   const avgPrice = totalQty > 0 ? rowsData.reduce((sum, r) => sum + r.c.avgSellPrice * r.qty, 0) / totalQty : null;
-  const netPrice = avgPrice === null ? null : avgPrice * (1 - data.taxRate - (data.setupFeeRate || 0));
+  // Чистая цена — по налогу КАЖДОГО города (Чёрный Рынок берёт свой, выше); одну общую ставку на смесь цен не применяем.
+  const cityNet = (c) => (c.netPrice !== undefined ? c.netPrice : c.avgSellPrice * (1 - data.taxRate - (data.setupFeeRate || 0)));
+  const netPrice = avgPrice === null ? null : rowsData.reduce((sum, r) => sum + cityNet(r.c) * r.qty, 0) / totalQty;
   const profitUnit = netPrice === null ? null : netPrice - data.effectiveCostPerUnit;
   const anyManual = rowsData.some((r) => r.manual) || anyToggle;
   const noVolume = rowsData.some((r) => r.qty > 0 && !(r.c.avgDailyVolume > 0));
@@ -408,10 +411,11 @@ function byCityHtml(p, data, st) {
   const rows = rowsData.map(({ c, qty, days, manual, tolerance, inPlan, enabled: isOn }) => {
     const dim = (minPrice !== null && c.avgSellPrice < minPrice && !manual) || !isOn;
     const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
-    return `<tr class="${dim ? 'below-threshold' : ''}"><td class="plan-check"><input type="checkbox" class="plan-toggle" data-city="${c.city}" ${isOn ? 'checked' : ''} ${c.avgDailyVolume > 0 ? '' : 'disabled'} title="${c.avgDailyVolume > 0 ? 'Включить/выключить город в плане продажи — партия пересчитается' : 'В этом городе нет сделок за период'}" /></td><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
+    return `<tr class="${dim ? 'below-threshold' : ''}"><td class="plan-check"><input type="checkbox" class="plan-toggle" data-city="${c.city}" ${isOn ? 'checked' : ''} ${c.avgDailyVolume > 0 ? '' : 'disabled'} title="${c.avgDailyVolume > 0 ? 'Включить/выключить город в плане продажи — партия пересчитается' : 'В этом городе нет сделок за период'}" /></td><td>${c.blackMarket ? `<span title="Чёрный Рынок: другой налог (${(c.taxRate * 100).toFixed(1)}%), не обычный город">⚫ ${c.city}</span>` : c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
       <td data-sort-value="${qty}"><input class="plan-qty ${manual ? 'is-manual' : ''}" type="number" min="0" step="1" value="${qty}" data-city="${c.city}" title="Сколько штук планируешь продать в этом городе (введи своё — остальное пересчитается)" /></td>
       <td data-sort-value="${days}">${qty > 0 ? fmtDays(days) : '—'}${inPlan && tolerance && !manual ? ` <small>(допуск ${(tolerance * 100).toFixed(0)}%)</small>` : ''}</td>
-      <td data-sort-value="${c.profitPerUnit * qty}" class="${cls}">${qty > 0 ? fmtNum(c.profitPerUnit * qty) : '—'}</td></tr>`;
+      <td data-sort-value="${c.profitPerUnit * qty}" class="${cls}">${qty > 0 ? fmtNum(c.profitPerUnit * qty) : '—'}</td>
+      <td data-sort-value="${c.profitIndex ?? 0}" title="Индекс профита = профит% × log2(2 + оборот): по нему города берут партию при «максимизировать профит»">${c.profitIndex ? fmtNum(c.profitIndex, 0) : '—'}</td></tr>`;
   }).join('');
 
   const sumOk = totalQty === data.quantity;
@@ -419,14 +423,14 @@ function byCityHtml(p, data, st) {
   return `
     <details open class="by-city">
       <summary>План продажи через Sell Order по городам${minPrice !== null ? ` (серые — ниже порога ${fmtNum(minPrice)}, в автоплан не входят)` : ''}</summary>
-      <label class="craft-field" title="«Равномерно по времени» — партия делится пропорционально обороту, во всех городах она распродаётся за один срок. «Максимизировать профит» — города с лучшей маржой берут партию первыми, но не больше разумной вместимости (до 1.5× срока равномерного плана)">Распределение партии
+      <label class="craft-field" title="«Максимизировать профит» — города с лучшим индексом профита берут партию первыми, но не больше разумной вместимости (до 1.5× срока равномерного плана). «Равномерно по времени» — партия делится пропорционально обороту, во всех городах она распродаётся за один срок">Распределение партии
         <select id="sale-strategy">
-          <option value="even" ${saleStrategy === 'even' ? 'selected' : ''}>Равномерно по времени (по умолчанию)</option>
-          <option value="profit" ${saleStrategy === 'profit' ? 'selected' : ''}>Баланс маржи и скорости — максимизировать профит</option>
+          <option value="profit" ${saleStrategy === 'profit' ? 'selected' : ''}>Максимизировать профит — по индексу профита (по умолчанию)</option>
+          <option value="even" ${saleStrategy === 'even' ? 'selected' : ''}>Равномерно по времени</option>
         </select>
       </label>
       <div class="table-scroll"><table class="craft-recipe-table">
-        <thead><tr><th>В плане</th><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th><th>Профит с города</th></tr></thead>
+        <thead><tr><th>В плане</th><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th><th>Профит с города</th><th>Индекс профита</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
       <div class="plan-summary">
@@ -436,7 +440,7 @@ function byCityHtml(p, data, st) {
         <div>Средняя цена: <strong>${avgPrice !== null ? fmtNum(avgPrice) : '—'}</strong> · после налога ${netPrice !== null ? fmtNum(netPrice) : '—'} · профит / шт: <strong class="${profitUnit !== null && profitUnit > 0 ? 'profit-pos' : 'profit-neg'}">${profitUnit !== null ? fmtNum(profitUnit) : '—'}</strong> · итого: <strong class="${profitUnit !== null && profitUnit > 0 ? 'profit-pos' : 'profit-neg'}">${profitUnit !== null ? fmtNum(profitUnit * totalQty) : '—'}</strong></div>
         ${noVolume ? '<div class="scan-stale">⚠ В одном из городов нет сделок за период — срок продажи там посчитать нельзя.</div>' : ''}
       </div>
-      <p class="calc-note">Партия делится между городами пропорционально дневному обороту; при доле рынка ${(marketShare * 100).toFixed(0)}% автоплан занимает ${fmtDays(auto.days)}.${serverPlan ? ` В автоплан вошли города с ценой не хуже лучшей больше чем на допуск (у ликвидных он динамически больше).${serverPlan.excluded.length ? ` Вне автоплана: ${serverPlan.excluded.map((e) => `${e.city} — ${e.reason}`).join('; ')}.` : ''}` : ''} Включай и выключай города галочкой «В плане» или впиши своё количество — всё пересчитается сразу.</p>
+      <p class="calc-note">В автоплан входят все прибыльные города${data.blackMarket ? ' (включая Чёрный Рынок со своим налогом)' : ''}; при доле рынка ${(marketShare * 100).toFixed(0)}% автоплан занимает ${fmtDays(auto.days)}.${serverPlan ? `${serverPlan.excluded.length ? ` Вне автоплана: ${serverPlan.excluded.map((e) => `${e.city} — ${e.reason}`).join('; ')}.` : ''}` : ''} Включай и выключай города галочкой «В плане» или впиши своё количество — всё пересчитается сразу.</p>
     </details>`;
 }
 
@@ -593,7 +597,7 @@ function patientSellHtml(data) {
       <div class="craft-summary-row"><span>Дней на распродажу ${fmtNum(soldQty)} шт (по доле рынка ${(p.marketShare * 100).toFixed(0)}%: тебе достаётся ~${fmtNum(p.avgDailyVolume * p.marketShare, 1)} из ${fmtNum(p.avgDailyVolume, 1)} сделок в день)</span><span class="${slow ? 'scan-stale' : ''}">${fmtDays(sellDays)}${slow ? ' ⚠' : ''}</span></div>
       ${cycleRowsHtml(data, live ? live.planDays : undefined)}
       ${sellPlanHtml(data)}
-      <div class="craft-summary-row"><span>После налога с продажи (${(data.taxRate * 100).toFixed(0)}%)</span><span>${fmtNum(netPrice)}</span></div>
+      <div class="craft-summary-row"><span>После налога с продажи (${data.blackMarket ? 'у каждого города свой' : `${(data.taxRate * 100).toFixed(0)}%`})</span><span>${fmtNum(netPrice)}</span></div>
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${cls}">${fmtNum(profitUnit)}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${fmtNum(soldQty)} шт</strong><strong class="${cls}">${fmtNum(totalProfit)}</strong></div>
       ${thresholdHtml(p)}

@@ -337,6 +337,7 @@ test('план продажи по городам: партия делится �
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
+  await page.locator('#sale-strategy').selectOption('even');                       // эти проверки — про равномерное распределение (по умолчанию теперь «максимизировать профит»)
   const rows = page.locator('#craft-result .by-city tbody tr');
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0).locator('input.plan-qty')).toHaveValue('100');  // Lymhurst: 120 × 100/120 = 100 шт
@@ -463,6 +464,7 @@ test('чекбоксы городов в плане продажи: включе
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
+  await page.locator('#sale-strategy').selectOption('even');                       // эти проверки — про равномерное распределение (по умолчанию теперь «максимизировать профит»)
   const summary = page.locator('#craft-result .plan-summary');
   const box = (city) => page.locator(`input.plan-toggle[data-city="${city}"]`);
   await expect(box('Lymhurst')).toBeChecked();
@@ -485,14 +487,14 @@ test('чекбоксы городов в плане продажи: включе
 });
 
 // Общий мок для проверок реактивности плана продажи: три города с разной маржой и оборотом, автоплан — только Lymhurst.
-async function openSalePlanMock(page) {
+async function openSalePlanMock(page, { keepDefaultStrategy = false, profitIndexes = null } = {}) {
   await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
     itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, marketShare: 1, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
     cities: ['Lymhurst', 'Martlock', 'Thetford'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 100000, recipe: [], sellPrices: [],
     bestSell: null, taxRate: 0, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
     acquire: { days: 1, cycleDays: 6, byResource: [], bottleneckResource: null },
     patientSell: { days: 7, marketShare: 1, avgSellPrice: 3000, bestCity: { city: 'Lymhurst', avgPrice: 3000 }, avgDailyVolume: 40, daysToSellBatch: 5, netSellPrice: 3000, profitPerUnit: 2000,
-      byCity: [{ city: 'Lymhurst', avgSellPrice: 3000, avgDailyVolume: 20, profitPerUnit: 2000 }, { city: 'Martlock', avgSellPrice: 2000, avgDailyVolume: 10, profitPerUnit: 1000 }, { city: 'Thetford', avgSellPrice: 1500, avgDailyVolume: 10, profitPerUnit: 500 }],
+      byCity: [{ city: 'Lymhurst', avgSellPrice: 3000, avgDailyVolume: 20, profitPerUnit: 2000, profitIndex: profitIndexes ? profitIndexes.Lymhurst : 0 }, { city: 'Martlock', avgSellPrice: 2000, avgDailyVolume: 10, profitPerUnit: 1000, profitIndex: profitIndexes ? profitIndexes.Martlock : 0 }, { city: 'Thetford', avgSellPrice: 1500, avgDailyVolume: 10, profitPerUnit: 500, profitIndex: profitIndexes ? profitIndexes.Thetford : 0 }],
       cities: [], plan: { bestPrice: 3000, avgPrice: 3000, overpayPct: 0, totalDays: 5, excluded: [{ city: 'Martlock', reason: 'ниже допуска' }, { city: 'Thetford', reason: 'ниже допуска' }],
         cities: [{ city: 'Lymhurst', avgPrice: 3000, avgDailyVolume: 20, tolerance: 0.02, qty: 100, days: 5 }] } },
   } }));
@@ -501,6 +503,7 @@ async function openSalePlanMock(page) {
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
   await page.locator('#craft-patient-section').waitFor();
+  if (!keepDefaultStrategy) await page.locator('#sale-strategy').selectOption('even');   // тесты ниже проверяют равномерное распределение
 }
 const digits = (text) => text.replace(/[^\d-]/g, '');
 
@@ -521,31 +524,33 @@ test('сводка плана продажи реактивна: включен�
 test('план продажи: колонка «Профит с города» = профит/шт × штук, отданных городу', async ({ page }) => {
   await openSalePlanMock(page);
   await page.locator('input.plan-toggle[data-city="Martlock"]').check();
-  const cell = (city) => page.locator(`tr:has(input.plan-toggle[data-city="${city}"]) td`).last();
+  const cell = (city) => page.locator(`tr:has(input.plan-toggle[data-city="${city}"]) td`).nth(7);          // «Профит с города» (после него — «Индекс профита»)
   expect(digits(await cell('Lymhurst').textContent())).toBe('134000');              // 2000 × 67
   expect(digits(await cell('Martlock').textContent())).toBe('33000');               // 1000 × 33
   expect((await cell('Thetford').textContent()).trim()).toBe('—');                  // городу ничего не отдано
 });
 
-test('стратегия распределения: по умолчанию равномерно по времени, «максимизировать профит» отдаёт партию городам с лучшей маржой', async ({ page }) => {
-  await openSalePlanMock(page);
+test('стратегия распределения: по умолчанию максимизировать профит ПО ИНДЕКСУ профита (не по голой марже); «равномерно» делит по обороту', async ({ page }) => {
+  // у Thetford самая низкая маржа (500/шт), но лучший индекс (мало риска: ликвидный рынок) — партию первым берёт он
+  await openSalePlanMock(page, { keepDefaultStrategy: true, profitIndexes: { Lymhurst: 200, Martlock: 100, Thetford: 300 } });
   const strategy = page.locator('#sale-strategy');
-  await expect(strategy).toHaveValue('even');
+  await expect(strategy).toHaveValue('profit');
   await page.locator('input.plan-toggle[data-city="Martlock"]').check();
-  await page.locator('input.plan-toggle[data-city="Thetford"]').check();            // 20 : 10 : 10 → 50 / 25 / 25, все продают за 2.5 дня
+  await page.locator('input.plan-toggle[data-city="Thetford"]').check();
   const qty = (city) => page.locator(`input.plan-qty[data-city="${city}"]`);
+  // вместимость = оборот × 1 × 2.5 дня × 1.5 = 20→75, 10→37: Thetford 37, Lymhurst 63, Martlock 0
+  await expect(qty('Thetford')).toHaveValue('37');
+  await expect(qty('Lymhurst')).toHaveValue('63');
+  await expect(qty('Martlock')).toHaveValue('0');
+  const section = page.locator('#craft-patient-section');
+  await expect(section).toContainText('100 из 100 шт');
+  await expect(page.locator('#craft-result .by-city thead')).toContainText('Индекс профита');
+  await expect(page.locator('tr:has(input.plan-toggle[data-city="Thetford"]) td').last()).toContainText('300');
+  await strategy.selectOption('even');                                              // равномерно: 20 : 10 : 10 → 50 / 25 / 25
   await expect(qty('Lymhurst')).toHaveValue('50');
   await expect(qty('Thetford')).toHaveValue('25');
-  const section = page.locator('#craft-patient-section');
-  await strategy.selectOption('profit');                                            // вместимость = оборот × 3.75 дня → 75 / 25 / 0
-  await expect(qty('Lymhurst')).toHaveValue('75');
-  await expect(qty('Martlock')).toHaveValue('25');
-  await expect(qty('Thetford')).toHaveValue('0');
-  await expect(section).toContainText('100 из 100 шт');
-  expect(digits(await section.locator('.craft-summary-row', { hasText: 'Итого на' }).locator('strong').last().textContent())).toBe('175000'); // против 137 500 при равномерном
-  await page.locator('#sale-strategy').selectOption('even');
-  await expect(qty('Lymhurst')).toHaveValue('50');
 });
+
 
 
 test('честность скана: «Искать и .4» и возврат уходят в запрос, диапазон и индекс доверия видны в таблице (шаткая цифра — оранжевая)', async ({ page }) => {
@@ -595,8 +600,10 @@ test('возврат ресурсов: галочки «Бонус города�
   await expect(page.locator('#craft-royal-bonus')).toBeChecked();                   // по умолчанию — бонус города, без Фокуса
   await expect(page.locator('#craft-focus')).not.toBeChecked();
   await page.locator('#craft-focus').check();
+  await page.locator('#craft-black-market').check();                                 // Чёрный Рынок — место продажи в плане
   await page.locator('#craft-run').click();
   await expect(page.locator('#craft-result .craft-recipe-table').first()).toContainText('возврат 53.0%');
+  expect(query.get('blackMarket')).toBe('true');
   expect(query.get('royalBonus')).toBe('true');
   expect(query.get('focus')).toBe('true');
 });

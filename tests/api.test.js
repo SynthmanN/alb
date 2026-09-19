@@ -420,6 +420,87 @@ describe('калькулятор крафта: галочка «зачарова
   });
 });
 
+describe('калькулятор крафта: Чёрный Рынок и индекс профита в плане продажи', () => {
+  // материалы по 10 (меч = 24 материала → 240), готовый меч не продаётся; история — Martlock и Чёрный Рынок
+  const install = () => vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+    const u = String(url);
+    if (u.includes('/history/')) {
+      const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
+      const locs = new URL(u).searchParams.get('locations').split(',');
+      const out = [];
+      for (const id of ids) {
+        if (id !== 'T4_MAIN_SWORD') continue;
+        if (locs.includes('Martlock')) out.push({ item_id: id, location: 'Martlock', quality: 1, data: [{ item_count: 700, avg_price: 1000 }] });
+        if (locs.includes('BlackMarket')) out.push({ item_id: id, location: 'Black Market', quality: 1, data: [{ item_count: 700, avg_price: 1100 }] });
+      }
+      return { ok: true, status: 200, json: async () => out };
+    }
+    const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+    const records = ids.flatMap((id) => [{ item_id: id, city: 'Martlock', quality: 1, sell_price_min: id === 'T4_MAIN_SWORD' ? 0 : 10, sell_price_min_date: NOW(), buy_price_max: 0, buy_price_max_date: NOW() }]);
+    return { ok: true, status: 200, json: async () => records };
+  });
+  const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=100&cities=Martlock${extra}`);
+
+  it('без галочки ЧР в плане нет; с ней — ещё один «город» со своим налогом 10.5% (налог + Setup Fee), без второго сбора', async () => {
+    install();
+    const plain = (await get()).body.patientSell;
+    expect(plain.byCity.map((c) => c.city)).toEqual(['Martlock']);
+    const d = (await get('&blackMarket=true')).body;
+    expect(d.blackMarket).toBe(true);
+    const bm = d.patientSell.byCity.find((c) => c.blackMarket);
+    const martlock = d.patientSell.byCity.find((c) => !c.blackMarket);
+    expect(bm.city).toBe('Black Market');
+    expect(bm.taxRate).toBeCloseTo(0.105, 9);
+    expect(bm.netPrice).toBeCloseTo(1100 * (1 - 0.105), 6);
+    expect(martlock.taxRate).toBeCloseTo(0.105, 9);                // у обычного города налог 8% + сбор 2.5% — те же 10.5%
+    const premium = (await get('&blackMarket=true&premium=true')).body.patientSell.byCity.find((c) => c.blackMarket);
+    expect(premium.taxRate).toBeCloseTo(0.065, 9);                 // с премиумом 4% + 2.5%
+  });
+
+  it('индекс профита города = профит% × log2(2 + оборот); план по умолчанию — все прибыльные города, партия по индексу; чистая цена — по налогу каждого', async () => {
+    install();
+    const d = (await get('&blackMarket=true&premium=true')).body;
+    const ps = d.patientSell;
+    const cost = d.effectiveCostPerUnit;
+    for (const c of ps.byCity) {
+      const expectedIndex = ((c.profitPerUnit / cost) * 100) * Math.log2(2 + c.avgDailyVolume);
+      expect(c.profitIndex).toBeCloseTo(expectedIndex, 6);
+    }
+    expect(ps.plan.strategy).toBe('maxProfit');
+    expect(ps.plan.cities.reduce((s, c) => s + c.qty, 0)).toBe(100);
+    expect(ps.plan.cities.map((c) => c.city).sort()).toEqual(['Black Market', 'Martlock']);
+    const planNet = ps.plan.cities.reduce((s, c) => s + c.qty * ps.byCity.find((b) => b.city === c.city).netPrice, 0) / 100;
+    expect(ps.plan.netPricePerUnit).toBeCloseTo(planNet, 6);
+    expect(ps.plan.profitPerUnit).toBeCloseTo(planNet - cost, 6);
+  });
+});
+
+describe('план продажи «максимизировать профит»: maxProfitCityAllocation', () => {
+  const { maxProfitCityAllocation } = require('../server.js');
+  const city = (name, vol, profit, index) => ({ city: name, avgPrice: 1000, avgDailyVolume: vol, profitPerUnit: profit, profitIndex: index });
+  it('партию первым берёт лучший ИНДЕКС (а не лучшая маржа), но не больше разумной вместимости; сумма = партия', () => {
+    const plan = maxProfitCityAllocation([city('A', 20, 2000, 200), city('B', 10, 500, 300), city('C', 10, 1000, 100)], 100, { marketShare: 1 });
+    const q = Object.fromEntries(plan.cities.map((c) => [c.city, c.qty]));
+    expect(q).toEqual({ B: 37, A: 63 });                          // вместимость B = 10·2.5·1.5 = 37, остальное — A (вместимость 75)
+    expect(plan.cities.reduce((s, c) => s + c.qty, 0)).toBe(100);
+    expect(plan.excluded.map((e) => e.city)).toEqual(['C']);
+  });
+  it('тонкий рынок (меньше 1 сделки в день или <2% от самого ликвидного) в план не входит', () => {
+    const plan = maxProfitCityAllocation([city('A', 300, 100, 50), city('B', 0.5, 5000, 999), city('C', 5, 100, 10)], 100, { marketShare: 1 });
+    expect(plan.cities.map((c) => c.city)).not.toContain('B');
+    expect(plan.cities.map((c) => c.city)).not.toContain('C');   // 5 < 2% от 300 = 6
+    expect(plan.excluded.find((e) => e.city === 'B').reason).toMatch(/тонкий/);
+  });
+  it('если все города тонкие — план не пустой: берётся самый ликвидный', () => {
+    const plan = maxProfitCityAllocation([city('A', 0.4, 100, 5), city('B', 0.8, 100, 5)], 10, { marketShare: 1 });
+    expect(plan.cities.map((c) => c.city)).toEqual(['B']);
+    expect(plan.cities[0].qty).toBe(10);
+  });
+  it('нет городов с оборотом — пустой план без падения', () => {
+    expect(maxProfitCityAllocation([city('A', 0, 100, 5)], 10).cities).toEqual([]);
+  });
+});
+
 describe('калькулятор крафта: многогородовой план', () => {
   it('план закупки по материалам и план продажи есть в ответе, допуск возвращается', async () => {
     const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=100&priceTolerance=8')).body;
