@@ -766,3 +766,43 @@ test('свои цены: вписал реальную цену сырья и п
   await page.locator('.manual-reset').click();
   await expect(page.locator('#craft-result .craft-summary').first()).toContainText('760');
 });
+
+
+test('лог закупок по лотам: вписал купленные стаки — средняя цена, «куплено X из Y» и себестоимость пересчитываются на месте; чекбокс возвращает обычное поле', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/api/craft-calc*', (route) => { requests++; route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, marketShare: 1, materialHours: 24,
+    rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+    cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 8000, effectiveCostPerUnit: 8000, totalCost: 800000,
+    recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слитки (IV)', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, rrr: 0, cityBonus: false, neededToBuy: 1600, cheapestCity: 'Martlock', cheapestPrice: 500, priceSource: 'history', cityPrices: [] }],
+    sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
+    baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 8000, baseCostPerUnit: 8000 },
+  } }); });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-gear-rrr').selectOption('none');                                 // без возврата — числа проще
+  await page.locator('#craft-run').click();
+  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toBeVisible();      // по умолчанию — обычное поле «своя цена»
+  await page.locator('#craft-purchase-log').check();
+  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toHaveCount(0);      // вместо него — мини-список стаков
+  const log = page.locator('.lot-log');
+  await log.locator('.lot-add').click();
+  await log.locator('input.lot-qty').nth(0).fill('999');
+  await log.locator('input.lot-price').nth(0).fill('432');
+  await log.locator('.lot-add').click();
+  await log.locator('input.lot-qty').nth(1).fill('877');
+  await log.locator('input.lot-price').nth(1).fill('450');
+  // (999·432 + 877·450) / 1876 = 440.4; прогресс: 1 876 из 1 600 нужных
+  await expect(log.locator('.lot-sum')).toContainText('средняя 440,4');
+  await expect(log.locator('.lot-sum')).toContainText('1 876');
+  await expect(log.locator('.lot-sum')).toContainText('117%');
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('7 047');    // 16 × 440.4 ≈ 7 047
+  await log.locator('.lot-del').nth(1).click();
+  await expect(log.locator('.lot-sum')).toContainText('средняя 432');                             // остался один стак 999 × 432
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('6 912');
+  await page.locator('#craft-purchase-log').uncheck();
+  await expect(page.locator('input.manual-price[data-res="T4_METALBAR"]')).toBeVisible();        // чекбокс выключен — таблица вернулась к обычному полю
+  await expect(page.locator('#craft-result .craft-summary').first()).toContainText('8 000');       // лоты в расчёт не идут
+  expect(requests).toBe(1);
+});

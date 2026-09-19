@@ -317,3 +317,9 @@ td.plan-check input { width: auto; }
 .city-prices .city-out { color: #7d8791; }
 .manual-price { width: 110px; margin-top: 4px; }
 .manual-price.is-manual { border-color: #7ee787; }
+.lot-log { margin-top: 4px; min-width: 190px; }
+.lot-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+.lot-row input { width: 72px; }
+.lot-row .lot-price { width: 82px; }
+.lot-del, .lot-add { padding: 2px 8px; }
+.lot-sum { margin-top: 2px; }
