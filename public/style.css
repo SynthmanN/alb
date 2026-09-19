@@ -239,3 +239,9 @@ main { padding-top: 4px; }
 /* Разбивка терпеливой продажи и сравнение качеств */
 .by-city summary, .quality-comparison summary { cursor: pointer; font-size: 13px; color: #9aa0aa; margin: 10px 0 4px; }
 tr.below-threshold td { opacity: 0.45; }
+
+/* Переключатель тира и сравнение по тирам */
+.tier-switch { display: inline-flex; align-items: center; gap: 6px; margin-left: 14px; font-size: 12px; color: #9aa0aa; }
+.tier-comparison summary { cursor: pointer; font-size: 13px; color: #9aa0aa; margin: 10px 0 4px; }
+tr.tier-row { cursor: pointer; }
+tr.tier-row:hover td { background: #22262d; }

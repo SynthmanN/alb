@@ -154,3 +154,37 @@ test('качество: сравнение всех 5 качеств и разб
   await expect(page.locator('#craft-result .quality-comparison tbody tr')).toHaveCount(5);
   await expect(page.locator('#craft-result .quality-comparison')).toContainText('Отличное ⚡');
 });
+
+test('сравнение по тирам: строка переключает тир без нового поиска, зачарование и качество сохраняются', async ({ page }) => {
+  const queries = [];
+  const tierRow = (id, tier, cost, profit, current) => ({ itemId: id, tier, enchant: 2, enchantCapped: false, hasPrice: true, cost, bestQuality: 4, bestSell: { city: 'Martlock', price: cost + profit }, netSellPrice: cost + profit, profitPerUnit: profit, profitPct: (profit / cost) * 100, isCurrent: current });
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    queries.push(q);
+    const id = q.get('item');
+    route.fulfill({ json: {
+      itemId: id, enchant: Number(q.get('enchant')), quality: Number(q.get('quality')), quantity: 1, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 1000, recipe: [], sellPrices: [], bestSell: null,
+      taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null, enchantAfterCraft: null, teleport: null,
+      tierComparison: [tierRow('T4_MAIN_SWORD', 4, 8000, -1500, id === 'T4_MAIN_SWORD'), tierRow('T5_MAIN_SWORD', 5, 25000, 4000, id === 'T5_MAIN_SWORD')],
+    } });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item', { hasText: 'T4' }).first().click();
+  await page.locator('#craft-enchant').selectOption('2');
+  await page.locator('#craft-quality').selectOption('4');
+  await page.locator('#craft-run').click();
+  await expect(page.locator('#craft-result .tier-comparison tbody tr')).toHaveCount(2);
+
+  await page.locator('#craft-result tr.tier-row[data-item-id="T5_MAIN_SWORD"]').click();
+  await expect.poll(() => queries.length).toBe(2);
+  expect(queries[1].get('item')).toBe('T5_MAIN_SWORD');
+  expect(queries[1].get('enchant')).toBe('2');
+  expect(queries[1].get('quality')).toBe('4');
+  await expect(page.locator('#craft-tier-switch')).toHaveValue('T5_MAIN_SWORD');
+
+  await page.locator('#craft-tier-switch').selectOption('T4_MAIN_SWORD');
+  await expect.poll(() => queries.length).toBe(3);
+  expect(queries[2].get('item')).toBe('T4_MAIN_SWORD');
+});

@@ -56,20 +56,49 @@ function renderCraftSuggestions(query) {
   }
 }
 
-function selectCraftItem(item) {
+// Предметы того же семейства (тот же предмет на других тирах): T4_MAIN_SWORD → MAIN_SWORD.
+function craftFamilyItems(item) {
+  const family = item.id.replace(/^T\d+_/, '');
+  return ALL_ITEMS.filter((i) => i.category === item.category && i.id.replace(/^T\d+_/, '') === family && RECIPES_KNOWN(i)).sort((a, b) => a.tier - b.tier);
+}
+// В каталоге на клиенте рецептов нет — предмет крафтится, если это гир (weapon/armor/cape).
+function RECIPES_KNOWN(i) {
+  return i.category === 'weapon' || i.category === 'armor' || i.category === 'cape';
+}
+
+// keep=true — переключение тира: зачарование и качество сохраняются, результат пересчитывается на месте.
+function selectCraftItem(item, keep = false) {
+  const prevEnchant = craftEl.enchant.value;
   craftSelectedItem = item;
   craftEl.search.value = '';
   craftEl.suggestions.innerHTML = '';
-  craftEl.selected.innerHTML = `<img src="${iconUrl(item.id, 32)}" alt="" onerror="this.style.visibility='hidden'" /><strong>${item.name}</strong>`;
+  const tiers = craftFamilyItems(item);
+  const tierSwitch = tiers.length > 1
+    ? `<label class="tier-switch">Тир <select id="craft-tier-switch">${tiers.map((t) => `<option value="${t.id}" ${t.id === item.id ? 'selected' : ''}>T${t.tier}</option>`).join('')}</select></label>`
+    : '';
+  craftEl.selected.innerHTML = `<img src="${iconUrl(item.id, 32)}" alt="" onerror="this.style.visibility='hidden'" /><strong>${item.name}</strong>${tierSwitch}`;
+  const sw = document.getElementById('craft-tier-switch');
+  if (sw) sw.addEventListener('change', () => switchCraftTier(sw.value));
 
   const maxE = maxEnchantFor(item);
   const opts = [{ v: 0, l: 'Без зачар.' }, { v: 1, l: 'Зачар. 1' }, { v: 2, l: 'Зачар. 2' }, { v: 3, l: 'Зачар. 3' }, { v: 4, l: 'Зачар. 4' }];
   craftEl.enchant.innerHTML = opts.map((o) => `<option value="${o.v}" ${o.v > maxE ? 'disabled' : ''}>${o.l}</option>`).join('');
+  if (keep && Number(prevEnchant) <= maxE) craftEl.enchant.value = prevEnchant;
 
   craftEl.controls.style.display = 'flex';
-  craftEl.result.innerHTML = '';
   bulkEl.panel.style.display = 'block';
-  bulkEl.result.innerHTML = '';
+  if (!keep) {
+    craftEl.result.innerHTML = '';
+    bulkEl.result.innerHTML = '';
+  }
+}
+
+// Быстрая смена тира без повторного поиска: тот же предмет на другом тире, зачарование/качество/количество те же.
+function switchCraftTier(itemId) {
+  const item = findItem(itemId);
+  if (!item) return;
+  selectCraftItem(item, true);
+  runCraftCalc();
 }
 
 async function runCraftCalc() {
@@ -143,15 +172,42 @@ function renderCraftResult(data) {
       <div class="craft-summary-row"><span>Профит / шт</span><span class="${profitClass}">${data.profitPerUnit !== null ? Math.round(data.profitPerUnit).toLocaleString('ru-RU') : '—'}</span></div>
       <div class="craft-summary-row"><strong>Итого на ${data.quantity.toLocaleString('ru-RU')} шт</strong><strong class="${profitClass}">${data.totalProfit !== null ? Math.round(data.totalProfit).toLocaleString('ru-RU') : '—'}</strong></div>
     </div>
+    ${tierComparisonHtml(data)}
     ${enchantAfterHtml(data)}
     ${patientSellHtml(data)}
     ${teleportHtml(data)}
   `;
+  craftEl.result.querySelectorAll('tr.tier-row').forEach((tr) => tr.addEventListener('click', () => switchCraftTier(tr.dataset.itemId)));
   const craftTables = craftEl.result.querySelectorAll('table');
   wireTableSort(craftTables[0], 'craft-recipe');
   wireTableSort(craftTables[1], 'craft-sell');
 }
 
+
+// Сравнение по тирам: себестоимость и лучшая мгновенная цена продажи для каждого тира того же предмета.
+function tierComparisonHtml(data) {
+  const t = data.tierComparison;
+  if (!t || t.length === 0) return '';
+  const rows = t.map((r) => {
+    const cls = r.profitPerUnit === null ? '' : r.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
+    return `
+      <tr class="tier-row ${r.isCurrent ? 'calc-best-row' : ''}" data-item-id="${r.itemId}" title="Переключить на T${r.tier}">
+        <td data-sort-value="${r.tier}">T${r.tier}${r.enchant ? `.${r.enchant}` : ''}${r.enchantCapped && r.tier < 4 ? ' <span class="scan-stale" title="Зачарование доступно только с T4">без чарки</span>' : ''}</td>
+        <td>${r.cost !== null ? fmtNum(r.cost) : 'нет цен на материалы'}</td>
+        <td data-sort-value="${r.bestQuality ?? ''}">${r.bestQuality ? QUALITY_NAMES[r.bestQuality] : '—'}</td>
+        <td>${r.bestSell ? `${r.bestSell.city}: ${fmtNum(r.bestSell.price)}` : 'нет предложений'}</td>
+        <td class="${cls}" data-sort-value="${r.profitPerUnit ?? ''}">${r.profitPerUnit !== null ? `${fmtNum(r.profitPerUnit)} (${r.profitPct.toFixed(1)}%)` : '—'}</td>
+      </tr>`;
+  }).join('');
+  return `
+    <details open class="tier-comparison">
+      <summary>Сравнение по тирам (клик по строке — переключить тир; качество выбрано лучшее по каждому тиру, продажа мгновенная)</summary>
+      <div class="table-scroll"><table class="craft-recipe-table">
+        <thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать</th><th>Профит / шт</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </details>`;
+}
 
 // Разбивка терпеливой продажи по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
 function byCityHtml(p, data) {

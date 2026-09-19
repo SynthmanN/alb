@@ -414,6 +414,81 @@ function effectiveRecipeResourceId(resourceId, enchant) {
   return resourceId;
 }
 
+// Себестоимость (крафт) и лучшая мгновенная цена продажи для каждого тира семейства предмета.
+async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities }) {
+  const family = familyIdOf(itemId);
+  const items = ITEMS.filter((i) => GEAR_IDS.has(i.id) && familyIdOf(i.id) === family && RECIPES[i.id]).sort((a, b) => a.tier - b.tier);
+  if (items.length < 2) return null;
+
+  // Зачарование применимо только с T4: для T2/T3 считаем .0 (enchantCapped подсказывает интерфейсу).
+  const plan = items.map((it) => {
+    const applicable = it.tier >= 4;
+    const recipeEnchant = enchantAfterRequested ? 0 : (applicable ? enchant : 0);
+    const finalEnchant = applicable ? targetEnchant : 0;
+    const stepIds = enchantAfterRequested && applicable && ENCHANT_MATERIAL_COUNT[it.slot]
+      ? Array.from({ length: finalEnchant }, (_, k) => enchantMaterialId(it.tier, k + 1)) : [];
+    return { it, recipeEnchant, finalEnchant, stepIds, enchantCapped: enchantCapped || (!applicable && enchant > 0) };
+  });
+
+  const materialIds = new Set();
+  const finishedIds = [];
+  for (const p of plan) {
+    for (const r of RECIPES[p.it.id].resources) materialIds.add(effectiveRecipeResourceId(r.resource, p.recipeEnchant));
+    for (const id of p.stepIds) materialIds.add(id);
+    finishedIds.push(gearEnchantId(p.it.id, p.finalEnchant));
+  }
+  const [materialData, finishedData] = await Promise.all([
+    fetchPricesBatched([...materialIds], 1),
+    fetchGearPrices(finishedIds, ALL_QUALITIES),
+  ]);
+  const allowed = new Set(queryCities.map(normLocation));
+  const cheapestByItem = {};
+  for (const rec of materialData) {
+    if (!rec.sell_price_min || !allowed.has(normLocation(rec.city))) continue;
+    const cur = cheapestByItem[rec.item_id];
+    if (!cur || rec.sell_price_min < cur) cheapestByItem[rec.item_id] = rec.sell_price_min;
+  }
+  const bestSellByQuality = {}; // `${id}|${quality}` -> { city, price }
+  for (const rec of finishedData) {
+    if (!rec.buy_price_max || !allowed.has(normLocation(rec.city))) continue;
+    const key = `${rec.item_id}|${rec.quality}`;
+    if (!bestSellByQuality[key] || rec.buy_price_max > bestSellByQuality[key].price) bestSellByQuality[key] = { city: rec.city, price: rec.buy_price_max };
+  }
+
+  return plan.map((p) => {
+    const recipe = RECIPES[p.it.id];
+    let materials = 0;
+    let complete = true;
+    for (const r of recipe.resources) {
+      const price = cheapestByItem[effectiveRecipeResourceId(r.resource, p.recipeEnchant)];
+      if (!price) { complete = false; break; }
+      materials += price * r.count;
+    }
+    let cost = complete ? materials * (1 - rrr) + (recipe.silver || 0) : null;
+    if (cost !== null && p.stepIds.length) {
+      for (const id of p.stepIds) {
+        const price = cheapestByItem[id];
+        if (!price) { cost = null; break; }
+        cost += price * ENCHANT_MATERIAL_COUNT[p.it.slot];
+      }
+    }
+    // Лучшее качество тира — то, где выше чистая цена продажи.
+    let best = null;
+    for (const quality of ALL_QUALITIES) {
+      const sell = bestSellByQuality[`${gearEnchantId(p.it.id, p.finalEnchant)}|${quality}`];
+      if (sell && (!best || sell.price > best.sell.price)) best = { quality, sell };
+    }
+    const netSellPrice = best ? best.sell.price * (1 - taxRate) : null;
+    const profitPerUnit = cost !== null && netSellPrice !== null ? netSellPrice - cost : null;
+    return {
+      itemId: p.it.id, tier: p.it.tier, enchant: p.finalEnchant, enchantCapped: p.enchantCapped,
+      hasPrice: best !== null, cost, bestQuality: best ? best.quality : null, bestSell: best ? best.sell : null,
+      netSellPrice, profitPerUnit, profitPct: profitPerUnit !== null && cost > 0 ? (profitPerUnit / cost) * 100 : null,
+      isCurrent: p.it.id === itemId,
+    };
+  });
+}
+
 app.get('/api/craft-calc', async (req, res) => {
   try {
     const itemId = req.query.item;
@@ -603,6 +678,18 @@ app.get('/api/craft-calc', async (req, res) => {
       });
     }
 
+    // Сравнение по тирам: тот же предмет (семейство) на всех тирах — себестоимость и лучшая цена продажи по каждому,
+    // качество для каждого тира выбирается автоматически (то, где выше профит). Без него тир приходится долго
+    // перебирать руками: разница между тирами бывает решающей (T4.2 Авалон и т.п.).
+    let tierComparison = null;
+    try {
+      tierComparison = await computeTierComparison({
+        itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrr, taxRate, queryCities,
+      });
+    } catch (err) {
+      console.error('не удалось посчитать сравнение по тирам:', err.message);
+    }
+
     res.json({
       itemId, enchant, quality, quantity,
       rrrPreset: { ...preset, rrr },
@@ -619,6 +706,7 @@ app.get('/api/craft-calc', async (req, res) => {
       profitPerUnit,
       patientSell,
       qualityComparison,
+      tierComparison,
       enchantAfterCraft,
       teleport,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
@@ -1892,8 +1980,20 @@ if (require.main === module) {
   });
 }
 
+// Тесты подменяют AODP по-разному — кэши ответов между тестами сбрасываем, чтобы не было «отравления» кэша.
+function resetCaches() {
+  cache.clear();
+  historyCache.clear();
+  scanCache = null;
+  bmScanCache = null;
+  craftScanCache = null;
+  refiningScanCache = null;
+  enchantScanCache = null;
+}
+
 module.exports = {
   app,
+  resetCaches,
   itemIP,
   baseIPForTier,
   maxEnchantForGear,

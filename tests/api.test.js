@@ -3,14 +3,14 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import request from 'supertest';
 
 const require = createRequire(import.meta.url);
 // Уровни мастерок в тестах пишутся во временный файл, а не в data/user-masteries.json пользователя.
 const masteriesFile = path.join(os.tmpdir(), `albion-masteries-test-${process.pid}.json`);
 process.env.USER_MASTERIES_PATH = masteriesFile;
-const { app } = require('../server.js');
+const { app, resetCaches } = require('../server.js');
 
 const CITIES = ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford'];
 const NOW = () => new Date().toISOString().slice(0, 19);
@@ -39,7 +39,9 @@ function fakeAodp(url) {
   return records;
 }
 
-beforeAll(() => {
+// Перед каждым тестом: чистые кэши сервера и «стандартный» подменённый AODP (отдельные тесты ниже подменяют его по-своему).
+beforeEach(() => {
+  resetCaches();
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({
     ok: true, status: 200, json: async () => fakeAodp(url),
   }));
@@ -257,5 +259,20 @@ describe('сканер крафта: качество готового пред�
     expect(sword.quality).toBe(4); // Обычное (1) тоже «продаётся» по цене, но объёма у него нет — оно отсеивается
     expect(sword.volume).toBe(500);
     expect(res.filter((r) => r.itemId === 'T4_MAIN_SWORD')).toHaveLength(1); // одна строка на предмет
+  });
+});
+
+describe('калькулятор крафта: сравнение по тирам', () => {
+  it('все тиры семейства; T2/T3 считаются без зачарования с пометкой; текущий отмечен', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
+    const d = (await request(app).get('/api/craft-calc?item=T5_MAIN_SWORD&enchant=2&quantity=1')).body;
+    const t = d.tierComparison;
+    expect(t.map((r) => r.tier)).toEqual([2, 3, 4, 5, 6, 7, 8]);
+    expect(t.filter((r) => r.isCurrent).map((r) => r.itemId)).toEqual(['T5_MAIN_SWORD']);
+    expect(t.find((r) => r.tier === 3)).toMatchObject({ enchant: 0, enchantCapped: true });
+    expect(t.find((r) => r.tier === 6)).toMatchObject({ enchant: 2, enchantCapped: false });
+    const cur = t.find((r) => r.isCurrent);
+    expect(cur.cost).toBeCloseTo(d.effectiveCostPerUnit, 6);           // совпадает с основным расчётом
+    expect(cur.profitPerUnit).toBeCloseTo(cur.netSellPrice - cur.cost, 6);
   });
 });
