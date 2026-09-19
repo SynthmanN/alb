@@ -9,7 +9,8 @@ async function runScan() {
   scanBtn.disabled = true;
   scanResult.innerHTML = 'Сканирую весь каталог, это может занять несколько секунд...';
   try {
-    const res = await fetch(`/api/opportunities?premium=${premiumParam()}`);
+    const minProfit = document.getElementById('scan-min-profit').value || '0';
+    const res = await fetch(`/api/opportunities?premium=${premiumParam()}&minProfit=${encodeURIComponent(minProfit)}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderScanResult(data);

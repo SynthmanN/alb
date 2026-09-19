@@ -807,7 +807,10 @@ let scanCache = null;
 app.get('/api/opportunities', async (req, res) => {
   try {
     const taxRate = getSalesTaxRate(req);
-    if (scanCache && scanCache.taxRate === taxRate && Date.now() - scanCache.ts < SCAN_CACHE_TTL_MS) return res.json(scanCache.data);
+    // Минимальная абсолютная прибыль с одной штуки (серебро): отсекает дешёвое сырьё с эффектным % спреда, но копеечной прибылью.
+    const minProfit = Math.max(parseFloat(req.query.minProfit) || 0, 0);
+    const scanKey = `${taxRate}:${minProfit}`;
+    if (scanCache && scanCache.key === scanKey && Date.now() - scanCache.ts < SCAN_CACHE_TTL_MS) return res.json(scanCache.data);
 
     // Каталог × зачарование .0–.4: каждая версия — отдельная позиция рынка.
     const variantByQuery = new Map();
@@ -842,7 +845,7 @@ app.get('/api/opportunities', async (req, res) => {
       // Прибыль считаем после налога с продажи — сырой спред завышает выгоду.
       const grossSellPrice = bestSell.price;
       const spread = grossSellPrice * (1 - taxRate) - bestBuy.price;
-      if (spread <= 0) continue;
+      if (spread <= 0 || spread < minProfit) continue;
       const spreadPct = (spread / bestBuy.price) * 100;
       // Свежесть — по двум котировкам самой сделки, а не по любым записям предмета.
       const freshMinutes = dealAgeMinutes([bestBuy.date, bestSell.date], now);
@@ -874,7 +877,7 @@ app.get('/api/opportunities', async (req, res) => {
     }
 
     const top = withVolume.slice(0, 25);
-    scanCache = { taxRate, ts: Date.now(), data: top };
+    scanCache = { key: scanKey, ts: Date.now(), data: top };
     res.json(top);
   } catch (err) {
     console.error(err);

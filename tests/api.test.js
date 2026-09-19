@@ -312,3 +312,28 @@ describe('калькулятор крафта: потолок и полоса ц
     expect(sp.totalHigh).toBeCloseTo((120000 * 0.92 - d.effectiveCostPerUnit) * 10, 6);
   });
 });
+
+describe('сканер возможностей: минимальная абсолютная прибыль', () => {
+  const now = new Date().toISOString().slice(0, 19);
+  it('позиции с прибылью на штуку ниже порога отсекаются, дорогие остаются', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/history/')) {
+        const ids = decodeURIComponent(u.split('/history/')[1].split('?')[0]).split(',');
+        return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, location: 'Martlock', quality: 1, data: [{ item_count: 500, avg_price: 100 }] })) };
+      }
+      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+      // дешёвое сырьё T4_WOOD: 10 → 30 (+200%, но +17 после налога); дорогое T4_MAIN_SWORD: 10000 → 13000
+      const rec = (id, city, sell, buy) => ({ item_id: id, city, quality: 1, sell_price_min: sell, sell_price_min_date: now, buy_price_max: buy, buy_price_max_date: now });
+      const out = ids.flatMap((id) => (id === 'T4_WOOD' ? [rec(id, 'Martlock', 10, 0), rec(id, 'Lymhurst', 0, 30)]
+        : id === 'T4_MAIN_SWORD' ? [rec(id, 'Martlock', 10000, 0), rec(id, 'Lymhurst', 0, 13000)] : []));
+      return { ok: true, status: 200, json: async () => out };
+    });
+    const all = (await request(app).get('/api/opportunities?minProfit=0')).body.map((r) => r.itemId);
+    expect(all).toContain('T4_WOOD');
+    expect(all).toContain('T4_MAIN_SWORD');
+    const filtered = (await request(app).get('/api/opportunities?minProfit=100')).body.map((r) => r.itemId);
+    expect(filtered).not.toContain('T4_WOOD');
+    expect(filtered).toContain('T4_MAIN_SWORD');
+  });
+});

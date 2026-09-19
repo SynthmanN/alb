@@ -100,3 +100,13 @@ test('если у результатов нет числового скора �
   await expect(page.locator('#scan-result tbody tr')).toHaveCount(3);
   await expect(page.locator('#scan-result .top-badge')).toHaveCount(0);
 });
+
+test('порог минимальной прибыли уходит в запрос сканера возможностей', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/opportunities*', (route) => { query = new URL(route.request().url()).searchParams; route.fulfill({ json: [] }); });
+  await page.goto('/scanners.html');
+  await page.locator('#scan-min-profit').fill('5000');
+  await page.locator('#scan-run').click();
+  await expect.poll(() => query).not.toBeNull();
+  expect(query.get('minProfit')).toBe('5000');
+});
