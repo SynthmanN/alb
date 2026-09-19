@@ -369,7 +369,7 @@ function byCityHtml(p, data) {
   const totalQty = rowsData.reduce((sum, r) => sum + r.qty, 0);
   const planDays = rowsData.reduce((m, r) => Math.max(m, r.days), 0);       // города продают параллельно — срок по самому медленному
   const avgPrice = totalQty > 0 ? rowsData.reduce((sum, r) => sum + r.c.avgSellPrice * r.qty, 0) / totalQty : null;
-  const netPrice = avgPrice === null ? null : avgPrice * (1 - data.taxRate);
+  const netPrice = avgPrice === null ? null : avgPrice * (1 - data.taxRate - (data.setupFeeRate || 0));
   const profitUnit = netPrice === null ? null : netPrice - data.effectiveCostPerUnit;
   const anyManual = rowsData.some((r) => r.manual) || anyToggle;
   const noVolume = rowsData.some((r) => r.qty > 0 && !(r.c.avgDailyVolume > 0));
@@ -483,6 +483,7 @@ function teleportHtml(data) {
         <tbody>${legRows}</tbody>
       </table></div>
       <div class="craft-summary-row"><span>Перевозка материалов, всего</span><span>${fmtNum(t.legsCost)}</span></div>
+      ${t.unweighted && t.unweighted.length ? `<div class="craft-summary-row"><span class="scan-stale">⚠ Нет данных о весе, перевозка НЕ учтена: ${t.unweighted.join(', ')}</span><span></span></div>` : ''}
       <div class="craft-summary-row"><span>Себестоимость с логистикой / шт</span><span>${fmtNum(t.costPerUnit)}</span></div>
       ${sellLine('Продажа через Sell Order', t.patient)}
       ${sellLine('Продажа в Buy Order', t.instant)}

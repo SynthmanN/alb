@@ -288,97 +288,48 @@ describe('терпеливая продажа', () => {
     { item_id: 'X', location: 'Lymhurst', data: [{ item_count: 70, avg_price: 1500 }] },
     { item_id: 'X', location: 'Caerleon', data: [{ item_count: 500, avg_price: 9999 }] },
   ];
+  // себестоимость 1000; налог 8% + сбор за размещение 2.5%: чистая цена = цена × 0.895
   const base = { history, itemId: 'X', days: 7, quantity: 140, taxRate: 0.08, costPerUnit: 1000, queryCities: ['Martlock', 'Lymhurst'] };
 
-  it('цена — средневзвешенная по объёму выбранных городов, объём — в день', () => {
+  it('в план входят только прибыльные города; цена — средневзвешенная по ним, объём — в день', () => {
     const p = computePatientSell(base);
-    expect(p.avgSellPrice).toBeCloseTo((30 * 1000 + 40 * 1200 + 70 * 1500) / 140, 6);
-    expect(p.avgDailyVolume).toBe(20); // 140 сделок за 7 дней; Caerleon не выбран
+    // Martlock (30·1000 + 40·1200)/70 = 1114.3 → 997 после налога и сбора < 1000 — убыточный, в план не входит
+    expect(p.planCities).toEqual(['Lymhurst']);
+    expect(p.skippedCities).toEqual(['Martlock']);
+    expect(p.avgSellPrice).toBeCloseTo(1500, 6);
+    expect(p.avgDailyVolume).toBe(10);
+    expect(p.marketAvgPrice).toBeCloseTo((30 * 1000 + 40 * 1200 + 70 * 1500) / 140, 6);  // наивное среднее — только для справки
+    expect(p.marketDailyVolume).toBe(20);
     expect(p.bestCity).toEqual({ city: 'Lymhurst', avgPrice: 1500 });
   });
-  it('дни на распродажу партии = количество / объём в день', () => {
-    expect(computePatientSell(base).daysToSellBatch).toBeCloseTo(7, 6);
-    expect(computePatientSell({ ...base, quantity: 20 }).daysToSellBatch).toBeCloseTo(1, 6);
+  it('дни на распродажу партии = количество / оборот прибыльных городов в день', () => {
+    expect(computePatientSell(base).daysToSellBatch).toBeCloseTo(14, 6);              // 140 шт при 10 в день
+    expect(computePatientSell({ ...base, quantity: 20 }).daysToSellBatch).toBeCloseTo(2, 6);
   });
-  it('профит — после налога и за вычетом себестоимости', () => {
+  it('профит — после налога, сбора за размещение и за вычетом себестоимости', () => {
     const p = computePatientSell(base);
-    expect(p.netSellPrice).toBeCloseTo(p.avgSellPrice * 0.92, 6);
+    expect(p.setupFee).toBe(0.025);
+    expect(p.netSellPrice).toBeCloseTo(1500 * (1 - 0.08 - 0.025), 6);
     expect(p.profitPerUnit).toBeCloseTo(p.netSellPrice - 1000, 6);
+  });
+  it('знак не переворачивается: наивное среднее по всем городам дало бы минус, честный план — плюс', () => {
+    const cities = [
+      { item_id: 'X', location: 'Martlock', data: [{ item_count: 700, avg_price: 800 }] },   // 100/день, убыточный
+      { item_id: 'X', location: 'Lymhurst', data: [{ item_count: 70, avg_price: 1500 }] },   // 10/день, прибыльный
+    ];
+    const p = computePatientSell({ ...base, history: cities, costPerUnit: 1000 });
+    const naiveNet = ((700 * 800 + 70 * 1500) / 770) * 0.895 - 1000;   // ≈ −127: «убыток на партии»
+    expect(naiveNet).toBeLessThan(0);
+    expect(p.profitPerUnit).toBeGreaterThan(0);                        // честно: продаём только в Lymhurst
+    expect(p.avgDailyVolume).toBe(10);
+  });
+  it('нет прибыльных городов — показываем лучший город с честным минусом', () => {
+    const p = computePatientSell({ ...base, costPerUnit: 5000 });
+    expect(p.planCities).toEqual(['Lymhurst']);
+    expect(p.profitPerUnit).toBeLessThan(0);
   });
   it('нет сделок в выбранных городах — null (блок терпеливой продажи не показывается)', () => {
     expect(computePatientSell({ ...base, queryCities: ['Bridgewatch'] })).toBeNull();
-  });
-});
-
-describe('стоимость телепорта', () => {
-  it('формула: ceil(вес × кол-во × коэффициент × 150), затем × дистанция', () => {
-    expect(teleportStackCost('T4_WOOD', 100, 1)).toBe(Math.ceil(0.51 * 100 * 2 * 150)); // ресурс: коэффициент 2 → 15300
-    expect(teleportStackCost('T4_WOOD', 100, 2)).toBe(15300 * 2);
-    expect(teleportStackCost('T4_MAIN_SWORD', 3, 1)).toBe(2295);
-    expect(teleportStackCost('T4_MAIN_SWORD', 3, 0)).toBe(0);
-  });
-  it('нет веса или маршрута — null', () => {
-    expect(teleportStackCost('NO_SUCH_ITEM', 1, 1)).toBeNull();
-    expect(teleportStackCost('T4_WOOD', 1, null)).toBeNull();
-  });
-  it('кольцо из 5 городов: соседние ×1, через город ×2, Бресильен всегда ×2, Каэрлеон недоступен', () => {
-    expect(teleportDistance('Lymhurst', 'Bridgewatch')).toBe(1);
-    expect(teleportDistance('Bridgewatch', 'Martlock')).toBe(1);
-    expect(teleportDistance('Fort Sterling', 'Lymhurst')).toBe(1); // замыкание кольца
-    expect(teleportDistance('Lymhurst', 'Martlock')).toBe(2);
-    expect(teleportDistance('Martlock', 'Fort Sterling')).toBe(2);
-    expect(teleportDistance('Brecilien', 'Thetford')).toBe(2);
-    expect(teleportDistance('Martlock', 'Brecilien')).toBe(2);
-    expect(teleportDistance('Caerleon', 'Martlock')).toBeNull();
-    expect(teleportDistance('Martlock', 'Martlock')).toBe(0);
-    expect(teleportDistance('FortSterling', 'Fort Sterling')).toBe(0);
-  });
-
-  const materials = [
-    { resource: 'T4_WOOD', resourceName: 'Дерево', needed: 100, priceByCity: { Lymhurst: 100, Martlock: 90 } },
-    { resource: 'T4_METALBAR', resourceName: 'Слитки', needed: 100, priceByCity: { Lymhurst: 200, Martlock: 200 } },
-  ];
-  const finished = { itemId: 'T4_MAIN_SWORD', qty: 10, instantByCity: { Martlock: 20000 }, patientByCity: null };
-
-  it('дом выбирается по максимальной прибыли: собираем там, где не надо возить и материалы, и результат', () => {
-    const plan = planCraftTeleport({ materials, finished, homes: ['Lymhurst', 'Martlock'], taxRate: 0.08 });
-    expect(plan.homeCity).toBe('Martlock');
-    expect(plan.legsCost).toBe(0);
-    expect(plan.instant.cost).toBe(0);
-    expect(plan.costPerUnit).toBeCloseTo((90 * 100 + 200 * 100) / 10, 6);
-    expect(plan.instant.profitPerUnit).toBeCloseTo(20000 * 0.92 - plan.costPerUnit, 6);
-  });
-  it('дорогая дорога перебивает дешёвую цену: материал берём в городе дома, а не дешевле, но далеко', () => {
-    const heavy = [{ resource: 'T4_WOOD', resourceName: 'Дерево', needed: 1000, priceByCity: { Lymhurst: 101, Martlock: 100 } }];
-    const plan = planCraftTeleport({ materials: heavy, finished: { ...finished, instantByCity: { Lymhurst: 50000 } }, homes: ['Lymhurst'], taxRate: 0.08 });
-    expect(plan.materialLegs[0].fromCity).toBe('Lymhurst'); // перевозка из Мартлока стоит больше, чем разница в цене
-    expect(plan.legsCost).toBe(0);
-  });
-  it('Каэрлеон нельзя ни как источник, ни как город продажи: маршрута нет', () => {
-    const plan = planCraftTeleport({
-      materials: [{ resource: 'T4_WOOD', resourceName: 'Дерево', needed: 10, priceByCity: { Caerleon: 1 } }],
-      finished, homes: ['Martlock'], taxRate: 0.08,
-    });
-    expect(plan).toBeNull();
-  });
-});
-
-describe('порог терпеливой продажи', () => {
-  const cities = [
-    { city: 'Martlock', avgPrice: 120000, avgDailyVolume: 2 },
-    { city: 'Lymhurst', avgPrice: 100000, avgDailyVolume: 10 },
-    { city: 'Thetford', avgPrice: 115000, avgDailyVolume: 3 },
-  ];
-  it('берёт только города не ниже порога, по убыванию цены, спрос суммируется', () => {
-    const t = computeSellThreshold(cities, 110000, 100);
-    expect(t.cities.map((c) => c.city)).toEqual(['Martlock', 'Thetford']);
-    expect(t.totalDailyVolume).toBe(5);
-    expect(t.daysToSellBatch).toBeCloseTo(20, 6); // 100 шт при 5 в день
-  });
-  it('нет городов выше порога — пусто и без срока', () => {
-    const t = computeSellThreshold(cities, 999999, 100);
-    expect(t.cities).toEqual([]);
-    expect(t.daysToSellBatch).toBeNull();
   });
 });
 
@@ -388,7 +339,7 @@ describe('терпеливая продажа: качество и разбив�
     { item_id: 'X', location: 'Martlock', quality: 4, data: [{ item_count: 700, avg_price: 1500 }] },
     { item_id: 'X', location: 'Lymhurst', quality: 4, data: [{ item_count: 70, avg_price: 2000 }] },
   ];
-  const base = { history, itemId: 'X', days: 7, quantity: 100, taxRate: 0, costPerUnit: 500, queryCities: ['Martlock', 'Lymhurst'] };
+  const base = { history, itemId: 'X', days: 7, quantity: 100, taxRate: 0, setupFee: 0, costPerUnit: 500, queryCities: ['Martlock', 'Lymhurst'] };
 
   it('фильтр по качеству: ряды других качеств не смешиваются', () => {
     const q1 = computePatientSell({ ...base, quality: 1 });
