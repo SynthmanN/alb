@@ -134,7 +134,7 @@ function renderCraftResult(data) {
       <tr>
         <td>${name}</td>
         <td>${needed.toLocaleString('ru-RU')}</td>
-        <td class="${missing ? 'missing' : ''}">${missing ? 'нет цены' : `${r.cheapestCity}: ${r.cheapestPrice.toLocaleString('ru-RU')}`}</td>
+        <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
       </tr>
     `;
@@ -183,6 +183,15 @@ function renderCraftResult(data) {
   wireTableSort(craftTables[1], 'craft-sell');
 }
 
+
+// Цена материала: самая дешёвая — в подписи, клик раскрывает все города (чтобы раскидать терпеливые ордера на закупку
+// по нескольким городам и быстрее собрать сырьё).
+function cityPricesCell(cheapestCity, cheapestPrice, cityPrices) {
+  const main = `${cheapestCity}: ${fmtNum(cheapestPrice)}`;
+  if (!cityPrices || cityPrices.length < 2) return main;
+  const list = cityPrices.map((c) => `<li>${c.city}: ${fmtNum(c.price)}${c.price > cheapestPrice ? ` <small>(+${((c.price / cheapestPrice - 1) * 100).toFixed(0)}%)</small>` : ''}</li>`).join('');
+  return `<details class="city-prices"><summary>${main}</summary><ul>${list}</ul></details>`;
+}
 
 // Сравнение по тирам: себестоимость и лучшая мгновенная цена продажи для каждого тира того же предмета.
 function tierComparisonHtml(data) {
@@ -274,10 +283,11 @@ function enchantAfterHtml(data) {
     : `крафт из материалов: ${fmtNum(e.baseCraftCostPerUnit)}`;
   const rows = e.steps.map((st) => `
     <tr><td>.${st.level - 1} → .${st.level}</td><td>${st.materialName}</td><td>${fmtNum(st.count)}</td>
-    <td>${st.cheapestCity ? `${st.cheapestCity}: ${fmtNum(st.cheapestPrice)}` : 'нет цены'}</td><td>${st.cost !== null ? fmtNum(st.cost) : '—'}</td></tr>`).join('');
+    <td>${st.cheapestCity ? cityPricesCell(st.cheapestCity, st.cheapestPrice, st.cityPrices) : 'нет цены'}</td><td>${st.cost !== null ? fmtNum(st.cost) : '—'}</td></tr>`).join('');
   return `
     <div class="craft-summary enchant-after">
       <div class="craft-summary-row"><strong>Зачарование после крафта: до .${e.targetLevel}</strong><span></span></div>
+      ${e.forced ? '<div class="craft-summary-row"><span>Этот плащ в зачарованном виде не крафтится: сначала делается обычный, затем зачаровывается рунами/душами.</span><span></span></div>' : ''}
       ${e.capped ? '<div class="craft-summary-row"><span class="scan-stale">⚠ Зачарование .4 (Awakening) не поддерживается — посчитано до .3</span><span></span></div>' : ''}
       <div class="craft-summary-row"><span>База .0 / шт</span><span>${base}</span></div>
       <div class="table-scroll"><table class="craft-recipe-table">

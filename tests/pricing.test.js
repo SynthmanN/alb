@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -477,5 +477,22 @@ describe('скан маржи и ликвидности', () => {
     expect(premiumPaybackDays(1000, 28)).toBeCloseTo(1000, 6);
     expect(premiumPaybackDays(-5, 10)).toBeNull();
     expect(premiumPaybackDays(100, 0)).toBeNull();
+  });
+});
+
+describe('охотничьи и фракционные плащи: зачарование только после крафта', () => {
+  it('слоты «плащ (охотник)» и «плащ (фракция)» — принудительно; обычный плащ и остальной гир — нет', () => {
+    expect(requiresEnchantAfterCraft('T4_CAPEITEM_AVALON')).toBe(true);
+    expect(requiresEnchantAfterCraft('T6_CAPEITEM_KEEPER')).toBe(true);
+    expect(requiresEnchantAfterCraft('T4_CAPEITEM_FW_CAERLEON')).toBe(true);
+    expect(requiresEnchantAfterCraft('T4_CAPE')).toBe(false);
+    expect(requiresEnchantAfterCraft('T4_MAIN_SWORD')).toBe(false);
+  });
+});
+
+describe('цены материала по городам', () => {
+  it('города по возрастанию цены; без цены и не из выбранных — пропускаются', () => {
+    const records = { Martlock: { sell_price_min: 300 }, Lymhurst: { sell_price_min: 100 }, Thetford: { sell_price_min: 0 }, Caerleon: { sell_price_min: 50 } };
+    expect(cityPriceList(records, ['Martlock', 'Lymhurst', 'Thetford'])).toEqual([{ city: 'Lymhurst', price: 100 }, { city: 'Martlock', price: 300 }]);
   });
 });

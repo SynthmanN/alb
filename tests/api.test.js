@@ -276,3 +276,25 @@ describe('калькулятор крафта: сравнение по тира�
     expect(cur.profitPerUnit).toBeCloseTo(cur.netSellPrice - cur.cost, 6);
   });
 });
+
+describe('калькулятор крафта: охотничий плащ .3 — только после крафта', () => {
+  it('зачарование принудительно после крафта: база .0 + руны/души/реликвии, материалы рецепта без зачарования', async () => {
+    const d = (await request(app).get('/api/craft-calc?item=T4_CAPEITEM_AVALON&enchant=3&quantity=10')).body;
+    expect(d.enchantAfterCraft.forced).toBe(true);
+    expect(d.enchantAfterCraft.steps.map((s) => s.materialId)).toEqual(['T4_RUNE', 'T4_SOUL', 'T4_RELIC']);
+    expect(d.recipe.every((r) => r.enchanted === false)).toBe(true);           // обычный плащ .0 + герб + энергия
+    expect(d.recipe.map((r) => r.queryId)).toEqual(['T4_CAPE', 'T4_CAPEITEM_AVALON_BP', 'QUESTITEM_TOKEN_AVALON']);
+    expect(d.enchantAfterCraft.steps.every((s) => s.count === 96)).toBe(true);
+  });
+  it('обычный меч .3 без галочки — прямой крафт из зачарованного сырья, блока зачарования нет', async () => {
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&enchant=3&quantity=10')).body;
+    expect(d.enchantAfterCraft).toBeNull();
+    expect(d.recipe.every((r) => r.enchanted === true)).toBe(true);
+  });
+  it('в разбивке материалов есть цены по городам, от дешёвых к дорогим', async () => {
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1')).body;
+    const prices = d.recipe[0].cityPrices.map((c) => c.price);
+    expect(prices.length).toBeGreaterThan(1);
+    expect(prices).toEqual([...prices].sort((a, b) => a - b));
+  });
+});

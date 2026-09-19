@@ -245,3 +245,8 @@ tr.below-threshold td { opacity: 0.45; }
 .tier-comparison summary { cursor: pointer; font-size: 13px; color: #9aa0aa; margin: 10px 0 4px; }
 tr.tier-row { cursor: pointer; }
 tr.tier-row:hover td { background: #22262d; }
+
+/* Цены материала по городам (сворачиваемый список) */
+details.city-prices summary { cursor: pointer; }
+details.city-prices ul { margin: 4px 0 0; padding-left: 16px; text-align: left; font-size: 12px; color: #9aa0aa; }
+details.city-prices small { color: #cc8844; }

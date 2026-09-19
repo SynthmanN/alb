@@ -53,6 +53,14 @@ function enchantVariants(item) {
   return out;
 }
 
+// Охотничьи (Avalon/Demon/Heretic/…) и фракционные плащи в зачарованном виде не крафтятся напрямую: сначала
+// делается обычный плащ .0 (обычный плащ + герб + жетон/энергия), а дальше он зачаровывается рунами/душами вручную.
+// Рецепт «зачарованный плащ + герб + …» в игре не работает, поэтому для этих слотов зачарование ТОЛЬКО после крафта.
+const FORCED_ENCHANT_AFTER_CRAFT_SLOTS = new Set(['плащ (фракция)', 'плащ (охотник)']);
+function requiresEnchantAfterCraft(itemId) {
+  return FORCED_ENCHANT_AFTER_CRAFT_SLOTS.has(ITEM_SLOT_BY_ID.get(itemId));
+}
+
 function maxEnchantForGear(tier) {
   return tier >= 4 ? 4 : 0; // T2/T3 гир никогда не зачаровывается — та же логика, что и на фронте
 }
@@ -423,11 +431,12 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
   // Зачарование применимо только с T4: для T2/T3 считаем .0 (enchantCapped подсказывает интерфейсу).
   const plan = items.map((it) => {
     const applicable = it.tier >= 4;
-    const recipeEnchant = enchantAfterRequested ? 0 : (applicable ? enchant : 0);
-    const finalEnchant = applicable ? targetEnchant : 0;
-    const stepIds = enchantAfterRequested && applicable && ENCHANT_MATERIAL_COUNT[it.slot]
+    const afterForItem = enchantAfterRequested || (requiresEnchantAfterCraft(it.id) && enchant > 0);
+    const recipeEnchant = afterForItem ? 0 : (applicable ? enchant : 0);
+    const finalEnchant = applicable ? (afterForItem ? Math.min(enchant, 3) : enchant) : 0;
+    const stepIds = afterForItem && applicable && ENCHANT_MATERIAL_COUNT[it.slot]
       ? Array.from({ length: finalEnchant }, (_, k) => enchantMaterialId(it.tier, k + 1)) : [];
-    return { it, recipeEnchant, finalEnchant, stepIds, enchantCapped: enchantCapped || (!applicable && enchant > 0) };
+    return { it, recipeEnchant, finalEnchant, stepIds, enchantCapped: enchantCapped || (!applicable && enchant > 0) || (afterForItem && enchant > 3) };
   });
 
   const materialIds = new Set();
@@ -507,7 +516,8 @@ app.get('/api/craft-calc', async (req, res) => {
     // рунами/душами/реликвиями до целевого уровня — так работает схема «чарю, а не крафчу сразу зачарованное».
     // Зачарование .4 (Awakening) не поддерживается: считаем до .3 и помечаем enchantCapped, чтобы цена продажи
     // не оказалась на .4 при стоимости материалов только до .3.
-    const enchantAfterRequested = req.query.enchantAfterCraft === 'true' && enchant > 0;
+    const enchantAfterForced = requiresEnchantAfterCraft(itemId) && enchant > 0;
+    const enchantAfterRequested = (req.query.enchantAfterCraft === 'true' || enchantAfterForced) && enchant > 0;
     const targetEnchant = enchantAfterRequested ? Math.min(enchant, 3) : enchant;
     const enchantCapped = enchantAfterRequested && enchant > 3;
     const recipeEnchant = enchantAfterRequested ? 0 : enchant;
@@ -561,6 +571,8 @@ app.get('/api/craft-calc', async (req, res) => {
         count: r.count,
         cheapestCity: cheapest ? cheapest.city : null,
         cheapestPrice: cheapest ? cheapest.price : null,
+        // Цены во всех активных городах (от дешёвых к дорогим): чтобы раскидать терпеливые ордера на закупку по нескольким городам.
+        cityPrices: cityPriceList(cityPrices, queryCities),
       };
     });
 
@@ -591,6 +603,7 @@ app.get('/api/craft-calc', async (req, res) => {
         return {
           level: i + 1, materialId, materialName: resolveItemName(materialId), count: perUnitCount,
           cheapestCity: cheapest ? cheapest.city : null, cheapestPrice: cheapest ? cheapest.price : null,
+          cityPrices: cityPriceList(materialByCity[materialId] || {}, queryCities),
           cost: cheapest ? cheapest.price * perUnitCount : null,
         };
       });
@@ -598,6 +611,7 @@ app.get('/api/craft-calc', async (req, res) => {
       hasAllPrices = baseCostPerUnit !== null && stepsAllPriced;
       effectiveCostPerUnit = (baseCostPerUnit || 0) + stepsCostPerUnit;
       enchantAfterCraft = {
+        forced: enchantAfterForced,
         targetLevel: targetEnchant, capped: enchantCapped, baseSource, baseBuy, baseCraftCostPerUnit: craftCostPerUnit,
         baseCostPerUnit, steps, stepsCostPerUnit,
       };
@@ -1293,6 +1307,16 @@ function planCraftTeleport({ materials, finished, homes, taxRate, silverPerUnit 
   return best;
 }
 
+// Цены материала по всем выбранным городам (записи AODP по городу → [{ city, price }], от дешёвых к дорогим).
+function cityPriceList(cityRecords, queryCities) {
+  const out = [];
+  for (const city of queryCities) {
+    const rec = cityRecords[city];
+    if (rec && rec.sell_price_min) out.push({ city, price: rec.sell_price_min });
+  }
+  return out.sort((a, b) => a.price - b.price);
+}
+
 // Порог терпеливой продажи: вместо одного лучшего города — все города, где средняя цена не ниже порога
 // (при крупных партиях один город не переварит объём без обвала цены). Показываем суммарный спрос и срок.
 function computeSellThreshold(cities, threshold, quantity) {
@@ -1797,15 +1821,17 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
     for (const itemId of itemIds) {
       const item = itemById.get(itemId);
       const maxE = item.tier >= 4 ? 3 : 0;
-      if (enchantMode === 'after' && !ENCHANT_MATERIAL_COUNT[item.slot]) continue;
-      for (let e = 0; e <= maxE; e++) combos.push({ itemId, item, enchant: e });
+      // Охотничьи/фракционные плащи зачаровываются только после крафта — независимо от выбранного режима.
+      const after = enchantMode === 'after' || requiresEnchantAfterCraft(itemId);
+      if (after && !ENCHANT_MATERIAL_COUNT[item.slot]) continue;
+      for (let e = 0; e <= maxE; e++) combos.push({ itemId, item, enchant: e, after });
     }
 
     const materialIds = new Set();
     for (const c of combos) {
-      const matEnchant = enchantMode === 'after' ? 0 : c.enchant;
+      const matEnchant = c.after ? 0 : c.enchant;
       for (const r of RECIPES[c.itemId].resources) materialIds.add(effectiveRecipeResourceId(r.resource, matEnchant));
-      if (enchantMode === 'after') for (let lvl = 1; lvl <= c.enchant; lvl++) materialIds.add(enchantMaterialId(c.item.tier, lvl));
+      if (c.after) for (let lvl = 1; lvl <= c.enchant; lvl++) materialIds.add(enchantMaterialId(c.item.tier, lvl));
     }
     const finishedIds = [...new Set(combos.map((c) => gearEnchantId(c.itemId, c.enchant)))];
 
@@ -1822,7 +1848,7 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
     const rows = [];
     for (const c of combos) {
       const recipe = RECIPES[c.itemId];
-      const matEnchant = enchantMode === 'after' ? 0 : c.enchant;
+      const matEnchant = c.after ? 0 : c.enchant;
       let materials = 0;
       let complete = true;
       for (const r of recipe.resources) {
@@ -1832,7 +1858,7 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
       }
       if (!complete) continue;
       let cost = materials * (1 - rrr) + (recipe.silver || 0);
-      if (enchantMode === 'after') {
+      if (c.after) {
         for (let lvl = 1; lvl <= c.enchant && cost !== null; lvl++) {
           const price = cheapest[enchantMaterialId(c.item.tier, lvl)];
           cost = price ? cost + price * ENCHANT_MATERIAL_COUNT[c.item.slot] : null;
@@ -2137,6 +2163,8 @@ module.exports = {
   totalVolume,
   cityStats,
   computeBulkPlan,
+  requiresEnchantAfterCraft,
+  cityPriceList,
   marginSellStats,
   premiumPaybackDays,
   computePatientSell,
