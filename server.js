@@ -550,6 +550,7 @@ app.get('/api/craft-calc', async (req, res) => {
     const recipeEnchant = enchantAfterRequested ? 0 : enchant;
     const sellThreshold = parseFloat(req.query.sellThreshold) > 0 ? parseFloat(req.query.sellThreshold) : null;
     const marketShare = parseMarketShare(req);
+    const priceTolerance = parsePriceTolerance(req);
     const itemSlot = ITEM_SLOT_BY_ID.get(itemId);
     const itemTier = ITEM_TIER_BY_ID.get(itemId);
     const enchantStepIds = enchantAfterRequested && ENCHANT_MATERIAL_COUNT[itemSlot]
@@ -677,6 +678,17 @@ app.get('/api/craft-calc', async (req, res) => {
       const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare });
       patientSell = forQuality(quality);
       if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity, marketShare);
+      // Многогородовой план продажи: цена и оборот по каждому городу, допуск динамический (см. planCityAllocation).
+      if (patientSell) {
+        patientSell.plan = planCityAllocation(
+          patientSell.cities.map((c) => ({ city: c.city, avgPrice: c.avgPrice, avgDailyVolume: c.avgDailyVolume })),
+          quantity, { side: 'sell', priceTolerance, marketShare },
+        );
+        if (patientSell.plan.cities.length) {
+          patientSell.plan.netPricePerUnit = patientSell.plan.avgPrice * (1 - taxRate);
+          patientSell.plan.profitPerUnit = patientSell.plan.netPricePerUnit - effectiveCostPerUnit;
+        }
+      }
       qualityComparison = ALL_QUALITIES.map((q) => {
         const p = forQuality(q);
         return p && { quality: q, avgSellPrice: p.avgSellPrice, avgDailyVolume: p.avgDailyVolume, daysToSellBatch: p.daysToSellBatch, profitPerUnit: p.profitPerUnit };
@@ -712,20 +724,32 @@ app.get('/api/craft-calc', async (req, res) => {
       const days = parseBulkDays(req);
       const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
       const rows = [];
+      const pricesOf = (byCityRecords) => Object.fromEntries(
+        Object.entries(byCityRecords || {}).filter(([c, rec]) => queryCities.includes(c) && rec && rec.sell_price_min).map(([c, rec]) => [c, rec.sell_price_min]),
+      );
       if (enchantAfterCraft && enchantAfterCraft.baseSource === 'buy') {
-        rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city });
+        rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city, priceByCity: baseBuyByCity });
       } else {
         recipeBreakdown.forEach((r) => rows.push({
           resource: r.resource, resourceName: r.resourceName, queryId: r.queryId, needed: r.neededToBuy, city: r.cheapestCity,
+          priceByCity: pricesOf(materialByCity[r.queryId]),
         }));
       }
       if (enchantAfterCraft) {
-        for (const st of enchantAfterCraft.steps) rows.push({ resource: st.materialId, resourceName: st.materialName, queryId: st.materialId, needed: st.count * quantity, city: st.cheapestCity });
+        for (const st of enchantAfterCraft.steps) rows.push({
+          resource: st.materialId, resourceName: st.materialName, queryId: st.materialId, needed: st.count * quantity, city: st.cheapestCity,
+          priceByCity: pricesOf(materialByCity[st.materialId]),
+        });
       }
       const ids = [...new Set(rows.map((r) => r.queryId))];
       const matHistory = await fetchHistoryBatched(ids, days * 24, 1, locations);
-      acquire = computeAcquireTime({ rows, history: matHistory, days, marketShare });
-      acquire.cycleDays = acquire.days !== null && patientSell && patientSell.daysToSellBatch !== null ? acquire.days + patientSell.daysToSellBatch : null;
+      acquire = computeAcquireTime({ rows, history: matHistory, days, marketShare, priceTolerance });
+      // Весь цикл: закупка по плану (узкое место) + продажа по плану (если плана нет — по общему обороту, как раньше)
+      const sellDays = patientSell && patientSell.plan && patientSell.plan.totalDays !== null ? patientSell.plan.totalDays : (patientSell ? patientSell.daysToSellBatch : null);
+      acquire.cycleDays = acquire.days !== null && sellDays !== null && sellDays !== undefined ? acquire.days + sellDays : null;
+      // Во сколько обходится ускорение: план закупки дороже «всё в самом дешёвом городе» на overpay за партию
+      acquire.priceTolerance = priceTolerance;
+      acquire.overpayTotal = acquire.byResource.reduce((sum, r) => sum + (r.plan ? (r.plan.avgPrice - r.plan.bestPrice) * r.needed : 0), 0);
     } catch (err) {
       console.error('не удалось посчитать время закупки сырья:', err.message);
     }
@@ -786,7 +810,7 @@ app.get('/api/craft-calc', async (req, res) => {
     }
 
     res.json({
-      itemId, enchant, quality, quantity, marketShare,
+      itemId, enchant, quality, quantity, marketShare, priceTolerance,
       rrrPreset: { ...preset, rrr },
       cities: queryCities,
       recipe: recipeBreakdown,
@@ -1409,13 +1433,77 @@ function cityPriceList(cityRecords, queryCities) {
   return out.sort((a, b) => a.price - b.price);
 }
 
+// --- Многогородовой план (закупка сырья и продажа готового предмета) ---
+// Ценовой допуск — полоса вокруг ЛУЧШЕЙ цены (для закупки — самой низкой, для продажи — самой высокой): город входит в план,
+// если его цена не хуже лучшей больше чем на допуск. Допуск города динамический: чем ликвиднее город по сравнению с городом
+// лучшей цены, тем больше он (до maxToleranceMult × базового) — большой объём оправдывает чуть худшую цену, но не «огромную».
+// Слишком тонкие города (единицы сделок в неделю) достоверным ценовым сигналом не считаются: одна случайная сделка не должна
+// выбить из плана все реально ликвидные города. Без памяти между запросами (считается заново на каждый клик).
+// Количество делится между городами плана пропорционально их обороту — так у всех одинаковый срок, и он минимален.
+// cities: [{ city, avgPrice, avgDailyVolume }]; side: 'buy' | 'sell'.
+function planCityAllocation(cities, quantity, { side, priceTolerance = 0.05, marketShare = 1, maxToleranceMult = 3, minDaily = 1, minShareOfMax = 0.02 } = {}) {
+  const priced = cities.filter((c) => c.avgPrice > 0 && c.avgDailyVolume > 0);
+  const maxVol = priced.reduce((m, c) => Math.max(m, c.avgDailyVolume), 0);
+  // тонкие города не считаем достоверными; если достоверных нет — берём всё, что торгуется
+  const reliable = priced.filter((c) => c.avgDailyVolume >= minDaily && c.avgDailyVolume >= maxVol * minShareOfMax);
+  const pool = reliable.length ? reliable : priced;
+  const excluded = priced.filter((c) => !pool.includes(c)).map((c) => ({ city: c.city, reason: 'слишком тонкий рынок для надёжной цены' }));
+  if (pool.length === 0) return { cities: [], excluded, avgPrice: null, bestPrice: null, overpayPct: null, totalDays: null };
+
+  const better = (a, b) => (side === 'buy' ? a < b : a > b);
+  const best = pool.reduce((a, b) => (better(b.avgPrice, a.avgPrice) ? b : a));
+  const eligible = [];
+  for (const c of pool) {
+    const mult = Math.min(maxToleranceMult, Math.max(1, c.avgDailyVolume / best.avgDailyVolume));
+    const tolerance = priceTolerance * mult;
+    const gap = side === 'buy' ? c.avgPrice / best.avgPrice - 1 : 1 - c.avgPrice / best.avgPrice; // насколько цена хуже лучшей
+    if (gap <= tolerance + 1e-12) eligible.push({ ...c, tolerance, gap: Math.max(gap, 0) });
+    else excluded.push({ city: c.city, reason: `цена хуже лучшей на ${(gap * 100).toFixed(1)}% при допуске ${(tolerance * 100).toFixed(1)}%` });
+  }
+  const totalVolume = eligible.reduce((sum, c) => sum + c.avgDailyVolume, 0);
+  let assigned = 0;
+  const rows = eligible.map((c) => {
+    const qty = Math.floor((quantity * c.avgDailyVolume) / totalVolume);
+    assigned += qty;
+    return { city: c.city, avgPrice: c.avgPrice, avgDailyVolume: c.avgDailyVolume, tolerance: c.tolerance, gap: c.gap, qty };
+  });
+  const top = rows.reduce((a, b) => (b.avgDailyVolume > a.avgDailyVolume ? b : a));
+  top.qty += quantity - assigned; // остаток округления — самому ликвидному городу
+  for (const r of rows) r.days = r.qty / (r.avgDailyVolume * marketShare);
+  const avgPrice = quantity > 0 ? rows.reduce((sum, r) => sum + r.avgPrice * r.qty, 0) / quantity : best.avgPrice;
+  return {
+    cities: rows.sort((a, b) => (side === 'buy' ? a.avgPrice - b.avgPrice : b.avgPrice - a.avgPrice)),
+    excluded, bestPrice: best.avgPrice, avgPrice,
+    overpayPct: Math.abs(avgPrice / best.avgPrice - 1) * 100,   // насколько план хуже «всё в один лучший город»
+    totalDays: quantity / (totalVolume * marketShare),
+  };
+}
+
+// Ценовой допуск плана, % (по умолчанию 5): 0–50.
+function parsePriceTolerance(req) {
+  const v = parseFloat(req.query.priceTolerance);
+  return Math.min(Math.max(Number.isFinite(v) ? v : 5, 0), 50) / 100;
+}
+
 // Время закупки сырья: даже если закупаешь по Sell Order'ам других игроков, собрать нужное количество можно лишь
 // так быстро, как этот материал торгуется (а на нашу долю приходится не весь оборот). Считаем по каждому материалу
 // в городе, где он дешевле всего; общий срок — по узкому месту (самому медленному материалу), как в плане партии.
 // rows: [{ resource, resourceName, queryId, needed, city }]
-function computeAcquireTime({ rows, history, days, marketShare = 1 }) {
+function computeAcquireTime({ rows, history, days, marketShare = 1, priceTolerance = 0.05 }) {
   const byResource = rows.map((r) => {
     const stats = cityStats(history, r.queryId, days);
+    // Многогородовой план закупки: цены по городам (текущие sell_price_min) + оборот из истории, допуск динамический.
+    if (r.priceByCity && Object.keys(r.priceByCity).length) {
+      const cityList = Object.entries(r.priceByCity)
+        .map(([city, price]) => {
+          const st = Object.entries(stats).find(([c]) => normLocation(c) === normLocation(city));
+          return { city, avgPrice: price, avgDailyVolume: st ? st[1].avgDailyVolume : 0 };
+        });
+      const plan = planCityAllocation(cityList, r.needed, { side: 'buy', priceTolerance, marketShare });
+      if (plan.cities.length) {
+        return { resource: r.resource, resourceName: r.resourceName, needed: r.needed, city: plan.cities[0].city, avgDailyVolume: plan.cities.reduce((sum, c) => sum + c.avgDailyVolume, 0), daysToAcquire: plan.totalDays, plan };
+      }
+    }
     // Оборот берём в городе покупки; если там сделок нет — по всем выбранным городам.
     const cityStat = r.city && Object.entries(stats).find(([c]) => normLocation(c) === normLocation(r.city));
     const avgDailyVolume = cityStat ? cityStat[1].avgDailyVolume : Object.values(stats).reduce((sum, st) => sum + st.avgDailyVolume, 0);
@@ -2292,6 +2380,7 @@ module.exports = {
   premiumPaybackDays,
   computePatientSell,
   computeAcquireTime,
+  planCityAllocation,
   computeSellThreshold,
   teleportDistance,
   teleportStackCost,

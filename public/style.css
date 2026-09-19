@@ -288,3 +288,9 @@ tr.top-find td:first-child { box-shadow: inset 3px 0 0 #7ee787; }
 /* Материалы: невозвращаемые и итог закупки */
 .no-return { font-size: 10px; color: #cc8844; border: 1px solid #6b4a25; border-radius: 3px; padding: 0 4px; margin-left: 6px; white-space: nowrap; }
 tr.materials-total td { font-weight: 700; border-top: 2px solid #333740; }
+
+/* План закупки по городам в ячейке материала */
+details.acquire-plan { margin-top: 4px; }
+details.acquire-plan summary { cursor: pointer; font-size: 11px; color: #9aa0aa; }
+details.acquire-plan ul { margin: 4px 0 0; padding-left: 14px; text-align: left; font-size: 12px; }
+details.acquire-plan small, .plan-skipped { color: #9aa0aa; }

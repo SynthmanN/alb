@@ -334,3 +334,35 @@ test('материалы: количество к закупке с учётом
   await expect(table.locator('tbody tr').nth(1)).toContainText('без возврата');
   await expect(table.locator('tfoot')).toContainText('301 300');                    // 1013·100 + 100·2000
 });
+
+test('многогородовой план: допуск цены уходит в запрос, план закупки и продажи показываются с допуском по городам', async ({ page }) => {
+  let query = null;
+  await page.route('**/api/craft-calc*', (route) => {
+    query = new URL(route.request().url()).searchParams;
+    route.fulfill({ json: {
+      itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 1000, marketShare: 0.25, priceTolerance: 0.05, rrrPreset: { id: 'none', label: 'Без бонусов', bonus: 0, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 1000000,
+      recipe: [{ resource: 'T4_LEATHER', resourceName: 'T4 Кожа (IV)', queryId: 'T4_LEATHER', enchanted: false, count: 8, returnable: true, neededToBuy: 8000, cheapestCity: 'Bridgewatch', cheapestPrice: 373, cityPrices: [] }],
+      sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, enchantAfterCraft: null, teleport: null,
+      acquire: { days: 3.2, cycleDays: 12.2, bottleneckResource: 'T4_LEATHER', priceTolerance: 0.05, overpayTotal: 1000, byResource: [{ resource: 'T4_LEATHER', resourceName: 'T4 Кожа (IV)', needed: 8000, avgDailyVolume: 10, daysToAcquire: 3.2,
+        plan: { bestPrice: 373, avgPrice: 391, overpayPct: 4.8, totalDays: 3.2, excluded: [{ city: 'Lymhurst', reason: 'слишком тонкий рынок для надёжной цены' }],
+          cities: [{ city: 'Bridgewatch', avgPrice: 373, avgDailyVolume: 2, tolerance: 0.05, qty: 1427, days: 3.2 }, { city: 'Martlock', avgPrice: 397, avgDailyVolume: 8, tolerance: 0.15, qty: 6573, days: 3.2 }] } }] },
+      patientSell: { days: 7, marketShare: 0.25, avgSellPrice: 5000, bestCity: { city: 'Lymhurst', avgPrice: 5100 }, avgDailyVolume: 12, daysToSellBatch: 9, netSellPrice: 4600, profitPerUnit: 3600,
+        byCity: [{ city: 'Lymhurst', avgSellPrice: 5100, avgDailyVolume: 10, profitPerUnit: 3700 }, { city: 'Thetford', avgSellPrice: 2500, avgDailyVolume: 2, profitPerUnit: 1000 }], cities: [],
+        plan: { bestPrice: 5100, avgPrice: 5100, overpayPct: 0, totalDays: 9, excluded: [{ city: 'Thetford', reason: 'цена хуже лучшей на 51.0% при допуске 5.0%' }],
+          cities: [{ city: 'Lymhurst', avgPrice: 5100, avgDailyVolume: 10, tolerance: 0.05, qty: 1000, days: 9 }] } },
+    } });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-price-tolerance').fill('8');
+  await page.locator('#craft-run').click();
+  expect(query.get('priceTolerance')).toBe('8');
+  const materials = page.locator('#craft-result .craft-recipe-table').first();
+  await expect(materials).toContainText('план закупки (2 гор., +4.8% к лучшей цене)');
+  await page.locator('#craft-result details.acquire-plan summary').click();
+  await expect(materials).toContainText('Martlock: 6 573 шт');
+  await expect(materials).toContainText('допуск 15%');
+  await expect(page.locator('#craft-result .by-city')).toContainText('Вне плана: Thetford');
+});

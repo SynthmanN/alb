@@ -356,3 +356,19 @@ describe('калькулятор крафта: возврат ресурсов �
     expect(d.effectiveCostPerUnit).toBeCloseTo(expected, 6);
   });
 });
+
+describe('калькулятор крафта: многогородовой план', () => {
+  it('план закупки по материалам и план продажи есть в ответе, допуск возвращается', async () => {
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=100&priceTolerance=8')).body;
+    expect(d.priceTolerance).toBeCloseTo(0.08, 6);
+    if (d.acquire) {
+      for (const r of d.acquire.byResource) if (r.plan) {
+        expect(r.plan.cities.reduce((sum, c) => sum + c.qty, 0)).toBe(r.needed);
+        expect(r.plan.cities.every((c) => c.tolerance >= 0.08)).toBe(true);
+      }
+    }
+    if (d.patientSell && d.patientSell.plan && d.patientSell.plan.cities.length) {
+      expect(d.patientSell.plan.cities.reduce((sum, c) => sum + c.qty, 0)).toBe(100);
+    }
+  });
+});

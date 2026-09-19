@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const {
-  returnFactor, computeAcquireTime, requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
+  planCityAllocation, returnFactor, computeAcquireTime, requiresEnchantAfterCraft, cityPriceList, marginSellStats, premiumPaybackDays, enchantVariants, computeSellThreshold, teleportDistance, teleportStackCost, planCraftTeleport, allocateBudget, computePatientSell, enchantMaterialId, ENCHANT_MATERIAL_COUNT, gearEnchantId, mapLimit, itemIP, baseIPForTier, maxEnchantForGear, masteryIPBonus, familyIdOf, paretoFrontier, findCheapestOutfits,
   freshnessDecay, bulkCycleDecay, opportunityScore, scaledMinVolume, getSalesTaxRate, getBmTaxRate,
   quoteAgeMinutes, dealAgeMinutes, normLocation, totalVolume, cityStats, computeBulkPlan,
 } = require('../server.js');
@@ -570,5 +570,60 @@ describe('возврат ресурсов: только на возвращае�
     }
     const expected = recipe.resources.reduce((sum, r) => sum + r.count * 1000 * (r.noReturn ? 1 : 0.5), 0);
     expect(plan.effectiveCostPerUnit).toBeCloseTo(expected, 6);
+  });
+});
+
+describe('многогородовой план: ценовой допуск и ликвидность', () => {
+  const cities = [
+    { city: 'A', avgPrice: 100, avgDailyVolume: 10 },   // лучшая цена продажи? для sell — самая высокая
+    { city: 'B', avgPrice: 97, avgDailyVolume: 50 },    // −3% при 5× большем обороте
+    { city: 'C', avgPrice: 90, avgDailyVolume: 5 },     // −10%, тонкий
+    { city: 'D', avgPrice: 100, avgDailyVolume: 0.05 }, // одна случайная сделка — не сигнал
+  ];
+  const sell = (extra = {}) => planCityAllocation(cities, 1000, { side: 'sell', ...extra });
+
+  it('город в допуске входит в план, вне допуска — нет; количество делится по обороту и сходится в партию', () => {
+    const plan = sell({ priceTolerance: 0.05 });
+    expect(plan.cities.map((c) => c.city).sort()).toEqual(['A', 'B']);
+    expect(plan.cities.reduce((sum, c) => sum + c.qty, 0)).toBe(1000);
+    const [a, b] = ['A', 'B'].map((n) => plan.cities.find((c) => c.city === n));
+    expect(b.qty).toBeGreaterThan(a.qty * 4);                       // 50 против 10 в день
+    expect(Math.abs(a.days - b.days)).toBeLessThan(0.5);            // у всех практически один срок (разница — от округления штук)
+    expect(plan.totalDays).toBeCloseTo(1000 / 60, 6);
+  });
+  it('тонкий город с «лучшей» ценой не выбивает ликвидные города (одна сделка ≠ ценовой сигнал)', () => {
+    const plan = sell({ priceTolerance: 0.05 });
+    expect(plan.excluded.map((e) => e.city)).toContain('D');
+    expect(plan.cities.map((c) => c.city)).toContain('A');
+  });
+  it('монотонность: больше допуск — не меньше городов в плане и не медленнее цикл', () => {
+    let prevCount = 0;
+    let prevDays = Infinity;
+    for (const tol of [0, 0.02, 0.05, 0.12, 0.3]) {
+      const plan = sell({ priceTolerance: tol });
+      expect(plan.cities.length).toBeGreaterThanOrEqual(prevCount);
+      expect(plan.totalDays).toBeLessThanOrEqual(prevDays + 1e-9);
+      prevCount = plan.cities.length;
+      prevDays = plan.totalDays;
+    }
+  });
+  it('допуск динамический: ликвидный город получает допуск до ×3 от базового, но не больше', () => {
+    const plan = sell({ priceTolerance: 0.01 });
+    const b = plan.cities.find((c) => c.city === 'B');
+    expect(b).toBeTruthy();                                         // −3% при базовом допуске 1% попал благодаря обороту (×3 = 3%)
+    expect(b.tolerance).toBeCloseTo(0.03, 6);
+    expect(sell({ priceTolerance: 0.01, maxToleranceMult: 1 }).cities.map((c) => c.city)).not.toContain('B');
+  });
+  it('закупка: лучшая цена — самая низкая; переплата плана относительно лучшего города считается', () => {
+    const buy = planCityAllocation([{ city: 'X', avgPrice: 100, avgDailyVolume: 10 }, { city: 'Y', avgPrice: 103, avgDailyVolume: 30 }], 400, { side: 'buy', priceTolerance: 0.05 });
+    expect(buy.bestPrice).toBe(100);
+    expect(buy.cities[0].city).toBe('X');                          // дешёвый первым
+    expect(buy.cities.find((c) => c.city === 'Y').qty).toBe(300);
+    expect(buy.avgPrice).toBeCloseTo((100 * 100 + 103 * 300) / 400, 6);
+    expect(buy.overpayPct).toBeGreaterThan(0);
+  });
+  it('доля рынка растягивает срок; нет городов — пустой план', () => {
+    expect(sell({ priceTolerance: 0.05, marketShare: 0.5 }).totalDays).toBeCloseTo(sell({ priceTolerance: 0.05 }).totalDays * 2, 6);
+    expect(planCityAllocation([], 10, { side: 'sell' }).cities).toEqual([]);
   });
 });

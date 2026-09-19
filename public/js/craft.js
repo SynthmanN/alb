@@ -115,6 +115,7 @@ async function runCraftCalc() {
       premium: premiumParam(),
     });
     params.set('marketShare', document.getElementById('craft-market-share').value);
+    params.set('priceTolerance', document.getElementById('craft-price-tolerance').value || '5');
     params.set('days', document.getElementById('craft-days').value);
     for (const [id, name] of [['craft-ceiling', 'ceiling'], ['craft-sell-low', 'sellLow'], ['craft-sell-high', 'sellHigh']]) {
       const v = document.getElementById(id).value;
@@ -161,7 +162,7 @@ function renderCraftResult(data) {
         <td>${needed.toLocaleString('ru-RU')}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU')}</small>` : ''}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU')}</td>
-        <td data-sort-value="${acquireDaysFor(data, r.resource) ?? ''}">${acquireDaysFor(data, r.resource) !== null ? fmtDays(acquireDaysFor(data, r.resource)) : '—'}${data.acquire && data.acquire.bottleneckResource === r.resource ? ' 🐢' : ''}</td>
+        <td data-sort-value="${acquireDaysFor(data, r.resource) ?? ''}">${acquireDaysFor(data, r.resource) !== null ? fmtDays(acquireDaysFor(data, r.resource)) : '—'}${data.acquire && data.acquire.bottleneckResource === r.resource ? ' 🐢' : ''}${acquirePlanHtml(data, r.resource)}</td>
       </tr>
     `;
   }).join('');
@@ -246,6 +247,16 @@ function tierComparisonHtml(data) {
     </details>`;
 }
 
+// План закупки материала по городам (ценовой допуск динамический): где сколько покупать по терпеливым ордерам.
+function acquirePlanHtml(data, resource) {
+  const row = data.acquire && data.acquire.byResource.find((a) => a.resource === resource);
+  const plan = row && row.plan;
+  if (!plan || plan.cities.length === 0) return '';
+  const cities = plan.cities.map((c) => `<li>${c.city}: ${fmtNum(c.qty)} шт по ${fmtNum(c.avgPrice)} <small>(допуск ${(c.tolerance * 100).toFixed(0)}%, ${fmtDays(c.days)})</small></li>`).join('');
+  const skipped = plan.excluded.length ? `<li class="plan-skipped">вне плана: ${plan.excluded.map((e) => `${e.city} (${e.reason})`).join('; ')}</li>` : '';
+  return `<details class="acquire-plan"><summary>план закупки${plan.cities.length > 1 ? ` (${plan.cities.length} гор., +${plan.overpayPct.toFixed(1)}% к лучшей цене)` : ''}</summary><ul>${cities}${skipped}</ul></details>`;
+}
+
 // Дней на закупку материала (по истории торгов, с учётом доли рынка); null — нет данных.
 function acquireDaysFor(data, resource) {
   const row = data.acquire && data.acquire.byResource.find((a) => a.resource === resource);
@@ -280,13 +291,16 @@ function salePlanByCity(byCity, quantity, marketShare, minPrice) {
 function byCityHtml(p, data) {
   if (!p.byCity || p.byCity.length === 0) return '';
   const minPrice = p.threshold ? p.threshold.value : null;
-  const plan = salePlanByCity(p.byCity, data.quantity, p.marketShare ?? 1, minPrice);
+  const serverPlan = p.plan && p.plan.cities.length ? p.plan : null;
+  const plan = serverPlan
+    ? { rows: new Map(serverPlan.cities.map((c) => [c.city, { qty: c.qty, days: c.days, tolerance: c.tolerance }])), days: serverPlan.totalDays }
+    : salePlanByCity(p.byCity, data.quantity, p.marketShare ?? 1, minPrice);
   const rows = p.byCity.map((c) => {
     const dim = minPrice !== null && c.avgSellPrice < minPrice;
     const cls = c.profitPerUnit > 0 ? 'profit-pos' : 'profit-neg';
     const pr = plan.rows.get(c.city);
     return `<tr class="${dim ? 'below-threshold' : ''}"><td>${c.city}</td><td>${fmtNum(c.avgSellPrice)}</td><td>${fmtNum(c.avgDailyVolume, 1)}</td><td class="${cls}">${fmtNum(c.profitPerUnit)}</td>
-      <td data-sort-value="${pr ? pr.qty : ''}">${pr ? fmtNum(pr.qty) : '—'}</td><td data-sort-value="${pr ? pr.days : ''}">${pr ? fmtDays(pr.days) : '—'}</td></tr>`;
+      <td data-sort-value="${pr ? pr.qty : ''}">${pr ? fmtNum(pr.qty) : '—'}</td><td data-sort-value="${pr ? pr.days : ''}">${pr ? fmtDays(pr.days) : '—'}${pr && pr.tolerance ? ` <small>(допуск ${(pr.tolerance * 100).toFixed(0)}%)</small>` : ''}</td></tr>`;
   }).join('');
   return `
     <details open class="by-city">
@@ -295,7 +309,7 @@ function byCityHtml(p, data) {
         <thead><tr><th>Город</th><th>Средняя цена</th><th>Сделок в день</th><th>Профит / шт</th><th>Везти сюда, шт</th><th>Дней здесь</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-      <p class="calc-note">Партия ${fmtNum(data.quantity)} шт делится между городами пропорционально их дневному обороту; при доле рынка ${((p.marketShare ?? 1) * 100).toFixed(0)}% весь план занимает ${fmtDays(plan.days)} — так продаётся партия целиком, а не «по одному лучшему городу».</p>
+      <p class="calc-note">Партия ${fmtNum(data.quantity)} шт делится между городами пропорционально их дневному обороту; при доле рынка ${((p.marketShare ?? 1) * 100).toFixed(0)}% весь план занимает ${fmtDays(plan.days)} — так продаётся партия целиком, а не «по одному лучшему городу».${serverPlan ? ` В план вошли города с ценой не хуже лучшей больше чем на допуск (у ликвидных он динамически больше).${serverPlan.excluded.length ? ` Вне плана: ${serverPlan.excluded.map((e) => `${e.city} — ${e.reason}`).join('; ')}.` : ''}` : ''}</p>
     </details>`;
 }
 
