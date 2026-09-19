@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 // Уровни мастерок в тестах пишутся во временный файл, а не в data/user-masteries.json пользователя.
 const masteriesFile = path.join(os.tmpdir(), `albion-masteries-test-${process.pid}.json`);
 process.env.USER_MASTERIES_PATH = masteriesFile;
+process.env.DISABLE_RATE_LIMIT = 'true'; // десятки запросов с одного IP за секунды — норма для тестов
 const { app, resetCaches } = require('../server.js');
 
 const CITIES = ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford'];
@@ -77,12 +78,40 @@ describe('мастерки', () => {
     expect(res.body.levels).toEqual({ masteries: {}, specializations: {} });
   });
   it('сохранение: уровень ограничивается 200, неизвестные id игнорируются, 0 удаляет', async () => {
-    let res = await request(app).post('/api/masteries').send({ specializations: { COMBAT_SWORDS_SWORD: 999, NOPE: 5 }, masteries: { COMBAT_SWORDS: 20 } });
+    const visitor = request.agent(app); // агент держит cookie сессии между вызовами
+    let res = await visitor.post('/api/masteries').send({ specializations: { COMBAT_SWORDS_SWORD: 999, NOPE: 5 }, masteries: { COMBAT_SWORDS: 20 } });
     expect(res.body.specializations).toEqual({ COMBAT_SWORDS_SWORD: 200 });
     expect(res.body.masteries).toEqual({ COMBAT_SWORDS: 20 });
-    res = await request(app).post('/api/masteries').send({ specializations: { COMBAT_SWORDS_SWORD: 0 }, masteries: { COMBAT_SWORDS: 0 } });
+    res = await visitor.post('/api/masteries').send({ specializations: { COMBAT_SWORDS_SWORD: 0 }, masteries: { COMBAT_SWORDS: 0 } });
     expect(res.body.specializations).toEqual({});
     expect(res.body.masteries).toEqual({});
+  });
+  it('первый визит получает cookie сессии (HttpOnly, SameSite=Lax), повторный — нет', async () => {
+    const first = await request(app).get('/api/masteries');
+    const cookie = String(first.headers['set-cookie']);
+    expect(cookie).toMatch(/^sid=[0-9a-f-]{36};/);
+    expect(cookie).toMatch(/HttpOnly/);
+    expect(cookie).toMatch(/SameSite=Lax/);
+    const again = await request(app).get('/api/masteries').set('Cookie', cookie.split(';')[0]);
+    expect(again.headers['set-cookie']).toBeUndefined();
+  });
+  it('уровни разных посетителей не смешиваются; поддельный sid заменяется новым', async () => {
+    const alice = request.agent(app);
+    const bob = request.agent(app);
+    await alice.post('/api/masteries').send({ masteries: { COMBAT_SWORDS: 50 } });
+    await bob.post('/api/masteries').send({ masteries: { COMBAT_SWORDS: 7 } });
+    expect((await alice.get('/api/masteries')).body.levels.masteries).toEqual({ COMBAT_SWORDS: 50 });
+    expect((await bob.get('/api/masteries')).body.levels.masteries).toEqual({ COMBAT_SWORDS: 7 });
+    const forged = await request(app).get('/api/masteries').set('Cookie', 'sid=../../etc/passwd');
+    expect(String(forged.headers['set-cookie'])).toMatch(/^sid=[0-9a-f-]{36};/);
+    expect(forged.body.levels).toEqual({ masteries: {}, specializations: {} });
+  });
+  it('файл старого формата (общие уровни) достаётся первому посетителю и не теряется', async () => {
+    fs.writeFileSync(masteriesFile, JSON.stringify({ masteries: { COMBAT_SWORDS: 33 }, specializations: {} }));
+    const owner = request.agent(app);
+    expect((await owner.get('/api/masteries')).body.levels.masteries).toEqual({ COMBAT_SWORDS: 33 });
+    expect(JSON.parse(fs.readFileSync(masteriesFile, 'utf8')).sessions).toBeDefined(); // перенесено в новый формат
+    expect((await request(app).get('/api/masteries')).body.levels.masteries).toEqual({}); // чужой посетитель их не видит
   });
 });
 

@@ -25,6 +25,7 @@ module.exports = defineConfig({
     timeout: 20_000,
     env: {
       PORT: String(PORT),
+      DISABLE_RATE_LIMIT: 'true', // десятки запросов с одного IP за секунды в тестах — норма
       // тесты мастерок пишут во временный файл, а не в data/user-masteries.json пользователя
       USER_MASTERIES_PATH: path.join(os.tmpdir(), `albion-masteries-e2e-${process.pid}.json`),
     },

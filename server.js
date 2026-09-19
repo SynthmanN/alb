@@ -1,4 +1,6 @@
 const express = require('express');
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const { ITEMS } = require('./data/items');
@@ -91,19 +93,38 @@ const MASTERY_BY_ID = new Map(MASTERIES.masteries.map((m) => [m.id, m]));
 const SPEC_ID_BY_FAMILY = new Map();
 for (const spec of MASTERIES.specializations) for (const fam of spec.families) SPEC_ID_BY_FAMILY.set(fam, spec.id);
 
-// Уровни мастерок пользователя лежат в data/user-masteries.json ({ masteries: {id: lvl}, specializations: {id: lvl} }).
+// Уровни мастерок лежат в data/user-masteries.json отдельно для каждого посетителя (анонимная cookie-сессия sid, без логина):
+// { sessions: { <sid>: { masteries: {id: lvl}, specializations: {id: lvl} } } }.
 // USER_MASTERIES_PATH переопределяется в тестах, чтобы они не трогали реальные данные пользователя.
 const USER_MASTERIES_PATH = process.env.USER_MASTERIES_PATH || path.join(__dirname, 'data', 'user-masteries.json');
-function loadUserMasteryLevels() {
+const emptyLevels = () => ({ masteries: {}, specializations: {} });
+function readMasteriesFile() {
   try {
-    const data = JSON.parse(fs.readFileSync(USER_MASTERIES_PATH, 'utf8'));
-    return { masteries: data.masteries || {}, specializations: data.specializations || {} };
+    return JSON.parse(fs.readFileSync(USER_MASTERIES_PATH, 'utf8'));
   } catch {
-    return { masteries: {}, specializations: {} };
+    return {};
   }
 }
-function saveUserMasteryLevels(levels) {
-  fs.writeFileSync(USER_MASTERIES_PATH, JSON.stringify(levels, null, 2));
+function loadUserMasteryLevels(sessionId) {
+  const data = readMasteriesFile();
+  if (data.sessions) {
+    const mine = data.sessions[sessionId];
+    return mine ? { masteries: mine.masteries || {}, specializations: mine.specializations || {} } : emptyLevels();
+  }
+  // Файл старого формата (один общий набор уровней, сайт был личным): весь прогресс достаётся первому же посетителю
+  // и переносится в новый формат, чтобы ничего не потерялось при обновлении.
+  if (data.masteries || data.specializations) {
+    const legacy = { masteries: data.masteries || {}, specializations: data.specializations || {} };
+    saveUserMasteryLevels(sessionId, legacy);
+    return legacy;
+  }
+  return emptyLevels();
+}
+function saveUserMasteryLevels(sessionId, levels) {
+  const data = readMasteriesFile();
+  const sessions = data.sessions || {};
+  sessions[sessionId] = levels;
+  fs.writeFileSync(USER_MASTERIES_PATH, JSON.stringify({ sessions }, null, 2));
 }
 
 // Бонус IP от мастерок для конкретного семейства предмета на конкретном тире.
@@ -203,6 +224,40 @@ async function fetchPricesBatched(itemIds, quality) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+
+// Анонимная сессия посетителя: случайный идентификатор в cookie (без пароля и логина) — чтобы личные данные
+// (уровни мастерок) разных людей не смешивались. Идентификатор всегда проверяется по формату UUID.
+const SESSION_COOKIE = 'sid';
+const SESSION_MAX_AGE_SEC = 365 * 24 * 3600;
+const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function readCookie(req, name) {
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const eq = part.indexOf('=');
+    if (eq > 0 && part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+  }
+  return null;
+}
+app.use('/api', (req, res, next) => {
+  let sessionId = readCookie(req, SESSION_COOKIE);
+  if (!sessionId || !SESSION_ID_RE.test(sessionId)) {
+    sessionId = crypto.randomUUID();
+    res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${sessionId}; Max-Age=${SESSION_MAX_AGE_SEC}; Path=/; HttpOnly; SameSite=Lax`);
+  }
+  req.sessionId = sessionId;
+  next();
+});
+
+// Грубая защита от одного агрессивного посетителя или бота: не больше 60 запросов в минуту с одного IP на /api.
+// В тестах отключается (DISABLE_RATE_LIMIT=true): десятки запросов с одного адреса за секунды там норма.
+if (process.env.DISABLE_RATE_LIMIT !== 'true') {
+  app.use('/api', rateLimit({
+    windowMs: 60 * 1000,
+    limit: 60,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'слишком много запросов, попробуйте через минуту' },
+  }));
+}
 
 // Список известных предметов для фронта (поиск/автокомплит)
 app.get('/api/items', (req, res) => {
@@ -2141,14 +2196,14 @@ app.get('/api/craft-margin-opportunities', async (req, res) => {
 
 // --- Мастерки: дерево и сохранённые уровни ---
 app.get('/api/masteries', (req, res) => {
-  res.json({ ...MASTERIES, maxLevel: MASTERY_MAX_LEVEL, levels: loadUserMasteryLevels() });
+  res.json({ ...MASTERIES, maxLevel: MASTERY_MAX_LEVEL, levels: loadUserMasteryLevels(req.sessionId) });
 });
 
 // Принимает { masteries: { id: level }, specializations: { id: level } } — только изменённые поля;
 // уровень 0 удаляет запись. Неизвестные id игнорируются.
 app.post('/api/masteries', (req, res) => {
   try {
-    const current = loadUserMasteryLevels();
+    const current = loadUserMasteryLevels(req.sessionId);
     const body = req.body || {};
     const apply = (incoming, known, target) => {
       for (const [id, level] of Object.entries(incoming || {})) {
@@ -2160,7 +2215,7 @@ app.post('/api/masteries', (req, res) => {
     };
     apply(body.masteries, MASTERY_BY_ID, current.masteries);
     apply(body.specializations, SPEC_BY_ID, current.specializations);
-    saveUserMasteryLevels(current);
+    saveUserMasteryLevels(req.sessionId, current);
     res.json({ ok: true, ...current });
   } catch (err) {
     console.error(err);
@@ -2322,7 +2377,7 @@ app.get('/api/fitting-room', async (req, res) => {
       if (!cur || rec.sell_price_min < cur.price) cheapest.set(key, { price: rec.sell_price_min, city: rec.city });
     }
 
-    const userLevels = loadUserMasteryLevels();
+    const userLevels = loadUserMasteryLevels(req.sessionId);
     const slotDefs = [];
     const emptyFamilies = [];
     for (const [key, fam] of Object.entries(families)) {
