@@ -49,10 +49,7 @@ export function ParamsBar() {
       ${OPTIONAL_CITIES.map((c) => html`<${CityToggle} key=${c} name=${c} fixed=${false} on=${s.optional.includes(c)} />`)}</span></div>
     ${more ? html`<div class="adv" id="adv">
       <${Switch} checked=${s.blackMarket} onChange=${(v) => settings.set({ blackMarket: v })} title="Чёрный Рынок краулер не собирает — он идёт живым запросом">Учитывать Чёрный Рынок</${Switch}>
-      <${Switch} checked=${s.teleport} onChange=${(v) => settings.set({ teleport: v })}>Учитывать телепорт</${Switch}>
-      <${Switch} checked=${s.purchaseLog} onChange=${(v) => settings.set({ purchaseLog: v })}>Лог закупок по лотам</${Switch}>
       <label class="f">Допуск цены закупки, %<input type="number" min="0" max="50" step="1" value=${s.tolerance} onInput=${(e) => settings.set({ tolerance: parseFloat(e.target.value) || 0 })} /></label>
-      <label class="f">Потолок себестоимости<input type="number" min="0" placeholder="нет" value=${s.ceiling} onInput=${(e) => settings.set({ ceiling: e.target.value })} /></label>
     </div>` : null}
   </section>
   <div class="statusnote" id="status-note">${status} · налог ${s.premium ? 4 : 8}% · городов ${activeCities(s).length}</div>`;

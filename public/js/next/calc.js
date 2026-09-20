@@ -3,12 +3,12 @@ import { html, createStore, useStore, useState, useEffect, useMemo, allItems, it
 import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
 import { Glyph, Tags, CityPill, CityPills, Switch, Icon, ICONS, Spinner, toast } from './ui.js';
-import { addToList } from './list.js';
+import { addToList, craftList } from './list.js';
 import { navStore, nav } from './nav.js';
 import { acquisitionRows } from './logic/acquire.js';
 import { profitOf } from './logic/profit.js';
 
-export const calcStore = createStore({ itemId: null, enchant: 0, quality: 4, qty: 10, after: false, sub: 'buy', data: null, loading: false, error: '', sig: '', checks: {} });
+export const calcStore = createStore({ itemId: null, enchant: 0, quality: 4, qty: 10, after: false, faction: false, crestSilver: false, heartSilver: false, sub: 'buy', data: null, loading: false, error: '', sig: '', checks: {} });
 const GEAR = (i) => i.category === 'weapon' || i.category === 'armor' || i.category === 'cape';
 const maxEnchant = (id) => (itemTier(id) >= 4 ? 4 : 0);
 let runId = 0;
@@ -20,6 +20,12 @@ export async function runCalc(sig) {
   calcStore.set({ loading: true, error: '' });
   try {
     const params = { ...commonParams(), item: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, ...(c.after ? { enchantAfterCraft: 'true' } : {}) };
+    const fac = craftList.get().faction;
+    if (c.faction && fac) {                                   // фракционный плащ из плана: герб и сердце за очки, если не куплены за серебро
+      params.faction = fac.id; params.factionPoints = fac.points;
+      const sp = [c.crestSilver ? 'crest' : null, c.heartSilver ? 'heart' : null].filter(Boolean);
+      if (sp.length) params.partsSilver = sp.join(',');
+    }
     const data = await apiGet('/api/craft-calc', params);
     if (id !== runId) return;
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
@@ -34,7 +40,7 @@ navStore.subscribe(() => {
   const t = navStore.get().calc;
   if (!t || t.handled) return;
   navStore.set({ calc: { ...t, handled: true } });
-  calcStore.set({ itemId: t.itemId, enchant: t.enchant || 0, quality: t.quality || 1, qty: t.quantity || 1, after: !!t.after, data: null, sig: '', error: '' });
+  calcStore.set({ itemId: t.itemId, enchant: t.enchant || 0, quality: t.quality || 1, qty: t.quantity || 1, after: !!t.after, faction: !!t.faction, crestSilver: !!t.crestSilver, heartSilver: !!t.heartSilver, data: null, sig: '', error: '' });
 });
 
 function ItemPicker({ value, onPick }) {
@@ -62,6 +68,7 @@ function Verdict({ c, d, p }) {
       <div class="v-pills">
         ${p && p.unit !== null ? html`<span class=${`pill ${ok ? 'g' : 'w'}`}>${ok ? 'Стоит крафтить' : 'Невыгодно'} · ${p.basis === 'sell' ? 'Sell Order' : 'Buy Order'}</span>` : html`<span class="pill w">нет цены продажи</span>`}
         ${p && p.days !== null ? html`<span class="pill n">продажа партии ≈ ${fmtDays(p.days)}</span>` : null}
+        ${d.faction ? html`<span class="pill n">очков: ${fmt(d.faction.pointsPerCape * c.qty)}</span>` : null}
         ${p && !p.complete ? html`<span class="pill w">нет цены части материалов</span>` : null}
       </div>
       <div class="pair"><div class="soft-good"><span>Доходы (после налога)</span><b class="pos">${p ? fmt(p.income) : '—'}</b></div><div class="soft-bad"><span>Расходы</span><b class="neg">${fmt(d.totalCost)}</b></div></div>
@@ -147,7 +154,7 @@ export function CalcTab() {
   const s = useStore(settings);
   const [, force] = useState(0);
   useEffect(() => { itemsReady.then(() => force((n) => n + 1)); }, []);
-  const sig = JSON.stringify([c.itemId, c.enchant, c.quality, c.qty, c.after, commonParams(s)]);
+  const sig = JSON.stringify([c.itemId, c.enchant, c.quality, c.qty, c.after, c.faction, c.crestSilver, c.heartSilver, commonParams(s)]);
   useEffect(() => {
     if (!c.itemId || sig === c.sig) return undefined;
     const t = setTimeout(() => runCalc(sig), 350);
