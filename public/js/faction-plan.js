@@ -161,6 +161,7 @@ function renderFactionPlan() {
     return sign * (a - b);
   };
   rowsWithPlan.sort((a, b) => (b.qty > 0) - (a.qty > 0) || cmp(sortValue(a), sortValue(b), dirSign) || cmp(a.c.profitAll, b.c.profitAll, -1));
+  fp.planned = rowsWithPlan.filter((x) => x.qty > 0);
   const spent = fp.points - plan.left;
   const totalProfit = rowsWithPlan.reduce((s, x) => s + x.profit, 0);
   const capes = rowsWithPlan.reduce((s, x) => s + x.qty, 0);
@@ -216,6 +217,7 @@ function renderFactionPlan() {
       ${plan.lastEff !== null ? `<div class="craft-summary-row"><span title="Профит на очко у последней потраченной порции очков — по нему видно, окупается ли следующее очко">Цена очка в серебре (последняя порция)</span><span>≈ ${fpNum(plan.lastEff, 1)}</span></div>` : ''}
       ${buyList.length ? `<div class="craft-summary-row"><span>Докупить на рынке за серебро</span><span>${buyList.join(', ')}</span></div>` : ''}
     </div>
+    ${fp.planned.length ? `<div class="fp-send"><button type="button" id="fp-send" title="Все зелёные позиции переносятся в калькулятор одним стеком: считаются как в обычном крафте, у каждой можно поменять количество и удалить">Крафтить план: перенести ${fp.planned.length} поз. в калькулятор</button></div>` : ''}
     <p class="calc-note">Зелёные — плащи в плане (сколько крафтить), серые — нет данных или крафт менее выгоден. Впиши свою цену в любую позицию — список пересчитается сразу. Вписанные цены герба, сердца, плаща и продажи сохраняются на сервере как недостоверные (⚠) и заменяют отсутствующие данные AODP до 10 дней.</p>
     <div class="mobile-sort"><label>Сортировка<select id="fp-sort-col">${HEADS_DEF.map(([key, label]) => `<option value="${label}" ${fp.sort.key === key ? 'selected' : ''}>${label}</option>`).join('')}</select></label><button type="button" id="fp-sort-dir" title="Направление сортировки">${fp.sort.dir === 'desc' ? '▼' : '▲'}</button></div>
     <div class="table-scroll"><table class="craft-recipe-table fp-table" id="fp-table"><thead><tr>${heads}</tr></thead><tbody>${rows}</tbody></table></div>
@@ -263,6 +265,8 @@ function bindFactionPlan() {
   // на телефоне строки — карточки «подпись: значение»
   const labels = [...root.querySelectorAll('th[data-sort-key]')].map((th) => th.textContent.replace(/[▼▲]/g, '').trim());
   root.querySelectorAll('tr[data-row]').forEach((tr) => [...tr.children].forEach((td, i) => { if (labels[i] && i > 0) td.setAttribute('data-label', labels[i]); }));
+  const send = document.getElementById('fp-send');
+  if (send) send.addEventListener('click', sendPlanToCalc);
   document.getElementById('fp-mode').addEventListener('change', (e) => { fp.mode = e.target.value; fpRender(); });
   document.getElementById('fp-close').addEventListener('click', () => { fpEl.panel.hidden = true; fp.data = null; });
   document.getElementById('fp-add-toggle').addEventListener('click', () => { const f = document.getElementById('fp-add-form'); f.hidden = !f.hidden; });
@@ -296,4 +300,24 @@ function fpPersist(key) {
     if (key.startsWith('sale:')) { const row = d.rows.find((r) => fpRowKey(r) === key.slice(5)); if (row && row.sale && !row.sale.manual) return; }   // есть данные AODP — вписанная цена продажи нужна только этой сессии
     fetch('/api/manual-price', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, quality, price }) }).catch(() => {});
   }, 600));
+}
+
+// «Крафтить план»: зелёные позиции уходят в калькулятор одним стеком. Позиция с разными способами добычи деталей (часть штук — герб и сердце за очки,
+// часть — одна деталь за серебро) разбивается на отдельные строки стека; способ (прямой плащ или чары после крафта) переносится как в плане.
+function sendPlanToCalc() {
+  const d = fp.data;
+  if (!d || !fp.planned || fp.planned.length === 0) return;
+  const items = [];
+  for (const x of fp.planned) {
+    for (const [variant, n] of Object.entries(x.byVariant)) {
+      items.push({
+        itemId: x.c.r.itemId, enchant: x.c.r.enchant, quality: x.c.r.quality, quantity: n,
+        after: x.c.r.enchant > 0 && !!x.c.path && x.c.path.startsWith('после'),
+        crestSilver: variant === 'heart', heartSilver: variant === 'crest',
+      });
+    }
+  }
+  enterCraftStack({ id: fp.faction, name: d.faction.name, points: fp.points }, items);
+  const panel = document.getElementById('craft-stack-panel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

@@ -118,6 +118,7 @@ async function initCraft() {
     if (!craftFaction) return;
     craftFaction.points = readGroupedNumber(document.getElementById('craft-faction-points')) || 0;
     fitQuantityToPoints();
+    if (craftStack) { stackSave(); renderStackSummary(); }
     clearTimeout(pointsTimer);
     pointsTimer = setTimeout(() => runCraftCalc(true), 500);
   });
@@ -221,6 +222,8 @@ function RECIPES_KNOWN(i) {
 // keep=true — переключение тира: зачарование и качество сохраняются, результат пересчитывается на месте.
 // Фракционный режим калькулятора: включается только плащом, присланным из скана с включённым режимом (id фракции и очки); выбор предмета вручную его сбрасывает
 let craftFaction = null;
+let craftStack = null;                 // стек фракционных плащей из плана трат очков (см. craft-stack.js); null — обычный калькулятор
+let stackSelecting = false;
 let selectingFromFactionScan = false;
 // Очков на один плащ выбранного тира: сердце 3000 + герб тира (цены в очках одинаковы для всех фракций)
 const FACTION_HEART_POINTS = 3000;
@@ -229,7 +232,7 @@ const factionPerCape = () => (craftSelectedItem && FACTION_CREST_POINTS[craftSel
 // Подгоняет количество плащей под очки фракции: floor(очки ÷ очков на плащ), не меньше 1
 function fitQuantityToPoints() {
   const perCape = factionPerCape();
-  if (!craftFaction || !perCape) return;
+  if (!craftFaction || !perCape || craftStack) return;                     // в стеке количество у каждой позиции своё
   craftEl.quantity.value = String(Math.max(Math.floor(craftFaction.points / perCape), 1));
 }
 function renderFactionBadge() {
@@ -240,13 +243,14 @@ function renderFactionBadge() {
   }
   const el = document.getElementById('craft-faction-badge');
   if (!el) return;
-  el.innerHTML = craftFaction ? `<div class="faction-badge">Фракционный режим: <b>${craftFaction.name}</b> · очков ${fmtNum(craftFaction.points)} <button type="button" id="craft-faction-off">выключить</button></div>` : '';
+  el.innerHTML = craftFaction && craftStack ? `<div class="faction-badge">Фракционный стек: <b>${craftFaction.name}</b> · позиций ${craftStack.items.length} <button type="button" id="craft-faction-off">выключить</button></div>`
+    : craftFaction ? `<div class="faction-badge">Фракционный режим: <b>${craftFaction.name}</b> · очков ${fmtNum(craftFaction.points)} <button type="button" id="craft-faction-off">выключить</button></div>` : '';
   const off = document.getElementById('craft-faction-off');
-  if (off) off.addEventListener('click', () => { craftFaction = null; renderFactionBadge(); runCraftCalc(true); });
+  if (off) off.addEventListener('click', () => { craftFaction = null; if (craftStack) exitCraftStack(); renderFactionBadge(); runCraftCalc(true); });
 }
 
 function selectCraftItem(item, keep = false) {
-  if (!keep && !selectingFromFactionScan && craftFaction) { craftFaction = null; renderFactionBadge(); }
+  if (!keep && !selectingFromFactionScan && !stackSelecting && craftFaction) { craftFaction = null; if (craftStack) exitCraftStack(); renderFactionBadge(); }
   const prevEnchant = craftEl.enchant.value;
   craftSelectedItem = item;
   craftEl.search.value = '';
@@ -315,6 +319,39 @@ function switchCraftTier(itemId) {
   runCraftCalc();
 }
 
+// Параметры запроса к /api/craft-calc: общие настройки калькулятора (ставки, города, окна, доля рынка…) берутся из полей, а позиция — из spec
+// (предмет, зачарование, качество, количество, «после крафта», детали за серебро). Позиции стека считаются тем же путём, что обычный расчёт.
+function craftSpecFromControls() {
+  return {
+    itemId: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value, quantity: craftEl.quantity.value || '1',
+    after: document.getElementById('craft-enchant-after').checked, partsSilver: craftStack ? stackPartsSilver(stackActiveItem()) : [],
+  };
+}
+function craftParamsFor(spec) {
+  const params = new URLSearchParams({
+    item: spec.itemId, enchant: String(spec.enchant), quality: String(spec.quality),
+    quantity: String(spec.quantity || '1'), ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), ...refineRrrParams(craftEl.refineRrr, craftEl.refineRrrCustom), blackMarket: String(craftEl.blackMarket.checked), materialHours: readCustomizable(craftEl.materialHours), cities: activeCities().join(','),
+    premium: premiumParam(),
+  });
+  params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
+  params.set('priceTolerance', document.getElementById('craft-price-tolerance').value || '2');
+  params.set('days', readCustomizable(document.getElementById('craft-days')));
+  for (const [id, name] of [['craft-ceiling', 'ceiling'], ['craft-sell-low', 'sellLow'], ['craft-sell-high', 'sellHigh']]) {
+    const v = document.getElementById(id).value;
+    if (v) params.set(name, v);
+  }
+  if (document.getElementById('craft-teleport').checked) params.set('teleport', 'true');
+  if (spec.after) params.set('enchantAfterCraft', 'true');
+  const threshold = document.getElementById('craft-sell-threshold').value;
+  if (threshold) params.set('sellThreshold', threshold);
+  if (craftFaction) {
+    params.set('faction', craftFaction.id);
+    params.set('factionPoints', String(craftFaction.points));
+    if (spec.partsSilver && spec.partsSilver.length) params.set('partsSilver', spec.partsSilver.join(','));
+  }
+  return params;
+}
+
 // «Посчитать» — и автоматический пересчёт при правке параметров (keepManual: свои цены и лоты на автопересчёте сохраняются; план продажи
 // по городам зависит от количества и рынка — он сбрасывается).
 async function runCraftCalc(keepManual = false) {
@@ -322,23 +359,8 @@ async function runCraftCalc(keepManual = false) {
   if (keepManual !== true) keepManual = false;
   if (!keepManual || !lastCraftData) craftEl.result.innerHTML = 'Считаю...';
   try {
-    const params = new URLSearchParams({
-      item: craftSelectedItem.id, enchant: craftEl.enchant.value, quality: craftEl.quality.value,
-      quantity: craftEl.quantity.value || '1', ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), ...refineRrrParams(craftEl.refineRrr, craftEl.refineRrrCustom), blackMarket: String(craftEl.blackMarket.checked), materialHours: readCustomizable(craftEl.materialHours), cities: activeCities().join(','),
-      premium: premiumParam(),
-    });
-    params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
-    params.set('priceTolerance', document.getElementById('craft-price-tolerance').value || '2');
-    params.set('days', readCustomizable(document.getElementById('craft-days')));
-    for (const [id, name] of [['craft-ceiling', 'ceiling'], ['craft-sell-low', 'sellLow'], ['craft-sell-high', 'sellHigh']]) {
-      const v = document.getElementById(id).value;
-      if (v) params.set(name, v);
-    }
-    if (document.getElementById('craft-teleport').checked) params.set('teleport', 'true');
-    if (document.getElementById('craft-enchant-after').checked) params.set('enchantAfterCraft', 'true');
-    const threshold = document.getElementById('craft-sell-threshold').value;
-    if (threshold) params.set('sellThreshold', threshold);
-    if (craftFaction) { params.set('faction', craftFaction.id); params.set('factionPoints', String(craftFaction.points)); }
+    if (craftStack) stackSyncFromControls();                                  // правки полей (зачарование, качество, количество) — это правки активной позиции стека
+    const params = craftParamsFor(craftSpecFromControls());
     const data = await fetchJson(`/api/craft-calc?${params}`);
     if (data.error) throw new Error(data.error);
     manualSalePlan.clear();
@@ -351,6 +373,7 @@ async function runCraftCalc(keepManual = false) {
     }
     lastCraftData = data;
     renderCraftResult(data);
+    if (craftStack) stackOnActiveResult(data);
   } catch (err) {
     craftEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
   }
@@ -1521,4 +1544,4 @@ function renderMarginScan(data) {
   });
 }
 
-initCraft();
+const craftReady = initCraft();

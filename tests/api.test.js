@@ -872,6 +872,34 @@ describe('калькулятор: фракционный режим (тольк�
     const plain = (await request(app).get(url())).body;
     expect(d.baseChoice.baseCraftCostPerUnit).toBeLessThan(plain.baseChoice.baseCraftCostPerUnit - 5000);
   });
+  it('partsSilver: сердце/герб можно докупить за серебро — они входят в себестоимость (цена рынка + комиссия), очков на плащ меньше', async () => {
+    const both = (await request(app).get(url('&faction=MARTLOCK&factionPoints=52500&partsSilver=heart'))).body;
+    const heart = both.recipe.find((r) => r.resource === 'T1_FACTION_HIGHLAND_TOKEN_1');
+    expect(heart.materialSource).not.toBe('points');
+    expect(heart.cheapestPrice).toBeCloseTo(2000 * FEE, 6);
+    expect(both.faction).toMatchObject({ pointsPerCape: 2250, pointsPerCapeFull: 5250, partsSilver: ['heart'], maxCapes: 23 });
+    const points = (await request(app).get(url('&faction=MARTLOCK&factionPoints=52500'))).body;
+    expect(both.baseChoice.baseCraftCostPerUnit).toBeCloseTo(points.baseChoice.baseCraftCostPerUnit + 2000 * FEE, 4);
+    const all = (await request(app).get(url('&faction=MARTLOCK&partsSilver=heart,crest'))).body;
+    expect(all.faction).toMatchObject({ pointsPerCape: 0, maxCapes: null, partsNet: null });
+  });
+  it('вписанная цена подставляется вместо отсутствующей цены материала и помечается manual; цена AODP её вытесняет', async () => {
+    jugDb.exec("DELETE FROM prices WHERE query_id='T5_CAPEITEM_FW_MARTLOCK_BP'");
+    const none = (await request(app).get(url('&partsSilver=crest'))).body;
+    expect(none.recipe.find((r) => r.resource.endsWith('_BP')).cheapestPrice).toBeNull();
+    await request(app).post('/api/manual-price').send({ id: 'T5_CAPEITEM_FW_MARTLOCK_BP', quality: 1, price: 9000 });
+    resetCaches();
+    const withManual = (await request(app).get(url('&partsSilver=crest'))).body;
+    const crest = withManual.recipe.find((r) => r.resource.endsWith('_BP'));
+    expect(crest).toMatchObject({ manual: true });
+    expect(crest.cheapestPrice).toBeCloseTo(9000 * FEE, 4);
+    setJug({ T5_CAPEITEM_FW_MARTLOCK_BP: 4000 }, { cities: ['Martlock'] });
+    resetCaches();
+    const real = (await request(app).get(url('&partsSilver=crest'))).body.recipe.find((r) => r.resource.endsWith('_BP'));
+    expect(real.manual).toBe(false);
+    expect(real.cheapestPrice).toBeCloseTo(4000 * FEE, 4);
+    jugDb.exec('DELETE FROM manual_prices');
+  });
   it('чужая фракция или не плащ — режим игнорируется', async () => {
     expect((await request(app).get(url('&faction=LYMHURST'))).body.faction).toBeNull();
     expect((await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&faction=MARTLOCK')).body.faction).toBeNull();

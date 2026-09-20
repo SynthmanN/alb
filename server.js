@@ -804,14 +804,18 @@ app.get('/api/craft-calc', async (req, res) => {
     // Готовый предмет (решающая цифра продажи) по-прежнему смотрим по живому AODP.
     const jugNow = Date.now();
     const jugLocations = queryCities.map((c) => c.replace(/\s+/g, ''));
-    const materialData = readPrices(jugDb, materialIds, { cities: queryCities, qualities: [1] });
-    const finishedData = blackMarket
+    // Вписанные пользователем цены (общие, недостоверные, до 10 дней) подставляются только вместо отсутствующих данных — как в плане фракционных очков
+    const materialData = addManualPriceRecords(readPrices(jugDb, materialIds, { cities: queryCities, qualities: [1] }), materialIds, queryCities, 1, jugNow);
+    const manualMaterialIds = new Set(materialData.filter((r) => r.manual).map((r) => r.item_id));
+    const finishedLive = blackMarket
       ? await fetchPricesAt([finishedQueryId], quality, [...CITIES, BM_QUERY_LOCATION])
       : await fetchPricesBatched([finishedQueryId], quality);
+    const finishedData = addManualPriceRecords(finishedLive, [finishedQueryId], queryCities, quality, jugNow);
+    const manualSale = finishedData.some((r) => r.manual);
     // Базовый предмет .0: купить готовый или скрафтить — сравнение нужно и при «зачаровать после крафта», и для обычного .0-предмета
     // (галочка «после крафта» на предмете без зачарования не должна менять расчёт).
     const baseChoiceWanted = enchantAfterRequested || enchant === 0;
-    const baseData = baseChoiceWanted ? await fetchPricesBatched([itemId], quality) : [];
+    const baseData = baseChoiceWanted ? addManualPriceRecords(await fetchPricesBatched([itemId], quality), [itemId], queryCities, quality, jugNow) : [];
 
     const materialByCity = {};
     for (const rec of materialData) {
@@ -863,7 +867,9 @@ app.get('/api/craft-calc', async (req, res) => {
     // Фракционный режим (калькулятор включает его только для плаща, присланного из скана с этим режимом): герб и сердце получены за очки — в серебре 0
     const factionEntry = FACTIONS[req.query.faction] && familyIdOf(itemId) === FACTIONS[req.query.faction].capeFamily ? FACTIONS[req.query.faction] : null;
     const factionPointsAvail = Math.max(parseFloat(req.query.factionPoints) || 0, 0);
-    const isFactionPart = (resourceId) => !!factionEntry && (resourceId === crestIdOf(itemId) || resourceId === factionEntry.heartId);
+    // Деталь можно купить за серебро на рынке вместо очков: partsSilver=crest,heart (для скана/плана выключено — там всё за очки)
+    const partsSilver = new Set(String(req.query.partsSilver || '').split(',').map((x) => x.trim()).filter((x) => x === 'crest' || x === 'heart'));
+    const isFactionPart = (resourceId) => !!factionEntry && ((resourceId === crestIdOf(itemId) && !partsSilver.has('crest')) || (resourceId === factionEntry.heartId && !partsSilver.has('heart')));
     const recipeBreakdown = recipe.resources.map((r) => {
       if (isFactionPart(r.resource)) {
         return {
@@ -893,6 +899,7 @@ app.get('/api/craft-calc', async (req, res) => {
       }
 
       return {
+        manual: manualMaterialIds.has(queryId),               // цена вписана вручную (недостоверная)
         returnable: !r.noReturn,
         // Сколько реально закупать: после возврата (RRR) остаток от крафта не нужен, но невозвращаемое берётся по номиналу
         neededToBuy: Math.ceil(r.count * quantity * factor),
@@ -1175,7 +1182,8 @@ app.get('/api/craft-calc', async (req, res) => {
     // Блок фракционного режима: очков на плащ, сколько плащей хватит на очки, что дала бы продажа герба и сердца вместо крафта
     let factionBlock = null;
     if (factionEntry && CREST_POINTS[itemTier] !== undefined) {
-      const perCape = pointsPerCape(itemTier);
+      const perCapeFull = pointsPerCape(itemTier);
+      const perCape = (partsSilver.has('heart') ? 0 : HEART_POINTS) + (partsSilver.has('crest') ? 0 : CREST_POINTS[itemTier]);     // очков на плащ — только за детали, купленные за очки
       let partsNet = 0;
       let partsKnown = true;
       for (const r of recipe.resources.filter((x) => isFactionPart(x.resource))) {
@@ -1183,8 +1191,8 @@ app.get('/api/craft-calc', async (req, res) => {
         if (prices.length) partsNet += Math.max(...prices) * r.count * (1 - taxRate - SETUP_FEE_RATE);
         else partsKnown = false;
       }
-      factionBlock = { id: req.query.faction, name: factionEntry.name, heartPoints: HEART_POINTS, crestPoints: CREST_POINTS[itemTier], pointsPerCape: perCape,
-        availablePoints: factionPointsAvail, maxCapes: Math.floor(factionPointsAvail / perCape), partsNet: partsKnown ? partsNet : null };
+      factionBlock = { id: req.query.faction, name: factionEntry.name, heartPoints: HEART_POINTS, crestPoints: CREST_POINTS[itemTier], pointsPerCape: perCape, pointsPerCapeFull: perCapeFull,
+        partsSilver: [...partsSilver], availablePoints: factionPointsAvail, maxCapes: perCape > 0 ? Math.floor(factionPointsAvail / perCape) : null, partsNet: partsKnown && partsNet > 0 ? partsNet : null };
     }
     res.json({
       faction: factionBlock,
@@ -1211,7 +1219,7 @@ app.get('/api/craft-calc', async (req, res) => {
       acquire,
       enchantAfterCraft: enchantAfterRequested ? enchantAfterCraft : null,
       baseChoice: enchantAfterRequested ? null : enchantAfterCraft,   // .0-предмет: «купить готовый или скрафтить» (без зачарования)
-      teleport,
+      teleport, manualSale,
       totalProfit: profitPerUnit !== null ? profitPerUnit * quantity : null,
     });
   } catch (err) {

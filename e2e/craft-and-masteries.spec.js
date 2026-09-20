@@ -1301,3 +1301,74 @@ test('план трат очков: зелёные позиции всегда �
   await sortBy(page, '#faction-plan-panel', 'Плащ');                                          // повторный клик — по возрастанию
   await expect(rows.nth(1)).toHaveAttribute('data-row', '4|0|1');
 });
+
+test('стек плащей: «Крафтить план» переносит зелёные позиции в калькулятор; у позиций своё количество, герб/сердце за серебро, удаление; стек хранится после перезагрузки', async ({ page }) => {
+  const calcQueries = [];
+  const row = (tier, cape, sale) => ({
+    itemId: `T${tier}_CAPEITEM_FW_MARTLOCK`, finishedId: `T${tier}_CAPEITEM_FW_MARTLOCK`, tier, enchant: 0, quality: 1, source: 'data', pointsPerCape: 3000 + ({ 4: 400, 5: 2250 })[tier],
+    crestId: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, heartId: 'T1_FACTION_HIGHLAND_TOKEN_1',
+    capeDirect: { id: `T${tier}_CAPE`, label: 'Плащ', price: cape, ageMinutes: 30, manual: false }, cape0: { id: `T${tier}_CAPE`, label: 'Плащ', price: cape, ageMinutes: 30, manual: false },
+    runes: [], maxAfter: true, crest: { id: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, label: 'Герб', price: 500, ageMinutes: 30, manual: false }, heart: { id: 'T1_FACTION_HIGHLAND_TOKEN_1', label: 'Сердце', price: 1000, ageMinutes: 30, manual: false },
+    sale: { avgPrice: sale, netSell: sale * 0.895, dailyVolume: 1, ageDays: 0.5, filled: false, manual: false }, manualSaleKey: { id: `T${tier}_CAPEITEM_FW_MARTLOCK`, quality: 1 },
+  });
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { faction: { id: 'MARTLOCK', name: 'Мартлок', points: 8000, heartPoints: 3000, crestPoints: { 4: 400 } }, factionPlan: { points: 8000, spent: 0, remaining: 8000, totalProfit: 0, capes: 0, items: [] }, results: [], jug: {} } }));
+  await page.route('**/api/faction-plan*', (route) => route.fulfill({ json: {
+    faction: { id: 'MARTLOCK', name: 'Мартлок', heartId: 'T1_FACTION_HIGHLAND_TOKEN_1', heartPoints: 3000, crestPoints: { 4: 400, 5: 2250 } }, days: 7, materialHours: 24, taxRate: 0.08, setupFeeRate: 0.025, gearRate: 0.248, tiers: [4, 5], manualTtlDays: 10,
+    rows: [row(4, 1000, 30000), row(5, 2000, 40000)],
+  } }));
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    calcQueries.push(q);
+    const tier = Number(q.get('item')[1]);
+    const qty = Number(q.get('quantity'));
+    const silver = (q.get('partsSilver') || '').split(',').filter(Boolean);
+    const perCape = (silver.includes('heart') ? 0 : 3000) + (silver.includes('crest') ? 0 : ({ 4: 400, 5: 2250 })[tier]);
+    const unit = 1000 + (silver.includes('heart') ? 1025 : 0) + (silver.includes('crest') ? 500 : 0);
+    route.fulfill({ json: {
+      faction: { id: 'MARTLOCK', name: 'Мартлок', heartPoints: 3000, crestPoints: 400, pointsPerCape: perCape, pointsPerCapeFull: 3400, partsSilver: silver, availablePoints: 8000, maxCapes: 1, partsNet: null },
+      itemId: q.get('item'), enchant: 0, quality: 1, quantity: qty, marketShare: 1, materialHours: 24, refineRate: 0.367,
+      rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: unit, effectiveCostPerUnit: unit, totalCost: unit * qty,
+      recipe: [{ resource: 'T4_CAPE', resourceName: 'Плащ', queryId: 'T4_CAPE', enchanted: false, count: 1, returnable: false, rrr: 0, neededToBuy: qty, cheapestCity: 'Martlock', cheapestPrice: 1000, priceSource: 'history', materialSource: 'buy', cityPrices: [] }],
+      sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: 30000, profitPerUnit: 30000 - unit, totalProfit: (30000 - unit) * qty, patientSell: null,
+      baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: unit, baseCostPerUnit: unit },
+    } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-faction-on').check();
+  await page.locator('#margin-faction-points').fill('8000');
+  await page.locator('#margin-faction-plan').check();
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#faction-plan-panel tr.fp-on')).toHaveCount(2);
+  await page.locator('#fp-send').click();
+  const cards = page.locator('#craft-stack-panel .stack-card');
+  await expect(cards).toHaveCount(2);
+  await expect(page.locator('#craft-faction-badge')).toContainText('Фракционный стек');
+  await expect(cards.first()).toHaveClass(/is-active/);                                         // первая позиция открыта в обычном калькуляторе
+  await expect(page.locator('#craft-recipe-table')).toBeVisible();
+  await expect(page.locator('#stack-summary')).toContainText('Профит стека');
+  await expect(cards.nth(1).locator('.stack-line')).toContainText('профит');                     // остальные считаются фоном
+  expect(calcQueries.every((q) => q.get('faction') === 'MARTLOCK')).toBe(true);
+  // план выбрал «герб за очки, сердце за серебро» — переключатель сердца уже включён; докупаем за серебро и герб → partsSilver=crest,heart
+  await expect(cards.nth(1).locator('.stack-heart')).toBeChecked();
+  await expect(cards.nth(1).locator('.stack-crest')).not.toBeChecked();
+  await cards.nth(1).locator('.stack-crest').check();
+  await expect.poll(() => calcQueries.some((q) => q.get('partsSilver') === 'crest,heart')).toBe(true);
+  await expect(cards.nth(1).locator('.stack-line')).toContainText('очков');
+  await cards.nth(1).locator('.stack-qty').fill('5');                                            // своё количество у позиции
+  await expect.poll(() => calcQueries.some((q) => q.get('item') === 'T5_CAPEITEM_FW_MARTLOCK' && q.get('quantity') === '5')).toBe(true);
+  await page.screenshot({ path: '/tmp/stack-shot.png', fullPage: false });
+  // удаление позиции
+  await cards.first().locator('.stack-remove').click();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toHaveClass(/is-active/);
+  // стек хранится в браузере
+  await page.reload();
+  await expect(page.locator('#craft-stack-panel .stack-card')).toHaveCount(1);
+  await expect(page.locator('#craft-faction-badge')).toContainText('Фракционный стек');
+  // удаление последней позиции выключает режим
+  await page.locator('#craft-stack-panel .stack-remove').click();
+  await expect(page.locator('#craft-stack-panel')).toBeHidden();
+  await expect(page.locator('#craft-faction-badge')).toBeEmpty();
+});

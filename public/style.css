@@ -456,3 +456,17 @@ td.plan-check input { width: auto; }
 .fp-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 3px 12px 3px 0; }
 .fp-chip small { color: #8b919c; }
 .fp-remove { margin-left: 6px; padding: 0 6px; }
+
+/* Стек фракционных плащей в калькуляторе */
+.stack-shell { margin: 12px 0 16px; }
+.stack-cards { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.stack-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 10px; border: 1px solid #333740; border-radius: 8px; }
+.stack-card.is-active { border-color: #3caa5a; background: rgba(60, 170, 90, 0.10); }
+.stack-pick { display: inline-flex; align-items: center; gap: 8px; text-align: left; background: transparent; border: 0; color: inherit; cursor: pointer; padding: 2px 4px; flex: 1 1 220px; }
+.stack-qty-label, .stack-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #9aa0aa; }
+.stack-qty { width: 80px; padding: 4px 6px; }
+.stack-line { flex: 1 1 100%; font-size: 13px; color: #c9ced6; }
+.stack-remove { margin-left: auto; padding: 2px 10px; background: transparent; border: 1px solid #555c68; color: #ff8a8a; }
+.stack-buy summary { cursor: pointer; margin-top: 6px; color: #9aa0aa; }
+.fp-send { margin: 8px 0; }
+.fp-send button { padding: 8px 14px; font-weight: 600; }
