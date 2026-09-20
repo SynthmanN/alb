@@ -2679,6 +2679,8 @@ function addManualPriceRecords(records, ids, cities, quality = 1, now = Date.now
 // В списке — комбинации (тир × зачарование × качество), по которым есть данные продаж, плюс добавленные пользователем (extra=тир:чарка:качество,…).
 // Себестоимость плаща: обычный плащ того же зачарования (или крафт его самому) — «прямой» путь, либо обычный плащ .0 + руны/души/реликвии — путь
 // «после крафта»; после выбирается, только если дешевле прямого на 5% и больше. Герб и сердце получены за очки (в серебре 0), но у них есть рыночные цены.
+const PLAN_MANUAL_ENCHANT = 4;      // зачарование .4 и качество «Шедевр» в список плана сами не попадают — только через «＋ позиция»
+const PLAN_MANUAL_QUALITY = 5;
 app.get('/api/faction-plan', (req, res) => {
   try {
     const factionKey = FACTIONS[req.query.faction] ? req.query.faction : null;
@@ -2741,7 +2743,10 @@ app.get('/api/faction-plan', (req, res) => {
     const combos = new Map();
     const addCombo = (t, e, q, source) => { const key = `${t}|${e}|${q}`; if (!combos.has(key)) combos.set(key, { t, e, q, source }); };
     for (const t of tiers) for (const e of [0, 1, 2, 3, 4]) {
-      for (const s of finishedHistory.get(finishedOf(t, e)) || []) if (s.data.some((p) => p.item_count > 0)) addCombo(t, e, s.quality, 'data');
+      for (const s of finishedHistory.get(finishedOf(t, e)) || []) {
+        if (e === PLAN_MANUAL_ENCHANT || s.quality === PLAN_MANUAL_QUALITY) continue;      // .4 и «Шедевр» — редкие, рынок тонкий: в план только если добавил сам
+        if (s.data.some((p) => p.item_count > 0)) addCombo(t, e, s.quality, 'data');
+      }
     }
     for (const [t, e, q] of extras) addCombo(t, e, q, 'extra');
 

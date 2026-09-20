@@ -70,6 +70,16 @@ describe('GET /api/faction-plan', () => {
     expect(r.sale.manual).toBe(false);
   });
 
+  it('зачарование .4 и качество «Шедевр» в список сами не попадают, даже если есть продажи; только если пользователь добавил', async () => {
+    seedSale('T5_CAPEITEM_FW_MARTLOCK@4', 4, 90000, 5);
+    seedSale('T5_CAPEITEM_FW_MARTLOCK', 5, 90000, 5);
+    const d = await plan();
+    expect(d.rows.map((r) => [r.tier, r.enchant, r.quality])).toEqual([[4, 2, 4], [5, 0, 1]]);
+    const withExtra = await plan({ extra: '5:4:4,5:0:5' });
+    expect(withExtra.rows.map((r) => [r.tier, r.enchant, r.quality, r.source])).toEqual([[4, 2, 4, 'data'], [5, 0, 1, 'data'], [5, 0, 5, 'extra'], [5, 4, 4, 'extra']]);
+    expect(withExtra.rows.find((r) => r.enchant === 4).sale).not.toBeNull();       // данные продаж у добавленной позиции подтянулись
+  });
+
   it('добавленная пользователем позиция без данных попадает в список (extra=тир:чарка:качество), продажи в ней нет', async () => {
     const d = await plan({ extra: '7:2:4' });
     const t7 = d.rows.find((r) => r.tier === 7);
