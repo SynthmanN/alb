@@ -112,6 +112,15 @@ async function initCraft() {
   craftEl.tierFilter.addEventListener('change', () => renderCraftSuggestions(craftEl.search.value));
   craftEl.run.addEventListener('click', () => runCraftCalc());
   craftEl.result.addEventListener('click', onCopyClick);
+  // Очки фракции в калькуляторе: количество плащей подгоняется само; «Количество» по штукам остаётся и работает как раньше
+  let pointsTimer = null;
+  document.getElementById('craft-faction-points').addEventListener('input', () => {
+    if (!craftFaction) return;
+    craftFaction.points = readGroupedNumber(document.getElementById('craft-faction-points')) || 0;
+    fitQuantityToPoints();
+    clearTimeout(pointsTimer);
+    pointsTimer = setTimeout(() => runCraftCalc(true), 500);
+  });
   craftEl.selected.addEventListener('click', onCopyClick);
   // Любая правка параметров, которые считает сервер (количество, доля рынка, окна, порог, зачарование, качество, галочки…), сама
   // пересчитывает результат. Ставки возврата и свои цены/лоты/план продажи пересчитываются на месте, без запроса (см. rerender выше).
@@ -213,7 +222,22 @@ function RECIPES_KNOWN(i) {
 // Фракционный режим калькулятора: включается только плащом, присланным из скана с включённым режимом (id фракции и очки); выбор предмета вручную его сбрасывает
 let craftFaction = null;
 let selectingFromFactionScan = false;
+// Очков на один плащ выбранного тира: сердце 3000 + герб тира (цены в очках одинаковы для всех фракций)
+const FACTION_HEART_POINTS = 3000;
+const FACTION_CREST_POINTS = { 4: 400, 5: 2250, 6: 3000, 7: 7500, 8: 15000 };
+const factionPerCape = () => (craftSelectedItem && FACTION_CREST_POINTS[craftSelectedItem.tier] !== undefined ? FACTION_HEART_POINTS + FACTION_CREST_POINTS[craftSelectedItem.tier] : null);
+// Подгоняет количество плащей под очки фракции: floor(очки ÷ очков на плащ), не меньше 1
+function fitQuantityToPoints() {
+  const perCape = factionPerCape();
+  if (!craftFaction || !perCape) return;
+  craftEl.quantity.value = String(Math.max(Math.floor(craftFaction.points / perCape), 1));
+}
 function renderFactionBadge() {
+  const field = document.getElementById('craft-faction-points-field');
+  if (field) {
+    field.hidden = !craftFaction;
+    if (craftFaction) document.getElementById('craft-faction-points').value = Number(craftFaction.points).toLocaleString('ru-RU').replace(/,/g, ' ');
+  }
   const el = document.getElementById('craft-faction-badge');
   if (!el) return;
   el.innerHTML = craftFaction ? `<div class="faction-badge">Фракционный режим: <b>${craftFaction.name}</b> · очков ${fmtNum(craftFaction.points)} <button type="button" id="craft-faction-off">выключить</button></div>` : '';
@@ -287,6 +311,7 @@ function switchCraftTier(itemId) {
   const item = findItem(itemId);
   if (!item) return;
   selectCraftItem(item, true);
+  fitQuantityToPoints();                                                      // на другом тире плащ стоит других очков — количество подгоняется заново
   runCraftCalc();
 }
 
@@ -932,7 +957,8 @@ function factionTileHtml(data, patientUnit) {
   if (!f) return '';
   const unit = patientUnit !== null && patientUnit !== undefined ? patientUnit : data.profitPerUnit;
   const perPoint = unit === null || unit === undefined ? null : unit / f.pointsPerCape;
-  const enough = f.availablePoints > 0 ? `хватит на ${fmtNum(f.maxCapes)} плащей` : 'очки не введены';
+  const spent = data.quantity * f.pointsPerCape;
+  const enough = f.availablePoints > 0 ? `хватит на ${fmtNum(f.maxCapes)} плащей · на ${fmtNum(data.quantity)} шт: ${fmtNum(spent)} очков, ${f.availablePoints >= spent ? `остаток ${fmtNum(f.availablePoints - spent)}` : `<span class="scan-stale">не хватает ${fmtNum(spent - f.availablePoints)}</span>`}` : 'очки не введены';
   const parts = f.partsNet === null || f.partsNet === undefined ? 'нет цен герба и сердца'
     : `продажа герба и сердца: ${fmtNum(f.partsNet)} (${fmtNum(f.partsNet / f.pointsPerCape, 1)}/очко) — ${unit !== null && unit !== undefined && unit > f.partsNet ? 'крафт выгоднее' : 'выгоднее продать детали'}`;
   return `<div class="sb-cell faction-tile"><span class="sb-label">Фракционные очки · ${f.name}</span><b class="sb-value">${perPoint === null ? '—' : fmtNum(perPoint, 1)}</b><small>профит на очко · ${fmtNum(f.pointsPerCape)} очков на плащ · ${enough}<br>${parts}</small></div>`;
@@ -1442,7 +1468,8 @@ function sendFactionToCalc(btn, data) {
   craftEl.enchant.value = btn.dataset.enchant;
   craftEl.quality.value = btn.dataset.quality;
   refreshSelectedIcon();
-  if (btn.dataset.quantity) craftEl.quantity.value = btn.dataset.quantity;
+  if (btn.dataset.quantity) craftEl.quantity.value = btn.dataset.quantity;    // из плана трат — количество плана
+  else fitQuantityToPoints();                                                 // иначе — сколько плащей хватит на очки
   document.getElementById('craft-enchant-after').checked = data.enchantMode === 'after' && btn.dataset.enchant !== '0';
   document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
   runCraftCalc();

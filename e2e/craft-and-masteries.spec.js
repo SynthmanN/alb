@@ -1207,3 +1207,29 @@ test('калькулятор во фракционном режиме: герб 
   await expect(rows.nth(2)).toContainText('за очки: 3 000 на шт · 30 000 на 10 шт');
   await expect(rows.nth(1).locator('input.manual-price')).toHaveCount(0);                          // цену за серебро у деталей за очки править нельзя
 });
+
+test('фракционный режим калькулятора: поле «Очки фракции» подгоняет количество плащей (очки ÷ очков на плащ); «Количество» по штукам остаётся и работает', async ({ page }) => {
+  const calcQueries = [];
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: factionScan() }));
+  await page.route('**/api/craft-calc*', (route) => { calcQueries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.goto('/craft.html');
+  await expect(page.locator('#craft-faction-points-field')).toBeHidden();                       // без режима поля очков нет
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-faction-on').check();
+  await page.locator('#margin-faction-points').fill('60000');
+  await page.locator('#margin-run').click();
+  await page.locator('#faction-scan-table .scan-add-btn').first().click();                       // T4: 3 400 очков на плащ
+  await expect(page.locator('#craft-faction-points-field')).toBeVisible();
+  await expect(page.locator('#craft-faction-points')).toHaveValue(/60[\s ]000/);
+  await expect(page.locator('#craft-quantity')).toHaveValue('17');                                // floor(60 000 / 3 400)
+  await page.locator('#craft-faction-points').fill('20000');
+  await expect(page.locator('#craft-quantity')).toHaveValue('5');                                 // floor(20 000 / 3 400)
+  await expect.poll(() => calcQueries[calcQueries.length - 1].get('factionPoints')).toBe('20000');
+  expect(calcQueries[calcQueries.length - 1].get('quantity')).toBe('5');
+  await page.locator('#craft-quantity').fill('3');                                                // штуки вручную — как раньше
+  await page.locator('#craft-run').click();
+  await expect.poll(() => calcQueries[calcQueries.length - 1].get('quantity')).toBe('3');
+  expect(calcQueries[calcQueries.length - 1].get('factionPoints')).toBe('20000');                 // очки не меняются
+  await page.locator('#craft-faction-off').click();
+  await expect(page.locator('#craft-faction-points-field')).toBeHidden();
+});
