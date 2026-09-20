@@ -12,6 +12,7 @@ const masteriesFile = path.join(os.tmpdir(), `albion-masteries-test-${process.pi
 process.env.USER_MASTERIES_PATH = masteriesFile;
 process.env.DISABLE_RATE_LIMIT = 'true'; // десятки запросов с одного IP за секунды — норма для тестов
 process.env.JUG_DB_PATH = ':memory:'; // тесты не трогают реальную базу кувшина
+process.env.DEFAULT_DATA_SOURCE = 'aodp'; // эти тесты проверяют расчёты на подменённом AODP; источник «краулер» (умолчание сервера) — в tests/dataSource.test.js
 process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не должен ждать своей очереди в регуляторе бюджета
 const { app, resetCaches, jugDb } = require('../server.js');
 const { upsertPriceSnapshots, upsertHistoryBatch } = require('../lib/jugStore.js');

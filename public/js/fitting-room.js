@@ -100,6 +100,7 @@ function initFit() {
   fitEl.run.addEventListener('click', runFit);
 }
 
+let fitRan = false;                                        // подбор уже считали — при смене источника данных пересчитаем
 async function runFit() {
   const need = FIT_SLOTS.filter((s) => s.key !== 'offhand' || !fitWeaponIsTwoHanded());
   const missing = need.filter((s) => !fitState[s.key]).map((s) => s.label);
@@ -112,12 +113,13 @@ async function runFit() {
   try {
     const params = new URLSearchParams({
       targetIP: fitEl.target.value, tolMinus: fitEl.tolMinus.value || '0', tolPlus: fitEl.tolPlus.value || '0',
-      variants: fitEl.variants.value, cities: activeCities().join(','),
+      variants: fitEl.variants.value, cities: activeCities().join(','), source: sourceParam(),
     });
     for (const s of need) params.set(s.key, fitState[s.key].family);
     const res = await fetch(`/api/fitting-room?${params}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    fitRan = true;
     renderFitResult(data);
   } catch (err) {
     fitEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
@@ -161,3 +163,5 @@ function renderFitResult(data) {
 }
 
 initFit();
+
+document.addEventListener('datasourcechange', () => { if (fitRan) runFit(); });

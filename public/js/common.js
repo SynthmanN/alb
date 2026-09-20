@@ -14,6 +14,14 @@ function premiumParam() {
   return premium ? 'true' : 'false';
 }
 
+// Источник рыночных данных калькуляторов: краулер (кувшин, по умолчанию) или AODP напрямую. Тумблер в панели настроек; смена
+// рассылает событие datasourcechange — калькуляторы пересчитываются на месте.
+let dataSource = (() => { try { return localStorage.getItem('albion_data_source') === 'aodp' ? 'aodp' : 'jug'; } catch (e) { return 'jug'; } })();
+function sourceParam() {
+  return dataSource;
+}
+const DATA_SOURCE_LABEL = { jug: 'краулер', aodp: 'AODP напрямую' };
+
 // --- Сортировка таблиц по клику на заголовок ---
 // Первый клик — по убыванию (▼), второй — по возрастанию (▲). Работает одинаково во всех таблицах:
 // значение ячейки берётся из data-sort-value, иначе из текста (число в начале / после "город:").
@@ -416,6 +424,9 @@ function renderSiteChrome() {
         <label><input type="checkbox" id="city-caerleon" /> Caerleon</label>
         <label><input type="checkbox" id="city-brecilien" /> Brecilien</label>
       </span>
+      <button type="button" class="source-toggle" id="source-toggle" role="switch" title="Откуда калькуляторы берут цены и историю сделок: из краулера (локальная база, обновляется раз в 10 минут, без лимитов AODP) или напрямую из AODP (живой запрос: свежее, но медленнее и с лимитами)">
+        Данные: <b id="source-name"></b>
+      </button>
       <label class="premium-toggle" title="Налог с продажи: 4% с премиумом, 8% без">
         <input type="checkbox" id="premium-toggle" />
         Премиум (налог 4% вместо 8%)
@@ -442,6 +453,19 @@ function renderSiteChrome() {
   };
   caerleon.addEventListener('change', (e) => toggleOptionalCity('Caerleon', e.target.checked));
   brecilien.addEventListener('change', (e) => toggleOptionalCity('Brecilien', e.target.checked));
+  const sourceBtn = document.getElementById('source-toggle');
+  const paintSource = () => {
+    sourceBtn.setAttribute('aria-checked', String(dataSource === 'aodp'));
+    sourceBtn.classList.toggle('is-live', dataSource === 'aodp');
+    document.getElementById('source-name').textContent = DATA_SOURCE_LABEL[dataSource];
+  };
+  paintSource();
+  sourceBtn.addEventListener('click', () => {
+    dataSource = dataSource === 'aodp' ? 'jug' : 'aodp';
+    try { localStorage.setItem('albion_data_source', dataSource); } catch (e) { /* хранилище недоступно — до перезагрузки */ }
+    paintSource();
+    document.dispatchEvent(new CustomEvent('datasourcechange', { detail: { source: dataSource } }));
+  });
   premiumBox.addEventListener('change', (e) => {
     premium = e.target.checked;
     localStorage.setItem('albion_premium', String(premium));

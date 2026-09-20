@@ -331,7 +331,7 @@ function craftParamsFor(spec) {
   const params = new URLSearchParams({
     item: spec.itemId, enchant: String(spec.enchant), quality: String(spec.quality),
     quantity: String(spec.quantity || '1'), ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), ...refineRrrParams(craftEl.refineRrr, craftEl.refineRrrCustom), blackMarket: String(craftEl.blackMarket.checked), materialHours: readCustomizable(craftEl.materialHours), cities: activeCities().join(','),
-    premium: premiumParam(),
+    premium: premiumParam(), source: sourceParam(),
   });
   params.set('marketShare', readCustomizable(document.getElementById('craft-market-share')));
   params.set('priceTolerance', document.getElementById('craft-price-tolerance').value || '2');
@@ -555,6 +555,7 @@ function renderCraftResult(rawData) {
   // Хронология цикла: сводка → Шаг 1 «Сырьё» (закупка, план по городам, логистика) → Шаг 2 «Продажа» (сразу и терпеливо); «Что если» — отдельно.
   craftEl.result.innerHTML = `
     <div class="craft-result-shell">
+    ${sourceNoteHtml(data)}
     ${scoreboardHtml(data)}
     <ol class="craft-flow">
       <li class="craft-step">
@@ -958,6 +959,14 @@ function acquireDaysFor(data, r) {
 
 // Сводка цикла сверху: сколько денег уйдёт на весь цикл и сколько маржи получится — сразу (Buy Order) и терпеливо (Sell Order, по плану
 // продажи). Цена и профит за штуку — мелкой подписью. Перерисовывается вместе с результатом, поэтому любая правка плана её обновляет.
+// Откуда взяты цены и история: краулер (с возрастом цен) или AODP напрямую; Чёрный Рынок краулер не собирает — он идёт живым запросом
+function sourceNoteHtml(data) {
+  if (!data || !data.dataSource) return '';
+  if (data.dataSource === 'aodp') return '<p class="calc-note source-note">Данные: <b>AODP напрямую</b> — живой запрос.</p>';
+  const j = data.jug;
+  const age = j && j.lastPricePass ? ` — цены обновлены ${fmtAgeMinutes((Date.now() - j.lastPricePass) / 60000)}` : '';
+  return `<p class="calc-note source-note">Данные: <b>краулер</b>${age}${data.blackMarket ? '; Чёрный Рынок — живым запросом (краулер его не собирает)' : ''}.</p>`;
+}
 function scoreboardHtml(data) {
   const money = (n) => (n === null || n === undefined ? '—' : Math.round(n).toLocaleString('ru-RU', { maximumFractionDigits: 0 }));
   const cls = (n) => (n === null || n === undefined ? '' : n > 0 ? 'profit-pos' : 'profit-neg');
@@ -1305,6 +1314,7 @@ const lazyEl = {
   result: document.getElementById('lazy-result'),
 };
 lazyEl.run.addEventListener('click', runLazyCrafter);
+let lazyRan = false;                                        // ленивый крафтер уже считали — при смене источника данных пересчитаем
 
 async function runLazyCrafter() {
   lazyEl.run.disabled = true;
@@ -1313,10 +1323,11 @@ async function runLazyCrafter() {
     const params = new URLSearchParams({
       budget: readGroupedNumber(lazyEl.budget) || '0', share: lazyEl.share.value || '25', sellDays: lazyEl.sellDays.value || '1',
       strategy: lazyEl.strategy.value, days: readCustomizable(lazyEl.history), ...gearRrrParams(craftEl.gearRrr, craftEl.gearRrrCustom), ...refineRrrParams(craftEl.refineRrr, craftEl.refineRrrCustom),
-      cities: activeCities().join(','), premium: premiumParam(),
+      cities: activeCities().join(','), premium: premiumParam(), source: sourceParam(),
     });
     const data = await fetchJson(`/api/lazy-crafter?${params}`);
     if (data.error) throw new Error(data.error);
+    lazyRan = true;
     renderLazyCrafter(data);
   } catch (err) {
     lazyEl.result.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${err.message}</span>`;
@@ -1549,3 +1560,10 @@ function renderMarginScan(data) {
 }
 
 const craftReady = initCraft();
+
+// Тумблер источника данных (краулер / AODP напрямую): калькулятор, стек и ленивый крафтер пересчитываются на месте
+document.addEventListener('datasourcechange', () => {
+  if (craftStack && craftStack.aggregate) stackRefreshAll();
+  else if (lastCraftData || craftStack) runCraftCalc(true);
+  if (lazyRan) runLazyCrafter();
+});

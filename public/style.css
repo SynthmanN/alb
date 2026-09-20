@@ -163,6 +163,10 @@ th.sortable:hover { color: #e6e6e6; }
   padding: 8px 0; font-size: 13px; color: #9aa0aa; border-bottom: 1px solid #23262b;
 }
 .premium-toggle { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.source-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; font-size: 13px; color: #9aa0aa; background: #1e2126; border: 1px solid #333740; border-radius: 999px; cursor: pointer; }
+.source-toggle b { color: #7ee787; }
+.source-toggle.is-live { border-color: #8a6d2a; }
+.source-toggle.is-live b { color: #d8b45a; }
 main { padding-top: 4px; }
 .page-header { position: static; border-bottom: none; padding-top: 12px; }
 .sub-title { font-size: 14px; margin: 22px 0 8px; padding-top: 14px; border-top: 1px solid #2a2d33; }

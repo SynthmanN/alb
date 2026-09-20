@@ -654,7 +654,7 @@ function effectiveRecipeResourceId(resourceId, enchant) {
 }
 
 // Себестоимость (крафт) и лучшая мгновенная цена продажи для каждого тира семейства предмета.
-async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, quality: calcQuality = 1, days = 7, marketShare = 1 }) {
+async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, quality: calcQuality = 1, days = 7, marketShare = 1, source = DEFAULT_DATA_SOURCE }) {
   const family = familyIdOf(itemId);
   const items = ITEMS.filter((i) => GEAR_IDS.has(i.id) && familyIdOf(i.id) === family && RECIPES[i.id]).sort((a, b) => a.tier - b.tier);
   if (items.length < 2) return null;
@@ -681,9 +681,9 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
   // Материалы — из кувшина (как в основном расчёте), с комиссией 2.5% за свой Buy Order; ориентир по тирам — цена самого дешёвого города.
   const materialData = readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] });
   const [finishedData, history] = await Promise.all([
-    fetchGearPrices([...new Set([...finishedIds, ...plan.filter((p) => p.recipeEnchant === 0).map((p) => p.it.id)])], ALL_QUALITIES),   // + готовая база .0 для «купить или скрафтить»
+    marketPrices(source, [...new Set([...finishedIds, ...plan.filter((p) => p.recipeEnchant === 0).map((p) => p.it.id)])], ALL_QUALITIES),   // + готовая база .0 для «купить или скрафтить»
     // История — для терпеливой продажи по каждому тиру (без неё «мгновенный» профит в разы занижен)
-    fetchHistoryBatched(finishedIds, days * 24, ALL_QUALITIES.join(','), locations).catch(() => []),
+    marketHistory(source, finishedIds, days * 24, ALL_QUALITIES.join(','), locations).catch(() => []),
   ]);
   const allowed = new Set(queryCities.map(normLocation));
   const quotesByItem = {}; // id -> [{ city, price }]: цену выбираем с учётом возврата в городе покупки (bestMaterialQuote)
@@ -764,6 +764,7 @@ async function computeTierComparison({ itemId, enchant, targetEnchant, enchantAf
 app.get('/api/craft-calc', async (req, res) => {
   try {
     const itemId = req.query.item;
+    const source = parseSource(req);
     const enchant = Math.min(Math.max(parseInt(req.query.enchant, 10) || 0, 0), 4);
     const quality = Math.min(Math.max(parseInt(req.query.quality, 10) || 1, 1), 5);
     const quantity = Math.min(Math.max(parseInt(req.query.quantity, 10) || 1, 1), 100000);
@@ -809,15 +810,13 @@ app.get('/api/craft-calc', async (req, res) => {
     // Вписанные пользователем цены (общие, недостоверные, до 10 дней) подставляются только вместо отсутствующих данных — как в плане фракционных очков
     const materialData = addManualPriceRecords(readPrices(jugDb, materialIds, { cities: queryCities, qualities: [1] }), materialIds, queryCities, 1, jugNow);
     const manualMaterialIds = new Set(materialData.filter((r) => r.manual).map((r) => r.item_id));
-    const finishedLive = blackMarket
-      ? await fetchPricesAt([finishedQueryId], quality, [...CITIES, BM_QUERY_LOCATION])
-      : await fetchPricesBatched([finishedQueryId], quality);
+    const finishedLive = await marketPrices(source, [finishedQueryId], quality, { blackMarket });
     const finishedData = addManualPriceRecords(finishedLive, [finishedQueryId], queryCities, quality, jugNow);
     const manualSale = finishedData.some((r) => r.manual);
     // Базовый предмет .0: купить готовый или скрафтить — сравнение нужно и при «зачаровать после крафта», и для обычного .0-предмета
     // (галочка «после крафта» на предмете без зачарования не должна менять расчёт).
     const baseChoiceWanted = enchantAfterRequested || enchant === 0;
-    const baseData = baseChoiceWanted ? addManualPriceRecords(await fetchPricesBatched([itemId], quality), [itemId], queryCities, quality, jugNow) : [];
+    const baseData = baseChoiceWanted ? addManualPriceRecords(await marketPrices(source, [itemId], quality), [itemId], queryCities, quality, jugNow) : [];
 
     const materialByCity = {};
     for (const rec of materialData) {
@@ -995,7 +994,7 @@ app.get('/api/craft-calc', async (req, res) => {
       const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
       // Один запрос истории по всем 5 качествам: качество сильно влияет на ликвидность (Отличное может продаваться
       // в 100+ раз быстрее Обычного), а себестоимость от качества не зависит — поэтому сравнение бесплатное.
-      const history = await fetchHistoryBatched([finishedQueryId], days * 24, ALL_QUALITIES.join(','), blackMarket ? [...locations, BM_QUERY_LOCATION] : locations);
+      const history = await marketHistory(source, [finishedQueryId], days * 24, ALL_QUALITIES.join(','), blackMarket ? [...locations, BM_QUERY_LOCATION] : locations);
       const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare, blackMarketTaxRate: blackMarket ? bmTaxRate : null });
       patientSell = forQuality(quality);
       if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity, marketShare);
@@ -1167,7 +1166,7 @@ app.get('/api/craft-calc', async (req, res) => {
     try {
       tierComparison = await computeTierComparison({
         itemId, enchant, targetEnchant, enchantAfterRequested, enchantCapped, rrrOpts, taxRate, queryCities, quality, marketShare,
-        days: parseBulkDays(req),
+        days: parseBulkDays(req), source,
       });
       // Строка текущего тира совпадает с основным расчётом (там цена материалов — за реальное количество, многогородово), а не с ориентиром по одному городу
       const cur = tierComparison.find((t) => t.isCurrent);
@@ -1206,7 +1205,7 @@ app.get('/api/craft-calc', async (req, res) => {
     }
     for (const st of (enchantAfterCraft && enchantAfterCraft.steps) || []) addName(st.materialId);
     res.json({
-      faction: factionBlock, names, finishedQueryId,
+      faction: factionBlock, names, finishedQueryId, dataSource: source, jug: source === 'jug' ? jugFreshness(jugDb, jugNow) : null,
       itemId, enchant, quality, quantity, marketShare, priceTolerance, materialHours, setupFeeRate: SETUP_FEE_RATE, blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       // rrr — средняя ставка возврата по возвращаемым материалам (у каждого материала своя, см. recipe[].rrr)
       rrrPreset: { id: 'custom', label: rrrOptionsLabel(rrrOpts), ...rrrOpts, rrr: returnableNominal > 0 ? returnableSaved / returnableNominal : 0 },
@@ -1948,15 +1947,16 @@ app.get('/api/craft-bulk-plan', async (req, res) => {
     const refineRate = parseRefineRate(req).rate;
     const materialIdSet = new Set(resourceQueryIds);
     addRefineComponentIds(materialIdSet, resourceQueryIds);
+    const source = parseSource(req);
     const [materialHistory, finishedHistory] = await Promise.all([
-      fetchHistoryBatched([...materialIdSet], days * 24, 1, locations),
-      fetchHistoryBatched([finishedQueryId], days * 24, quality, locations),
+      marketHistory(source, [...materialIdSet], days * 24, 1, locations),
+      marketHistory(source, [finishedQueryId], days * 24, quality, locations),
     ]);
 
-    res.json(computeBulkPlan(
+    res.json({ ...computeBulkPlan(
       { itemId, enchant, quality, quantity, days, rrrOpts, taxRate, costCeiling, sellLow, sellHigh, queryCities, refineRate },
       materialHistory, finishedHistory,
-    ));
+    ), dataSource: source });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось посчитать план партии', details: err.message });
@@ -2026,9 +2026,10 @@ app.get('/api/lazy-crafter', async (req, res) => {
     addRefineComponentIds(materialIdSet, [...materialIdSet]);
     const materialIds = [...materialIdSet];
     const refineRate = parseRefineRate(req).rate;
+    const source = parseSource(req);
     const [materialHistory, finishedHistory] = await Promise.all([
-      fetchHistoryBatched(materialIds, days * 24, 1, locations),
-      fetchHistoryBatched(itemIds, days * 24, 1, locations),
+      marketHistory(source, materialIds, days * 24, 1, locations),
+      marketHistory(source, itemIds, days * 24, 1, locations),
     ]);
 
     // Кандидаты: цена и прибыль с одной штуки по партионной модели (средневзвешенные цены за период).
@@ -2060,7 +2061,7 @@ app.get('/api/lazy-crafter', async (req, res) => {
       it.daysToAcquireBatch = full.daysToAcquireBatch;
       it.daysToSellBatch = full.daysToSellBatch;
     }
-    res.json({ ...plan, strategy, marketSharePct, sellDays, taxRate, candidates: candidates.length });
+    res.json({ ...plan, strategy, marketSharePct, sellDays, taxRate, candidates: candidates.length, dataSource: source });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось построить план ленивого крафтера', details: err.message });
@@ -3075,6 +3076,33 @@ async function fetchGearPrices(queryIds, qualities) {
   return results.flat();
 }
 
+// --- Источник рыночных данных калькуляторов ---
+// 'jug' — краулер (локальная база, по умолчанию): быстро и без лимитов AODP; 'aodp' — живой запрос к AODP (запрос ?source=aodp).
+// DEFAULT_DATA_SOURCE=aodp меняет умолчание сервера. Чёрный Рынок краулер не собирает — он всегда идёт живым запросом.
+const DEFAULT_DATA_SOURCE = process.env.DEFAULT_DATA_SOURCE === 'aodp' ? 'aodp' : 'jug';
+function parseSource(req) {
+  const s = req.query.source;
+  return s === 'aodp' || s === 'jug' ? s : DEFAULT_DATA_SOURCE;
+}
+// Цены (те же записи, что отдаёт AODP: item_id, city, quality, sell_price_min…, buy_price_max…)
+async function marketPrices(source, ids, qualities, { blackMarket = false } = {}) {
+  const qs = (Array.isArray(qualities) ? qualities : [qualities || 1]).map(Number);
+  if (source === 'aodp') {
+    if (blackMarket) return fetchPricesAt(ids, qs.join(','), [...CITIES, BM_QUERY_LOCATION]);
+    return qs.length > 1 ? fetchGearPrices(ids, qs) : fetchPricesBatched(ids, qs[0]);
+  }
+  const rows = readPrices(jugDb, ids, { qualities: qs });
+  return blackMarket ? [...rows, ...(await fetchPricesAt(ids, qs.join(','), [BM_QUERY_LOCATION]))] : rows;
+}
+// История сделок (те же ряды, что у AODP: location, item_id, quality, data[{item_count, avg_price, timestamp}]); кувшин хранит 10 дней
+async function marketHistory(source, ids, hours, qualities, locations) {
+  if (source === 'aodp') return fetchHistoryBatched(ids, hours, qualities, locations);
+  const qs = String(qualities).split(',').map(Number);
+  const towns = locations.filter((l) => l !== BM_QUERY_LOCATION);
+  const rows = readHistory(jugDb, ids, hours, { locations: towns, qualities: qs });
+  return towns.length === locations.length ? rows : [...rows, ...(await fetchHistoryBatched(ids, hours, qualities, [BM_QUERY_LOCATION]))];
+}
+
 // Убираем заведомо невыгодные варианты: если есть вариант с не меньшим IP и не большей ценой,
 // покупать этот смысла нет. Остаётся "эффективная граница" цена/IP.
 function paretoFrontier(options) {
@@ -3164,7 +3192,7 @@ app.get('/api/fitting-room', async (req, res) => {
         }
       }
     }
-    const prices = await fetchGearPrices([...meta.keys()], ALL_QUALITIES);
+    const prices = await marketPrices(parseSource(req), [...meta.keys()], ALL_QUALITIES);
 
     // Самая дешёвая цена покупки по каждому (id, качество) среди выбранных городов.
     const cheapest = new Map();
@@ -3203,6 +3231,7 @@ app.get('/api/fitting-room', async (req, res) => {
     const outfits = findCheapestOutfits(slotDefs, minIP * 6, maxIP * 6, variants);
 
     res.json({
+      dataSource: parseSource(req),
       targetIP,
       tolMinus,
       tolPlus,

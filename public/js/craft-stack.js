@@ -446,7 +446,9 @@ function renderAggregate() {
       <td>${stackNum(r.needed)}</td>
       <td class="plan-cities">${[...r.cities.entries()].map(([city, c]) => `${city}: ${stackNum(c.qty)} шт по ${stackNum(c.cost / c.qty, c.cost / c.qty < 100 ? 1 : 0)}`).join('<br>') || '—'}${r.unknown ? '<br><small class="scan-stale">часть без цены</small>' : ''}</td>
       <td data-sort-value="${r.cost}">${r.unknown && !r.cost ? '—' : stackNum(r.cost)}</td></tr>`).join('');
+  const anyData = stackSelected().map((i) => stackOk(i.uid)).find(Boolean);
   craftEl.result.innerHTML = `
+    ${sourceNoteHtml(anyData)}
     <div class="craft-scoreboard stack-scoreboard">
       <div class="sb-cell sb-cost"><span class="sb-label">Нужно денег на все зелёные позиции</span><b class="sb-value">${stackNum(t.cost)}</b><small>${t.items} поз. · ${stackNum(t.capes)} плащей</small></div>
       <div class="sb-cell"><span class="sb-label">Маржа всего · продажа Sell Order</span><b class="sb-value ${cls(t.profit)}">${stackNum(t.profit)}</b><small>${t.cost > 0 ? `${stackNum((t.profit / t.cost) * 100, 0)}% к вложениям · ` : ''}по цене продажи из плана (или своей)</small></div>

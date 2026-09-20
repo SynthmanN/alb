@@ -18,6 +18,7 @@ const require = createRequire(import.meta.url);
 process.env.USER_MASTERIES_PATH = path.join(os.tmpdir(), `albion-audit-masteries-${process.pid}.json`);
 process.env.DISABLE_RATE_LIMIT = 'true';
 process.env.JUG_DB_PATH = ':memory:';
+process.env.DEFAULT_DATA_SOURCE = 'aodp'; // аудит проверяет арифметику на подменённом AODP; источник «краулер» покрыт tests/dataSource.test.js
 process.env.AODP_RATE_PER_MINUTE = '1000000'; // подменённый AODP не ждёт очереди в регуляторе бюджета
 const { app, resetCaches, returnFactor, jugDb } = require('../server.js');
 const { crawlPricesOnce, crawlHistoryOnce } = require('../lib/jugCrawler.js');

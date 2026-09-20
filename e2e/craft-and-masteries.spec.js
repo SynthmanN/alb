@@ -1487,3 +1487,37 @@ test('стек плащей: профит по цене продажи из пл
   await expect(t6.locator('.stack-line')).not.toContainText('чары после крафта');
   await expect.poll(() => calcQueries.slice(-4).every((q) => q.get('enchantAfterCraft') === null)).toBe(true);
 });
+
+test('тумблер источника данных: по умолчанию краулер; переключение пересчитывает калькулятор на месте, в запросе source=aodp, выбор помнится', async ({ page }) => {
+  const queries = [];
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    queries.push(q);
+    route.fulfill({ json: {
+      dataSource: q.get('source'), jug: q.get('source') === 'jug' ? { lastPricePass: Date.now() - 180000 } : null,
+      itemId: q.get('item'), enchant: 0, quality: 1, quantity: 1, marketShare: 1, materialHours: 24, refineRate: 0.367,
+      rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 1000, effectiveCostPerUnit: 1000, totalCost: 1000,
+      recipe: [{ resource: 'T4_CLOTH', resourceName: 'Ткань', queryId: 'T4_CLOTH', enchanted: false, count: 1, returnable: true, rrr: 0, neededToBuy: 1, cheapestCity: 'Martlock', cheapestPrice: 1000, priceSource: 'history', materialSource: 'buy', cityPrices: [] }],
+      sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
+      baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 1000, baseCostPerUnit: 1000 },
+    } });
+  });
+  await page.goto('/craft.html');
+  await expect(page.locator('#source-toggle')).toContainText('краулер');
+  await expect(page.locator('#source-toggle')).toHaveAttribute('aria-checked', 'false');
+  await page.locator('#craft-search').fill('плащ');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-run').click();
+  await expect.poll(() => queries.length).toBeGreaterThan(0);
+  expect(queries[queries.length - 1].get('source')).toBe('jug');                                 // по умолчанию — краулер
+  await expect(page.locator('.source-note')).toContainText('краулер — цены обновлены 3 мин назад');
+  await page.locator('#source-toggle').click();                                                   // реактивно: пересчёт без нажатия «Посчитать»
+  await expect(page.locator('#source-toggle')).toContainText('AODP напрямую');
+  await expect.poll(() => queries[queries.length - 1].get('source')).toBe('aodp');
+  await expect(page.locator('.source-note')).toContainText('AODP напрямую');
+  await page.reload();                                                                            // выбор помнится
+  await expect(page.locator('#source-toggle')).toContainText('AODP напрямую');
+  await page.locator('#source-toggle').click();
+  await expect(page.locator('#source-toggle')).toContainText('краулер');
+});
