@@ -36,8 +36,8 @@ function renderScanResult(rows) {
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant || 0)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
         <td class="scan-spread-hot">${r.spreadPct.toFixed(1)}%</td>
-        <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
-        <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU')}</td>
+        <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
+        <td>${r.bestSell.city}: ${r.bestSell.price.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
         <td data-sort-value="${r.volume24h ?? ''}">${volumeText}</td>
         <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${freshText}${stale ? ' ⚠' : ''}</td>
         <td><button class="scan-add-btn" data-id="${item.id}" ${alreadyTracked ? 'disabled' : ''}>${alreadyTracked ? 'в таблице' : '+ добавить'}</button></td>
@@ -100,8 +100,8 @@ function renderBmScanResult(rows) {
       <tr>
         <td><img class="item-icon-sm" src="${iconUrl(item.id, 24, r.enchant || 0)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${item.name}${enchantTag(r.enchant)}</td>
         <td class="scan-spread-hot">+${r.profitPct.toFixed(1)}%</td>
-        <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU')}</td>
-        <td>БМ: ${r.bmPrice.toLocaleString('ru-RU')}</td>
+        <td>${r.bestBuy.city}: ${r.bestBuy.price.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
+        <td>БМ: ${r.bmPrice.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
         <td data-sort-value="${r.bmVolume24h ?? ''}">${volumeText}</td>
         <td class="${stale ? 'scan-stale' : ''}" data-sort-value="${r.freshMinutes ?? ''}">${freshText}${stale ? ' ⚠' : ''}</td>
         <td><button class="scan-add-btn" data-id="${item.id}" ${alreadyTracked ? 'disabled' : ''}>${alreadyTracked ? 'в таблице' : '+ добавить'}</button></td>
@@ -155,7 +155,7 @@ function renderEnchantScanResult(rows) {
     enchantScanResult.innerHTML = '<div class="chart-empty">Ничего не нашлось — либо зачарование сейчас не окупается, либо всё отфильтровано по ликвидности целевого уровня.</div>';
     return;
   }
-  const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+  const fmt = (n) => Math.round(n).toLocaleString('ru-RU', { maximumFractionDigits: 0 });
   const rowsHtml = rows.map((r) => {
     const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
     const stale = r.freshMinutes !== null && r.freshMinutes > 180;

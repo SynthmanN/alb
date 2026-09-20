@@ -1105,3 +1105,26 @@ test('скан гира: «данные устарели на N дней» (от
   await expect(old.locator('details.city-prices li', { hasText: 'Thetford' })).toContainText('за прошлые дни');
   await expect(page.locator('#margin-result tbody tr').filter({ hasText: 'T4' }).first()).not.toContainText('данные устарели');   // свежие данные — без подписи
 });
+
+test('суммы без копеек (534 777, а не 534 777,678); в поле «своя цена» серым — цена за штуку; «выгоднее переработать» — с процентом выгоды', async ({ page }) => {
+  await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
+    itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, quantity: 100, marketShare: 1, materialHours: 24, refineRate: 0.367,
+    rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+    cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: 5347.77678, effectiveCostPerUnit: 5347.77678, totalCost: 534777.678,
+    recipe: [{ resource: 'T4_METALBAR', resourceName: 'T4 Слиток стали', queryId: 'T4_METALBAR', enchanted: false, count: 16, returnable: true, rrr: 0, neededToBuy: 1600, cheapestCity: 'Thetford', cheapestPrice: 334.23604875, priceSource: 'refine', materialSource: 'refine', buyPrice: 400, buyCity: null, cityPrices: [],
+      refineOption: { city: 'Thetford', rate: 0.367, rawCost: 528, price: 334.23604875, components: [{ id: 'T4_ORE', count: 2, price: 200, city: 'Thetford' }, { id: 'T3_METALBAR', count: 1, price: 128, city: 'Martlock' }] } }],
+    sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
+    baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 5347.77678, baseCostPerUnit: 5347.77678 },
+  } }));
+  await page.goto('/craft.html');
+  await page.locator('#craft-search').fill('палаш');
+  await page.locator('#craft-suggestions .suggestion-item').first().click();
+  await page.locator('#craft-gear-rrr').selectOption('none');
+  await page.locator('#craft-run').click();
+  await expect(page.locator('.craft-scoreboard')).toContainText('534 684');                        // целые серебра (расчёт на месте по ставке 36.7% даёт 534 684,3 — копейки отброшены)
+  await expect(page.locator('#craft-result')).not.toContainText(/\d[,]\d{3}(?!\d)/);                // нигде нет «777,678»
+  const row = page.locator('#craft-recipe-table tbody tr').first();
+  await expect(row.locator('input.manual-price')).toHaveAttribute('placeholder', '334');           // серым — цена за штуку
+  await expect(row).toContainText('(−16%)');                                                       // выгода переработки: 334 против 400
+  await expect(page.locator('#craft-acquire-table input.manual-price').first()).toHaveAttribute('placeholder', /^\d/);
+});

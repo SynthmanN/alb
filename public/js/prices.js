@@ -117,8 +117,8 @@ function renderTable() {
         td.className = isBestBuy ? 'cell-best-buy' : isBestSell ? 'cell-best-sell' : '';
         td.dataset.sortValue = d.sellMin || '';
         td.innerHTML = `
-          <span class="cell-min">${d.sellMin ? d.sellMin.toLocaleString('ru-RU') : '—'}</span> /
-          <span class="cell-max">${d.buyMax ? d.buyMax.toLocaleString('ru-RU') : '—'}</span>
+          <span class="cell-min">${d.sellMin ? d.sellMin.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) : '—'}</span> /
+          <span class="cell-max">${d.buyMax ? d.buyMax.toLocaleString('ru-RU', { maximumFractionDigits: 0 }) : '—'}</span>
         `;
       }
       row.appendChild(td);
@@ -127,7 +127,7 @@ function renderTable() {
     const spreadTd = document.createElement('td');
     if (bestSell.price > -Infinity && bestBuy.price < Infinity) {
       const spread = bestSell.price - bestBuy.price;
-      spreadTd.textContent = spread.toLocaleString('ru-RU');
+      spreadTd.textContent = spread.toLocaleString('ru-RU', { maximumFractionDigits: 0 });
       spreadTd.style.color = spread > 0 ? '#7ee787' : '#999';
     } else {
       spreadTd.textContent = '—';
@@ -245,7 +245,7 @@ function renderSparkline(data, hours, bodyEl, summaryEl) {
   const maxCount = Math.max(...points.map((p) => p.count), 1);
   const avgPriceOverall = points.reduce((s, p) => s + p.avgPrice * p.count, 0) / (totalCount || 1);
 
-  summaryEl.textContent = `Сделок: ${totalCount.toLocaleString('ru-RU')} · Средняя цена: ${Math.round(avgPriceOverall).toLocaleString('ru-RU')}`;
+  summaryEl.textContent = `Сделок: ${totalCount.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} · Средняя цена: ${Math.round(avgPriceOverall).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}`;
 
   const wrap = document.createElement('div');
   wrap.className = 'sparkline-wrap';
@@ -257,7 +257,7 @@ function renderSparkline(data, hours, bodyEl, summaryEl) {
     bar.style.height = `${heightPct}%`;
 
     const time = new Date(p.ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-    const priceText = p.count > 0 ? `${Math.round(p.avgPrice).toLocaleString('ru-RU')} серебра` : 'нет сделок';
+    const priceText = p.count > 0 ? `${Math.round(p.avgPrice).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} серебра` : 'нет сделок';
     bar.addEventListener('mouseenter', (e) => showBarTooltip(e, time, p.count, priceText));
     bar.addEventListener('mousemove', (e) => moveBarTooltip(e));
     bar.addEventListener('mouseleave', hideBarTooltip);

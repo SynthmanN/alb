@@ -130,7 +130,7 @@ function fitSlotCell(o) {
   if (!o) return '<td data-sort-value="">—</td>';
   const item = findItem(o.itemId) || { id: o.itemId, name: o.itemId };
   const tag = `T${o.tier}.${o.enchant}`;
-  return `<td data-sort-value="${o.price}" title="${item.name}"><img class="item-icon-sm" src="${iconUrl(o.itemId, 64, o.enchant)}" alt="" onerror="this.style.visibility='hidden'" /> ${tag} ${QUALITY_NAMES[o.quality]}<br><small>${o.price.toLocaleString('ru-RU')} · ${o.city}</small></td>`;
+  return `<td data-sort-value="${o.price}" title="${item.name}"><img class="item-icon-sm" src="${iconUrl(o.itemId, 64, o.enchant)}" alt="" onerror="this.style.visibility='hidden'" /> ${tag} ${QUALITY_NAMES[o.quality]}<br><small>${o.price.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} · ${o.city}</small></td>`;
 }
 
 function renderFitResult(data) {
@@ -144,7 +144,7 @@ function renderFitResult(data) {
   }
   const rowsHtml = data.variants.map((v) => `
     <tr>
-      <td class="scan-spread-hot" data-sort-value="${v.totalPrice}">${Math.round(v.totalPrice).toLocaleString('ru-RU')}</td>
+      <td class="scan-spread-hot" data-sort-value="${v.totalPrice}">${Math.round(v.totalPrice).toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
       <td data-sort-value="${v.avgIP}">${v.avgIP.toFixed(1)}</td>
       ${fitSlotCell(v.slots.weapon)}${data.twoHanded ? '<td>—</td>' : fitSlotCell(v.slots.offhand)}
       ${fitSlotCell(v.slots.head)}${fitSlotCell(v.slots.chest)}${fitSlotCell(v.slots.shoes)}${fitSlotCell(v.slots.cape)}

@@ -39,7 +39,7 @@ test('калькулятор рефайна: пикер с иконками за
   const html = await page.locator('#calc-result').innerHTML();
   expect(html.indexOf('Рефайнить в')).toBeLessThan(html.indexOf('refine-sell-table'));
   expect(html.indexOf('refine-sell-table')).toBeLessThan(html.indexOf('refine-buy-table'));
-  await expect(page.locator('#calc-result .sb-cost')).toContainText('316,5');                     // себестоимость штуки после переработки: 500 × (1 − 36.7%)
+  await expect(page.locator('#calc-result .sb-cost')).toContainText('316');                     // себестоимость штуки после переработки: 500 × (1 − 36.7%)
   await expect(page.locator('#refine-buy-table tfoot')).toContainText('Общая сумма закупки');
   await expect(page.locator('#refine-buy-table tfoot')).toContainText('400');                     // партия 1 шт: ceil(3 × 0.633) = 2 руды × 100 + ceil(0.633) = 1 слиток × 200
   await page.locator('#calc-quantity').fill('100');
@@ -55,18 +55,18 @@ test('калькулятор рефайна: своя цена закупки и
   let requests = 0;
   await page.route('**/api/refining-calc*', (route) => { requests++; route.fulfill({ json: calcPayload() }); });
   await page.goto('/refine.html');
-  await expect(page.locator('#calc-result .sb-cost')).toContainText('316,5');
+  await expect(page.locator('#calc-result .sb-cost')).toContainText('316');
   const before = requests;
   await page.locator('#refine-buy-table input.own-buy[data-id="T5_ORE"]').fill('50');            // руда в игре по 50: (3 × 50 + 200) × (1 − 36.7%) = 221,5
-  await expect(page.locator('#calc-result .sb-cost')).toContainText('221,5');
+  await expect(page.locator('#calc-result .sb-cost')).toContainText('222');
   await expect(page.locator('#refine-sell-table')).toContainText('Lymhurst');                     // город без данных виден
   await expect(page.locator('#refine-sell-table tr', { hasText: 'Lymhurst' })).toContainText('нет данных');
   await page.locator('#refine-sell-table input.own-sell[data-city="Lymhurst"]').fill('800');       // в Lymhurst видишь 800 чистыми — он лучший
   await expect(page.locator('#calc-result .sb-cell').nth(1)).toContainText('Lymhurst');
-  await expect(page.locator('#calc-result .sb-cell').nth(2)).toContainText('578,5');               // 800 − 221,5
+  await expect(page.locator('#calc-result .sb-cell').nth(2)).toContainText('578');               // 800 − 221,5
   expect(requests).toBe(before);                                                                  // всё — на месте, без запроса
   await page.locator('#refine-own-reset').click();
-  await expect(page.locator('#calc-result .sb-cost')).toContainText('316,5');
+  await expect(page.locator('#calc-result .sb-cost')).toContainText('316');
 });
 
 test('скан рефайна: все типы и тиры по умолчанию, возврат 36.7% и окно 24ч, свой % и «10ч» уходят в запрос; зачарованные — по галочке; «в калькулятор» переносит и зачарование', async ({ page }) => {

@@ -501,3 +501,9 @@ async function fetchJson(url) {
   }
   return res.json();
 }
+
+// Серебро без копеек: от 100 — целые, меньше 100 — один знак (там копейка ещё что-то значит); null/NaN — «—»
+function fmtMoney(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return '—';
+  return Number(n).toLocaleString('ru-RU', { maximumFractionDigits: Math.abs(n) < 100 ? 1 : 0 });
+}

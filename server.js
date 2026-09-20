@@ -217,6 +217,11 @@ function addSubcraftComponentIds(idSet, ids) {
   }
 }
 
+// Альтернатива (переработать / скрафтить самому) выбирается, только если дешевле покупки не меньше чем на 5%: выгода в 1–2% съедается
+// лишними действиями и погрешностью цен, и подпись «выгоднее переработать» при такой разнице только вводит в заблуждение.
+const MIN_ALT_GAIN = 0.05;
+const altWins = (altPrice, buyPrice) => buyPrice === null || buyPrice === undefined || altPrice <= buyPrice * (1 - MIN_ALT_GAIN);
+
 // Лучшая котировка материала с учётом возврата в городе покупки: минимум цена × (1 − RRR города). quotes = [{ city, price }].
 function bestMaterialQuote(quotes, resource, opts) {
   let best = null;
@@ -232,7 +237,7 @@ function bestMaterialQuote(quotes, resource, opts) {
     if (alt) {
       if (best) best.refineOption = alt;
       const rrr = resource.noReturn ? 0 : opts.gearRate;
-      if (!best || alt.price < best.price) {
+      if (!best || altWins(alt.price, best.price)) {
         best = { city: alt.city, price: alt.price, date: alt.date, rrr, factor: 1 - rrr, effective: alt.price * (1 - rrr), cityBonus: false, source: 'refine', refineOption: alt, buyPrice: best ? best.price : null };
       }
     }
@@ -243,7 +248,7 @@ function bestMaterialQuote(quotes, resource, opts) {
     const alt = subcraftAlternative(resource.resource, id, opts.subcraft.priceOf, opts.gearRate, resource.units);
     if (alt) {
       if (best) best.craftOption = alt;
-      if (!best || alt.price < best.price) {
+      if (!best || altWins(alt.price, best.price)) {
         best = { city: alt.city, price: alt.price, date: alt.date, rrr: 0, factor: 1, effective: alt.price, cityBonus: false, source: 'craft', craftOption: alt, buyPrice: best ? best.price : null };
       }
     }
@@ -1758,7 +1763,7 @@ function computeBulkPlan(opts, materialHistory, finishedHistory) {
       const alt = refineAlternative(queryId, priceOf, refineRate);
       if (alt) {
         const factor = returnFactor(r, rrrOpts.gearRate !== undefined ? rrrOpts.gearRate : 0);
-        if (!source || alt.price * factor < source.effective) {
+        if (!source || alt.price * factor <= source.effective * (1 - MIN_ALT_GAIN)) {
           refine = { ...alt, factor };
           source = { city: alt.city, avgPrice: alt.price, avgDailyVolume: null, factor, rrr: 1 - factor, effective: alt.price * factor };
         }

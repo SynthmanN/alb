@@ -676,4 +676,14 @@ describe('полуфабрикаты: купить готовый материа
     expect(noRate.source).toBeUndefined();
     expect(noRate.price).toBe(300);
   });
+  it('выгода меньше 5% — покупаем готовый: переработка дешевле всего на 3% не выбирается (и подписи «выгоднее переработать» нет); ровно 5% и больше — выбирается', () => {
+    const opts = { gearRate: 0.248, refine: { priceOf, rate: 0.367 } };
+    // переработка стоит 400 × 0.633 = 253.2
+    const marginal = bestMaterialQuote([{ city: 'Martlock', price: 260 }], { resource: 'T4_METALBAR', queryId: 'T4_METALBAR' }, opts);       // 253.2 против 260: −2.6%
+    expect(marginal.source).toBeUndefined();
+    expect(marginal.price).toBe(260);
+    expect(marginal.refineOption.price).toBeCloseTo(253.2, 6);                                                                                 // вариант отдаётся, но не выбран
+    const clear = bestMaterialQuote([{ city: 'Martlock', price: 270 }], { resource: 'T4_METALBAR', queryId: 'T4_METALBAR' }, opts);            // −6.2%
+    expect(clear.source).toBe('refine');
+  });
 });

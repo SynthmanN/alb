@@ -130,7 +130,7 @@ function renderCalc() {
       <td>${r.city}${isBest ? ' <small>лучшая</small>' : ''}</td>
       <td data-sort-value="${r.net ?? ''}">${r.noData && !r.own ? '<small class="scan-stale">нет данных</small><br>' : ''}<input class="own-sell ${r.own ? 'is-manual' : ''}" type="number" min="0" step="1" data-city="${r.city}" value="${ownSellNet.has(r.city) ? ownSellNet.get(r.city) : (r.net === null ? '' : Math.round(r.net * 100) / 100)}" placeholder="своя цена" title="Чистая цена продажи в этом городе — после налога ${(d.taxRate * 100).toFixed(0)}% и Setup Fee ${(d.setupFeeRate * 100).toFixed(1)}%. Впиши свою — пересчитается на месте" /></td>
       <td data-sort-value="${r.dailyVolume}">${r.noData ? '—' : fmt(r.dailyVolume, 1)}</td>
-      <td class="${cls}" data-sort-value="${r.profit ?? ''}">${r.profit === null ? '—' : fmt(r.profit, 1)}</td>
+      <td class="${cls}" data-sort-value="${r.profit ?? ''}">${r.profit === null ? '—' : fmtMoney(r.profit)}</td>
       <td class="${cls}" data-sort-value="${r.profit === null ? '' : r.profit * qty}">${r.profit === null ? '—' : fmt(r.profit * qty)}</td>
     </tr>`;
   }).join('');
@@ -156,9 +156,9 @@ function renderCalc() {
         Рецепт: ${d.ratio.raw} × сырьё T${d.tier}${d.ratio.prevRefined ? ` + ${d.ratio.prevRefined} × полуфабрикат T${d.tier - 1}` : ''} → 1 шт. Цены — средние за ${d.hours} ч + Setup Fee 2.5% на закупке.</p>
     </div>
     <div class="craft-scoreboard refine-score">
-      <div class="sb-cell sb-cost"><span class="sb-label">Себестоимость / шт после переработки</span><b class="sb-value">${cost === null ? '—' : fmt(cost, 1)}</b><small>${fmt(qty)} шт: ${purchaseTotal === null ? '—' : fmt(purchaseTotal)}</small></div>
-      <div class="sb-cell"><span class="sb-label">Лучший город продажи</span><b class="sb-value">${bestRow ? bestRow.city : '—'}</b><small>чистая цена ${bestRow ? fmt(bestRow.net, 1) : '—'}</small></div>
-      <div class="sb-cell"><span class="sb-label">Профит / шт · партия ${fmt(qty)} шт</span><b class="sb-value ${profitCls}">${bestRow ? fmt(bestProfit, 1) : '—'}</b><small>${bestRow ? `партии: ${fmt(bestProfit * qty)}` : 'нет продажи'}</small></div>
+      <div class="sb-cell sb-cost"><span class="sb-label">Себестоимость / шт после переработки</span><b class="sb-value">${cost === null ? '—' : fmtMoney(cost)}</b><small>${fmt(qty)} шт: ${purchaseTotal === null ? '—' : fmt(purchaseTotal)}</small></div>
+      <div class="sb-cell"><span class="sb-label">Лучший город продажи</span><b class="sb-value">${bestRow ? bestRow.city : '—'}</b><small>чистая цена ${bestRow ? fmtMoney(bestRow.net) : '—'}</small></div>
+      <div class="sb-cell"><span class="sb-label">Профит / шт · партия ${fmt(qty)} шт</span><b class="sb-value ${profitCls}">${bestRow ? fmtMoney(bestProfit) : '—'}</b><small>${bestRow ? `партии: ${fmt(bestProfit * qty)}` : 'нет продажи'}</small></div>
     </div>
     <h4 class="plan-title">Продажа <small>цена — чистая (после налога и Setup Fee), её можно править по городу</small></h4>
     <div class="table-scroll"><table class="craft-recipe-table" id="refine-sell-table">
@@ -256,9 +256,9 @@ function renderScan(data) {
     const confClass = r.confidence < 0.5 ? 'scan-stale' : r.confidence >= 0.8 ? 'scan-spread-hot' : '';
     return `<tr>
       <td>${nameCell(r.itemId, `T${r.tier} ${itemName(refinedId(r.type, r.tier, 0)).replace(/^T\d\s+/, '')}`)}</td>
-      <td data-sort-value="${r.cost}">${fmt(r.cost, 1)}<br><small title="сырьё и пред. тир — самые дешёвые ликвидные города">${r.rawCity}${r.prevCity ? ` + ${r.prevCity}` : ''}</small></td>
-      <td data-sort-value="${r.netSell}">${fmt(r.netSell, 1)}<br><small>${r.sellCity}</small></td>
-      <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmt(r.profitPerUnit, 1)} (${r.profitPct.toFixed(0)}%)</td>
+      <td data-sort-value="${r.cost}">${fmtMoney(r.cost)}<br><small title="сырьё и пред. тир — самые дешёвые ликвидные города">${r.rawCity}${r.prevCity ? ` + ${r.prevCity}` : ''}</small></td>
+      <td data-sort-value="${r.netSell}">${fmtMoney(r.netSell)}<br><small>${r.sellCity}</small></td>
+      <td class="scan-spread-hot" data-sort-value="${r.profitPerUnit}">+${fmtMoney(r.profitPerUnit)} (${r.profitPct.toFixed(0)}%)</td>
       <td data-sort-value="${r.dailyVolume}" title="Оборот продукта в городе продажи; по всем городам: ${fmt(r.totalDailyVolume, 0)}">${fmt(r.dailyVolume, 0)}</td>
       <td data-sort-value="${r.rankScore}">${fmt(r.rankScore, 0)}</td>
       <td>${r.refineCity} ⭐</td>
