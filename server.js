@@ -25,7 +25,9 @@ function resolveItemName(id) {
 // Название с уровнем зачарования: T4_ORE_LEVEL1@1 → «T4 Руда (IV) .1» (в каталоге есть только базовые id).
 function resolveItemNameWithEnchant(id) {
   const m = String(id).match(/^(.+?)_LEVEL(\d)@\d$/);
-  return m ? `${resolveItemName(m[1])} .${m[2]}` : resolveItemName(id);
+  if (m) return `${resolveItemName(m[1])} .${m[2]}`;
+  const e = String(id).match(/^(.+?)@(\d)$/);              // плащ и другой гир с зачарованием: T4_CAPE@3 → «T4 Плащ (знаток) .3»
+  return e ? `${resolveItemName(e[1])} .${e[2]}` : resolveItemName(id);
 }
 
 // Item Power — формула сверена напрямую с дампом игровых файлов (items.xml,
@@ -1194,8 +1196,17 @@ app.get('/api/craft-calc', async (req, res) => {
       factionBlock = { id: req.query.faction, name: factionEntry.name, heartPoints: HEART_POINTS, crestPoints: CREST_POINTS[itemTier], pointsPerCape: perCape, pointsPerCapeFull: perCapeFull,
         partsSilver: [...partsSilver], availablePoints: factionPointsAvail, maxCapes: perCape > 0 ? Math.floor(factionPointsAvail / perCape) : null, partsNet: partsKnown && partsNet > 0 ? partsNet : null };
     }
+    // Названия всех материалов ответа (руны, души, реликты, плащ с зачарованием…) — клиент показывает их и копирует для поиска на аукционе
+    const names = {};
+    const addName = (id) => { if (id) names[id] = resolveItemNameWithEnchant(id); };
+    for (const r of recipeBreakdown) {
+      addName(r.queryId); addName(r.resource);
+      for (const cp of (r.craftOption && r.craftOption.components) || []) addName(cp.id);
+      for (const cp of (r.refineOption && r.refineOption.components) || []) addName(cp.id);
+    }
+    for (const st of (enchantAfterCraft && enchantAfterCraft.steps) || []) addName(st.materialId);
     res.json({
-      faction: factionBlock,
+      faction: factionBlock, names, finishedQueryId,
       itemId, enchant, quality, quantity, marketShare, priceTolerance, materialHours, setupFeeRate: SETUP_FEE_RATE, blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       // rrr — средняя ставка возврата по возвращаемым материалам (у каждого материала своя, см. recipe[].rrr)
       rrrPreset: { id: 'custom', label: rrrOptionsLabel(rrrOpts), ...rrrOpts, rrr: returnableNominal > 0 ? returnableSaved / returnableNominal : 0 },

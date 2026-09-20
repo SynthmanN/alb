@@ -477,8 +477,9 @@ async function copyText(text) {
 }
 
 // filters — список слов подсказки («зачарование 2», «качество отличное»)
-async function copyAuctionName(id, filters = []) {
-  const name = auctionName(id);
+// nameHint — название из ответа сервера (для руны, души, реликта, плаща с зачарованием: в каталоге клиента их нет): тир и «.N» отбрасываются
+async function copyAuctionName(id, filters = [], nameHint = '') {
+  const name = nameHint ? nameHint.replace(/^T\d+\s+/, '').replace(/\s\.\d$/, '') : auctionName(id);
   const ok = await copyText(name);
   showToast(ok ? `Скопировано: ${name}${filters.length ? ` — в поиске аукциона выбери фильтры: ${filters.join(', ')}` : ''}` : 'Не удалось скопировать: браузер запретил доступ к буферу обмена', ok ? 'ok' : 'error');
 }

@@ -474,3 +474,7 @@ td.plan-check input { width: auto; }
 .stack-buy summary { cursor: pointer; margin-top: 6px; color: #9aa0aa; }
 .fp-send { margin: 8px 0; }
 .fp-send button { padding: 8px 14px; font-weight: 600; }
+.stack-missing:empty { display: none; }
+.stack-missing { flex: 1 1 100%; padding-top: 4px; }
+.stack-auto { margin: 4px 0 8px; color: #e6e6e6; }
+.stack-sale { width: 96px; padding: 4px 6px; }

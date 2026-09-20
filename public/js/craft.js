@@ -531,7 +531,7 @@ function renderCraftResult(rawData) {
     const subtotal = missing ? null : r.cheapestPrice * needed;
     return `
       <tr>
-        <td class="copyable" data-copy-id="${r.queryId || r.resource}" title="Клик — скопировать название для поиска в аукционе"><img class="item-icon-sm" src="${iconUrl(r.queryId || r.resource, 40)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
+        <td class="copyable" data-copy-id="${r.queryId || r.resource}" data-copy-name="${nameOfId(data, r.queryId || r.resource)}" title="Клик — скопировать название для поиска в аукционе"><img class="item-icon-sm" src="${iconUrl(r.queryId || r.resource, 40)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
         <td>${needed.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</small>` : ''}</td>
         <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : r.materialSource === 'points' ? `<span class="faction-points" title="Получено у интенданта за фракционные очки — в серебре 0">за очки: ${fmtNum(r.points)} на шт · ${fmtNum(r.points * data.quantity)} на ${fmtNum(data.quantity)} шт</span>` : `${r.materialSource === 'refine' && !r.manualPrice ? refineSourceHtml(r) : r.materialSource === 'craft' && !r.manualPrice ? craftSourceHtml(r) : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}${r.priceSource === 'quote' ? '<br><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>' : ''}${craftEl.purchaseLog.checked ? lotLogHtml(r) : `<br><input class="manual-price ${r.manualPrice ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${r.resource}" placeholder="${unitPlaceholder(r.marketPrice ?? r.cheapestPrice)}" value="${manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : ''}" title="Серым — цена за штуку по рынку. Видишь другую цену в игре — впиши свою: расчёт обновится сразу" />`}`}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
@@ -630,6 +630,8 @@ function volumeCell(r, showCount) {
 }
 
 // Название материала по id (в т.ч. зачарованного T4_ORE_LEVEL1@1 → «… .1»).
+// Название материала: сначала из ответа сервера (знает руны, души, реликты, плащ с зачарованием), иначе по каталогу клиента
+function nameOfId(data, id) { return (data && data.names && data.names[id]) || itemLabel(id); }
 function itemLabel(id) {
   const m = String(id).match(/^(.+?)_LEVEL(\d)@\d$/);
   return m ? `${itemName(m[1])} .${m[2]}` : itemName(id);
@@ -742,7 +744,7 @@ function auctionFilters(el) {
 async function onCopyClick(e) {
   const el = e.target.closest('[data-copy-id]');
   if (!el || e.target.closest('select, input, button, a')) return;
-  await copyAuctionName(el.dataset.copyId, auctionFilters(el));
+  await copyAuctionName(el.dataset.copyId, auctionFilters(el), el.dataset.copyName || '');
 }
 
 // Свои цены: значение запоминаем сразу, перерисовку откладываем (быстрый ввод не теряется), фокус и курсор возвращаем на то же поле.
@@ -888,24 +890,24 @@ function acquisitionRowsData(data) {
     if (r.materialSource === 'craft' && r.craftOption) {
       r.craftOption.components.forEach((cp) => {
         const srv = planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id);
-        rows.push({ key: cp.id, id: cp.id, name: `${itemLabel(cp.id)} <small>(для крафта: ${r.resourceName})</small>`, needed: Math.ceil(r.neededToBuy * cp.count * cp.factor), srv, fallbackPrice: cp.price, fallbackCity: cp.city });
+        rows.push({ key: cp.id, id: cp.id, baseName: nameOfId(data, cp.id), name: `${nameOfId(data, cp.id)} <small>(для крафта: ${r.resourceName})</small>`, needed: Math.ceil(r.neededToBuy * cp.count * cp.factor), srv, fallbackPrice: cp.price, fallbackCity: cp.city });
       });
     } else if (r.materialSource === 'refine' && r.refineOption) {
       r.refineOption.components.forEach((cp, i) => {
         const role = i === 0 ? 'raw' : 'prev';
         const needed = Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate));
         const srv = planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role);
-        rows.push({ key: cp.id, id: cp.id, name: `${itemLabel(cp.id)} <small>(${role === 'raw' ? 'сырьё' : 'полуфабрикат пред. тира'} → ${r.resourceName})</small>`, needed, srv, fallbackPrice: cp.price, fallbackCity: cp.city });
+        rows.push({ key: cp.id, id: cp.id, baseName: nameOfId(data, cp.id), name: `${nameOfId(data, cp.id)} <small>(${role === 'raw' ? 'сырьё' : 'полуфабрикат пред. тира'} → ${r.resourceName})</small>`, needed, srv, fallbackPrice: cp.price, fallbackCity: cp.city });
       });
     } else {
       const srv = planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy');
-      rows.push({ key: r.resource, id: r.queryId || r.resource, name: r.resourceName, needed: r.neededToBuy, srv, fallbackPrice: r.buyPrice || r.cheapestPrice, fallbackCity: r.cheapestCity });
+      rows.push({ key: r.resource, id: r.queryId || r.resource, baseName: nameOfId(data, r.queryId || r.resource), name: data.names && data.names[r.queryId || r.resource] ? data.names[r.queryId || r.resource] : r.resourceName, needed: r.neededToBuy, srv, fallbackPrice: r.buyPrice || r.cheapestPrice, fallbackCity: r.cheapestCity });
     }
   }
   if (data.enchantAfterCraft) {
     for (const st of data.enchantAfterCraft.steps) {
       const srv = planFor((a) => a.resource === st.materialId);
-      rows.push({ key: st.materialId, id: st.materialId, name: `${st.materialName} <small>(зачарование .${st.level - 1} → .${st.level})</small>`, needed: st.count * data.quantity, srv, fallbackPrice: st.cheapestPrice, fallbackCity: st.cheapestCity });
+      rows.push({ key: st.materialId, id: st.materialId, baseName: st.materialName, name: `${st.materialName} <small>(зачарование .${st.level - 1} → .${st.level})</small>`, needed: st.count * data.quantity, srv, fallbackPrice: st.cheapestPrice, fallbackCity: st.cheapestCity });
     }
   }
   return rows;
@@ -929,7 +931,7 @@ function acquisitionPlanHtml(data) {
       ? lotLogHtml({ resource: row.key, needed: row.needed }, 'plan')
       : `<input class="manual-price ${own !== undefined ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${row.key}" data-scope="plan" placeholder="${unitPlaceholder(marketPrice)}" value="${manualMaterialPrice.has(row.key) ? manualMaterialPrice.get(row.key) : ''}" title="Видишь другую цену в игре — впиши её: расчёт обновится сразу" />`;
     return `<tr>
-        <td class="copyable" data-copy-id="${row.id}" title="Клик — скопировать название для поиска в аукционе"><img class="item-icon-sm" src="${iconUrl(row.id, 40)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${row.name}</td>
+        <td class="copyable" data-copy-id="${row.id}" data-copy-name="${row.baseName}" title="Клик — скопировать название для поиска в аукционе"><img class="item-icon-sm" src="${iconUrl(row.id, 40)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${row.name}</td>
         <td>${fmtNum(row.needed)}</td>
         <td class="plan-cities">${cities}</td>
         <td data-sort-value="${unit ?? ''}">${unit === null || unit === undefined ? 'нет цены' : `${fmtNum(unit, unit < 100 ? 1 : 0)}${own !== undefined ? ' <small class="is-manual-note">своя</small>' : ''}`}</td>

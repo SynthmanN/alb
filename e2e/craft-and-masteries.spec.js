@@ -1395,3 +1395,95 @@ test('стек плащей: «Крафтить план» переносит з
   await expect(page.locator('#craft-stack-panel')).toBeHidden();
   await expect(page.locator('#craft-faction-badge')).toBeEmpty();
 });
+
+test('стек плащей: профит по цене продажи из плана; «после крафта» по 7%; названия материалов и копирование; вписывание недостающих цен и своя цена продажи', async ({ page }) => {
+  const calcQueries = [];
+  const saved = [];
+  let capePriceSaved = false;
+  const PTS = { 4: 400, 5: 2250, 6: 3000 };
+  const row = (tier, enchant, sale) => ({
+    itemId: `T${tier}_CAPEITEM_FW_MARTLOCK`, finishedId: `T${tier}_CAPEITEM_FW_MARTLOCK${enchant ? `@${enchant}` : ''}`, tier, enchant, quality: 1, source: 'data', pointsPerCape: 3000 + PTS[tier],
+    crestId: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, heartId: 'T1_FACTION_HIGHLAND_TOKEN_1',
+    capeDirect: { id: `T${tier}_CAPE`, label: 'Плащ', price: 2000, ageMinutes: 30, manual: false }, cape0: { id: `T${tier}_CAPE`, label: 'Плащ', price: 2000, ageMinutes: 30, manual: false },
+    runes: [], maxAfter: true, crest: { id: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, label: 'Герб', price: 500, ageMinutes: 30, manual: false }, heart: { id: 'T1_FACTION_HIGHLAND_TOKEN_1', label: 'Сердце', price: 1000, ageMinutes: 30, manual: false },
+    sale: { avgPrice: sale, netSell: sale * 0.895, dailyVolume: 1, ageDays: 0.5, filled: false, manual: false }, manualSaleKey: { id: `T${tier}_CAPEITEM_FW_MARTLOCK`, quality: 1 },
+  });
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { faction: { id: 'MARTLOCK', name: 'Мартлок', points: 90000, heartPoints: 3000, crestPoints: { 4: 400 } }, factionPlan: { points: 90000, spent: 0, remaining: 90000, totalProfit: 0, capes: 0, items: [] }, results: [], jug: {} } }));
+  await page.route('**/api/faction-plan*', (route) => route.fulfill({ json: {
+    faction: { id: 'MARTLOCK', name: 'Мартлок', heartId: 'T1_FACTION_HIGHLAND_TOKEN_1', heartPoints: 3000, crestPoints: { 4: 400, 5: 2250, 6: 3000 } }, days: 7, materialHours: 24, taxRate: 0.08, setupFeeRate: 0.025, gearRate: 0.248, tiers: [4, 5, 6], manualTtlDays: 10,
+    rows: [row(6, 3, 100000), row(5, 2, 100000), row(4, 0, 30000)],
+  } }));
+  await page.route('**/api/manual-price', (route) => { saved.push(route.request().postDataJSON()); capePriceSaved = true; route.fulfill({ json: { ok: true } }); });
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    calcQueries.push(q);
+    const tier = Number(q.get('item')[1]);
+    const enchant = Number(q.get('enchant'));
+    const after = q.get('enchantAfterCraft') === 'true';
+    const qty = Number(q.get('quantity'));
+    // T6 .3: с чарами после крафта дешевле на 20% (выигрывает), T5 .2: на 2% (порог 7% не пройден)
+    const unit = tier === 6 ? (after ? 40000 : 50000) : tier === 5 ? (after ? 49000 : 50000) : 3000;
+    const missingCape = tier === 4 && !capePriceSaved;                                          // у T4 нет цены плаща, пока её не вписали
+    route.fulfill({ json: {
+      faction: { id: 'MARTLOCK', name: 'Мартлок', heartPoints: 3000, crestPoints: PTS[tier], pointsPerCape: 3000 + PTS[tier], availablePoints: 90000, maxCapes: 1, partsNet: null },
+      names: { T6_RUNE: 'Руна (мастер)', 'T4_CAPE@3': 'T4 Плащ (знаток) .3', T4_CAPE: 'T4 Плащ (знаток)' },
+      itemId: q.get('item'), enchant, quality: 1, quantity: qty, marketShare: 1, materialHours: 24, refineRate: 0.367, setupFeeRate: 0,
+      rrrPreset: { id: 'custom', label: 'возврат при крафте: 0%', gearRate: 0, gearRrr: 'none', gearRrrCustom: null, rrr: 0 },
+      cities: ['Martlock'], hasAllMaterialPrices: true, materialCostPerUnit: unit, effectiveCostPerUnit: unit, totalCost: unit * qty,
+      recipe: [
+        { resource: 'T6_RUNE', resourceName: 'T6_RUNE', queryId: 'T6_RUNE', enchanted: false, count: 1, returnable: false, rrr: 0, neededToBuy: qty, cheapestCity: 'Martlock', cheapestPrice: 100, priceSource: 'history', materialSource: 'buy', cityPrices: [] },
+        { resource: 'T4_CAPE', resourceName: 'T4_CAPE@3', queryId: 'T4_CAPE@3', enchanted: false, count: 1, returnable: false, rrr: 0, neededToBuy: qty, cheapestCity: 'Martlock', cheapestPrice: missingCape ? null : 1000, priceSource: 'history', materialSource: 'buy', cityPrices: [] },
+      ],
+      sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
+      enchantAfterCraft: after ? { baseSource: 'craft', steps: [], targetLevel: enchant } : null,
+      baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: unit, baseCostPerUnit: unit },
+    } });
+  });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-faction-on').check();
+  await page.locator('#margin-faction-points').fill('90000');
+  await page.locator('#margin-faction-plan').check();
+  await page.locator('#margin-run').click();
+  await expect(page.locator('#faction-plan-panel tr.fp-on')).toHaveCount(3);
+  await page.locator('#fp-mode').selectOption('points');                                        // всё за очки — без разбивки позиций по вариантам
+  await page.locator('#fp-send').click();
+  const cards = page.locator('#craft-stack-panel .stack-card');
+  await expect(cards).toHaveCount(3);
+  const t6 = cards.filter({ hasText: 'T6 · .3' });
+  const t5 = cards.filter({ hasText: 'T5 · .2' });
+  const t4 = cards.filter({ hasText: 'T4 · .0' });
+  await expect(page.locator('#stack-auto-after')).toBeChecked();
+  // T6 .3: чары после крафта выигрывают 24% ≥ 7%; T5 .2: 2% < 7% — прямой путь
+  await expect(t6.locator('.stack-line')).toContainText('чары после крафта (+24% к профиту)');
+  await expect(t5.locator('.stack-line')).not.toContainText('чары после крафта');
+  expect(calcQueries.some((q) => q.get('item') === 'T6_CAPEITEM_FW_MARTLOCK' && q.get('enchantAfterCraft') === 'true')).toBe(true);
+  expect(calcQueries.some((q) => q.get('item') === 'T5_CAPEITEM_FW_MARTLOCK' && q.get('enchantAfterCraft') === 'true')).toBe(true);   // оба варианта считались
+  // профит по цене продажи из плана: T6 = 100000×0.92 − 40000 = 52000 за штуку (×7)
+  await expect(t6.locator('.stack-line')).toContainText(String((52000 * 7).toLocaleString('ru-RU')).replace(/ /g, ' ').slice(0, 3));
+  // T4: цены плаща нет — позиция не в итогах, в карточке поле для цены
+  await expect(t4.locator('.stack-line')).toContainText('не хватает цен');
+  await expect(t4.locator('.stack-missing')).toContainText('Плащ (знаток) .3');                // правильное имя, не T4_CAPE@3
+  await t4.locator('.stack-missing input').fill('1234');
+  await expect.poll(() => saved.length).toBe(1);
+  expect(saved[0]).toMatchObject({ id: 'T4_CAPE@3', quality: 1, price: 1234 });
+  await expect(t4.locator('.stack-line')).toContainText('профит');
+  await expect(t4.locator('.stack-line')).not.toContainText('не хватает цен');
+  // общий вид: названия материалов правильные и копируются кликом
+  const table = page.locator('#stack-purchase-table');
+  await expect(table).toContainText('Руна (мастер)');
+  await expect(table).not.toContainText('T6_RUNE');
+  await expect(table).toContainText('Плащ (знаток)');
+  await table.locator('td.copyable', { hasText: 'Руна (мастер)' }).click();
+  await expect(page.locator('.toast').first()).toContainText('Скопировано: Руна (мастер)');
+  // своя цена продажи пересчитывает профит сразу, без запроса
+  const before = calcQueries.length;
+  await t5.locator('.stack-sale').fill('60000');
+  await expect(t5.locator('.stack-line')).toContainText('профит 43 400');                       // (60000×0.92 − 49000) × 7; при такой цене чары после крафта уже выигрывают (+19%)
+  await expect(t5.locator('.stack-line')).toContainText('чары после крафта');
+  expect(calcQueries.length).toBe(before);
+  // галочка стека выключена — все позиции прямым путём
+  await page.locator('#stack-auto-after').uncheck();
+  await expect(t6.locator('.stack-line')).not.toContainText('чары после крафта');
+  await expect.poll(() => calcQueries.slice(-4).every((q) => q.get('enchantAfterCraft') === null)).toBe(true);
+});

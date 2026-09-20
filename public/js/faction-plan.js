@@ -311,7 +311,7 @@ function sendPlanToCalc() {
   for (const x of fp.planned) {
     for (const [variant, n] of Object.entries(x.byVariant)) {
       items.push({
-        itemId: x.c.r.itemId, enchant: x.c.r.enchant, quality: x.c.r.quality, quantity: n,
+        itemId: x.c.r.itemId, enchant: x.c.r.enchant, quality: x.c.r.quality, quantity: n, salePrice: x.c.grossSale,     // цена продажи из плана (или вписанная) — стек считает профит по ней же
         after: x.c.r.enchant > 0 && !!x.c.path && x.c.path.startsWith('после'),
         crestSilver: variant === 'heart', heartSilver: variant === 'crest',
       });
