@@ -849,3 +849,31 @@ describe('история гира — от часа до 30 дней', () => {
     expect(big === null || big.days === 30).toBe(true);
   });
 });
+
+describe('калькулятор: фракционный режим (только для фракционного плаща и только по запросу)', () => {
+  const url = (extra = '') => `/api/craft-calc?item=T5_CAPEITEM_FW_MARTLOCK&quantity=10&cities=Martlock&gearRrr=none&enchant=0${extra}`;
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (u) => ({ ok: true, status: 200, json: async () => (String(u).includes('/history/') ? [] : fakeAodp(u)) }));
+    setJugAll(100, ['Martlock']);
+    setJug({ T5_CAPEITEM_FW_MARTLOCK_BP: 4000, T1_FACTION_HIGHLAND_TOKEN_1: 2000 }, { cities: ['Martlock'] });
+  });
+  it('без faction — герб и сердце по рынку в себестоимости; блока faction нет', async () => {
+    const d = (await request(app).get(url())).body;
+    expect(d.faction).toBeNull();
+    expect(d.recipe.find((r) => r.resource.endsWith('_BP')).cheapestPrice).toBeCloseTo(4000 * 1.025, 6);
+  });
+  it('с faction=MARTLOCK — герб и сердце «за очки» (в серебре 0), очков на плащ T5 = 3000 + 2250, хватает ли очков и что дала бы продажа деталей', async () => {
+    const d = (await request(app).get(url('&faction=MARTLOCK&factionPoints=52500'))).body;
+    const parts = d.recipe.filter((r) => r.materialSource === 'points');
+    expect(parts.map((r) => [r.cheapestPrice, r.points]).sort()).toEqual([[0, 2250], [0, 3000]]);
+    expect(d.faction).toMatchObject({ id: 'MARTLOCK', pointsPerCape: 5250, availablePoints: 52500, maxCapes: 10, crestPoints: 2250, heartPoints: 3000 });
+    expect(d.faction.partsNet).toBeCloseTo((4000 + 2000) * (1 - 0.08 - 0.025), 6);
+    expect(d.acquire.byResource.some((r) => r.parent && r.parent.endsWith('_BP'))).toBe(false);           // в план закупки за серебро не входят
+    const plain = (await request(app).get(url())).body;
+    expect(d.baseChoice.baseCraftCostPerUnit).toBeLessThan(plain.baseChoice.baseCraftCostPerUnit - 5000);
+  });
+  it('чужая фракция или не плащ — режим игнорируется', async () => {
+    expect((await request(app).get(url('&faction=LYMHURST'))).body.faction).toBeNull();
+    expect((await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&faction=MARTLOCK')).body.faction).toBeNull();
+  });
+});

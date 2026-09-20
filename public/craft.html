@@ -34,6 +34,7 @@
       </div>
       <div id="craft-suggestions" class="suggestions"></div>
       <div id="craft-selected" class="craft-selected"></div>
+      <div id="craft-faction-badge"></div>
       <div id="craft-controls" class="craft-cards" style="display:none">
         <div class="craft-card">
           <h3>Что крафтим</h3>
@@ -158,6 +159,17 @@
         </label>
         <button id="margin-run">Сканировать</button>
       </div>
+      <fieldset class="faction-group" id="margin-faction-group">
+        <legend>Фракционные очки <span class="faction-note">— только фракционные плащи</span></legend>
+        <label class="faction-check" title="Гербы и сердца покупаются у интенданта за фракционные очки и в серебре не стоят. Режим показывает только плащи вашей фракции и ранжирует их по профиту на очко"><input id="margin-faction-on" type="checkbox" /> Режим фракционных очков</label>
+        <span id="margin-faction-fields" hidden>
+          <label class="craft-field">Ваша фракция
+            <select id="margin-faction"><option value="MARTLOCK">Мартлок</option><option value="LYMHURST">Лимхёрст</option><option value="BRIDGEWATCH">Бридгуотч</option><option value="FORTSTERLING">Форт Стерлинг</option><option value="THETFORD">Тетфорд</option><option value="CAERLEON">Каэрлеон</option><option value="BRECILIEN">Бресилиен</option></select>
+          </label>
+          <label class="craft-field" title="Сколько очков этой фракции у вас есть: на сколько плащей хватит и как их распределить">Очков<input id="margin-faction-points" data-grouped value="0" /></label>
+          <label class="faction-check" title="Список плащей для крафта на ваши очки — как «ленивый крафтер»: сначала самые выгодные на очко, но не больше, чем поглотит рынок за окно истории"><input id="margin-faction-plan" type="checkbox" /> План трат очков</label>
+        </span>
+      </fieldset>
       <div id="margin-result"></div>
       </details>
 

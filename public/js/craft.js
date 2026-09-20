@@ -210,7 +210,19 @@ function RECIPES_KNOWN(i) {
 }
 
 // keep=true — переключение тира: зачарование и качество сохраняются, результат пересчитывается на месте.
+// Фракционный режим калькулятора: включается только плащом, присланным из скана с включённым режимом (id фракции и очки); выбор предмета вручную его сбрасывает
+let craftFaction = null;
+let selectingFromFactionScan = false;
+function renderFactionBadge() {
+  const el = document.getElementById('craft-faction-badge');
+  if (!el) return;
+  el.innerHTML = craftFaction ? `<div class="faction-badge">Фракционный режим: <b>${craftFaction.name}</b> · очков ${fmtNum(craftFaction.points)} <button type="button" id="craft-faction-off">выключить</button></div>` : '';
+  const off = document.getElementById('craft-faction-off');
+  if (off) off.addEventListener('click', () => { craftFaction = null; renderFactionBadge(); runCraftCalc(true); });
+}
+
 function selectCraftItem(item, keep = false) {
+  if (!keep && !selectingFromFactionScan && craftFaction) { craftFaction = null; renderFactionBadge(); }
   const prevEnchant = craftEl.enchant.value;
   craftSelectedItem = item;
   craftEl.search.value = '';
@@ -301,6 +313,7 @@ async function runCraftCalc(keepManual = false) {
     if (document.getElementById('craft-enchant-after').checked) params.set('enchantAfterCraft', 'true');
     const threshold = document.getElementById('craft-sell-threshold').value;
     if (threshold) params.set('sellThreshold', threshold);
+    if (craftFaction) { params.set('faction', craftFaction.id); params.set('factionPoints', String(craftFaction.points)); }
     const data = await fetchJson(`/api/craft-calc?${params}`);
     if (data.error) throw new Error(data.error);
     manualSalePlan.clear();
@@ -355,7 +368,7 @@ function applyManualPrices(data) {
   let materialDelta = 0;                 // изменение себестоимости за штуку от своих цен на материалы рецепта (с учётом возврата)
   let nominalDelta = 0;
   for (const r of d.recipe) {
-    if (r.cheapestPrice === null) continue;
+    if (r.cheapestPrice === null || r.materialSource === 'points') continue;
     const oldPrice = r.cheapestPrice;                    // цена до пересчётов: от неё считаются дельты себестоимости
     // Своя цена сырья или полуфабриката предыдущего тира (из плана закупки) тоже пересчитывает «купить или переработать»
     const ownComp = r.refineOption ? r.refineOption.components.some((cp) => ownPriceFor(cp.id) !== undefined) : false;
@@ -470,7 +483,7 @@ function renderCraftResult(rawData) {
       <tr>
         <td class="copyable" data-copy-id="${r.queryId || r.resource}" title="Клик — скопировать название для поиска в аукционе"><img class="item-icon-sm" src="${iconUrl(r.queryId || r.resource, 40)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /> ${name}${r.returnable === false && !r.enchStep ? ' <span class="no-return" title="Этот материал при крафте не возвращается — RRR на него не действует">без возврата</span>' : ''}</td>
         <td>${needed.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}${r.byRecipe !== undefined && r.byRecipe !== needed ? `<br><small>по рецепту ${r.byRecipe.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</small>` : ''}</td>
-        <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : `${r.materialSource === 'refine' && !r.manualPrice ? refineSourceHtml(r) : r.materialSource === 'craft' && !r.manualPrice ? craftSourceHtml(r) : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}${r.priceSource === 'quote' ? '<br><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>' : ''}${craftEl.purchaseLog.checked ? lotLogHtml(r) : `<br><input class="manual-price ${r.manualPrice ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${r.resource}" placeholder="${unitPlaceholder(r.marketPrice ?? r.cheapestPrice)}" value="${manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : ''}" title="Серым — цена за штуку по рынку. Видишь другую цену в игре — впиши свою: расчёт обновится сразу" />`}`}</td>
+        <td class="${missing ? 'missing' : ''}" data-sort-value="${r.cheapestPrice ?? ''}">${missing ? 'нет цены' : r.materialSource === 'points' ? `<span class="faction-points" title="Получено у интенданта за фракционные очки — в серебре 0">за очки: ${fmtNum(r.points)} на шт · ${fmtNum(r.points * data.quantity)} на ${fmtNum(data.quantity)} шт</span>` : `${r.materialSource === 'refine' && !r.manualPrice ? refineSourceHtml(r) : r.materialSource === 'craft' && !r.manualPrice ? craftSourceHtml(r) : cityPricesCell(r.cheapestCity, r.cheapestPrice, r.cityPrices)}${r.priceSource === 'quote' ? '<br><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>' : ''}${craftEl.purchaseLog.checked ? lotLogHtml(r) : `<br><input class="manual-price ${r.manualPrice ? 'is-manual' : ''}" type="number" min="0" step="1" data-res="${r.resource}" placeholder="${unitPlaceholder(r.marketPrice ?? r.cheapestPrice)}" value="${manualMaterialPrice.has(r.resource) ? manualMaterialPrice.get(r.resource) : ''}" title="Серым — цена за штуку по рынку. Видишь другую цену в игре — впиши свою: расчёт обновится сразу" />`}`}</td>
         <td class="${missing ? 'missing' : ''}">${missing ? '—' : subtotal.toLocaleString('ru-RU', { maximumFractionDigits: 0 })}</td>
         <td data-sort-value="${acquireDaysFor(data, r) ?? ''}">${acquireDaysFor(data, r) !== null ? fmtDays(acquireDaysFor(data, r)) : '—'}${data.acquire && (data.acquire.bottleneckParent || data.acquire.bottleneckResource) === r.resource ? ' 🐢' : ''}</td>
         <td data-sort-value="${r.rrr ?? 0}">${r.materialSource === 'craft' && r.craftOption ? `<span title="Плащ-ингредиент не возвращается, но при крафте плаща самому ткань и кожа возвращаются">${((data.rrrPreset.gearRate ?? 0) * 100).toFixed(1)}% на ткань и кожу</span>` : r.returnable === false ? '—' : `${r.materialSource === 'refine' && r.refineOption ? `<span title="Два независимых возврата двух разных этапов: переработка сырья в полуфабрикат (${(r.refineOption.rate * 100).toFixed(1)}%) и крафт гира из готового полуфабриката (${((r.rrr || 0) * 100).toFixed(1)}%). Не складываются в одно число — каждый снижает нужное количество на своём этапе закупки.">${(r.refineOption.rate * 100).toFixed(1)}% сырьё · ${((r.rrr || 0) * 100).toFixed(1)}% гир</span>` : `${((r.rrr || 0) * 100).toFixed(1)}%`}${r.cityBonus ? ` <span class="city-bonus" title="Город закупки (${r.cheapestCity}) даёт спец-бонус именно этому типу ресурса: возврат выше базового">★ бонус</span>` : ''}`}</td>
@@ -821,7 +834,7 @@ function acquisitionRowsData(data) {
   const planFor = (pick) => byRes.find(pick) || null;
   const rows = [];
   for (const r of data.recipe) {
-    if (r.cheapestPrice === null) continue;
+    if (r.cheapestPrice === null || r.materialSource === 'points') continue;
     if (r.materialSource === 'craft' && r.craftOption) {
       r.craftOption.components.forEach((cp) => {
         const srv = planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id);
@@ -909,7 +922,20 @@ function scoreboardHtml(data) {
       <div class="sb-cell sb-cost"><span class="sb-label">Нужно денег на весь цикл</span><b class="sb-value">${money(data.totalCost)}</b><small>${money(data.effectiveCostPerUnit)} за штуку · ${data.quantity.toLocaleString('ru-RU', { maximumFractionDigits: 0 })} шт${cycle !== null ? ` · цикл ${fmtDays(cycle)}` : ''}</small></div>
       <div class="sb-cell"><span class="sb-label">Маржа всего · сразу (Buy Order)</span><b class="sb-value ${cls(data.totalProfit)}">${money(data.totalProfit)}</b><small>${money(data.profitPerUnit)} за штуку</small></div>
       <div class="sb-cell"><span class="sb-label">Маржа всего · терпеливо (Sell Order)</span><b class="sb-value ${cls(patientTotal)}">${money(patientTotal)}</b><small>${money(patientUnit)} за штуку${sellDays !== null && sellDays !== undefined ? ` · продажа ${fmtDays(sellDays)}` : ''}</small></div>
+      ${factionTileHtml(data, patientUnit)}
     </div>`;
+}
+
+// Плитка фракционного режима: сколько плащей хватит на очки, профит на очко и сравнение с продажей герба и сердца (в расчёте на очко)
+function factionTileHtml(data, patientUnit) {
+  const f = data.faction;
+  if (!f) return '';
+  const unit = patientUnit !== null && patientUnit !== undefined ? patientUnit : data.profitPerUnit;
+  const perPoint = unit === null || unit === undefined ? null : unit / f.pointsPerCape;
+  const enough = f.availablePoints > 0 ? `хватит на ${fmtNum(f.maxCapes)} плащей` : 'очки не введены';
+  const parts = f.partsNet === null || f.partsNet === undefined ? 'нет цен герба и сердца'
+    : `продажа герба и сердца: ${fmtNum(f.partsNet)} (${fmtNum(f.partsNet / f.pointsPerCape, 1)}/очко) — ${unit !== null && unit !== undefined && unit > f.partsNet ? 'крафт выгоднее' : 'выгоднее продать детали'}`;
+  return `<div class="sb-cell faction-tile"><span class="sb-label">Фракционные очки · ${f.name}</span><b class="sb-value">${perPoint === null ? '—' : fmtNum(perPoint, 1)}</b><small>профит на очко · ${fmtNum(f.pointsPerCape)} очков на плащ · ${enough}<br>${parts}</small></div>`;
 }
 
 // Разбивка продажи через Sell Order по ВСЕМ активным городам: цена, спрос и профит по каждому (порог — лишь фильтр сверху).
@@ -1283,6 +1309,10 @@ function renderLazyCrafter(data) {
 
 // --- Скан маржи и ликвидности (гир — по данным кувшина; сырьё и рефайн — отдельный скан на странице «Рефайн») ---
 const marginEl = {
+  factionOn: document.getElementById('margin-faction-on'),
+  faction: document.getElementById('margin-faction'),
+  factionPoints: document.getElementById('margin-faction-points'),
+  factionPlan: document.getElementById('margin-faction-plan'),
   mode: document.getElementById('margin-mode'),
   blackMarket: document.getElementById('margin-black-market'),
   blackMarketField: document.getElementById('margin-black-market-field'),
@@ -1299,6 +1329,7 @@ const marginEl = {
   result: document.getElementById('margin-result'),
 };
 marginEl.run.addEventListener('click', runMarginScan);
+marginEl.factionOn.addEventListener('change', () => { document.getElementById('margin-faction-fields').hidden = !marginEl.factionOn.checked; });
 // В мгновенном режиме партии и «ликвидности по городам» нет — лишние поля не показываем.
 function syncMarginMode() {
   const patient = marginEl.mode.value === 'patient';
@@ -1317,6 +1348,11 @@ async function runMarginScan() {
       materialHours: readCustomizable(marginEl.materialHours), minDaily: marginEl.minDaily.value || '0', days: readCustomizable(marginEl.days), ...gearRrrParams(marginEl.gearRrr, marginEl.gearRrrCustom), ...refineRrrParams(marginEl.refineRrr, marginEl.refineRrrCustom),
       cities: activeCities().join(','), premium: premiumParam(),
     });
+    if (marginEl.factionOn.checked) {
+      params.set('faction', marginEl.faction.value);
+      params.set('factionPoints', readGroupedNumber(marginEl.factionPoints) || '0');
+      if (marginEl.factionPlan.checked) params.set('factionPlan', 'true');
+    }
     const data = await fetchJson(`/api/unified-scan?${params}`);
     if (data.error) throw new Error(data.error);
     marginLastData = data;
@@ -1341,7 +1377,79 @@ function fmtAgeMinutes(minutes) {
   return `${(minutes / 60).toFixed(1)} ч назад`;
 }
 
+// Скан в фракционном режиме: только плащи выбранной фракции, метрика — профит на очко; опционально — план трат очков (как «ленивый крафтер»)
+function renderFactionScan(data) {
+  const f = data.faction;
+  const jugNote = data.jug && data.jug.lastPricePass ? `Кувшин: цены обновлены ${fmtAgeMinutes((Date.now() - data.jug.lastPricePass) / 60000)}.` : 'Кувшин ещё пуст — фоновый краулер только начал работу.';
+  const qLabel = (r) => `T${r.tier} · .${r.enchant} · ${QUALITY_NAMES[r.quality]}`;
+  const planHtml = data.factionPlan ? (() => {
+    const p = data.factionPlan;
+    if (p.items.length === 0) return `<div class="faction-plan"><h4>План трат очков</h4><p class="calc-note">На ${fmtNum(p.points)} очков не набралось ни одного плаща, где крафт выгоднее продажи герба и сердца (или очков не хватает даже на один плащ).</p></div>`;
+    const lines = p.items.map((i) => {
+      const item = findItem(i.itemId) || { id: i.itemId, name: i.itemId };
+      return `<tr><td><span class="scan-item"><img class="item-icon-sm" src="${iconUrl(item.id, 64, i.enchant, i.quality)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span>${item.name}${enchantTag(i.enchant)}<br><small class="scan-item-sub">T${i.tier} · .${i.enchant} · ${QUALITY_NAMES[i.quality]}</small></span></span></td>
+        <td data-sort-value="${i.qty}">${fmtNum(i.qty)}<br><small title="Оборот ${fmtNum(i.dailyVolume, 1)}/день × окно">не больше ${fmtNum(i.marketCap)} за окно</small></td>
+        <td data-sort-value="${i.points}">${fmtNum(i.points)}<br><small>${fmtNum(i.pointsPerCape)} на плащ</small></td>
+        <td>${fmtNum(i.cost)}</td><td class="scan-spread-hot" data-sort-value="${i.profit}">+${fmtNum(i.profit)}<br><small>${fmtNum(i.profitPerUnit)} за шт</small></td><td data-sort-value="${i.profitPerPoint}">${fmtNum(i.profitPerPoint, 1)}</td>
+        <td><button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${i.enchant}" data-quality="${i.quality}" data-quantity="${i.qty}">в калькулятор</button></td></tr>`;
+    }).join('');
+    return `<div class="faction-plan"><h4>План трат очков <small>по убыванию профита на очко, не больше оборота рынка за окно</small></h4>
+      <div class="craft-summary"><div class="craft-summary-row"><span>Плащей в плане</span><span>${fmtNum(p.capes)}</span></div>
+        <div class="craft-summary-row"><span>Потрачено очков из ${fmtNum(p.points)}</span><span>${fmtNum(p.spent)} · остаток ${fmtNum(p.remaining)}</span></div>
+        <div class="craft-summary-row"><strong>Профит по плану</strong><strong class="profit-pos">${fmtNum(p.totalProfit)}</strong></div></div>
+      <div class="table-scroll"><table class="scan-table"><thead><tr><th>Плащ</th><th>Штук</th><th>Очков</th><th>Себестоимость/шт</th><th>Профит</th><th>Профит на очко</th><th></th></tr></thead><tbody>${lines}</tbody></table></div></div>`;
+  })() : '';
+  if (data.results.length === 0) {
+    marginEl.result.innerHTML = `${planHtml}<div class="chart-empty">Ничего не нашлось — нет прибыльных плащей фракции «${f.name}» с таким оборотом. ${jugNote}</div>`;
+    return;
+  }
+  const rows = data.results.map((r) => {
+    const item = findItem(r.itemId) || { id: r.itemId, name: r.itemId };
+    const verdict = r.partsNet === null || r.partsNet === undefined ? '<small class="scan-stale">нет цен герба/сердца</small>'
+      : r.craftBeatsParts ? `<small class="profit-pos" title="Крафт плаща выгоднее, чем продать герб и сердце на рынке">крафт выгоднее</small>` : `<small class="scan-stale" title="Продать герб и сердце на рынке выгоднее, чем крафтить плащ">выгоднее продать детали</small>`;
+    return `<tr>
+      <td><span class="scan-item"><img class="item-icon-lg" src="${iconUrl(item.id, 96, r.enchant, r.quality)}" loading="lazy" alt="" onerror="this.style.visibility='hidden'" /><span>${item.name}${enchantTag(r.enchant)}<br><small class="scan-item-sub">${qLabel(r)}</small></span></span></td>
+      <td data-sort-value="${r.cost}" title="Себестоимость без герба и сердца (они за очки): плащ-ингредиент${r.refined && r.refined.length ? ' (или скрафченный)' : ''}${r.enchant ? ' + зачарование' : ''}">${fmtNum(r.cost)}${refinedNote(r)}</td>
+      <td>${fmtNum(r.avgSellPrice)}</td>
+      <td data-sort-value="${r.dailyVolume}">${volumeCell(r, false)}</td>
+      <td data-sort-value="${r.profitPerUnit}">+${fmtNum(r.profitPerUnit)} <small>(${r.profitPct.toFixed(0)}%)</small></td>
+      <td data-sort-value="${r.factionPoints}" title="Сердце ${fmtNum(f.heartPoints)} + герб T${r.tier} ${fmtNum(f.crestPoints[r.tier])}">${fmtNum(r.factionPoints)}</td>
+      <td class="scan-spread-hot" data-sort-value="${r.profitPerPoint}"><b>${fmtNum(r.profitPerPoint, 1)}</b></td>
+      <td data-sort-value="${r.partsPerPoint ?? ''}" title="Сколько принесла бы продажа герба и сердца на рынке (после налога и сбора)">${r.partsNet === null || r.partsNet === undefined ? '—' : `${fmtNum(r.partsNet)} <small>(${fmtNum(r.partsPerPoint, 1)}/очко)</small>`}<br>${verdict}</td>
+      <td class="${confidenceClass(r.confidence)}" data-sort-value="${r.confidence}">${Math.round(r.confidence * 100)}%<br><small>${r.tradeHours} ч</small></td>
+      <td data-sort-value="${r.freshMinutes ?? ''}">${fmtAgeMinutes(r.freshMinutes)}</td>
+      <td><button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${r.enchant}" data-quality="${r.quality}">в калькулятор</button></td></tr>`;
+  }).join('');
+  marginEl.result.innerHTML = `${planHtml}
+    <p class="calc-note">Фракционный режим: <b>${f.name}</b>, очков ${fmtNum(f.points)}. Только плащи этой фракции; герб и сердце получены за очки и в себестоимость не входят. Метрика — профит на очко (профит/шт ÷ очков на плащ); рядом — что дала бы продажа герба и сердца вместо крафта. По одной комбинации (тир/зачарование/качество) на плащ — с лучшим профитом на очко. ${jugNote}</p>
+    <div class="table-scroll"><table class="scan-table" id="faction-scan-table">
+      <thead><tr><th>Плащ</th><th>Себестоимость</th><th>Ср. цена продажи</th><th>Оборот/день</th><th>Маржа/шт</th><th>Очков на плащ</th><th>Профит на очко</th><th>Продать герб и сердце вместо крафта</th><th>Доверие</th><th>Свежесть</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  tableSortStates['margin-scan-faction'] = { label: 'Профит на очко', dir: 'desc' };
+  wireTableSort(marginEl.result.querySelector('#faction-scan-table'), 'margin-scan-faction');
+  marginEl.result.querySelectorAll('.scan-add-btn').forEach((btn) => btn.addEventListener('click', () => sendFactionToCalc(btn, data)));
+}
+// «В калькулятор» из фракционного скана: включает фракционный режим калькулятора (только так он и включается)
+function sendFactionToCalc(btn, data) {
+  const item = findItem(btn.dataset.id);
+  if (!item) return;
+  selectingFromFactionScan = true;
+  selectCraftItem(item);
+  selectingFromFactionScan = false;
+  craftFaction = { id: data.faction.id, name: data.faction.name, points: data.faction.points };
+  renderFactionBadge();
+  craftEl.enchant.value = btn.dataset.enchant;
+  craftEl.quality.value = btn.dataset.quality;
+  refreshSelectedIcon();
+  if (btn.dataset.quantity) craftEl.quantity.value = btn.dataset.quantity;
+  document.getElementById('craft-enchant-after').checked = data.enchantMode === 'after' && btn.dataset.enchant !== '0';
+  document.getElementById('craft-controls').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  runCraftCalc();
+}
+
 function renderMarginScan(data) {
+  if (data.faction) return renderFactionScan(data);
   const patient = data.mode === 'patient';
   const jugNote = data.jug && data.jug.lastPricePass
     ? `Кувшин: цены обновлены ${fmtAgeMinutes((Date.now() - data.jug.lastPricePass) / 60000)}, история — ${fmtAgeMinutes(data.jug.lastHistoryPass ? (Date.now() - data.jug.lastHistoryPass) / 60000 : null)}.`

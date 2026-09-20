@@ -431,3 +431,64 @@ describe('пустые ячейки «город × комбинация»: за
     expect(row.byCity.find((c) => c.city === 'Thetford').filled).toBe(false);                   // в окне 10 дней эти сделки — обычные, не «заполнение»
   });
 });
+
+describe('фракционный режим скана: только плащи фракции, герб и сердце — за очки', () => {
+  const FQ = { faction: 'MARTLOCK', factionPoints: 100000, mode: 'patient', enchantMode: 'direct', cities: CITY, minDaily: 0 };
+  const seedCape = (tier, price, perDay) => {
+    seedMaterial(`T${tier}_CAPE`, 1000, 500);                                    // обычный плащ (ингредиент)
+    seedMaterial(`T${tier}_CAPEITEM_FW_MARTLOCK_BP`, 3000, 50);                  // герб — на рынке 3000
+    seedMaterial('T1_FACTION_HIGHLAND_TOKEN_1', 2000, 50);                       // сердце — 2000
+    seedSales(`T${tier}_CAPEITEM_FW_MARTLOCK`, { avg: price, perDay });
+  };
+  beforeEach(() => {
+    seedCape(4, 9000, 40);
+    seedCape(5, 30000, 10);
+    seedSales('T4_MAIN_SWORD', { avg: 9000, perDay: 50 });                        // обычный гир — в этом режиме не должен появляться
+  });
+  const fscan = async (extra = {}) => (await scan({ ...FQ, ...extra }));
+
+  it('в списке только плащи выбранной фракции; себестоимость — без герба и сердца (они за очки), очки на плащ = сердце 3000 + герб тира', async () => {
+    const d = await fscan();
+    expect(d.faction).toMatchObject({ id: 'MARTLOCK', name: 'Мартлок', points: 100000 });
+    expect(d.results.every((r) => r.itemId.includes('CAPEITEM_FW_MARTLOCK'))).toBe(true);
+    expect(d.results.some((r) => r.itemId === 'T4_MAIN_SWORD')).toBe(false);
+    const t4 = d.results.find((r) => r.tier === 4);
+    const t5 = d.results.find((r) => r.tier === 5);
+    expect(t4.factionPoints).toBe(3000 + 400);
+    expect(t5.factionPoints).toBe(3000 + 2250);
+    expect(t4.cost).toBeCloseTo(1000 * FEE, 6);                                   // только плащ-ингредиент: герб и сердце не покупаются за серебро
+  });
+
+  it('профит на очко = профит/шт ÷ очков на плащ; сравнение с продажей герба и сердца (сколько бы дали детали) — на очко', async () => {
+    const t4 = (await fscan()).results.find((r) => r.tier === 4);
+    expect(t4.profitPerPoint).toBeCloseTo(t4.profitPerUnit / 3400, 9);
+    expect(t4.partsNet).toBeCloseTo((3000 + 2000) * (1 - 0.08 - 0.025), 6);         // герб 3000 + сердце 2000, налог и Setup Fee
+    expect(t4.partsPerPoint).toBeCloseTo(t4.partsNet / 3400, 9);
+    expect(t4.craftBeatsParts).toBe(t4.profitPerUnit > t4.partsNet);
+  });
+
+  it('список отсортирован по профиту на очко; без режима герб и сердце в себестоимость входят как обычно', async () => {
+    const rows = (await fscan()).results;
+    expect(rows.every((r, i) => i === 0 || rows[i - 1].profitPerPoint >= r.profitPerPoint)).toBe(true);
+    const plain = await scan({ mode: 'patient', enchantMode: 'direct', cities: CITY, minDaily: 0 });
+    expect(plain.faction).toBeNull();
+    const t4 = plain.results.find((r) => r.itemId === 'T4_CAPEITEM_FW_MARTLOCK');
+    if (t4) expect(t4.cost).toBeGreaterThan(1000 * FEE + 4000);                     // + герб и сердце по рыночной цене
+  });
+
+  it('план трат очков: жадно по профиту на очко, не больше рынка (оборот × дни) и не больше очков; остаток очков виден', async () => {
+    const d = await fscan({ factionPlan: 'true', factionPoints: 20000, days: 3 });
+    const plan = d.factionPlan;
+    expect(plan.points).toBe(20000);
+    expect(plan.spent + plan.remaining).toBe(20000);
+    expect(plan.items.reduce((s, i) => s + i.points, 0)).toBe(plan.spent);
+    for (const i of plan.items) {
+      expect(i.qty).toBeLessThanOrEqual(i.marketCap);
+      expect(i.points).toBe(i.qty * i.pointsPerCape);
+    }
+    for (let k = 1; k < plan.items.length; k++) expect(plan.items[k - 1].profitPerPoint).toBeGreaterThanOrEqual(plan.items[k].profitPerPoint - 1e-9);
+    expect(plan.totalProfit).toBeCloseTo(plan.items.reduce((s, i) => s + i.profit, 0), 6);
+    expect((await fscan({ factionPlan: 'true', factionPoints: 100 })).factionPlan.items).toEqual([]);   // очков не хватает даже на один плащ
+    expect((await fscan()).factionPlan).toBeNull();                                                      // план — только по запросу
+  });
+});

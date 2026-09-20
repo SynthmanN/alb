@@ -421,3 +421,16 @@ td.plan-check input { width: auto; }
 .refine-head .item-icon-sm { width: 40px; height: 40px; vertical-align: middle; }
 .refine-score { margin-bottom: 6px; }
 .own-sell, .own-buy { width: 90px; }
+
+/* Фракционные очки: режим скана и калькулятора (свой золотистый акцент — не путать с «экспериментом» и «устарело») */
+.faction-group { margin: 10px 0 0; padding: 8px 12px; border: 1px dashed #8a6d2a; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: end; }
+.faction-group legend { font-size: 12px; padding: 0 6px; color: #d8b45a; }
+.faction-note { color: #8b919c; }
+.faction-check { display: inline-flex; align-items: center; gap: 6px; color: #d8b45a; font-size: 13px; cursor: pointer; }
+.faction-badge { margin-top: 8px; padding: 6px 12px; border: 1px solid #8a6d2a; border-radius: 8px; background: rgba(216, 180, 90, 0.08); color: #d8b45a; font-size: 13px; }
+.faction-badge button { margin-left: 8px; }
+.faction-plan { margin: 10px 0 16px; padding: 10px 12px; border: 1px solid #8a6d2a; border-radius: 8px; }
+.faction-plan h4 { margin: 0 0 6px; color: #d8b45a; }
+.faction-plan h4 small { color: #8b919c; font-weight: 400; margin-left: 6px; }
+.faction-points { color: #d8b45a; }
+.faction-tile { border-color: #8a6d2a; background: linear-gradient(160deg, rgba(216, 180, 90, 0.12), var(--cc-panel, #1e2126) 70%); }

@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { AodpBudget } = require('./lib/aodpBudget');
 const { GEAR_RRR_PRESETS, resolveGearRrrRate } = require('./data/gear-rrr');
+const { FACTIONS, HEART_POINTS, CREST_POINTS, pointsPerCape, crestIdOf } = require('./data/faction');
 const { openJug, jugStats, pruneToCatalog, HISTORY_WINDOW_HOURS } = require('./lib/jugStore');
 const { readPrices, readHistory, jugFreshness } = require('./lib/jugQuery');
 const { startJugCrawler, CYCLE_MS } = require('./lib/jugCrawler');
@@ -859,7 +860,19 @@ app.get('/api/craft-calc', async (req, res) => {
     let returnableNominal = 0;         // номинал возвращаемых материалов и сколько на них возвращается — для средней ставки в подписи
     let returnableSaved = 0;
     let hasAllPrices = true;
+    // Фракционный режим (калькулятор включает его только для плаща, присланного из скана с этим режимом): герб и сердце получены за очки — в серебре 0
+    const factionEntry = FACTIONS[req.query.faction] && familyIdOf(itemId) === FACTIONS[req.query.faction].capeFamily ? FACTIONS[req.query.faction] : null;
+    const factionPointsAvail = Math.max(parseFloat(req.query.factionPoints) || 0, 0);
+    const isFactionPart = (resourceId) => !!factionEntry && (resourceId === crestIdOf(itemId) || resourceId === factionEntry.heartId);
     const recipeBreakdown = recipe.resources.map((r) => {
+      if (isFactionPart(r.resource)) {
+        return {
+          returnable: false, neededToBuy: r.count * quantity, rrr: 0, cityBonus: false, resource: r.resource, resourceName: resolveItemName(r.resource),
+          queryId: r.resource, enchanted: false, count: r.count, cheapestCity: null, cheapestPrice: 0, materialSource: 'points', buyPrice: null, buyCity: null,
+          craftOption: null, refineOption: null, priceSource: 'points', cityPrices: [],
+          points: r.resource === factionEntry.heartId ? HEART_POINTS : CREST_POINTS[itemTier] ?? null,   // очков за штуку
+        };
+      }
       const queryId = effectiveRecipeResourceId(r.resource, recipeEnchant);
       const isEnchanted = queryId !== r.resource;
       const cityPrices = materialByCity[queryId] || {};
@@ -1042,6 +1055,7 @@ app.get('/api/craft-calc', async (req, res) => {
         rows.push({ resource: itemId, resourceName: resolveItemName(itemId), queryId: itemId, needed: quantity, city: enchantAfterCraft.baseBuy.city, priceByCity: baseBuyByCity });
       } else {
         recipeBreakdown.forEach((r) => {
+          if (r.materialSource === 'points') return;   // герб и сердце за очки — в план закупки за серебро не входят
           if (r.materialSource === 'craft' && r.craftOption) {
             // Ингредиент-гир (плащ) крафтим сами: покупаем ткань и кожу; возврат при крафте уменьшает их количество (сам плащ-ингредиент не возвращается)
             r.craftOption.components.forEach((comp) => rows.push({
@@ -1158,7 +1172,22 @@ app.get('/api/craft-calc', async (req, res) => {
       console.error('не удалось посчитать сравнение по тирам:', err.message);
     }
 
+    // Блок фракционного режима: очков на плащ, сколько плащей хватит на очки, что дала бы продажа герба и сердца вместо крафта
+    let factionBlock = null;
+    if (factionEntry && CREST_POINTS[itemTier] !== undefined) {
+      const perCape = pointsPerCape(itemTier);
+      let partsNet = 0;
+      let partsKnown = true;
+      for (const r of recipe.resources.filter((x) => isFactionPart(x.resource))) {
+        const prices = Object.values(materialByCity[r.resource] || {}).map((x) => x.sell_price_min).filter(Boolean);   // цена рынка за окно сырья (комиссия покупки здесь не начислена)
+        if (prices.length) partsNet += Math.max(...prices) * r.count * (1 - taxRate - SETUP_FEE_RATE);
+        else partsKnown = false;
+      }
+      factionBlock = { id: req.query.faction, name: factionEntry.name, heartPoints: HEART_POINTS, crestPoints: CREST_POINTS[itemTier], pointsPerCape: perCape,
+        availablePoints: factionPointsAvail, maxCapes: Math.floor(factionPointsAvail / perCape), partsNet: partsKnown ? partsNet : null };
+    }
     res.json({
+      faction: factionBlock,
       itemId, enchant, quality, quantity, marketShare, priceTolerance, materialHours, setupFeeRate: SETUP_FEE_RATE, blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       // rrr — средняя ставка возврата по возвращаемым материалам (у каждого материала своя, см. recipe[].rrr)
       rrrPreset: { id: 'custom', label: rrrOptionsLabel(rrrOpts), ...rrrOpts, rrr: returnableNominal > 0 ? returnableSaved / returnableNominal : 0 },
@@ -2383,6 +2412,11 @@ app.get('/api/unified-scan', (req, res) => {
     // Находки аудита скана теперь — штатное поведение (ход 244–246; отключаются только явным =false, для сравнения «было/стало»):
     const materialLiquidity = req.query.materialLiquidity !== 'false';     // материал с почти нулевым оборотом не задаёт цену
     const confidenceMaterials = req.query.confidenceMaterials !== 'false'; // «Доверие» — слабое звено: минимум по предмету и по его материалам
+    // Фракционный режим (только плащи выбранной фракции): гербы и сердца получены за очки, поэтому в серебре стоят 0; метрика — профит на очко
+    const factionKey = FACTIONS[req.query.faction] ? req.query.faction : null;
+    const faction = factionKey ? FACTIONS[factionKey] : null;
+    const factionPoints = Math.max(parseFloat(req.query.factionPoints) || 0, 0);
+    const factionPlanWanted = !!faction && req.query.factionPlan === 'true';
     const rrrOpts = parseGearRrrOptions(req);
     // Чёрный Рынок — в обоих режимах: мгновенно — в его Buy Order, терпеливо — по средней цене сделок ЧР; налог свой (налог + Setup Fee).
     const blackMarket = req.query.blackMarket === 'true';
@@ -2394,11 +2428,14 @@ app.get('/api/unified-scan', (req, res) => {
 
     const fresh = jugFreshness(jugDb, now);
     const refineParams = parseRefineRate(req);
-    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, factionKey, factionPoints, factionPlanWanted, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
-    const gearIds = Object.keys(RECIPES).filter((id) => itemById.has(id) && (category === 'all' || itemById.get(id).category === category));
+    // Фракционный режим: только плащи фракции (T4–T8), остальной гир в скан не попадает и на ранжирование не влияет
+    const gearIds = Object.keys(RECIPES).filter((id) => itemById.has(id) && (faction
+      ? familyIdOf(id) === faction.capeFamily && CREST_POINTS[itemById.get(id).tier] !== undefined
+      : category === 'all' || itemById.get(id).category === category));
 
     // Комбинации гира: до T4 зачарования нет; .4 не включаем (не чарится рунами). Охотничьи/фракционные плащи — только «после крафта».
     const combos = [];
@@ -2461,14 +2498,15 @@ app.get('/api/unified-scan', (req, res) => {
     }
 
     const rows = [];
+    const allCandidates = [];    // все прибыльные комбинации (для плана трат очков)
     const pushBest = (candidates) => {
       let best = null;
-      for (const c of candidates) if (!best || c.rankScore > best.rankScore) best = c;
+      for (const c of candidates) if (!best || (faction ? c.profitPerPoint > best.profitPerPoint : c.rankScore > best.rankScore)) best = c;
       if (best) rows.push(best);
     };
 
     // Общая часть: из себестоимости, продажи и закупки — строка результата (или null, если предмет не проходит отбор).
-    const buildRow = ({ kind, itemId, finishedId, enchant, quality, tier, type, cost, quoteDates, needs, refined = [] }) => {
+    const buildRow = ({ kind, itemId, finishedId, enchant, quality, tier, type, cost, quoteDates, needs, refined = [], points = null, partsNet = null }) => {
       const seriesOfItem = finishedHistory.get(finishedId) || [];
       let sellPrice, dailyVolume, sellCities, profitPerUnit, marketDailyVolume, sellDate = null;
       let blackMarketRow = false;
@@ -2506,6 +2544,7 @@ app.get('/api/unified-scan', (req, res) => {
         kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
         dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, marketProfitPerDay,
         freshMinutes, rankScore,
+        ...(points ? { factionPoints: points, profitPerPoint: profitPerUnit / points, partsNet, partsPerPoint: partsNet === null ? null : partsNet / points, craftBeatsParts: partsNet === null ? true : profitPerUnit > partsNet } : {}),
         dataAgeDays: lastTradeAgeDays(seriesOfItem, quality, sellCities, now),                 // возраст последней сделки в городах продажи — «данные устарели на N дней»
         filledCities: (seriesOfItem || []).filter((s) => s.synthetic && s.quality === quality && sellCities.some((c) => normLocation(c) === normLocation(s.location))).length,
         refined,   // материалы, которые выгоднее переработать самому: [{ id, city, buyPrice, price }]
@@ -2522,7 +2561,17 @@ app.get('/api/unified-scan', (req, res) => {
       const quoteDates = [];
       const refined = [];
       let complete = true;
+      const points = faction ? pointsPerCape(c.item.tier) : null;
+      let partsOk = true;
+      let partsNet = null;                                                   // сколько принесла бы продажа герба и сердца на рынке (вместо крафта плаща)
       for (const r of recipe.resources) {
+        if (faction && (r.resource === crestIdOf(c.itemId) || r.resource === faction.heartId)) {
+          // герб и сердце получены за очки: в серебре не стоят; но их можно продать — считаем эту альтернативу для сравнения на очко
+          const sellable = (materialQuotes[r.resource] || []).map((x) => x.price / (1 + SETUP_FEE_RATE));
+          if (sellable.length && partsOk !== false) partsNet = (partsNet || 0) + Math.max(...sellable) * r.count * (1 - taxRate - SETUP_FEE_RATE);
+          else { partsOk = false; partsNet = null; }                        // нет цены одной из деталей — сравнение с продажей невозможно
+          continue;
+        }
         const id = effectiveRecipeResourceId(r.resource, matEnchant);
         const q = bestMaterialQuote(materialQuotes[id] || [], { ...r, queryId: id }, refineOpts);   // город покупки — с учётом возврата в нём
         if (!q) { complete = false; break; }
@@ -2551,14 +2600,33 @@ app.get('/api/unified-scan', (req, res) => {
       }
       const finishedId = gearEnchantId(c.itemId, c.enchant);
       for (const quality of ALL_QUALITIES) {
-        const row = buildRow({ kind: 'gear', itemId: c.itemId, finishedId, enchant: c.enchant, quality, tier: c.item.tier, cost, quoteDates, needs, refined });
+        const row = buildRow({ kind: 'gear', itemId: c.itemId, finishedId, enchant: c.enchant, quality, tier: c.item.tier, cost, quoteDates, needs, refined, points, partsNet });
+        if (row && faction) allCandidates.push(row);
         if (row) { if (!byItem.has(c.itemId)) byItem.set(c.itemId, []); byItem.get(c.itemId).push(row); }
       }
     }
     for (const candidates of byItem.values()) pushBest(candidates);
 
-    rows.sort((a, b) => b.rankScore - a.rankScore);
+    rows.sort((a, b) => (faction ? b.profitPerPoint - a.profitPerPoint : b.rankScore - a.rankScore));
+    // План трат очков (подрежим): жадно по профиту на очко среди комбинаций, где крафт плаща выгоднее продажи герба и сердца; на комбинацию — не больше,
+    // чем рынок поглотит за окно скана (оборот в день × дни) и чем хватает очков; в остальном — как «ленивый крафтер».
+    let factionPlan = null;
+    if (factionPlanWanted) {
+      let left = factionPoints;
+      const items = [];
+      for (const r of [...allCandidates].filter((x) => x.craftBeatsParts && x.profitPerUnit > 0).sort((a, b) => b.profitPerPoint - a.profitPerPoint)) {
+        if (left < r.factionPoints) continue;
+        const cap = Math.max(Math.floor(r.dailyVolume * days), 1);
+        const qty = Math.min(cap, Math.floor(left / r.factionPoints));
+        if (qty < 1) continue;
+        left -= qty * r.factionPoints;
+        items.push({ itemId: r.itemId, tier: r.tier, enchant: r.enchant, quality: r.quality, qty, points: qty * r.factionPoints, pointsPerCape: r.factionPoints, cost: r.cost, profitPerUnit: r.profitPerUnit, profit: r.profitPerUnit * qty, profitPerPoint: r.profitPerPoint, marketCap: cap, dailyVolume: r.dailyVolume });
+      }
+      factionPlan = { points: factionPoints, spent: factionPoints - left, remaining: left, totalProfit: items.reduce((s, i) => s + i.profit, 0), capes: items.reduce((s, i) => s + i.qty, 0), items };
+    }
     const data = {
+      faction: faction ? { id: factionKey, name: faction.name, points: factionPoints, heartPoints: HEART_POINTS, crestPoints: CREST_POINTS } : null,
+      factionPlan,
       mode, enchantMode, liquidity, days, materialHours, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
