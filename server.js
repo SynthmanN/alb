@@ -4,7 +4,7 @@ const rateLimit = require('express-rate-limit');
 const { AodpBudget } = require('./lib/aodpBudget');
 const { GEAR_RRR_PRESETS, resolveGearRrrRate } = require('./data/gear-rrr');
 const { FACTIONS, HEART_POINTS, CREST_POINTS, pointsPerCape, crestIdOf } = require('./data/faction');
-const { openJug, jugStats, pruneToCatalog, HISTORY_WINDOW_HOURS } = require('./lib/jugStore');
+const { openJug, jugStats, pruneToCatalog, HISTORY_WINDOW_HOURS, MANUAL_PRICE_TTL_MS, setManualPrice, getManualPrices } = require('./lib/jugStore');
 const { readPrices, readHistory, jugFreshness } = require('./lib/jugQuery');
 const { startJugCrawler, CYCLE_MS } = require('./lib/jugCrawler');
 const path = require('path');
@@ -2641,6 +2641,160 @@ app.get('/api/unified-scan', (req, res) => {
   }
 });
 
+
+// --- Вписанные цены (общие, недостоверные): там, где у AODP данных нет ---
+// Принимаются только id из каталога кувшина (герб, сердце, плащ, руны, гир…): произвольные строки в базу не попадают. Цена 0 — убрать.
+let manualCatalogSet = null;
+app.post('/api/manual-price', (req, res) => {
+  try {
+    const { id, quality = 1, price } = req.body || {};
+    if (typeof id !== 'string' || id.length > 80) return res.status(400).json({ error: 'id предмета не указан' });
+    if (!manualCatalogSet) manualCatalogSet = new Set(buildJugCatalog());
+    if (!manualCatalogSet.has(id)) return res.status(400).json({ error: `предмета «${id}» нет в каталоге` });
+    const q = Number(quality);
+    if (!Number.isInteger(q) || q < 1 || q > 5) return res.status(400).json({ error: 'качество — от 1 до 5' });
+    const p = Number(price);
+    if (!Number.isFinite(p) || p < 0 || p > 10_000_000_000) return res.status(400).json({ error: 'цена — число от 0 (убрать) до 10 млрд' });
+    setManualPrice(jugDb, id, q, p);
+    res.json({ ok: true, id, quality: q, price: Math.round(p) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'не удалось сохранить цену', details: err.message });
+  }
+});
+// Подстановка вписанных цен вместо отсутствующих цен AODP: как будто пришли от AODP (по всем запрошенным городам), но с пометкой manual
+function addManualPriceRecords(records, ids, cities, quality = 1, now = Date.now()) {
+  const have = new Set(records.filter((r) => r.sell_price_min && r.quality === quality).map((r) => r.item_id));
+  const manual = getManualPrices(jugDb, ids.filter((id) => !have.has(id)), now);
+  const out = [...records];
+  for (const id of ids) {
+    const m = manual[`${id}|${quality}`];
+    if (have.has(id) || !m) continue;
+    for (const city of cities) out.push({ item_id: id, city, quality, sell_price_min: m.price, sell_price_min_date: new Date(m.enteredAt).toISOString().slice(0, 19), buy_price_max: 0, manual: true });
+  }
+  return out;
+}
+
+// --- План трат фракционных очков: позиции фракционных плащей (T4–T8), цены, себестоимость и продажа; расчёт плана — на клиенте (реактивно) ---
+// В списке — комбинации (тир × зачарование × качество), по которым есть данные продаж, плюс добавленные пользователем (extra=тир:чарка:качество,…).
+// Себестоимость плаща: обычный плащ того же зачарования (или крафт его самому) — «прямой» путь, либо обычный плащ .0 + руны/души/реликвии — путь
+// «после крафта»; после выбирается, только если дешевле прямого на 5% и больше. Герб и сердце получены за очки (в серебре 0), но у них есть рыночные цены.
+app.get('/api/faction-plan', (req, res) => {
+  try {
+    const factionKey = FACTIONS[req.query.faction] ? req.query.faction : null;
+    if (!factionKey) return res.status(400).json({ error: `faction должен быть одним из: ${Object.keys(FACTIONS).join(', ')}` });
+    const faction = FACTIONS[factionKey];
+    const days = parseBulkDays(req);
+    const materialHours = parseMaterialHours(req);
+    const rrrOpts = parseGearRrrOptions(req);
+    const taxRate = getSalesTaxRate(req);
+    const queryCities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
+    const now = Date.now();
+    const tiers = Object.keys(CREST_POINTS).map(Number);
+    const gearOf = (t) => `T${t}_${faction.capeFamily}`;
+    const finishedOf = (t, e) => gearEnchantId(gearOf(t), e);
+    const extras = String(req.query.extra || '').split(',').map((s) => s.split(':').map(Number)).filter(([t, e, q]) => tiers.includes(t) && e >= 0 && e <= 4 && q >= 1 && q <= 5);
+
+    // материалы: плащ по зачарованиям, ткань/кожа для его крафта, руны, герб и сердце
+    const materialIdSet = new Set([faction.heartId]);
+    for (const t of tiers) {
+      materialIdSet.add(crestIdOf(gearOf(t)));
+      for (const e of [0, 1, 2, 3, 4]) {
+        const capeId = effectiveRecipeResourceId(`T${t}_CAPE`, e);
+        materialIdSet.add(capeId);
+        for (const part of subcraftComponents(`T${t}_CAPE`, capeId).parts) materialIdSet.add(part.id);
+      }
+      for (let lvl = 1; lvl <= 3; lvl++) materialIdSet.add(enchantMaterialId(t, lvl));
+    }
+    const materialIds = [...materialIdSet];
+    const priceRecords = addManualPriceRecords(readPrices(jugDb, materialIds, { cities: queryCities, qualities: [1] }), materialIds, queryCities, 1, now);
+    const snapshot = quotesById(priceRecords);
+    const manualIds = new Set(priceRecords.filter((r) => r.manual).map((r) => r.item_id));
+    const priceHistory = indexByItem(readHistory(jugDb, materialIds, materialHours, { locations, qualities: [1], now }));
+    const manualInfo = getManualPrices(jugDb, materialIds, now);
+    const materialQuotes = {};
+    for (const id of materialIds) {
+      materialQuotes[id] = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshot[id]).map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
+    }
+    const quoteOf = (id) => {
+      const q = cheapestOf(materialQuotes[id]);
+      if (!q) return null;
+      return { id, label: resolveItemNameWithEnchant(id), price: q.price, ageMinutes: quoteAgeMinutes(q.date, now), manual: manualIds.has(id) };
+    };
+    // цена продажи (для деталей — как продавцу, без комиссии покупки)
+    const partQuote = (id) => {
+      const q = cheapestOf(materialQuotes[id]);
+      if (!q) return null;
+      const list = materialQuotes[id].map((x) => x.price / (1 + SETUP_FEE_RATE));
+      return { id, label: resolveItemName(id), price: Math.max(...list), ageMinutes: quoteAgeMinutes(q.date, now), manual: manualIds.has(id) };
+    };
+    const subOpts = { ...rrrOpts, subcraft: { priceOf: (id) => cheapestOf(materialQuotes[id]) } };
+
+    // история готовых плащей: все 10 дней, окно скана — основа, старые дни — только для пустых ячеек
+    const finishedIds = [];
+    for (const t of tiers) for (const e of [0, 1, 2, 3, 4]) finishedIds.push(finishedOf(t, e));
+    const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, HISTORY_WINDOW_HOURS, { locations, qualities: ALL_QUALITIES, now }));
+    const finishedHistory = indexByItem(windowWithGapFill(cleaned.series, days, now));
+    const manualSale = getManualPrices(jugDb, finishedIds, now);
+
+    const combos = new Map();
+    const addCombo = (t, e, q, source) => { const key = `${t}|${e}|${q}`; if (!combos.has(key)) combos.set(key, { t, e, q, source }); };
+    for (const t of tiers) for (const e of [0, 1, 2, 3, 4]) {
+      for (const s of finishedHistory.get(finishedOf(t, e)) || []) if (s.data.some((p) => p.item_count > 0)) addCombo(t, e, s.quality, 'data');
+    }
+    for (const [t, e, q] of extras) addCombo(t, e, q, 'extra');
+
+    const rows = [...combos.values()].sort((a, b) => a.t - b.t || a.e - b.e || a.q - b.q).map(({ t, e, q, source }) => {
+      const gearId = gearOf(t);
+      const finishedId = finishedOf(t, e);
+      const capeRes = RECIPES[gearId].resources.find((r) => r.resource === `T${t}_CAPE`);
+      const slot = ITEM_SLOT_BY_ID.get(gearId);
+      const quoteFor = (enchant) => {
+        const id = effectiveRecipeResourceId(`T${t}_CAPE`, enchant);
+        const best = bestMaterialQuote(materialQuotes[id] || [], { ...capeRes, queryId: id }, subOpts);
+        return best ? { id, label: resolveItemNameWithEnchant(id), price: best.price, source: best.source || 'buy', ageMinutes: quoteAgeMinutes(best.date, now), manual: manualIds.has(id) } : { id, label: resolveItemNameWithEnchant(id), price: null };
+      };
+      const capeDirect = quoteFor(e);
+      const cape0 = e > 0 ? quoteFor(0) : capeDirect;
+      const runes = [];
+      if (e > 0 && e <= 3 && ENCHANT_MATERIAL_COUNT[slot]) {
+        for (let lvl = 1; lvl <= e; lvl++) {
+          const id = enchantMaterialId(t, lvl);
+          const qt = quoteOf(id);
+          runes.push({ id, label: resolveItemName(id), count: ENCHANT_MATERIAL_COUNT[slot], price: qt ? qt.price : null, ageMinutes: qt ? qt.ageMinutes : null });
+        }
+      }
+      const series = finishedHistory.get(finishedId) || [];
+      const stats = cityStats(series, finishedId, days, q);
+      const allowed = new Set(queryCities.map(normLocation));
+      const cities = Object.entries(stats).filter(([c]) => allowed.has(normLocation(c)));
+      let sale = null;
+      if (cities.length) {
+        const volume = cities.reduce((s, [, st]) => s + st.avgDailyVolume, 0);
+        const avg = cities.reduce((s, [, st]) => s + st.avgPrice * st.avgDailyVolume, 0) / volume;
+        sale = { avgPrice: avg, netSell: avg * (1 - taxRate - SETUP_FEE_RATE), dailyVolume: volume, ageDays: lastTradeAgeDays(series, q, queryCities, now), filled: series.some((s) => s.synthetic && s.quality === q), manual: false };
+      } else if (manualSale[`${finishedId}|${q}`]) {
+        const m = manualSale[`${finishedId}|${q}`];
+        sale = { avgPrice: m.price, netSell: m.price * (1 - taxRate - SETUP_FEE_RATE), dailyVolume: null, ageDays: (now - m.enteredAt) / 86400000, filled: false, manual: true };
+      }
+      return {
+        itemId: gearId, finishedId, tier: t, enchant: e, quality: q, source, pointsPerCape: pointsPerCape(t), crestId: crestIdOf(gearId), heartId: faction.heartId,
+        capeDirect, cape0, runes, maxAfter: e <= 3, crest: partQuote(crestIdOf(gearId)), heart: partQuote(faction.heartId), sale,
+        manualSaleKey: { id: finishedId, quality: q },
+      };
+    });
+
+    res.json({
+      faction: { id: factionKey, name: faction.name, heartId: faction.heartId, heartPoints: HEART_POINTS, crestPoints: CREST_POINTS },
+      days, materialHours, taxRate, setupFeeRate: SETUP_FEE_RATE, gearRate: rrrOpts.gearRate, tiers,
+      rows, jug: jugFreshness(jugDb, now), manualTtlDays: MANUAL_PRICE_TTL_MS / 86400000,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'не удалось построить план', details: err.message });
+  }
+});
 
 // --- Рефайн: скан выгодных переработок и калькулятор (терпеливая модель, кувшин) ---
 // Модель одна для скана и калькулятора. Играем по-настоящему: сырьё и полуфабрикат предыдущего тира закупаем в САМЫХ ДЕШЁВЫХ ЛИКВИДНЫХ

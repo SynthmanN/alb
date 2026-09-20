@@ -91,3 +91,21 @@ describe('кувшин: хранилище', () => {
     }
   });
 });
+
+describe('кувшин: вписанные цены (общие, недостоверные, живут 10 дней)', () => {
+  const { openJug, setManualPrice, getManualPrices, MANUAL_PRICE_TTL_MS } = require('../lib/jugStore.js');
+  it('запись, чтение по id, обновление, удаление нулём; старше 10 дней — исчезает', () => {
+    const db = openJug();
+    const now = 1_000_000_000_000;
+    setManualPrice(db, 'T7_CAPEITEM_FW_LYMHURST_BP', 1, 30000, now);
+    setManualPrice(db, 'T1_FACTION_FOREST_TOKEN_1', 1, 12000.4, now - 1000);
+    expect(getManualPrices(db, ['T7_CAPEITEM_FW_LYMHURST_BP', 'T1_FACTION_FOREST_TOKEN_1', 'X'], now)).toEqual({
+      'T7_CAPEITEM_FW_LYMHURST_BP|1': { price: 30000, enteredAt: now }, 'T1_FACTION_FOREST_TOKEN_1|1': { price: 12000, enteredAt: now - 1000 },
+    });
+    setManualPrice(db, 'T7_CAPEITEM_FW_LYMHURST_BP', 1, 31000, now + 5);
+    expect(getManualPrices(db, ['T7_CAPEITEM_FW_LYMHURST_BP'], now + 5)['T7_CAPEITEM_FW_LYMHURST_BP|1'].price).toBe(31000);
+    setManualPrice(db, 'T7_CAPEITEM_FW_LYMHURST_BP', 1, 0, now + 6);
+    expect(getManualPrices(db, ['T7_CAPEITEM_FW_LYMHURST_BP'], now + 6)).toEqual({});
+    expect(getManualPrices(db, ['T1_FACTION_FOREST_TOKEN_1'], now + MANUAL_PRICE_TTL_MS + 10)).toEqual({});   // прошло 10 дней
+  });
+});

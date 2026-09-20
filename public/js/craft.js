@@ -1408,23 +1408,10 @@ function renderFactionScan(data) {
   const f = data.faction;
   const jugNote = data.jug && data.jug.lastPricePass ? `Кувшин: цены обновлены ${fmtAgeMinutes((Date.now() - data.jug.lastPricePass) / 60000)}.` : 'Кувшин ещё пуст — фоновый краулер только начал работу.';
   const qLabel = (r) => `T${r.tier} · .${r.enchant} · ${QUALITY_NAMES[r.quality]}`;
-  const planHtml = data.factionPlan ? (() => {
-    const p = data.factionPlan;
-    if (p.items.length === 0) return `<div class="faction-plan"><h4>План трат очков</h4><p class="calc-note">На ${fmtNum(p.points)} очков не набралось ни одного плаща, где крафт выгоднее продажи герба и сердца (или очков не хватает даже на один плащ).</p></div>`;
-    const lines = p.items.map((i) => {
-      const item = findItem(i.itemId) || { id: i.itemId, name: i.itemId };
-      return `<tr><td><span class="scan-item"><img class="item-icon-sm" src="${iconUrl(item.id, 64, i.enchant, i.quality)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span>${item.name}${enchantTag(i.enchant)}<br><small class="scan-item-sub">T${i.tier} · .${i.enchant} · ${QUALITY_NAMES[i.quality]}</small></span></span></td>
-        <td data-sort-value="${i.qty}">${fmtNum(i.qty)}<br><small title="Оборот ${fmtNum(i.dailyVolume, 1)}/день × окно">не больше ${fmtNum(i.marketCap)} за окно</small></td>
-        <td data-sort-value="${i.points}">${fmtNum(i.points)}<br><small>${fmtNum(i.pointsPerCape)} на плащ</small></td>
-        <td>${fmtNum(i.cost)}</td><td class="scan-spread-hot" data-sort-value="${i.profit}">+${fmtNum(i.profit)}<br><small>${fmtNum(i.profitPerUnit)} за шт</small></td><td data-sort-value="${i.profitPerPoint}">${fmtNum(i.profitPerPoint, 1)}</td>
-        <td><button class="scan-add-btn" data-kind="gear" data-id="${item.id}" data-enchant="${i.enchant}" data-quality="${i.quality}" data-quantity="${i.qty}">в калькулятор</button></td></tr>`;
-    }).join('');
-    return `<div class="faction-plan"><h4>План трат очков <small>по убыванию профита на очко, не больше оборота рынка за окно</small></h4>
-      <div class="craft-summary"><div class="craft-summary-row"><span>Плащей в плане</span><span>${fmtNum(p.capes)}</span></div>
-        <div class="craft-summary-row"><span>Потрачено очков из ${fmtNum(p.points)}</span><span>${fmtNum(p.spent)} · остаток ${fmtNum(p.remaining)}</span></div>
-        <div class="craft-summary-row"><strong>Профит по плану</strong><strong class="profit-pos">${fmtNum(p.totalProfit)}</strong></div></div>
-      <div class="table-scroll"><table class="scan-table"><thead><tr><th>Плащ</th><th>Штук</th><th>Очков</th><th>Себестоимость/шт</th><th>Профит</th><th>Профит на очко</th><th></th></tr></thead><tbody>${lines}</tbody></table></div></div>`;
-  })() : '';
+  // План трат очков открывается в калькуляторе (там можно вписывать свои цены); в скане остаётся только таблица комбинаций
+  if (data.factionPlan) openFactionPlan(f.id, f.points);
+  else if (typeof closeFactionPlan === 'function') closeFactionPlan();
+  const planHtml = '';
   if (data.results.length === 0) {
     marginEl.result.innerHTML = `${planHtml}<div class="chart-empty">Ничего не нашлось — нет прибыльных плащей фракции «${f.name}» с таким оборотом. ${jugNote}</div>`;
     return;

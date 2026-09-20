@@ -1144,6 +1144,7 @@ test('фракционный режим скана: выключен по умо
   const calcQueries = [];
   await page.route('**/api/unified-scan*', (route) => { scanQueries.push(new URL(route.request().url()).searchParams); route.fulfill({ json: factionScan() }); });
   await page.route('**/api/craft-calc*', (route) => { calcQueries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
+  await page.route('**/api/faction-plan*', (route) => route.fulfill({ json: { faction: { id: 'MARTLOCK', name: 'Мартлок', heartId: 'T1_FACTION_HIGHLAND_TOKEN_1', heartPoints: 3000, crestPoints: { 4: 400 } }, days: 7, materialHours: 24, taxRate: 0.08, setupFeeRate: 0.025, gearRate: 0.248, tiers: [4], manualTtlDays: 10, rows: [], jug: {} } }));
   await page.goto('/craft.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-faction-on')).not.toBeChecked();
@@ -1165,8 +1166,8 @@ test('фракционный режим скана: выключен по умо
   await expect(page.locator('#faction-scan-table tbody tr').first()).toContainText('3 400');       // сердце 3000 + герб T4 400
   await expect(page.locator('#faction-scan-table tbody tr').first()).toContainText('крафт выгоднее');
   await expect(page.locator('#faction-scan-table tbody tr').nth(1)).toContainText('выгоднее продать детали');
-  await expect(page.locator('.faction-plan')).toContainText('План трат очков');
-  await expect(page.locator('.faction-plan')).toContainText('остаток 5 400');
+  await expect(page.locator('#faction-plan-panel')).toContainText('План трат фракционных очков');       // план открывается в калькуляторе
+  await expect(page.locator('#faction-plan-panel')).toContainText('остаток 60 000');
   await expect(page.locator('#craft-faction-badge')).toBeEmpty();                                // калькулятор пока обычный
   await page.locator('#faction-scan-table .scan-add-btn').first().click();
   await expect(page.locator('#craft-faction-badge')).toContainText('Фракционный режим: Мартлок');
@@ -1232,4 +1233,38 @@ test('фракционный режим калькулятора: поле «О�
   expect(calcQueries[calcQueries.length - 1].get('factionPoints')).toBe('20000');                 // очки не меняются
   await page.locator('#craft-faction-off').click();
   await expect(page.locator('#craft-faction-points-field')).toBeHidden();
+});
+
+test('план трат фракционных очков: открывается в калькуляторе, реактивно пересчитывается при вписанных ценах, вписанная цена сохраняется', async ({ page }) => {
+  const saved = [];
+  const row = (tier, enchant, cape, sale, vol) => ({
+    itemId: `T${tier}_CAPEITEM_FW_MARTLOCK`, finishedId: `T${tier}_CAPEITEM_FW_MARTLOCK`, tier, enchant, quality: 1, source: 'data', pointsPerCape: 3000 + { 4: 400, 5: 2250 }[tier],
+    crestId: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, heartId: 'T1_FACTION_HIGHLAND_TOKEN_1',
+    capeDirect: { id: `T${tier}_CAPE`, label: 'Плащ', price: cape, ageMinutes: 30, manual: false }, cape0: { id: `T${tier}_CAPE`, label: 'Плащ', price: cape, ageMinutes: 30, manual: false },
+    runes: [], maxAfter: true, crest: { id: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, label: 'Герб', price: 500, ageMinutes: 30, manual: false }, heart: { id: 'T1_FACTION_HIGHLAND_TOKEN_1', label: 'Сердце', price: 1000, ageMinutes: 30, manual: false },
+    sale: { avgPrice: sale, netSell: sale * 0.895, dailyVolume: vol, ageDays: 0.5, filled: false, manual: false }, manualSaleKey: { id: `T${tier}_CAPEITEM_FW_MARTLOCK`, quality: 1 },
+  });
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { faction: { id: 'MARTLOCK', name: 'Мартлок', points: 20000, heartPoints: 3000, crestPoints: { 4: 400 } }, factionPlan: { points: 20000, spent: 0, remaining: 20000, totalProfit: 0, capes: 0, items: [] }, results: [], jug: {} } }));
+  await page.route('**/api/faction-plan*', (route) => route.fulfill({ json: {
+    faction: { id: 'MARTLOCK', name: 'Мартлок', heartId: 'T1_FACTION_HIGHLAND_TOKEN_1', heartPoints: 3000, crestPoints: { 4: 400, 5: 2250 } }, days: 7, materialHours: 24, taxRate: 0.08, setupFeeRate: 0.025, gearRate: 0.248, tiers: [4, 5], manualTtlDays: 10,
+    rows: [row(4, 0, 2000, 30000, 0.5), row(5, 0, null, 40000, 5)], jug: {},
+  } }));
+  await page.route('**/api/manual-price', (route) => { saved.push(route.request().postDataJSON()); route.fulfill({ json: { ok: true } }); });
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-faction-on').check();
+  await page.locator('#margin-faction-points').fill('20000');
+  await page.locator('#margin-faction-plan').check();
+  await page.locator('#margin-run').click();
+  const panel = page.locator('#faction-plan-panel');
+  await expect(panel.locator('tbody tr[data-row]')).toHaveCount(2);
+  await expect(panel.locator('tr.fp-on')).toHaveCount(1);                              // T4 в плане, у T5 нет цены плаща — серая
+  await expect(panel.locator('tr[data-row="5|0|1"]')).toHaveClass(/fp-off/);
+  await expect(panel).toContainText('Не хватает данных');
+  await panel.locator('.fp-missing-row input').first().fill('5000');                    // вписываем цену обычного плаща T5 → строка позеленела
+  await expect(panel.locator('tr[data-row="5|0|1"]')).toHaveClass(/fp-on/);
+  await expect.poll(() => saved.length).toBeGreaterThan(0);
+  expect(saved[0]).toMatchObject({ id: 'T5_CAPE', quality: 1, price: 5000 });
+  await panel.locator('#fp-add-toggle').click();
+  await expect(panel.locator('#fp-add-form')).toBeVisible();
 });

@@ -434,3 +434,25 @@ td.plan-check input { width: auto; }
 .faction-plan h4 small { color: #8b919c; font-weight: 400; margin-left: 6px; }
 .faction-points { color: #d8b45a; }
 .faction-tile { border-color: #8a6d2a; background: linear-gradient(160deg, rgba(216, 180, 90, 0.12), var(--cc-panel, #1e2126) 70%); }
+
+/* План трат фракционных очков в калькуляторе: зелёные строки — в плане, серые — нет данных или менее выгодно */
+.fp-shell { margin: 12px 0 18px; }
+.fp-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-bottom: 8px; }
+.fp-head h4 { flex: 1 1 100%; margin: 0; }
+.fp-add { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fp-add select, .fp-add button, #fp-mode { padding: 6px 8px; }
+.fp-close { margin-left: auto; padding: 4px 10px; }
+.fp-table td, .fp-table th { vertical-align: top; }
+.fp-table tr.fp-off > td { color: #8b919c; }
+.fp-table tr.fp-on > td { background: rgba(60, 170, 90, 0.16); }
+.fp-table tr.fp-on > td:first-child { box-shadow: inset 3px 0 0 #3caa5a; }
+.fp-qty b { color: #6fdc8c; }
+.fp-input { width: 96px; padding: 4px 6px; border: 1px dashed #555c68; background: transparent; color: inherit; border-radius: 4px; }
+.fp-input.is-manual { border-style: solid; border-color: #d8b45a; }
+.fp-limit { width: 84px; margin-top: 3px; }
+.fp-warn { color: #d8b45a; }
+.fp-missing-row > td { background: rgba(216, 180, 90, 0.07); padding: 6px 10px; }
+.fp-missing-title { color: #d8b45a; margin-right: 6px; }
+.fp-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 3px 12px 3px 0; }
+.fp-chip small { color: #8b919c; }
+.fp-remove { margin-left: 6px; padding: 0 6px; }
