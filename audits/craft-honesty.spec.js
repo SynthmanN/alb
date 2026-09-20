@@ -44,7 +44,7 @@ test('цикл игрока: числа итога совпадают с нез�
     { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: COST, avgSellPrice: 7500, dailyVolume: 70, yourDailyVolume: 35, marketDailyVolume: 100, sellCities: ['Lymhurst', 'Martlock'], profitPerUnit: 3000, profitPct: 80, dailyProfit: 105000, premiumDays: 266, daysToAcquire: 1, daysToSell: 20, totalDays: 21, cycleDays: 21, effectiveDays: 21, cappedByMinDays: false, positionCost: 500000, quantity: 700, freshMinutes: 10, rankScore: 100000, tradeHours: 120, confidence: 120 / 140 }] } }));
   await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: calcPayload(Number(new URL(route.request().url()).searchParams.get('quantity') || 700)) }));
 
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('details.tool-accordion summary', { hasText: 'Скан маржи и ликвидности' }).click();
   await page.locator('#margin-run').click();
   await page.locator('#margin-result .scan-add-btn').first().click();          // «выбрал находку и отправил в калькулятор»
@@ -79,7 +79,7 @@ test('цикл игрока: числа итога совпадают с нез�
 
 test('убыточный город в плане: профит партии уменьшается, а не «сглаживается» средним', async ({ page }) => {
   await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: calcPayload(700) }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();

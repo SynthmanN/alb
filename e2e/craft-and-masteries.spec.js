@@ -10,7 +10,7 @@ test('крафт-калькулятор: выбор предмета и расч
     taxRate: 0.08, netSellPrice: 9200, profitPerUnit: 1200, totalProfit: 1200,
     patientSell: { days: 7, avgSellPrice: 11000, bestCity: { city: 'Lymhurst', avgPrice: 12000 }, avgDailyVolume: 20, daysToSellBatch: 0.05, netSellPrice: 10120, profitPerUnit: 2120 },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -72,7 +72,7 @@ test('ленивый крафтер: по бюджету строит план �
         avgDailySellVolume: 50, bestSellCity: { city: 'Martlock', avgPrice: 140000 }, bottleneckResource: 'T4_METALBAR', daysToAcquireBatch: 0.5, daysToSellBatch: 1 }],
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Ленивый крафтер');
   await page.locator('#lazy-budget').fill('1000000');
   await page.locator('#lazy-strategy').selectOption('mass');
@@ -86,7 +86,7 @@ test('ленивый крафтер: по бюджету строит план �
 test('доля рынка: селектор уходит в запрос калькулятора', async ({ page }) => {
   let query = null;
   await page.route('**/api/craft-calc*', (route) => { query = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-market-share').selectOption('0.5');
@@ -107,7 +107,7 @@ test('время закупки сырья: колонка «Дней на за�
       { resource: 'T4_CAPEITEM_AVALON_BP', resourceName: 'Герб Авалона', needed: 100, avgDailyVolume: 4.4, daysToAcquire: 22.5 },
       { resource: 'T4_CAPE', resourceName: 'Плащ', needed: 100, avgDailyVolume: 200, daysToAcquire: 0.5 }] },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('авалонский плащ');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -134,7 +134,7 @@ test('телепорт: галочка добавляет параметр в з
       },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-teleport').check();
@@ -159,7 +159,7 @@ test('зачарование после крафта и порог продаж�
       teleport: null,
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('авалонский плащ');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-enchant').selectOption('2');
@@ -184,7 +184,7 @@ test('качество: сравнение всех 5 качеств и разб
       byCity: [{ city: 'Fort Sterling', avgSellPrice: 95058, avgDailyVolume: 1.6, profitPerUnit: -2500 }, { city: 'Thetford', avgSellPrice: 90000, avgDailyVolume: 0.5, profitPerUnit: -7000 }], cities: [] },
     qualityComparison: [1, 2, 3, 4, 5].map((q) => ({ quality: q, avgSellPrice: 90000 + q * 1000, avgDailyVolume: q === 4 ? 204.7 : 1.5, daysToSellBatch: q === 4 ? 0.5 : 66, profitPerUnit: q * 1000 })),
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('авалонский плащ');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -207,7 +207,7 @@ test('сравнение по тирам: строка переключает т
       tierComparison: [tierRow('T4_MAIN_SWORD', 4, 8000, -1500, id === 'T4_MAIN_SWORD'), tierRow('T5_MAIN_SWORD', 5, 25000, 4000, id === 'T5_MAIN_SWORD')],
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item', { hasText: 'T4' }).first().click();
   await page.locator('#craft-enchant').selectOption('2');
@@ -240,7 +240,7 @@ test('скан маржи и ликвидности: параметры в за�
     ] } });
   });
   await page.route('**/api/craft-calc*', (route) => { calcQuery = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-enchant-after')).toBeChecked();                 // «зачаровать после крафта» — галочка, по умолчанию включена
   await expect(page.locator('#margin-liquidity')).toHaveCount(0);                    // выпадающего «ликвидность» больше нет
@@ -269,7 +269,7 @@ test('скан маржи: без капитала, минимума дней и
       { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 900, avgSellPrice: 1300, dailyVolume: 400, yourDailyVolume: 100, sellCities: ['Martlock'], profitPerUnit: 250, profitPct: 28, dailyProfit: 25000, premiumDays: 1120, daysToAcquire: null, daysToSell: null, totalDays: null, cycleDays: 1, effectiveDays: 1, cappedByMinDays: true, positionCost: 500000, quantity: 400, freshMinutes: 20, rankScore: 25000, tradeHours: 80, confidence: 0.8 },
     ] } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-capital')).toHaveCount(0);                    // ни капитала, ни минимума дней, ни «часов в день», ни доли рынка
   await expect(page.locator('#margin-min-days')).toHaveCount(0);
@@ -297,7 +297,7 @@ test('потолок и полоса цены живут в калькулято
       sellPlan: { ceiling: 90000, withinCeiling: true, sellLow: 110000, sellHigh: 130000, netLow: 101200, netHigh: 119600, profitLow: 33200, profitHigh: 51600, totalLow: 33200000, totalHigh: 51600000 },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await expect(page.locator('#bulk-panel')).toHaveCount(0);       // отдельного «Плана крупной партии» больше нет
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
@@ -314,7 +314,7 @@ test('потолок и полоса цены живут в калькулято
 });
 
 test('аккордеон ★ бета: калькулятор на виду, инструменты свёрнуты и раскрываются по клику', async ({ page }) => {
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await expect(page.locator('#craft-search')).toBeVisible();                       // калькулятор — всегда открыт
   await expect(page.locator('.beta-star')).toBeVisible();
   const tools = page.locator('details.tool-accordion');
@@ -332,7 +332,7 @@ test('план продажи по городам: партия делится �
     patientSell: { days: 7, marketShare: 0.5, avgSellPrice: 3000, bestCity: { city: 'Lymhurst', avgPrice: 3000 }, avgDailyVolume: 120, daysToSellBatch: 2, netSellPrice: 2760, profitPerUnit: 1760,
       byCity: [{ city: 'Lymhurst', avgSellPrice: 3000, avgDailyVolume: 100, profitPerUnit: 1760 }, { city: 'Martlock', avgSellPrice: 2900, avgDailyVolume: 20, profitPerUnit: 1670 }], cities: [] },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -356,7 +356,7 @@ test('материалы: количество к закупке с учётом
     ],
     sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null, enchantAfterCraft: null, teleport: null,
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('авалонский плащ');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -385,7 +385,7 @@ test('многогородовой план: допуск цены уходит 
           cities: [{ city: 'Lymhurst', avgPrice: 5100, avgDailyVolume: 10, tolerance: 0.05, qty: 1000, days: 9 }] } },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-price-tolerance').fill('8');
@@ -408,7 +408,7 @@ test('ручной план продажи: ввод количества в г�
     patientSell: { days: 7, marketShare: 0.5, avgSellPrice: 3000, bestCity: { city: 'Lymhurst', avgPrice: 3000 }, avgDailyVolume: 30, daysToSellBatch: 3.3, netSellPrice: 3000, profitPerUnit: 2000,
       byCity: [{ city: 'Lymhurst', avgSellPrice: 3000, avgDailyVolume: 20, profitPerUnit: 2000 }, { city: 'Martlock', avgSellPrice: 2000, avgDailyVolume: 10, profitPerUnit: 1000 }], cities: [] },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -433,7 +433,7 @@ test('ручной план продажи: ввод количества в г�
 test('доля рынка и период истории: можно вписать своё значение — оно уходит в запрос (доля как 0..1)', async ({ page }) => {
   let query = null;
   await page.route('**/api/craft-calc*', (route) => { query = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-market-share').selectOption('__custom__');
@@ -459,7 +459,7 @@ test('чекбоксы городов в плане продажи: включе
       cities: [], plan: { bestPrice: 3000, avgPrice: 3000, overpayPct: 0, totalDays: 5, cycleDays: 5, effectiveDays: 5, cappedByMinDays: false, positionCost: 500000, excluded: [{ city: 'Martlock', reason: 'ниже допуска' }, { city: 'Thetford', reason: 'ниже допуска' }],
         cities: [{ city: 'Lymhurst', avgPrice: 3000, avgDailyVolume: 20, tolerance: 0.02, qty: 100, days: 5 }] } },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -497,7 +497,7 @@ async function openSalePlanMock(page, { keepDefaultStrategy = false, profitIndex
       cities: [], plan: { bestPrice: 3000, avgPrice: 3000, overpayPct: 0, totalDays: 5, cycleDays: 5, effectiveDays: 5, cappedByMinDays: false, positionCost: 500000, excluded: [{ city: 'Martlock', reason: 'ниже допуска' }, { city: 'Thetford', reason: 'ниже допуска' }],
         cities: [{ city: 'Lymhurst', avgPrice: 3000, avgDailyVolume: 20, tolerance: 0.02, qty: 100, days: 5 }] } },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -563,7 +563,7 @@ test('честность скана: возврат уходит в запрос
       { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: 2400, avgSellPrice: 4000, dailyVolume: 300, yourDailyVolume: 75, sellCities: ['Martlock'], profitPerUnit: 1100, profitPct: 45, dailyProfit: 82000, premiumDays: 300, daysToAcquire: 1, daysToSell: 13, totalDays: 14, cycleDays: 14, effectiveDays: 14, cappedByMinDays: false, positionCost: 500000, quantity: 1000, freshMinutes: 30, rankScore: 80000, tradeHours: 300, confidence: 300 / 320 },
     ] } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-gear-rrr').selectOption('city_bonus_focus');
   await page.locator('#margin-run').click();
@@ -593,7 +593,7 @@ test('возврат при крафте гира: список ставок (24
       baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 4520, baseCostPerUnit: 4520 },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   const select = page.locator('#craft-gear-rrr');
@@ -632,7 +632,7 @@ test('Чёрный Рынок в скане: галочка есть в обои
       { kind: 'gear', itemId: 'T4_MAIN_SWORD', enchant: 0, quality: 1, tier: 4, cost: 2400, avgSellPrice: 4300, sellCities: ['Black Market'], blackMarket: true, sellTaxRate: 0.105, dailyVolume: 40, yourDailyVolume: 10, profitPerUnit: 1448, profitPct: 60, dailyProfit: 14480, premiumDays: 1900, daysToAcquire: null, daysToSell: null, totalDays: null, cycleDays: 1, effectiveDays: 1, cappedByMinDays: true, positionCost: 500000, quantity: 400, freshMinutes: 5, rankScore: 14000, tradeHours: 100, confidence: 100 / 120 },
     ] } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-black-market')).toBeVisible();                // терпеливо (по умолчанию): ЧР — по средней цене его сделок
   await page.locator('#margin-mode').selectOption('instant');
@@ -649,7 +649,7 @@ test('Чёрный Рынок в скане: галочка есть в обои
 test('своё время вписывается с единицей: 12ч / 2д переводятся в дни списка «История», голое число не принимается', async ({ page }) => {
   const queries = [];
   await page.route('**/api/craft-calc*', (route) => { queries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('меч');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-days').selectOption('__custom__');
@@ -684,7 +684,7 @@ test('«в калькулятор» у строки, найденной чере
     { kind: 'gear', itemId: 'T4_CAPEITEM_AVALON', enchant: 0, quality: 2, tier: 4, cost: 72786, avgSellPrice: 161000, sellCities: ['Black Market'], blackMarket: true, sellTaxRate: 0.105, dailyVolume: 9, yourDailyVolume: 2, profitPerUnit: 8621, profitPct: 11.8, dailyProfit: 138793, premiumDays: 200, daysToAcquire: null, daysToSell: null, totalDays: null, cycleDays: 1, effectiveDays: 1, cappedByMinDays: true, positionCost: 500000, quantity: 400, freshMinutes: 5, rankScore: 138000, tradeHours: 40, confidence: 40 / 60 },
   ] } }));
   await page.route('**/api/craft-calc*', (route) => { calcQuery = new URL(route.request().url()).searchParams; route.fulfill({ status: 404, json: { error: 'нет' } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-mode').selectOption('instant');
   await page.locator('#margin-black-market').check();
@@ -705,7 +705,7 @@ test('скан гира: оборот раскрывается списком г
       { kind: 'gear', itemId: 'T5_2H_BOW', enchant: 0, quality: 1, tier: 5, cost: 20000, avgSellPrice: 30000, dailyVolume: 80, marketDailyVolume: 380, sellCities: ['Martlock', 'Lymhurst'], profitPerUnit: 6000, profitPct: 30, marketProfitPerDay: 480000, freshMinutes: 20, rankScore: 300, tradeHours: 6, confidence: 0.2,
         byCity: [{ city: 'Thetford', dailyVolume: 300, avgPrice: 900, inPlan: false }, { city: 'Martlock', dailyVolume: 50, avgPrice: 30100, inPlan: true }, { city: 'Lymhurst', dailyVolume: 30, avgPrice: 29800, inPlan: true }] },
     ] } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-run').click();
   await expect(page.locator('#margin-result tbody tr')).toHaveCount(2);
@@ -733,7 +733,7 @@ test('свои цены: вписал реальную цену сырья и п
       byCity: [{ city: 'Martlock', avgSellPrice: 3000, avgDailyVolume: 20, netPrice: 2685, taxRate: 0.105, profitPerUnit: 685, profitIndex: 100 }],
       cities: [], plan: { strategy: 'maxProfit', bestPrice: 3000, avgPrice: 3000, totalDays: 0.5, excluded: [], netPricePerUnit: 2685, profitPerUnit: 685, cities: [{ city: 'Martlock', avgPrice: 3000, avgDailyVolume: 20, tolerance: null, qty: 10, days: 0.5 }] } },
   } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -762,7 +762,7 @@ test('лог закупок по лотам: вписал купленные с�
     sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
     baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 8000, baseCostPerUnit: 8000 },
   } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-gear-rrr').selectOption('none');                                 // без возврата — числа проще
@@ -811,7 +811,7 @@ test('купить готовый материал или переработат
     sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
     baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 16 * refinePrice * (1 - gear), baseCostPerUnit: 16 * refinePrice * (1 - gear) },
   } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-run').click();
@@ -854,7 +854,7 @@ test('скан гира: ставка переработки уходит в з�
         refined: [{ id: 'T4_METALBAR', city: 'Thetford', buyPrice: 300, price: 150 }] },
     ] } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-refine-rrr').selectOption('custom');
   await page.locator('#margin-refine-rrr-custom').fill('50');
@@ -880,7 +880,7 @@ test('любая правка параметров сама пересчитыв
       baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 1000, baseCostPerUnit: 1000 },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-gear-rrr').selectOption('none');
@@ -901,7 +901,7 @@ test('любая правка параметров сама пересчитыв
 });
 
 test('выбор предмета по категории — ровные колонки: броня по материалу, оружие по игровой классификации (все луки в одной), плащи по городам и фракциям', async ({ page }) => {
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   const columns = page.locator('#craft-suggestions .suggestion-column');
   await page.locator('#craft-category-filter').selectOption('armor');
   await expect(columns).toHaveCount(3);
@@ -933,7 +933,7 @@ test('иконки: выбранный предмет и строки скана
     jug: { lastPricePass: Date.now() - 120000, lastHistoryPass: Date.now() - 300000, lastFullPass: null, oldestPriceAgeMinutes: 5 }, results: [
       { kind: 'gear', itemId: 'T5_CAPEITEM_HERETIC', enchant: 3, quality: 4, tier: 5, cost: 40000, avgSellPrice: 60000, dailyVolume: 12.5, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 47000, premiumDays: 147, daysToAcquire: 2, daysToSell: 8, cycleDays: 10, effectiveDays: 10, cappedByMinDays: false, positionCost: 1000000, quantity: 25, freshMinutes: 12, rankScore: 47000, tradeHours: 6, confidence: 0.2 },
     ] } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-days')).toHaveValue('3');
   await expect(page.locator('#margin-enchant-after')).toBeChecked();
@@ -962,7 +962,7 @@ test('план продажи: города без сделок видны, в �
                { city: 'Lymhurst', avgSellPrice: null, avgDailyVolume: 0, netPrice: null, taxRate: 0, profitPerUnit: null, profitIndex: 0, noData: true }], cities: [],
       plan: { strategy: 'maxProfit', bestPrice: 3000, avgPrice: 3000, totalDays: 2, excluded: [], netPricePerUnit: 3000, profitPerUnit: 2000, cities: [{ city: 'Martlock', avgPrice: 3000, avgDailyVolume: 50, tolerance: null, qty: 100, days: 2 }] } },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-gear-rrr').selectOption('none');
@@ -991,7 +991,7 @@ test('«в калькулятор» из скана: иконка выбранн
       { kind: 'gear', itemId: 'T5_CAPEITEM_HERETIC', enchant: 3, quality: 4, tier: 5, cost: 40000, avgSellPrice: 60000, dailyVolume: 12, sellCities: ['Martlock'], profitPerUnit: 15200, profitPct: 38, dailyProfit: 47000, premiumDays: 147, daysToAcquire: 2, daysToSell: 8, cycleDays: 10, effectiveDays: 10, cappedByMinDays: false, positionCost: 1000000, quantity: 25, freshMinutes: 12, rankScore: 47000, tradeHours: 6, confidence: 0.2 },
     ] } }));
   await page.route('**/api/craft-calc*', (route) => route.fulfill({ status: 404, json: { error: 'нет' } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-run').click();
   await page.locator('#margin-result .scan-add-btn').first().click();
@@ -1008,7 +1008,7 @@ test('клик по предмету копирует игровое назва�
     sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
     baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 100, baseCostPerUnit: 100 },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('факел');
   await page.locator('#craft-suggestions .suggestion-item').filter({ hasText: 'T4' }).first().click();
   await page.locator('#craft-enchant').selectOption('2');
@@ -1031,7 +1031,7 @@ test('скан: галочка «зачаровать после крафта» 
     queries.push(new URL(route.request().url()).searchParams);
     route.fulfill({ json: { mode: 'patient', enchantMode: 'direct', days: 3, taxRate: 0.08, setupFeeRate: 0.025, scanned: 0, enchantRange: '.0–.4', rrrOptions: { gearRate: 0.248, gearRrr: null, gearRrrCustom: null }, refineRate: 0.367, jug: {}, results: [] } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-gear-rrr')).toHaveValue('city_bonus');
   await page.locator('#margin-run').click();
@@ -1055,7 +1055,7 @@ test('ошибки API: вместо «Unexpected token <» — понятное
 });
 
 test('скан гира: по умолчанию «Учитывать ЧР» снят, возврат при крафте — 24.8%', async ({ page }) => {
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-black-market')).not.toBeChecked();
   await expect(page.locator('#margin-gear-rrr')).toHaveValue('city_bonus');
@@ -1065,7 +1065,7 @@ test('скан гира: по умолчанию «Учитывать ЧР» с�
 test('история в настройках калькулятора: «История сырья» 24ч и «История гира» 3 дня на виду, свои значения (2ч, 5д) уходят в запрос', async ({ page }) => {
   const queries = [];
   await page.route('**/api/craft-calc*', (route) => { queries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await expect(page.locator('#craft-material-hours')).toBeVisible();                             // не спрятаны в «Дополнительно»
@@ -1094,7 +1094,7 @@ test('скан гира: «данные устарели на N дней» (от
         byCity: [{ city: 'Martlock', dailyVolume: 20, avgPrice: 30100, inPlan: true, filled: false }, { city: 'Thetford', dailyVolume: 40, avgPrice: 29800, inPlan: true, filled: true }] },
       { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 0, quality: 1, tier: 4, cost: 900, avgSellPrice: 1300, dailyVolume: 80, marketDailyVolume: 80, sellCities: ['Martlock'], profitPerUnit: 250, profitPct: 28, marketProfitPerDay: 20000, freshMinutes: 20, rankScore: 100, tradeHours: 6, confidence: 0.2, dataAgeDays: 0.4, filledCities: 0, byCity: [] },
     ] } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-run').click();
   const old = page.locator('#margin-result tbody tr').filter({ hasText: 'T5' }).first();
@@ -1116,7 +1116,7 @@ test('суммы без копеек (534 777, а не 534 777,678); в поле
     sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
     baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 5347.77678, baseCostPerUnit: 5347.77678 },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await page.locator('#craft-search').fill('палаш');
   await page.locator('#craft-suggestions .suggestion-item').first().click();
   await page.locator('#craft-gear-rrr').selectOption('none');
@@ -1145,7 +1145,7 @@ test('фракционный режим скана: выключен по умо
   await page.route('**/api/unified-scan*', (route) => { scanQueries.push(new URL(route.request().url()).searchParams); route.fulfill({ json: factionScan() }); });
   await page.route('**/api/craft-calc*', (route) => { calcQueries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
   await page.route('**/api/faction-plan*', (route) => route.fulfill({ json: { faction: { id: 'MARTLOCK', name: 'Мартлок', heartId: 'T1_FACTION_HIGHLAND_TOKEN_1', heartPoints: 3000, crestPoints: { 4: 400 } }, days: 7, materialHours: 24, taxRate: 0.08, setupFeeRate: 0.025, gearRate: 0.248, tiers: [4], manualTtlDays: 10, rows: [], jug: {} } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await expect(page.locator('#margin-faction-on')).not.toBeChecked();
   await expect(page.locator('#margin-faction-fields')).toBeHidden();
@@ -1194,7 +1194,7 @@ test('калькулятор во фракционном режиме: герб 
     sellPrices: [], bestSell: null, taxRate: 0.08, netSellPrice: null, profitPerUnit: null, totalProfit: null, patientSell: null,
     baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 1000, baseCostPerUnit: 1000 },
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-faction-on').check();
   await page.locator('#margin-run').click();
@@ -1213,7 +1213,7 @@ test('фракционный режим калькулятора: поле «О�
   const calcQueries = [];
   await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: factionScan() }));
   await page.route('**/api/craft-calc*', (route) => { calcQueries.push(new URL(route.request().url()).searchParams); route.fulfill({ status: 404, json: { error: 'нет' } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await expect(page.locator('#craft-faction-points-field')).toBeHidden();                       // без режима поля очков нет
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-faction-on').check();
@@ -1250,7 +1250,7 @@ test('план трат фракционных очков: открываетс�
     rows: [row(4, 0, 2000, 30000, 0.5), row(5, 0, null, 40000, 5)], jug: {},
   } }));
   await page.route('**/api/manual-price', (route) => { saved.push(route.request().postDataJSON()); route.fulfill({ json: { ok: true } }); });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-faction-on').check();
   await page.locator('#margin-faction-points').fill('20000');
@@ -1283,7 +1283,7 @@ test('план трат очков: зелёные позиции всегда �
     // T4 — самая дешёвая продажа (серая, не влезла), T5 и T6 с данными; очков ровно на один плащ T5 (герб за очки 2250, сердце докупается за серебро)
     rows: [row(4, 0, 1000, 5000, 5), row(5, 0, 2000, 60000, 5), row(6, 0, null, 90000, 5)],
   } }));
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-faction-on').check();
   await page.locator('#margin-faction-points').fill('2250');
@@ -1334,7 +1334,7 @@ test('стек плащей: «Крафтить план» переносит з
       baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: unit, baseCostPerUnit: unit },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-faction-on').check();
   await page.locator('#margin-faction-points').fill('8000');
@@ -1439,7 +1439,7 @@ test('стек плащей: профит по цене продажи из пл
       baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: unit, baseCostPerUnit: unit },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await openTool(page, 'Скан маржи и ликвидности');
   await page.locator('#margin-faction-on').check();
   await page.locator('#margin-faction-points').fill('90000');
@@ -1503,7 +1503,7 @@ test('тумблер источника данных: по умолчанию к
       baseChoice: { targetLevel: 0, steps: [], baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 1000, baseCostPerUnit: 1000 },
     } });
   });
-  await page.goto('/craft.html');
+  await page.goto('/craft-classic.html');
   await expect(page.locator('#source-toggle')).toContainText('краулер');
   await expect(page.locator('#source-toggle')).toHaveAttribute('aria-checked', 'false');
   await page.locator('#craft-search').fill('плащ');

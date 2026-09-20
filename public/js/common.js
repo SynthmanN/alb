@@ -410,7 +410,7 @@ const itemsReady = fetch('/api/items').then((r) => r.json()).then((items) => { A
 function renderSiteChrome() {
   const holder = document.getElementById('site-chrome');
   if (!holder) return;
-  const current = location.pathname.split('/').pop() || 'index.html';
+  const current = (location.pathname.split('/').pop() || 'index.html').replace('craft-classic.html', 'craft.html');   // классическая версия «Крафта» подсвечивает тот же пункт
   holder.innerHTML = `
     <nav class="site-nav">
       <a class="site-title" href="index.html">Albion Market Table</a>

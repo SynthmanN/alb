@@ -156,7 +156,7 @@ export function FactionTab() {
             <td>${c.cost === null ? html`<button type="button" class="pill w" onClick=${() => set({ edit: isEdit ? null : c.key })}>нужна цена ✎</button>` : html`<span class="neg">${fmt(c.cost)}</span>`}</td>
             <td class=${tone(c.profitAll)}>${c.profitAll === null ? '—' : signed(c.profitAll)}</td>
             <td>${fmt(c.pointsAll)}</td>
-            <td>${c.profitAll === null ? '—' : fmt(c.profitAll / c.pointsAll, 1)}</td>
+            <td>${c.profitAll === null ? '—' : fmt(c.profitAll / c.pointsAll, 1)}${c.partsNet !== null ? html`<br /><small class="muted" title="Сколько дала бы продажа герба и сердца на рынке вместо крафта плаща">детали: ${fmt(c.partsNet)}</small>` : null}</td>
             <td>${on ? html`<span class="pill g">× ${fmt(x.qty)}</span>` : html`<span class="pill n">не в плане</span>`}</td>
             <td class=${on ? 'pos' : ''}>${on ? signed(x.profit) : '—'}</td>
             <td><button type="button" class="edit" title="Вписать свои цены или лимит" aria-label="Свои цены" onClick=${() => set({ edit: isEdit ? null : c.key })}>✎</button></td></tr>

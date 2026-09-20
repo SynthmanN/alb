@@ -344,7 +344,7 @@ td .city, .k .city { font-size: 12px; padding: 1px 9px 1px 7px; }
 .tierbtn { border: 0; cursor: pointer; font-size: 13px; padding: 3px 12px; opacity: .55; }
 .tierbtn.on { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--c); }
 .mp { display: inline-flex; gap: 6px; align-items: center; }
-.mp input { width: 90px; padding: 5px 8px; border-radius: 9px; }
+span.mp input { width: 110px; padding: 5px 8px; border-radius: 9px; }
 .li-h { display: flex; gap: 10px; align-items: center; margin-bottom: 4px; }
 .li-h .glyph { width: 30px; height: 30px; border-radius: 8px; }
 .is-loading { opacity: .6; transition: opacity .15s; }
@@ -365,7 +365,7 @@ th.sortable[aria-sort] { color: var(--text); }
 .editbox { padding: 14px 18px 18px; background: var(--surface-2); text-align: left; }
 .editgrid { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 10px; }
 .chipin { display: inline-grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
-.chipin input { width: 130px; padding: 7px 10px; border-radius: 10px; font-size: 14px; }
+label.chipin input { width: 130px; padding: 7px 10px; border-radius: 10px; font-size: 14px; }
 .chipin input.is-manual { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .fp-warn { color: var(--warn); }
 .drawer.wide { width: min(560px, 100vw); }
@@ -400,3 +400,36 @@ th.sortable[aria-sort] { color: var(--text); }
   .row, .headrow { grid-template-columns: minmax(0, 1fr) auto 44px; }
   .row { gap: 10px; padding: 12px 12px; }
 }
+.selwrap { display: inline-flex; gap: 6px; align-items: center; }
+input.customval { width: 96px; padding: 7px 10px; border-radius: 10px; font-size: 14px; height: 36px; }
+input.customval.invalid { box-shadow: inset 0 0 0 1.5px var(--bad); }
+
+/* --- калькулятор: перенос свойств старой страницы --- */
+.suggest.columns { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; max-height: 60vh; }
+.suggest-col h4 { margin: 8px 6px 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+input.manual-price { width: 110px; padding: 5px 8px; border-radius: 9px; font-size: 13.5px; }
+input.manual-price.is-manual, input.plan-city-price.is-manual, input.plan-qty.is-manual { box-shadow: inset 0 0 0 1.5px var(--accent); }
+input.plan-city-price { width: 110px; padding: 4px 8px; border-radius: 9px; margin-top: 4px; font-size: 13px; }
+input.plan-qty { width: 84px; padding: 5px 8px; border-radius: 9px; }
+.is-manual-note { color: var(--accent); }
+.refine-source { color: var(--good); font-weight: 600; font-size: 13px; }
+.no-return { font-size: 11.5px; color: var(--muted); background: var(--surface-2); border-radius: 6px; padding: 0 6px; }
+.city-prices summary { cursor: pointer; }
+.city-prices ul { margin: 4px 0 0; padding-left: 16px; text-align: left; font-size: 12.5px; color: var(--muted); }
+.lot-log { display: grid; gap: 4px; justify-items: end; }
+.lot-row { display: flex; gap: 6px; align-items: center; }
+div.lot-row input { width: 76px; padding: 4px 7px; border-radius: 9px; font-size: 13px; }
+.lot-add, .lot-del { border: 0; background: var(--surface-2); color: var(--muted); border-radius: 8px; padding: 2px 9px; font-size: 12.5px; }
+.lot-add:hover, .lot-del:hover { color: var(--text); }
+.lot-sum { color: var(--muted); }
+tr.below-threshold td { opacity: .45; }
+.warnline { color: var(--warn); }
+.kv b input { margin-left: 8px; }
+.adv input[type=number] { width: 120px; }
+.detail .dextra { grid-column: 1 / -1; display: grid; gap: 6px; }
+.detail .dextra:empty { display: none; }
+ul.bycity { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; font-size: 13px; }
+ul.bycity li.city-out { opacity: .55; }
+.scan-stale { color: var(--warn); font-size: 13px; }
+
+.classic-link { font-size: 12.5px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }

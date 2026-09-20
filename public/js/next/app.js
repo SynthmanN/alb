@@ -11,7 +11,7 @@ import { LazyTab } from './lazy.js';
 import { Dock, ListDrawer, drawerStore } from './dock.js';
 
 const TABS = [['scan', 'Скан', ICONS.search], ['calc', 'Калькулятор', ICONS.calc], ['faction', 'Фракционный план', ICONS.shield], ['lazy', 'Ленивый', ICONS.couch]];
-const PAGES = [['index.html', 'Цены'], ['scanners.html', 'Флиппинг'], ['craft-next.html', 'Крафт', true], ['refine.html', 'Рефайн'], ['fitting-room.html', 'Примерочная'], ['masteries.html', 'Мастерки']];
+const PAGES = [['index.html', 'Цены'], ['scanners.html', 'Флиппинг'], ['craft.html', 'Крафт', true], ['refine.html', 'Рефайн'], ['fitting-room.html', 'Примерочная'], ['masteries.html', 'Мастерки']];
 
 export function App() {
   const { tab } = useStore(navStore);
@@ -27,6 +27,7 @@ export function App() {
       <nav class="nav" aria-label="Разделы">${PAGES.map(([href, label, on]) => html`<a href=${href} class=${on ? 'on' : ''} key=${href}>${label}</a>`)}</nav>
       <span class="sp"></span>
       <${Seg} label="Источник данных" value=${s.source} onChange=${(v) => settings.set({ source: v })} options=${[['jug', 'Краулер'], ['aodp', 'AODP']]} cls="src" />
+      <a class="classic-link" href="craft-classic.html" title="Прежняя версия страницы «Крафт» — остаётся на время перехода">Классическая версия</a>
       <${Switch} checked=${s.premium} onChange=${(v) => settings.set({ premium: v })} title="Налог с продажи 4% вместо 8%">Премиум</${Switch}>
     </header>
     <div class="layout"><div class="wrap">

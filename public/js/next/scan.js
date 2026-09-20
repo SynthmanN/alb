@@ -3,7 +3,7 @@
 import { html, createStore, useStore, useState, fmt, signed, apiGet, findItem, itemLabel, itemTier, fmtAge } from './lib.js';
 import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
-import { Glyph, Tags, CityPills, Seg, Switch, Icon, ICONS, Spinner, toast } from './ui.js';
+import { Glyph, Tags, CityPill, CityPills, Seg, Switch, Icon, ICONS, Spinner, toast } from './ui.js';
 import { addToList } from './list.js';
 import { nav } from './nav.js';
 
@@ -45,6 +45,14 @@ function Detail({ r, data }) {
     <div class="k"><span>Оборот в день</span><b>${fmt(r.dailyVolume, 1)}</b></div>
     <div class="k"><span>Города продажи</span><${CityPills} list=${r.sellCities || []} max=${2} /></div>
     <div class="k"><span>Свежесть цен</span><b class=${stale ? 'fresh-old' : ''}>${fmtAge(r.freshMinutes)}</b></div>
+    <div class="dextra">
+      ${r.blackMarket ? html`<div class="note">⚫ Продажа через Чёрный Рынок: налог ${fmt((r.sellTaxRate || 0) * 100, 1)}% (налог + Setup Fee всегда).</div>` : null}
+      ${r.dataAgeDays !== null && r.dataAgeDays !== undefined && r.dataAgeDays >= 2 ? html`<div class="scan-stale" title="Последняя сделка в городах продажи была давно — оборот считан по старым данным">Данные устарели на ${fmt(r.dataAgeDays, 1)} дн.</div>` : null}
+      ${r.filledCities ? html`<div class="scan-stale" title="В окне скана в этих городах сделок нет — взят средний оборот прошлых дней (до 10 дней)">${r.filledCities} г. — оборот из прошлых дней</div>` : null}
+      ${r.refined && r.refined.length ? html`<div class="refine-source" title=${r.refined.map((m) => `${itemLabel(m.id)}: ${m.crafted ? 'скрафтить самому' : `переработать в ${m.city}`} — ${fmt(m.price)} вместо ${fmt(m.buyPrice)}`).join('; ')}>${[r.refined.some((m) => !m.crafted) ? `♻ переработка: ${r.refined.filter((m) => !m.crafted).length}` : '', r.refined.some((m) => m.crafted) ? `🔨 плащ самому: ${r.refined.filter((m) => m.crafted).length}` : ''].filter(Boolean).join(' · ')}</div>` : null}
+      ${r.confidence !== undefined ? html`<div class="muted" style="font-size:13px" title="Доверие — по числу разных часов, в которые торговались материалы (слабое звено)">Доверие ${Math.round(r.confidence * 100)}%${r.tradeHours ? ` · ${r.tradeHours} ч торговли` : ''}</div>` : null}
+      ${r.byCity && r.byCity.length > 1 ? html`<details class="city-prices" open><summary>Оборот по городам</summary><ul class="bycity">${r.byCity.map((x) => html`<li key=${x.city} class=${x.inPlan ? '' : 'city-out'}><${CityPill} name=${x.city} /> ${fmt(x.dailyVolume, 1)}/день · цена ${fmt(x.avgPrice)} <small>${x.inPlan ? 'в расчёте' : 'вне расчёта'}</small>${x.filled ? html` <small class="scan-stale">за прошлые дни</small>` : null}</li>`)}</ul></details>` : null}
+    </div>
     <div class="dactions">
       <div class="qty"><button type="button" aria-label="Меньше" onClick=${() => setQty(Math.max(1, qty - 1))}>−</button><input type="number" min="1" value=${qty} onInput=${(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))} aria-label="Количество" /><button type="button" aria-label="Больше" onClick=${() => setQty(qty + 1)}>+</button></div>
       <button class="btn primary sm" type="button" onClick=${add}>В крафт-лист</button>

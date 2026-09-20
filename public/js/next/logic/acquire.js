@@ -8,7 +8,7 @@ export function acquisitionRows(data, nameOf = (id) => id) {
   const names = data.names || {};
   const label = (id) => names[id] || nameOf(id);
   const rows = [];
-  const push = ({ id, why, needed, srv, price, city }) => {
+  const push = ({ id, key, why, needed, srv, price, city }) => {
     const plan = srv && srv.plan && srv.plan.cities.length && srv.plan.cities.reduce((s, c) => s + c.qty, 0) === needed ? srv.plan : null;
     let cities;
     let unit;
@@ -20,31 +20,31 @@ export function acquisitionRows(data, nameOf = (id) => id) {
       cities = unit === null || unit === undefined || !city ? [] : [{ city, qty: needed, price: unit }];
     }
     const missing = unit === null || unit === undefined;
-    rows.push({ id, name: label(id), why, needed, cities, unit: missing ? null : unit, sum: missing ? null : cities.reduce((s, c) => s + c.qty * c.price, 0) || unit * needed, missing });
+    rows.push({ id, key: key || id, name: label(id), why, needed, cities, unit: missing ? null : unit, sum: missing ? null : cities.reduce((s, c) => s + c.qty * c.price, 0) || unit * needed, missing, days: srv && srv.daysToAcquire !== undefined ? srv.daysToAcquire : null });
   };
   const eac = data.enchantAfterCraft;
   if (eac && eac.baseSource === 'buy' && eac.baseBuy) {
-    push({ id: data.itemId, why: 'плащ .0 — выгоднее купить готовый', needed: data.quantity, srv: planFor((a) => a.resource === data.itemId), price: eac.baseBuy.price, city: eac.baseBuy.city });
+    push({ id: data.itemId, key: data.itemId, why: 'плащ .0 — выгоднее купить готовый', needed: data.quantity, srv: planFor((a) => a.resource === data.itemId), price: eac.baseBuy.price, city: eac.baseBuy.city });
   } else {
     for (const r of data.recipe || []) {
       if (r.materialSource === 'points') continue;                       // за очки — в серебре не покупается
       const rid = r.queryId || r.resource;
       if (r.materialSource === 'craft' && r.craftOption) {
         for (const cp of r.craftOption.components) {
-          push({ id: cp.id, why: `для крафта: ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * cp.factor), srv: planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id), price: cp.price, city: cp.city });
+          push({ id: cp.id, key: cp.id, why: `для крафта: ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * cp.factor), srv: planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id), price: cp.price, city: cp.city });
         }
       } else if (r.materialSource === 'refine' && r.refineOption) {
         r.refineOption.components.forEach((cp, i) => {
           const role = i === 0 ? 'raw' : 'prev';
-          push({ id: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} → ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
+          push({ id: cp.id, key: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} → ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
         });
       } else {
-        push({ id: rid, why: r.enchanted ? `зачарование .${data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity });
+        push({ id: rid, key: r.resource, why: r.enchanted ? `зачарование .${data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity });
       }
     }
   }
   for (const st of (eac && eac.steps) || []) {
-    push({ id: st.materialId, why: `чары .${st.level - 1} → .${st.level}`, needed: st.count * data.quantity, srv: planFor((a) => a.resource === st.materialId), price: st.cheapestPrice, city: st.cheapestCity });
+    push({ id: st.materialId, key: st.materialId, why: `чары .${st.level - 1} → .${st.level}`, needed: st.count * data.quantity, srv: planFor((a) => a.resource === st.materialId), price: st.cheapestPrice, city: st.cheapestCity });
   }
   return rows;
 }

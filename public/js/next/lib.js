@@ -79,6 +79,11 @@ export const iconUrl = (id, size = 64, enchant = 0, quality = 1) => `https://ren
 // Название для поиска на аукционе (тир и «.N» отбрасываются; зачарование в игре — отдельный фильтр)
 export const auctionName = (name) => String(name || '').replace(/^T\d+\s+/, '').replace(/\s\.\d$/, '');
 
+// группы оружия (для выбора предмета по категориям и подсказки «где крафтить»)
+let weaponGroups = [];
+export const groupsReady = fetch('/api/item-groups').then((r) => r.json()).then((d) => { weaponGroups = d.weapon || []; }).catch(() => {});
+export const getWeaponGroups = () => weaponGroups;
+
 // ---------- API ----------
 export async function apiGet(path, params) {
   const qs = params instanceof URLSearchParams ? params : new URLSearchParams(Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => [k, String(v)]));
