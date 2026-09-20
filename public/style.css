@@ -461,7 +461,11 @@ td.plan-check input { width: auto; }
 .stack-shell { margin: 12px 0 16px; }
 .stack-cards { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .stack-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 10px; border: 1px solid #333740; border-radius: 8px; }
-.stack-card.is-active { border-color: #3caa5a; background: rgba(60, 170, 90, 0.10); }
+.stack-card.is-on { border-color: #3caa5a; background: rgba(60, 170, 90, 0.12); }
+.stack-card.is-off { opacity: 0.55; }
+.stack-card.is-off:hover { opacity: 0.85; }
+.stack-all { margin-left: 10px; padding: 3px 10px; font-size: 12px; }
+.stack-scoreboard { margin-bottom: 10px; }
 .stack-pick { display: inline-flex; align-items: center; gap: 8px; text-align: left; background: transparent; border: 0; color: inherit; cursor: pointer; padding: 2px 4px; flex: 1 1 220px; }
 .stack-qty-label, .stack-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #9aa0aa; }
 .stack-qty { width: 80px; padding: 4px 6px; }

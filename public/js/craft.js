@@ -355,6 +355,7 @@ function craftParamsFor(spec) {
 // «Посчитать» — и автоматический пересчёт при правке параметров (keepManual: свои цены и лоты на автопересчёте сохраняются; план продажи
 // по городам зависит от количества и рынка — он сбрасывается).
 async function runCraftCalc(keepManual = false) {
+  if (craftStack && craftStack.aggregate) { stackRefreshAll(); return; }     // общий вид стека: пересчитываются все позиции в расчёте
   if (!craftSelectedItem) return;
   if (keepManual !== true) keepManual = false;
   if (!keepManual || !lastCraftData) craftEl.result.innerHTML = 'Считаю...';
@@ -505,6 +506,7 @@ function applyManualPrices(data) {
 }
 
 function renderCraftResult(rawData) {
+  if (craftStack && craftStack.aggregate) return;                              // общий вид стека занимает область результата
   const data = applyManualPrices(rawData);
   // Всё, что закупается (сырьё рецепта и материалы зачарования), — в одной таблице материалов; шаги зачарования
   // отдельно описаны в блоке «Зачарование после крафта». Количество материалов зачарования масштабируется на партию.

@@ -1345,24 +1345,47 @@ test('стек плащей: «Крафтить план» переносит з
   const cards = page.locator('#craft-stack-panel .stack-card');
   await expect(cards).toHaveCount(2);
   await expect(page.locator('#craft-faction-badge')).toContainText('Фракционный стек');
-  await expect(cards.first()).toHaveClass(/is-active/);                                         // первая позиция открыта в обычном калькуляторе
-  await expect(page.locator('#craft-recipe-table')).toBeVisible();
-  await expect(page.locator('#stack-summary')).toContainText('Профит стека');
-  await expect(cards.nth(1).locator('.stack-line')).toContainText('профит');                     // остальные считаются фоном
+  // по умолчанию в расчёте (зелёные) все позиции: общий вид — общий профит и сводный список закупки
+  await expect(cards.first()).toHaveClass(/is-on/);
+  await expect(cards.nth(1)).toHaveClass(/is-on/);
+  await expect(page.locator('#stack-purchase-table')).toBeVisible();
+  await expect(page.locator('.stack-scoreboard')).toContainText('Нужно денег на все зелёные позиции');
+  await expect(page.locator('.stack-scoreboard')).toContainText('2 поз.');
+  await expect(page.locator('#craft-quantity')).toBeDisabled();                                  // поля одной позиции в общем виде недоступны
+  await expect(page.locator('#craft-controls')).toBeVisible();                                   // общие настройки калькулятора остаются
+  await expect(page.locator('#craft-recipe-table')).toHaveCount(0);
+  await expect(cards.nth(1).locator('.stack-line')).toContainText('профит');
   expect(calcQueries.every((q) => q.get('faction') === 'MARTLOCK')).toBe(true);
+  // клик по позиции: зелёная только она, остальные серые, обычный полный вид калькулятора
+  await cards.first().locator('.stack-pick').click();
+  await expect(cards.first()).toHaveClass(/is-on/);
+  await expect(cards.nth(1)).toHaveClass(/is-off/);
+  await expect(page.locator('#craft-recipe-table')).toBeVisible();
+  await expect(page.locator('#craft-quantity')).toBeEnabled();
+  await expect(page.locator('#stack-purchase-table')).toHaveCount(0);
+  // клик по серой добавляет её в расчёт: снова две зелёные — общий вид
+  await cards.nth(1).locator('.stack-pick').click();
+  await expect(cards.nth(1)).toHaveClass(/is-on/);
+  await expect(page.locator('#stack-purchase-table')).toBeVisible();
+  // «все зелёные» → клик по второй оставляет только её; а кнопка «Все в расчёт» возвращает общий вид
+  await cards.nth(1).locator('.stack-pick').click();
+  await expect(cards.first()).toHaveClass(/is-off/);
+  await page.locator('#stack-all').click();
+  await expect(page.locator('#stack-purchase-table')).toBeVisible();
+  await cards.first().locator('.stack-pick').click();                                             // снова открыта одна (первая)
+  await expect(page.locator('#craft-recipe-table')).toBeVisible();
   // план выбрал «герб за очки, сердце за серебро» — переключатель сердца уже включён; докупаем за серебро и герб → partsSilver=crest,heart
   await expect(cards.nth(1).locator('.stack-heart')).toBeChecked();
   await expect(cards.nth(1).locator('.stack-crest')).not.toBeChecked();
   await cards.nth(1).locator('.stack-crest').check();
   await expect.poll(() => calcQueries.some((q) => q.get('partsSilver') === 'crest,heart')).toBe(true);
-  await expect(cards.nth(1).locator('.stack-line')).toContainText('очков');
   await cards.nth(1).locator('.stack-qty').fill('5');                                            // своё количество у позиции
   await expect.poll(() => calcQueries.some((q) => q.get('item') === 'T5_CAPEITEM_FW_MARTLOCK' && q.get('quantity') === '5')).toBe(true);
   await page.screenshot({ path: '/tmp/stack-shot.png', fullPage: false });
   // удаление позиции
   await cards.first().locator('.stack-remove').click();
   await expect(cards).toHaveCount(1);
-  await expect(cards.first()).toHaveClass(/is-active/);
+  await expect(cards.first()).toHaveClass(/is-on/);
   // стек хранится в браузере
   await page.reload();
   await expect(page.locator('#craft-stack-panel .stack-card')).toHaveCount(1);
