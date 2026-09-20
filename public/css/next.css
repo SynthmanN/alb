@@ -396,3 +396,7 @@ th.sortable[aria-sort] { color: var(--text); }
 .item b { font-weight: 600; }
 .dock .cnt { color: var(--accent-ink); }
 .item .glyph { width: 40px; height: 40px; }
+@media (max-width: 900px) {
+  .row, .headrow { grid-template-columns: minmax(0, 1fr) auto 44px; }
+  .row { gap: 10px; padding: 12px 12px; }
+}
