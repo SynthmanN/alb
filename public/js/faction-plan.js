@@ -3,8 +3,9 @@
 // серым — остальные (нет данных или крафт менее выгоден). Вписанные цены сохраняются на сервере (общие, помечены как недостоверные).
 const FP_CREST = { 4: 400, 5: 2250, 6: 3000, 7: 7500, 8: 15000 };
 const FP_HEART = 3000;
+const FP_HEADS = [["name", "Плащ"], ["sale", "Цена продажи"], ["cost", "Себестоимость (без герба и сердца)"], ["vol", "Оборот/день · потолок"], ["profit", "Профит/шт"], ["points", "Очков"], ["perPoint", "Профит на очко"], ["qty", "В плане"], ["planPoints", "Потрачено очков"], ["planProfit", "Профит по плану"]];
 const fpEl = { panel: document.getElementById('faction-plan-panel') };
-const fp = { data: null, faction: null, points: 0, mode: 'mixed', extras: [], own: new Map(), saved: new Map(), limits: new Map() };
+const fp = { data: null, faction: null, points: 0, mode: 'mixed', extras: [], own: new Map(), saved: new Map(), limits: new Map(), sort: { key: 'planProfit', dir: 'desc' } };
 
 const fpNum = (n, d = 0) => (n === null || n === undefined || Number.isNaN(n) ? '—' : Number(n).toLocaleString('ru-RU', { maximumFractionDigits: d, minimumFractionDigits: d }));
 const fpAge = (minutes) => (minutes === null || minutes === undefined ? '' : minutes < 90 ? `${Math.round(minutes)} мин` : minutes < 2880 ? `${(minutes / 60).toFixed(0)} ч` : `${(minutes / 1440).toFixed(1)} дн.`);
@@ -146,6 +147,20 @@ function renderFactionPlan() {
     for (const u of units) byVariant[u.id] = (byVariant[u.id] || 0) + 1;
     return { c, units, byVariant, qty: units.length, points: units.reduce((sum, u) => sum + u.points, 0), profit: units.reduce((sum, u) => sum + u.profit, 0) };
   });
+  // Сортировка: строки в плане (зелёные) всегда наверху, внутри групп — по выбранной колонке; по умолчанию — профит по плану по убыванию,
+  // серые при равенстве — по профиту на штуку
+  const sortValue = {
+    name: (x) => x.c.r.tier * 100 + x.c.r.enchant * 10 + x.c.r.quality,
+    sale: (x) => x.c.grossSale, cost: (x) => x.c.cost, vol: (x) => x.c.vol, profit: (x) => x.c.profitAll, points: (x) => x.c.pointsAll,
+    perPoint: (x) => (x.c.profitAll === null ? null : x.c.profitAll / x.c.pointsAll), qty: (x) => x.qty, planPoints: (x) => x.points, planProfit: (x) => x.profit,
+  }[fp.sort.key];
+  const dirSign = fp.sort.dir === 'asc' ? 1 : -1;
+  const cmp = (a, b, sign) => {
+    if (a === null || a === undefined) return b === null || b === undefined ? 0 : 1;      // пустые значения — всегда внизу
+    if (b === null || b === undefined) return -1;
+    return sign * (a - b);
+  };
+  rowsWithPlan.sort((a, b) => (b.qty > 0) - (a.qty > 0) || cmp(sortValue(a), sortValue(b), dirSign) || cmp(a.c.profitAll, b.c.profitAll, -1));
   const spent = fp.points - plan.left;
   const totalProfit = rowsWithPlan.reduce((s, x) => s + x.profit, 0);
   const capes = rowsWithPlan.reduce((s, x) => s + x.qty, 0);
@@ -162,7 +177,7 @@ function renderFactionPlan() {
     const partsManual = (r.crest && r.crest.manual) || (r.heart && r.heart.manual) ? ' <small class="fp-warn" title="Цена герба/сердца вписана вручную — недостоверная">⚠ вписано</small>' : '';
     const age = r.sale && r.sale.ageDays !== null && r.sale.ageDays !== undefined ? `<br><small class="${r.sale.ageDays >= 2 ? 'scan-stale' : ''}">${r.sale.manual ? 'вписано ' : 'сделки '}${r.sale.ageDays.toFixed(1)} дн. назад</small>` : '';
     const variantText = on ? Object.entries(byVariant).map(([id, n]) => `${n}× ${c.variants.find((v) => v.id === id).label}`).join('<br>') : '';
-    const missingHtml = c.missing.length ? `<tr class="fp-missing-row"><td colspan="9"><span class="fp-missing-title">Не хватает данных:</span> ${c.missing.map((m) => `<label class="fp-chip">${m.label} ${input(m.key, null, 'цена', m.sale ? 'fp-sale' : '')}<small>${m.hint}</small></label>`).join('')}</td></tr>` : '';
+    const missingHtml = c.missing.length ? `<tr class="fp-missing-row"><td colspan="10"><span class="fp-missing-title">Не хватает данных:</span> ${c.missing.map((m) => `<label class="fp-chip">${m.label} ${input(m.key, null, 'цена', m.sale ? 'fp-sale' : '')}<small>${m.hint}</small></label>`).join('')}</td></tr>` : '';
     return `<tr class="${on ? 'fp-on' : 'fp-off'}" data-row="${fpRowKey(r)}">
       <td><span class="scan-item"><img class="item-icon-sm" src="${iconUrl(it.id, 64, r.enchant, r.quality)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" /><span>${it.name}${enchantTag(r.enchant)}<br><small class="scan-item-sub">T${r.tier} · .${r.enchant} · ${QUALITY_NAMES[r.quality]}${r.source === 'extra' ? ' · добавлено' : ''}</small></span></span>${r.source === 'extra' ? ` <button type="button" class="fp-remove" data-remove="${r.tier}:${r.enchant}:${r.quality}" title="Убрать из списка">×</button>` : ''}</td>
       <td>${input(`sale:${fpRowKey(r)}`, r.sale ? r.sale.avgPrice : null, r.sale ? fpNum(r.sale.avgPrice) : 'цена продажи')}${manualBadge}${age}</td>
@@ -172,9 +187,12 @@ function renderFactionPlan() {
       <td>${fpNum(c.pointsAll)}</td>
       <td data-sort-value="${c.profitAll !== null ? c.profitAll / c.pointsAll : ''}">${c.profitAll === null ? '—' : fpNum(c.profitAll / c.pointsAll, 1)}${c.partsNet !== null ? `<br><small title="Сколько дала бы продажа герба и сердца вместо крафта">детали: ${fpNum(c.partsNet)}</small>` : ''}</td>
       <td class="fp-qty">${on ? `<b>${fpNum(qty)} шт</b><br><small>${variantText}</small>` : '—'}</td>
-      <td>${on ? `${fpNum(points)}<br><small class="profit-pos">+${fpNum(profit)}</small>` : '—'}</td></tr>${missingHtml}`;
+      <td>${on ? fpNum(points) : '—'}</td>
+      <td>${on ? `<b class="profit-pos">+${fpNum(profit)}</b>` : '—'}</td></tr>${missingHtml}`;
   }).join('');
 
+  const HEADS_DEF = FP_HEADS;
+  const heads = HEADS_DEF.map(([key, label]) => `<th class="sortable" data-sort-key="${key}" title="Сортировка по колонке (по убыванию, повторный клик — по возрастанию). Строки в плане всегда сверху">${label}${fp.sort.key === key ? `<span class="sort-arrow">${fp.sort.dir === 'desc' ? ' ▼' : ' ▲'}</span>` : ''}</th>`).join('');
   const buyList = [buyHearts ? `${fpNum(buyHearts)} сердец` : null, ...Object.entries(buyCrests).map(([t, n]) => `${fpNum(n)} гербов T${t}`)].filter(Boolean);
   fpEl.panel.innerHTML = `<div class="faction-plan fp-shell">
     <div class="fp-head">
@@ -199,12 +217,14 @@ function renderFactionPlan() {
       ${buyList.length ? `<div class="craft-summary-row"><span>Докупить на рынке за серебро</span><span>${buyList.join(', ')}</span></div>` : ''}
     </div>
     <p class="calc-note">Зелёные — плащи в плане (сколько крафтить), серые — нет данных или крафт менее выгоден. Впиши свою цену в любую позицию — список пересчитается сразу. Вписанные цены герба, сердца, плаща и продажи сохраняются на сервере как недостоверные (⚠) и заменяют отсутствующие данные AODP до 10 дней.</p>
-    <div class="table-scroll"><table class="craft-recipe-table fp-table" id="fp-table"><thead><tr><th>Плащ</th><th>Цена продажи</th><th>Себестоимость (без герба и сердца)</th><th>Оборот/день · потолок</th><th>Профит/шт</th><th>Очков</th><th>Профит на очко</th><th>В плане</th><th>Потрачено</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="mobile-sort"><label>Сортировка<select id="fp-sort-col">${HEADS_DEF.map(([key, label]) => `<option value="${label}" ${fp.sort.key === key ? 'selected' : ''}>${label}</option>`).join('')}</select></label><button type="button" id="fp-sort-dir" title="Направление сортировки">${fp.sort.dir === 'desc' ? '▼' : '▲'}</button></div>
+    <div class="table-scroll"><table class="craft-recipe-table fp-table" id="fp-table"><thead><tr>${heads}</tr></thead><tbody>${rows}</tbody></table></div>
   </div>`;
   bindFactionPlan();
 }
 
 let fpTimer = null;
+const HEADS_KEY_BY_LABEL = Object.fromEntries(FP_HEADS.map(([key, label]) => [label, key]));
 function bindFactionPlan() {
   const root = fpEl.panel;
   root.querySelectorAll('input.fp-input[data-fp]').forEach((inp) => inp.addEventListener('input', () => {
@@ -233,6 +253,16 @@ function bindFactionPlan() {
     clearTimeout(fpTimer);
     fpTimer = setTimeout(() => { fpRender(); const a = document.getElementById('fp-points'); if (a) { a.focus(); a.setSelectionRange(a.value.length, a.value.length); } }, 350);
   });
+  root.querySelectorAll('th[data-sort-key]').forEach((th) => th.addEventListener('click', () => {
+    const key = th.dataset.sortKey;
+    fp.sort = { key, dir: fp.sort.key === key && fp.sort.dir === 'desc' ? 'asc' : 'desc' };
+    fpRender();
+  }));
+  document.getElementById('fp-sort-col').addEventListener('change', (e) => { fp.sort = { key: HEADS_KEY_BY_LABEL[e.target.value], dir: 'desc' }; fpRender(); });
+  document.getElementById('fp-sort-dir').addEventListener('click', () => { fp.sort = { key: fp.sort.key, dir: fp.sort.dir === 'desc' ? 'asc' : 'desc' }; fpRender(); });
+  // на телефоне строки — карточки «подпись: значение»
+  const labels = [...root.querySelectorAll('th[data-sort-key]')].map((th) => th.textContent.replace(/[▼▲]/g, '').trim());
+  root.querySelectorAll('tr[data-row]').forEach((tr) => [...tr.children].forEach((td, i) => { if (labels[i] && i > 0) td.setAttribute('data-label', labels[i]); }));
   document.getElementById('fp-mode').addEventListener('change', (e) => { fp.mode = e.target.value; fpRender(); });
   document.getElementById('fp-close').addEventListener('click', () => { fpEl.panel.hidden = true; fp.data = null; });
   document.getElementById('fp-add-toggle').addEventListener('click', () => { const f = document.getElementById('fp-add-form'); f.hidden = !f.hidden; });

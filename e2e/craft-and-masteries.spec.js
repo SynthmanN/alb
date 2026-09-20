@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { openTool } = require('./helpers');
+const { openTool, sortBy } = require('./helpers');
 
 test('крафт-калькулятор: выбор предмета и расчёт показывают итог с налогом', async ({ page }) => {
   await page.route('**/api/craft-calc*', (route) => route.fulfill({ json: {
@@ -1267,4 +1267,37 @@ test('план трат фракционных очков: открываетс�
   expect(saved[0]).toMatchObject({ id: 'T5_CAPE', quality: 1, price: 5000 });
   await panel.locator('#fp-add-toggle').click();
   await expect(panel.locator('#fp-add-form')).toBeVisible();
+});
+
+test('план трат очков: зелёные позиции всегда сверху, по умолчанию — профит по плану по убыванию; клик по колонке сортирует (сначала по убыванию)', async ({ page }) => {
+  const row = (tier, enchant, cape, sale, vol) => ({
+    itemId: `T${tier}_CAPEITEM_FW_MARTLOCK`, finishedId: `T${tier}_CAPEITEM_FW_MARTLOCK`, tier, enchant, quality: 1, source: 'data', pointsPerCape: 3000 + ({ 4: 400, 5: 2250, 6: 3000 })[tier],
+    crestId: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, heartId: 'T1_FACTION_HIGHLAND_TOKEN_1',
+    capeDirect: { id: `T${tier}_CAPE`, label: 'Плащ', price: cape, ageMinutes: 30, manual: false }, cape0: { id: `T${tier}_CAPE`, label: 'Плащ', price: cape, ageMinutes: 30, manual: false },
+    runes: [], maxAfter: true, crest: { id: `T${tier}_CAPEITEM_FW_MARTLOCK_BP`, label: 'Герб', price: 500, ageMinutes: 30, manual: false }, heart: { id: 'T1_FACTION_HIGHLAND_TOKEN_1', label: 'Сердце', price: 1000, ageMinutes: 30, manual: false },
+    sale: { avgPrice: sale, netSell: sale * 0.895, dailyVolume: vol, ageDays: 0.5, filled: false, manual: false }, manualSaleKey: { id: `T${tier}_CAPEITEM_FW_MARTLOCK`, quality: 1 },
+  });
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: { faction: { id: 'MARTLOCK', name: 'Мартлок', points: 2250, heartPoints: 3000, crestPoints: { 4: 400 } }, factionPlan: { points: 2250, spent: 0, remaining: 6500, totalProfit: 0, capes: 0, items: [] }, results: [], jug: {} } }));
+  await page.route('**/api/faction-plan*', (route) => route.fulfill({ json: {
+    faction: { id: 'MARTLOCK', name: 'Мартлок', heartId: 'T1_FACTION_HIGHLAND_TOKEN_1', heartPoints: 3000, crestPoints: { 4: 400, 5: 2250, 6: 3000 } }, days: 7, materialHours: 24, taxRate: 0.08, setupFeeRate: 0.025, gearRate: 0.248, tiers: [4, 5, 6], manualTtlDays: 10,
+    // T4 — самая дешёвая продажа (серая, не влезла), T5 и T6 с данными; очков ровно на один плащ T5 (герб за очки 2250, сердце докупается за серебро)
+    rows: [row(4, 0, 1000, 5000, 5), row(5, 0, 2000, 60000, 5), row(6, 0, null, 90000, 5)],
+  } }));
+  await page.goto('/craft.html');
+  await openTool(page, 'Скан маржи и ликвидности');
+  await page.locator('#margin-faction-on').check();
+  await page.locator('#margin-faction-points').fill('2250');
+  await page.locator('#margin-faction-plan').check();
+  await page.locator('#margin-run').click();
+  const rows = page.locator('#faction-plan-panel tbody tr[data-row]');
+  await expect(rows).toHaveCount(3);
+  await expect(page.locator('#faction-plan-panel tr.fp-on')).toHaveCount(1);
+  await expect(rows.first()).toHaveClass(/fp-on/);                                            // зелёная — сверху
+  await expect(rows.first()).toHaveAttribute('data-row', '5|0|1');
+  await expect(page.locator('#fp-sort-col')).toHaveValue('Профит по плану');
+  await sortBy(page, '#faction-plan-panel', 'Плащ');                                          // по колонке «Плащ», по убыванию: T6, T5, T4 — но зелёный T5 остаётся сверху
+  await expect(rows.first()).toHaveAttribute('data-row', '5|0|1');
+  await expect(rows.nth(1)).toHaveAttribute('data-row', '6|0|1');
+  await sortBy(page, '#faction-plan-panel', 'Плащ');                                          // повторный клик — по возрастанию
+  await expect(rows.nth(1)).toHaveAttribute('data-row', '4|0|1');
 });
