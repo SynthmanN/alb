@@ -146,7 +146,7 @@ export function applyManualPrices(data, ctx) {
 
 // Автоплан по обороту, когда сервер плана не прислал (порог продажи и т. п.)
 export function salePlanByCity(byCity, quantity, marketShare, minPrice) {
-  const eligible = byCity.filter((c) => c.avgDailyVolume > 0 && (minPrice === null || c.avgSellPrice >= minPrice));
+  const eligible = byCity.filter((c) => !c.inactive && c.avgDailyVolume > 0 && (minPrice === null || c.avgSellPrice >= minPrice));   // города вне расчёта в автоплан не входят
   const totalVolume = eligible.reduce((sum, c) => sum + c.avgDailyVolume, 0);
   if (eligible.length === 0 || totalVolume <= 0) return { rows: new Map(), totalVolume: 0, days: null };
   const rows = new Map();

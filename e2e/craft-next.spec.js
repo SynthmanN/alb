@@ -11,13 +11,13 @@ const calc = (q) => ({
   itemId: q.get('item'), enchant: Number(q.get('enchant')), quality: Number(q.get('quality')), quantity: Number(q.get('quantity')), taxRate: 0.08, setupFeeRate: 0.025, marketShare: 0.25,
   rrrOptions: { gearRate: 0.248 }, rrrPreset: { rrr: 0.248 }, hasAllMaterialPrices: true, effectiveCostPerUnit: 1860, materialCostPerUnit: 2480, totalCost: 1860 * Number(q.get('quantity')),
   recipe: [
-    { resource: 'T4_CLOTH', queryId: 'T4_CLOTH', materialSource: 'buy', count: 20, rrr: 0.25, returnable: true, neededToBuy: 20, cheapestPrice: 100, cheapestCity: 'Martlock', buyPrice: 100, cityPrices: [{ city: 'Martlock', price: 100 }, { city: 'Lymhurst', price: 110 }] },
+    { resource: 'T4_CLOTH', queryId: 'T4_CLOTH', materialSource: 'buy', count: 20, rrr: 0.25, returnable: true, neededToBuy: 20, cheapestPrice: 100, cheapestCity: 'Martlock', buyPrice: 100, cityPrices: [{ city: 'Martlock', price: 100 }, { city: 'Lymhurst', price: 110 }, { city: 'Caerleon', price: 60, inactive: true }] },
     { resource: 'T4_RUNE', queryId: 'T4_RUNE', materialSource: 'buy', count: 96, rrr: 0.25, returnable: true, neededToBuy: 96, cheapestPrice: 5, cheapestCity: 'Lymhurst', buyPrice: 5, cityPrices: [] },
   ],
   acquire: { byResource: [], days: 0.4 }, enchantAfterCraft: null, bestSell: { city: 'Martlock', price: 1500, taxRate: 0.08 }, netSellPrice: 1380, profitPerUnit: -480, totalProfit: -4800, sellPrices: [{ city: 'Martlock', sellMin: 1600, buyMax: 1500 }],
   patientSell: { days: 3, avgSellPrice: 2500, netSellPrice: 2240, marketDailyVolume: 8, avgDailyVolume: 8, marketShare: 0.25, daysToSellBatch: 3, profitPerUnit: 380, bestCity: { city: 'Lymhurst', avgPrice: 2500 },
     ...(q.get('sellThreshold') ? { threshold: { value: Number(q.get('sellThreshold')), cities: [{ city: 'Lymhurst', avgPrice: 2500, avgDailyVolume: 8 }], totalDailyVolume: 8, daysToSellBatch: 5 } } : {}),
-    byCity: [{ city: 'Lymhurst', avgSellPrice: 2500, avgDailyVolume: 8, taxRate: 0.105, netPrice: 2237, profitPerUnit: 377, profitIndex: 20 }, { city: 'Bridgewatch', avgSellPrice: null, avgDailyVolume: 0, taxRate: 0.105, noData: true, profitPerUnit: null }],
+    byCity: [{ city: 'Lymhurst', avgSellPrice: 2500, avgDailyVolume: 8, taxRate: 0.105, netPrice: 2237, profitPerUnit: 377, profitIndex: 20 }, { city: 'Caerleon', avgSellPrice: 3000, avgDailyVolume: 30, taxRate: 0.105, netPrice: 2685, profitPerUnit: 825, profitIndex: 30, inactive: true }, { city: 'Bridgewatch', avgSellPrice: null, avgDailyVolume: 0, taxRate: 0.105, noData: true, profitPerUnit: null }],
     plan: { cities: [{ city: 'Lymhurst', qty: Number(q.get('quantity')), days: 3 }], excluded: [], totalDays: 3, profitPerUnit: 380 } },
   ...(q.get('ceiling') ? { sellPlan: { ceiling: Number(q.get('ceiling')), withinCeiling: false, sellLow: 2000, sellHigh: 2600, profitLow: 100, profitHigh: 700, totalLow: 1000, totalHigh: 7000 } } : {}),
   ...(q.get('teleport') ? { teleport: { homeCity: 'Fort Sterling', materialLegs: [{ resource: 'T4_CLOTH', resourceName: 'Ткань', fromCity: 'Martlock', needed: 20, distance: 2, cost: 400 }], legsCost: 400, costPerUnit: 2260, instant: { city: 'Martlock', distance: 2, cost: 100, profitPerUnit: -300 }, patient: null, unweighted: [] } } : {}),
@@ -359,7 +359,7 @@ test('панель «Все города» материала: серая рын
   await openCalc(page, log);
   const panel = page.locator('#craft-recipe-table details.cityprices[data-res="T4_CLOTH"]');
   await panel.locator('summary').click();
-  await expect(panel.locator('.cp-row')).toHaveCount(5);                                                    // все пять основных городов (у трёх нет рыночной цены — своя вписывается)
+  await expect(panel.locator('.cp-row')).toHaveCount(7);                                                    // все семь городов: пять основных и два вне расчёта (у части нет рыночной цены — своя вписывается)
   await expect(panel.locator('.cp-row.is-best')).toContainText('Martlock');
   await expect(panel.locator('input[data-city="Martlock"]')).toHaveAttribute('placeholder', '100');           // серым — рыночная цена
   await expect(panel.locator('.cp-row', { hasText: 'Bridgewatch' })).toContainText('нет цены');
@@ -679,4 +679,30 @@ test('скан: «чары после крафта» — только у стр�
   await page.locator('.detail .btn', { hasText: 'Открыть в калькуляторе' }).click();
   await expect.poll(() => log.calc.some((q) => q.get('item') === 'T4_CAPE')).toBe(true);
   expect(log.calc.filter((q) => q.get('item') === 'T4_CAPE').every((q) => q.get('enchantAfterCraft') !== 'true')).toBe(true);
+});
+
+test('города вне расчёта (Caerleon и Brecilien по умолчанию): все города видны в закупке и продаже, но в выбор и план не входят, пока не включены', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  expect(log.calc[0].get('cities')).not.toContain('Caerleon');
+  expect(log.calc[0].get('infoCities')).toBe('Caerleon,Brecilien');
+  // закупка: панель «Все города» — все семь, вне расчёта помечены; лучший — среди активных, хотя в Caerleon дешевле
+  const cloth = page.locator('#craft-recipe-table tr', { hasText: 'Изысканная ткань' });
+  await cloth.locator('details.cityprices summary').click();
+  for (const city of ['Lymhurst', 'Martlock', 'Thetford', 'Bridgewatch', 'Fort Sterling', 'Caerleon', 'Brecilien']) await expect(cloth.locator(`input[data-city="${city}"]`)).toBeVisible();
+  const caer = cloth.locator('.cp-row', { hasText: 'Caerleon' });
+  await expect(caer).toContainText('вне расчёта');
+  await expect(caer).toContainText('60');
+  await expect(caer).not.toHaveClass(/is-best/);
+  await expect(cloth.locator('.cp-row.is-best')).toContainText('Martlock');
+  await expect(cloth.locator('.cp-row', { hasText: 'Brecilien' })).toContainText('нет цены');                 // нет данных — строка всё равно есть, можно вписать свою
+  // продажа: город вне расчёта в таблице плана — с данными, выключен; включается галочкой
+  await page.getByRole('tab', { name: 'Продажа' }).click();
+  const row = page.locator('#city-table tr[data-city="Caerleon"]');
+  await expect(row).toContainText('вне расчёта');
+  await expect(row).toContainText('3 000');
+  await expect(row.locator('.plan-toggle')).not.toBeChecked();
+  await expect(row.locator('.plan-qty')).toHaveValue('0');
+  await row.locator('.plan-toggle').check();
+  await expect(row.locator('.plan-qty')).not.toHaveValue('0');
 });

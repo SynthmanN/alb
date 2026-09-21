@@ -19,7 +19,7 @@ function BuyOrderCard({ c, d }) {
     <div><strong>Итого на ${fmt(d.quantity)} шт</strong><b class=${tone(d.totalProfit)}>${d.totalProfit !== null ? signed(Math.round(d.totalProfit)) : '—'}</b></div></div>
     <details style="margin-top:10px"><summary class="muted" style="cursor:pointer;font-size:13px">Цены готового предмета по городам</summary>
       <div class="tw"><table id="craft-sell-table"><thead><tr><th>Город</th><th>Купить</th><th>Продать</th></tr></thead>
-        <tbody>${d.sellPrices.map((sp) => html`<tr key=${sp.city} class=${bs && sp.city === bs.city ? 'sel' : ''}><td><${CityPill} name=${sp.city} /></td><td>${sp.sellMin ?? '—'}</td><td>${sp.buyMax ?? '—'}</td></tr>`)}</tbody></table></div></details></div>`;
+        <tbody>${d.sellPrices.map((sp) => html`<tr key=${sp.city} class=${`${bs && sp.city === bs.city ? 'sel' : ''} ${sp.inactive ? 'below-threshold' : ''}`}><td><${CityPill} name=${sp.city} />${sp.inactive ? html` <small class="cp-off" title="Город вне расчёта: цены для справки, в выбор лучшей цены не входят">вне расчёта</small>` : null}</td><td>${sp.sellMin ?? '—'}</td><td>${sp.buyMax ?? '—'}</td></tr>`)}</tbody></table></div></details></div>`;
 }
 
 function SellPlanBand({ d }) {

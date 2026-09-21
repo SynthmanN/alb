@@ -776,6 +776,9 @@ app.get('/api/craft-calc', async (req, res) => {
 
     if (!itemId || !RECIPES[itemId]) return res.status(404).json({ error: `не найден рецепт для предмета "${itemId}"` });
     const queryCities = citiesParam ? citiesParam.split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    // Города «только для информации» (infoCities): цены и оборот по ним показываются в закупке и продаже, но выбор города, план и профит по ним не считаются
+    const infoCities = String(req.query.infoCities || '').split(',').map((c) => c.trim()).filter((c) => c && !queryCities.some((q) => normLocation(q) === normLocation(c))).slice(0, 8);
+    const infoLocations = infoCities.map((c) => c.replace(/\s+/g, ''));
 
     // «Зачаровать после крафта»: делаем (или покупаем, если дешевле) базовый предмет .0 и поднимаем зачарование
     // рунами/душами/реликвиями до целевого уровня — так работает схема «чарю, а не крафчу сразу зачарованное».
@@ -808,7 +811,7 @@ app.get('/api/craft-calc', async (req, res) => {
     const jugNow = Date.now();
     const jugLocations = queryCities.map((c) => c.replace(/\s+/g, ''));
     // Вписанные пользователем цены (общие, недостоверные, до 10 дней) подставляются только вместо отсутствующих данных — как в плане фракционных очков
-    const materialData = addManualPriceRecords(readPrices(jugDb, materialIds, { cities: queryCities, qualities: [1] }), materialIds, queryCities, 1, jugNow);
+    const materialData = addManualPriceRecords(readPrices(jugDb, materialIds, { cities: [...queryCities, ...infoCities], qualities: [1] }), materialIds, queryCities, 1, jugNow);
     const manualMaterialIds = new Set(materialData.filter((r) => r.manual).map((r) => r.item_id));
     const finishedLive = await marketPrices(source, [finishedQueryId], quality, { blackMarket });
     const finishedData = addManualPriceRecords(finishedLive, [finishedQueryId], queryCities, quality, jugNow);
@@ -825,9 +828,15 @@ app.get('/api/craft-calc', async (req, res) => {
     }
     // Цена сырья — среднее по сделкам за своё окно (materialHours, по умолчанию 24 ч), а не цена одного дешёвого лота.
     const materialHours = parseMaterialHours(req);
-    const materialHistory = readHistory(jugDb, materialIds, materialHours, { locations: jugLocations, qualities: [1], now: jugNow });
+    const materialHistory = readHistory(jugDb, materialIds, materialHours, { locations: [...jugLocations, ...infoLocations], qualities: [1], now: jugNow });
     const materialSeries = indexByItem(materialHistory);
+    const materialInfo = {};      // цены материалов в городах «только для информации»: { id: [{ city, price }] }
     for (const id of materialIds) {
+      if (infoCities.length) {
+        const infoSnapshot = Object.values(materialByCity[id] || {}).filter((rec) => rec.sell_price_min && infoCities.some((c) => normLocation(c) === normLocation(rec.city)))
+          .map((rec) => ({ city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date }));
+        materialInfo[id] = materialPriceQuotes(materialSeries.get(id), id, materialHours, infoCities, infoSnapshot).map((q) => ({ city: q.city, price: q.price, inactive: true })).sort((a, b) => a.price - b.price);
+      }
       const snapshot = Object.values(materialByCity[id] || {}).filter((rec) => rec.sell_price_min && queryCities.some((c) => normLocation(c) === normLocation(rec.city)))
         .map((rec) => ({ city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date }));
       const quotes = materialPriceQuotes(materialSeries.get(id), id, materialHours, queryCities, snapshot);
@@ -920,7 +929,7 @@ app.get('/api/craft-calc', async (req, res) => {
         refineOption,                                        // { city, rate, rawCost, price, components[] } — если материал можно переработать
         priceSource: cheapest ? (materialSource !== 'buy' ? materialSource : (cityPrices[cheapest.city] || {}).priceSource || null) : null,   // 'history' — средняя по сделкам за окно, 'quote' — сделок нет, текущая котировка
         // Цены во всех активных городах (от дешёвых к дорогим): чтобы раскидать терпеливые ордера на закупку по нескольким городам.
-        cityPrices: cityPriceList(cityPrices, queryCities),
+        cityPrices: [...cityPriceList(cityPrices, queryCities), ...(materialInfo[queryId] || [])],
       };
     });
 
@@ -949,7 +958,7 @@ app.get('/api/craft-calc', async (req, res) => {
         return {
           level: i + 1, materialId, materialName: resolveItemName(materialId), count: perUnitCount,
           cheapestCity: cheapest ? cheapest.city : null, cheapestPrice: cheapest ? cheapest.price : null,
-          cityPrices: cityPriceList(materialByCity[materialId] || {}, queryCities),
+          cityPrices: [...cityPriceList(materialByCity[materialId] || {}, queryCities), ...(materialInfo[materialId] || [])],
           cost: cheapest ? cheapest.price * perUnitCount : null,
         };
       });
@@ -967,6 +976,10 @@ app.get('/api/craft-calc', async (req, res) => {
     const sellPrices = queryCities.map((city) => {
       const rec = finishedCityData[city];
       return { city, sellMin: rec?.sell_price_min || null, buyMax: rec?.buy_price_max || null };
+    });
+    const infoSellPrices = infoCities.map((city) => {
+      const rec = Object.values(finishedCityData).find((r) => normLocation(r.city) === normLocation(city));
+      return { city, sellMin: rec?.sell_price_min || null, buyMax: rec?.buy_price_max || null, inactive: true };
     });
     const taxRate = getSalesTaxRate(req);
     // Чёрный Рынок (по галочке): только покупает, налог свой — мгновенная продажа в его Buy Order. Лучшее место выбираем по цене ПОСЛЕ
@@ -994,7 +1007,7 @@ app.get('/api/craft-calc', async (req, res) => {
       const locations = queryCities.map((c) => c.replace(/\s+/g, ''));
       // Один запрос истории по всем 5 качествам: качество сильно влияет на ликвидность (Отличное может продаваться
       // в 100+ раз быстрее Обычного), а себестоимость от качества не зависит — поэтому сравнение бесплатное.
-      const history = await marketHistory(source, [finishedQueryId], days * 24, ALL_QUALITIES.join(','), blackMarket ? [...locations, BM_QUERY_LOCATION] : locations);
+      const history = await marketHistory(source, [finishedQueryId], days * 24, ALL_QUALITIES.join(','), blackMarket ? [...locations, ...infoLocations, BM_QUERY_LOCATION] : [...locations, ...infoLocations]);
       const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare, blackMarketTaxRate: blackMarket ? bmTaxRate : null });
       patientSell = forQuality(quality);
       if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity, marketShare);
@@ -1018,6 +1031,15 @@ app.get('/api/craft-calc', async (req, res) => {
         for (const city of queryCities) {
           if (have.has(normLocation(city))) continue;
           patientSell.byCity.push({ city, avgSellPrice: null, avgDailyVolume: 0, netPrice: null, taxRate: taxRate + SETUP_FEE_RATE, blackMarket: false, profitPerUnit: null, profitIndex: 0, noData: true });
+        }
+        // Города «только для информации»: строки с ценой и оборотом (или «нет данных»), но уже после плана — в план, лучший город и профит не входят.
+        if (infoCities.length) {
+          const info = computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities: infoCities, quality, marketShare });
+          const infoRows = info ? info.byCity : [];
+          for (const city of infoCities) {
+            const row = infoRows.find((r) => normLocation(r.city) === normLocation(city));
+            patientSell.byCity.push(row ? { ...row, inactive: true } : { city, avgSellPrice: null, avgDailyVolume: 0, netPrice: null, taxRate: taxRate + SETUP_FEE_RATE, blackMarket: false, profitPerUnit: null, profitIndex: 0, noData: true, inactive: true });
+          }
         }
       }
       qualityComparison = ALL_QUALITIES.map((q) => {
@@ -1217,7 +1239,7 @@ app.get('/api/craft-calc', async (req, res) => {
       materialCostPerUnit,
       effectiveCostPerUnit,
       totalCost: effectiveCostPerUnit * quantity,
-      sellPrices,
+      sellPrices: [...sellPrices, ...infoSellPrices],
       bestSell,
       taxRate,
       netSellPrice,

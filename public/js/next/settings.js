@@ -51,12 +51,15 @@ export function toggleCity(name) {
   if (set.has(name)) set.delete(name); else set.add(name);
   settings.set({ optional: [...set] });
 }
+export const ALL_CITIES = ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford', 'Caerleon', 'Brecilien'];
 export const activeCities = (s = settings.get()) => ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford', ...s.optional.filter((c) => ['Caerleon', 'Brecilien'].includes(c))];
+// Города вне расчёта (по умолчанию Caerleon и Brecilien): цены и оборот по ним видны в закупке и продаже, но выбор города, план и профит их не берут
+export const inactiveCities = (s = settings.get()) => ALL_CITIES.filter((c) => !activeCities(s).includes(c));
 
 // Общие параметры запросов расчётов (ставки возврата всегда отправляются числом: пресеты старой страницы здесь не нужны)
 export function commonParams(s = settings.get()) {
   return {
-    cities: activeCities(s).join(','), premium: String(s.premium), source: s.source,
+    cities: activeCities(s).join(','), ...(inactiveCities(s).length ? { infoCities: inactiveCities(s).join(',') } : {}), premium: String(s.premium), source: s.source,
     gearRrr: 'city_bonus', gearRrrCustom: s.rrrCraft, refineRrr: 'city_bonus', refineRrrCustom: s.rrrRefine,
     marketShare: s.share, days: s.hist, materialHours: s.mhist, priceTolerance: s.tolerance,
     blackMarket: String(s.blackMarket), ...(s.teleport ? { teleport: 'true' } : {}),
