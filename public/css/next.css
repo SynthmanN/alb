@@ -475,3 +475,8 @@ details.cityprices > summary:hover { color: var(--text); }
 #panel-calc > .li-cards { grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); }
 @media (max-width: 900px) { .stackbody .totals.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .strip-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* план продажи стека: карточка на позицию с таблицей городов */
+.sale-plans { display: grid; gap: 14px; margin-top: 8px; }
+.sp-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 10px; }
+.sp-sum { margin-top: 10px; }

@@ -437,6 +437,14 @@ test('крафт-лист → калькулятор стеком: активн�
   await expect(cards).toHaveCount(2);
   // таблица продаж и переход к одной позиции
   await page.getByRole('tab', { name: 'Продажа' }).click();
+  await expect(page.locator('#stack-sale-plans')).toContainText('План продажи через Sell Order по городам');
+  await expect(page.locator('#stack-sale-plans .sale-plan')).toHaveCount(2);                                // по плану продажи на каждую позицию
+  const plan = page.locator('#stack-sale-plans .sale-plan').first();
+  await expect(plan.locator('.stack-city-table tr[data-city="Lymhurst"]')).toContainText('2 500');           // цена города
+  await expect(plan.locator('.stack-city-table tr[data-city="Lymhurst"]')).toContainText('+377');            // профит с шт
+  await expect(plan).toContainText('Распределено');
+  await expect(plan).toContainText('Срок распродажи по плану');
+  await expect(plan).toContainText('оборот 8,0 шт/день');
   await expect(page.locator('#stack-sales tbody tr')).toHaveCount(2);
   await page.locator('#stack-sales tbody tr').first().click();
   await expect(page.locator('#verdict')).toBeVisible();
@@ -450,6 +458,16 @@ test('крафт-лист → калькулятор стеком: активн�
   await page.locator('#open-list').click();
   await expect(page.locator('#drawer-list .li-card')).toHaveCount(2);
   await expect(page.locator('#drawer-list .li-card').first().locator('.qty input')).toHaveValue('1');
+});
+
+test('стек: «Изменить план» открывает позицию на вкладке «Продажа» с планом по городам', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  await page.getByRole('tab', { name: 'Продажа' }).click();
+  await page.locator('#stack-sale-plans .sale-plan').first().getByRole('button', { name: 'Изменить план' }).click();
+  await expect(page.locator('#stack-focus-bar')).toBeVisible();
+  await expect(page.locator('#city-plan')).toContainText('План продажи через Sell Order по городам');
 });
 
 test('свои цены материалов общие: вписанная в стеке цена города видна в калькуляторе одной позиции и в листе', async ({ page }) => {
