@@ -389,3 +389,96 @@ test('крафт-лист: панель «Все города» в сводно�
   await expect(page.locator('#drawer-list .totals')).toContainText('11 100');                                    // (1860 − 750) × 10 шт
   await expect(page.locator('#dock-inv')).toContainText('11 100');
 });
+
+// ---------- стек калькулятора ----------
+async function twoItemsInList(page, log) {
+  await mock(page, log);
+  await page.goto('/craft.html');
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-rows .row')).toHaveCount(2);
+  await page.locator('#scan-rows .row').nth(0).locator('button[title="В крафт-лист"]').click();
+  await page.locator('#scan-rows .row').nth(1).locator('button[title="В крафт-лист"]').click();
+  await expect(page.locator('#dock-count')).toHaveText('2');
+  await page.locator('#open-list').click();
+}
+
+test('крафт-лист → калькулятор стеком: активные позиции копируются, серые выпадают из расчёта, лист не меняется', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await expect(page.locator('#open-in-calc')).toContainText('(2)');
+  await page.locator('#drawer-list .li-card').first().locator('.li-pick').click();                        // первая позиция — серая
+  await expect(page.locator('#open-in-calc')).toContainText('(1)');
+  await page.locator('#drawer-list .li-card').first().locator('.li-pick').click();                        // снова активная
+  await expect(page.locator('#open-in-calc')).toContainText('(2)');
+  await page.locator('#open-in-calc').click();
+  await expect(page.locator('#stack-verdict')).toBeVisible();
+  const cards = page.locator('#panel-calc .li-card');
+  await expect(cards).toHaveCount(2);
+  await expect(page.locator('#stack-verdict')).toContainText('2');                                        // позиций в расчёте
+  // сводная закупка складывает одинаковые материалы двух позиций
+  await expect(page.locator('#shopping')).toContainText('Изысканная ткань');
+  await expect(page.locator('#shopping .shop', { hasText: 'Изысканная ткань' })).toContainText('40');
+  // серая позиция выпадает из расчёта
+  await cards.first().locator('.li-pick').click();
+  await expect(cards.first()).toHaveClass(/off/);
+  await expect(page.locator('#shopping .shop', { hasText: 'Изысканная ткань' })).toContainText('20');
+  await expect(page.locator('#stack-verdict')).toContainText('1');
+  await cards.first().locator('.li-pick').click();
+  // своё количество: пересчёт этой позиции запросом
+  await cards.first().locator('.qty input').fill('7');
+  await cards.first().locator('.qty input').blur();
+  await expect.poll(() => log.calc.some((q) => q.get('quantity') === '7')).toBe(true);
+  // добавление и удаление позиции
+  await page.locator('#stack-add').click();
+  await page.locator('#c-search').fill('лук');
+  await page.locator('.suggest button').first().click();
+  await expect(cards).toHaveCount(3);
+  await cards.last().locator('.x').click();
+  await expect(cards).toHaveCount(2);
+  // таблица продаж и переход к одной позиции
+  await page.getByRole('tab', { name: 'Продажа' }).click();
+  await expect(page.locator('#stack-sales tbody tr')).toHaveCount(2);
+  await page.locator('#stack-sales tbody tr').first().click();
+  await expect(page.locator('#verdict')).toBeVisible();
+  await expect(page.locator('#stack-focus-bar')).toBeVisible();
+  await page.locator('#c-qty').fill('9');                                                                  // правка позиции в фокусе идёт в стек
+  await page.locator('#stack-back').click();
+  await expect(page.locator('#panel-calc .li-card').first().locator('.qty input')).toHaveValue('9');
+  // выход из стека; лист остался прежним (копия)
+  await page.locator('#stack-exit').click();
+  await expect(page.locator('#stack-verdict')).toHaveCount(0);
+  await page.locator('#open-list').click();
+  await expect(page.locator('#drawer-list .li-card')).toHaveCount(2);
+  await expect(page.locator('#drawer-list .li-card').first().locator('.qty input')).toHaveValue('1');
+});
+
+test('свои цены материалов общие: вписанная в стеке цена города видна в калькуляторе одной позиции и в листе', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  const row = page.locator('#shopping .shop', { hasText: 'Изысканная ткань' });
+  await expect(row).toContainText('4 000');                                                                 // 40 шт × 100
+  await row.locator('details.cityprices summary').click();
+  await row.locator('input[data-city="Martlock"]').fill('50');
+  await expect(row).toContainText('2 000');
+  await page.locator('#panel-calc .li-card').first().locator('.linkbtn').click();                          // «подробнее» — та же цена в таблице материалов
+  const panel = page.locator('#craft-recipe-table details.cityprices[data-res="T4_CLOTH"]');
+  await panel.locator('summary').click();
+  await expect(panel.locator('input[data-city="Martlock"]')).toHaveValue('50');
+  await expect(page.locator('.manual-reset')).toBeVisible();
+});
+
+test('фракционный план: «Сразу в калькулятор» открывает стек, минуя крафт-лист', async ({ page }) => {
+  const log = { plan: [], calc: [], saved: [], scan: [] };
+  await mockFaction(page, log);
+  await page.goto('/craft.html');
+  await page.locator('[data-tab="faction"]').click();
+  await page.locator('#f-points').fill('90000');
+  await page.getByRole('button', { name: 'Всё за очки' }).click();
+  await expect(page.locator('#plan-table tbody tr.on-plan')).toHaveCount(2);
+  await page.locator('#f-send-calc').click();
+  await expect(page.locator('#stack-verdict')).toBeVisible();
+  await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
+  await expect(page.locator('#dock-count')).toHaveText('0');                                              // лист не тронут
+  await expect.poll(() => log.calc.some((q) => q.get('faction') === 'LYMHURST')).toBe(true);
+});

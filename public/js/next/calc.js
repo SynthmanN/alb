@@ -7,13 +7,15 @@ import { Glyph, Tags, CityPill, Switch, Icon, ICONS, Spinner, toast } from './ui
 import { addToList, craftList } from './list.js';
 import { navStore, nav } from './nav.js';
 import { calcStore, emptyManual, derive } from './calc-store.js';
+import { prices } from './prices.js';
+import { ItemPicker, GEAR, familyOf } from './picker.js';
+import { StackView, StackFocusBar } from './calc-stack.js';
+import { stack } from './list.js';
 import { BuyTab } from './calc-buy.js';
 import { SellTab, TiersTab } from './calc-sell.js';
 
 export { calcStore };
-const GEAR = (i) => i.category === 'weapon' || i.category === 'armor' || i.category === 'cape';
 const maxEnchant = (id) => (itemTier(id) >= 4 ? 4 : 0);
-const familyOf = (id) => id.replace(/^T\d+_/, '');
 let runId = 0;
 
 export async function runCalc(sig) {
@@ -44,7 +46,7 @@ navStore.subscribe(() => {
   const t = navStore.get().calc;
   if (!t || t.handled) return;
   navStore.set({ calc: { ...t, handled: true } });
-  pickItem(t.itemId, { enchant: t.enchant || 0, quality: t.quality || 1, qty: t.quantity || 1, after: !!t.after, faction: !!t.faction, crestSilver: !!t.crestSilver, heartSilver: !!t.heartSilver });
+  pickItem(t.itemId, { enchant: t.enchant || 0, quality: t.quality || 1, qty: t.quantity || 1, after: !!t.after, faction: !!t.faction, crestSilver: !!t.crestSilver, heartSilver: !!t.heartSilver, stackMode: false, stackFocus: null });
 });
 
 // ---------- где крафтить: город бонуса ----------
@@ -57,36 +59,6 @@ export function gearBonusCity(item) {
   if (item.category === 'armor') { const m = fam.match(/^(ARMOR|HEAD|SHOES)_(CLOTH|LEATHER|PLATE)/); return m ? BONUS_ARMOR[`${m[1]}_${m[2]}`] || null : null; }
   const group = getWeaponGroups().find((g) => g.families.includes(fam));
   return group ? BONUS_WEAPON[group.id] || null : null;
-}
-
-// ---------- выбор предмета: поиск, категория, тир ----------
-const CAPE_COLUMNS = [['CAPE', 'Базовые'], ['CAPEITEM_FW_BRIDGEWATCH', 'Бридгуотч'], ['CAPEITEM_FW_CAERLEON', 'Каэрлеон'], ['CAPEITEM_FW_FORTSTERLING', 'Форт Стерлинг'], ['CAPEITEM_FW_LYMHURST', 'Лимхёрст'], ['CAPEITEM_FW_MARTLOCK', 'Мартлок'], ['CAPEITEM_FW_THETFORD', 'Тетфорд'], ['CAPEITEM_FW_BRECILIEN', 'Бресилиен'], ['CAPEITEM_AVALON', 'Авалонские'], ['CAPEITEM_DEMON', 'Демонов'], ['CAPEITEM_HERETIC', 'Еретиков'], ['CAPEITEM_KEEPER', 'Хранителей'], ['CAPEITEM_MORGANA', 'Морганы'], ['CAPEITEM_SMUGGLER', 'Контрабандистов'], ['CAPEITEM_UNDEAD', 'Нежити']];
-const ARMOR_COLUMNS = [['латы', 'Латная броня'], ['кожа', 'Кожаная броня'], ['ткань', 'Тканевая броня']];
-function pickerColumns(cat, items) {
-  let columns;
-  if (cat === 'armor') columns = ARMOR_COLUMNS.map(([key, title]) => ({ title, test: (i) => i.material === key }));
-  else if (cat === 'cape') columns = CAPE_COLUMNS.map(([fam, title]) => ({ title, test: (i) => familyOf(i.id) === fam }));
-  else columns = getWeaponGroups().map((g) => ({ title: g.title, test: (i) => g.families.includes(familyOf(i.id)) }));
-  return columns.map((col) => ({ title: col.title, items: items.filter(col.test).sort((a, b) => familyOf(a.id).localeCompare(familyOf(b.id)) || a.tier - b.tier) })).filter((col) => col.items.length);
-}
-function ItemPicker({ value, onPick }) {
-  const [q, setQ] = useState('');
-  const [cat, setCat] = useState('');
-  const [tier, setTier] = useState('');
-  const [open, setOpen] = useState(false);
-  const matches = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s && !cat && !tier) return [];
-    return allItems().filter((it) => GEAR(it) && (!cat || it.category === cat) && (!tier || String(it.tier) === tier) && (!s || it.name.toLowerCase().includes(s) || it.id.toLowerCase().includes(s)));
-  }, [q, cat, tier, open]);
-  const pick = (it) => { onPick(it.id); setQ(''); setOpen(false); };
-  const chip = (it) => html`<button type="button" role="option" key=${it.id} onMouseDown=${(e) => { e.preventDefault(); pick(it); }}><${Glyph} id=${it.id} tier=${it.tier} size=${48} /><span>${itemLabel(it.id)}${it.slot || it.material ? html` <small class="muted">(${[it.slot, it.material].filter(Boolean).join(', ')})</small>` : null}</span><span class=${`tag t${it.tier}`}>T${it.tier}</span></button>`;
-  return html`<div class="picker-wrap" style="flex:1 1 320px;position:relative" onFocusIn=${() => setOpen(true)} onFocusOut=${() => setTimeout(() => setOpen(false), 180)}>
-    <div class="filters" style="margin:0">
-      <label class="f" style="flex:1 1 200px;width:auto">Предмет<input id="c-search" type="search" autocomplete="off" placeholder=${value ? itemLabel(value) : 'Найди предмет: меч, плащ, шлем…'} value=${q} onInput=${(e) => { setQ(e.target.value); setOpen(true); }} /></label>
-      <label class="f" style="width:150px">Категория<select id="c-cat" value=${cat} onChange=${(e) => setCat(e.target.value)}>${[['', 'Все категории'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['cape', 'Плащи']].map(([v, t]) => html`<option value=${v} selected=${cat === v}>${t}</option>`)}</select></label>
-      <label class="f" style="width:110px">Тир<select id="c-tier" value=${tier} onChange=${(e) => setTier(e.target.value)}>${[['', 'Любой'], ...[4, 5, 6, 7, 8].map((t) => [String(t), `T${t}`])].map(([v, t]) => html`<option value=${v} selected=${tier === v}>${t}</option>`)}</select></label></div>
-    ${open && matches.length ? html`<div class=${`suggest ${cat ? 'columns' : ''}`} role="listbox">${cat ? pickerColumns(cat, matches).map((col) => html`<div class="suggest-col" key=${col.title}><h4>${col.title} <small>${col.items.length}</small></h4>${col.items.map(chip)}</div>`) : matches.slice(0, 30).map(chip)}</div>` : null}</div>`;
 }
 
 // ---------- вердикт ----------
@@ -119,9 +91,16 @@ function Verdict({ c, d, p, st }) {
     </div></div>`;
 }
 
+// Вкладка калькулятора: стек активных позиций (общий вид) или одна вещь (обычный расчёт; в режиме стека — позиция в фокусе)
 export function CalcTab() {
   const c = useStore(calcStore);
+  return c.stackMode && !c.stackFocus ? html`<${StackView} />` : html`<${SingleCalc} />`;
+}
+
+function SingleCalc() {
+  const c = useStore(calcStore);
   const s = useStore(settings);
+  const pr = useStore(prices);
   const [, force] = useState(0);
   useEffect(() => { Promise.all([itemsReady, groupsReady]).then(() => force((n) => n + 1)); }, []);
   const sig = JSON.stringify([c.itemId, c.enchant, c.quality, c.qty, c.after, c.faction, c.crestSilver, c.heartSilver, commonParams(s)]);
@@ -130,13 +109,17 @@ export function CalcTab() {
     const t = setTimeout(() => runCalc(sig), 350);
     return () => clearTimeout(t);
   }, [sig, c.itemId]);
+  useEffect(() => {                                              // правки позиции в фокусе (тир, чары, качество, количество) идут в стек
+    if (c.stackMode && c.stackFocus && c.itemId) stack.patch(c.stackFocus, { itemId: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, after: c.after });
+  }, [c.stackFocus, c.itemId, c.enchant, c.quality, c.qty, c.after]);
   const set = (p) => calcStore.set(p);
-  const { d, st, p, override, lists } = useMemo(() => derive(c, s), [c.data, c.own, c.cityOwn, c.lots, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
+  const { d, st, p, override, lists } = useMemo(() => derive(c, s, pr), [c.data, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
   const subs = [['buy', 'Закупка'], ['sell', 'Продажа'], ['tiers', 'Сравнение по тирам']];
   const invalidate = () => set({ sig: '' });
   return html`<section class="panel" id="panel-calc">
+    ${c.stackMode && c.stackFocus ? html`<${StackFocusBar} />` : null}
     <div class="filters">
       <${ItemPicker} value=${c.itemId} onPick=${(id) => pickItem(id, { enchant: Math.min(c.enchant, maxEnchant(id)) })} />
       <label class="f" style="width:120px">Зачарование<select id="c-ench" value=${c.enchant} onChange=${(e) => set({ enchant: +e.target.value })}>${[0, 1, 2, 3, 4].map((e) => html`<option value=${e} selected=${c.enchant === e} disabled=${e > maxE}>.${e}</option>`)}</select></label>

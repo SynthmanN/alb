@@ -5,7 +5,8 @@ import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
 import { Glyph, Tags, Seg, Icon, ICONS, Spinner, toast } from './ui.js';
 import { replaceFactionItems } from './list.js';
-import { drawerStore } from './dock.js';
+import { drawerStore } from './nav.js';
+import { openStackInCalculator } from './stack-open.js';
 import { computeRow, buildPlan, sortPlanRows, planToListItems, rowKey } from './logic/factionPlan.js';
 
 export const FACTIONS = [['MARTLOCK', 'Мартлок'], ['LYMHURST', 'Лимхёрст'], ['BRIDGEWATCH', 'Бридгуотч'], ['FORTSTERLING', 'Форт Стерлинг'], ['THETFORD', 'Тетфорд'], ['CAERLEON', 'Каэрлеон'], ['BRECILIEN', 'Бресилиен']];
@@ -120,6 +121,10 @@ export function FactionTab() {
     replaceFactionItems(items, { id: st.faction, name: (FACTIONS.find(([id]) => id === st.faction) || [, st.faction])[1], points: st.points });
     drawerStore.set({ open: true });
   };
+  const sendCalc = () => {
+    const items = planToListItems(model.plan.rows);
+    if (items.length) openStackInCalculator(items, { id: st.faction, name: (FACTIONS.find(([id]) => id === st.faction) || [, st.faction])[1], points: st.points });
+  };
   const spent = model ? st.points - model.plan.left : 0;
   const totalProfit = model ? model.plan.rows.reduce((a, x) => a + x.profit, 0) : 0;
   const capes = model ? model.planned.reduce((a, x) => a + x.qty, 0) : 0;
@@ -142,7 +147,8 @@ export function FactionTab() {
         <div><span>Профит по плану</span><b class=${tone(totalProfit)} id="f-profit">${signed(totalProfit)}</b></div>
         ${model.plan.lastEff !== null ? html`<div title="Профит на очко у последней потраченной порции очков"><span>Цена очка</span><b>≈ ${fmt(model.plan.lastEff, 1)}</b></div>` : null}
         ${buyHearts ? html`<div><span>Докупить за серебро</span><b>${fmt(buyHearts)} сердец</b></div>` : null}</div>
-        <button class="btn primary" type="button" id="f-send" disabled=${!model.planned.length} onClick=${send}><${Icon} d=${ICONS.arrow} />Крафтить план — в крафт-лист (${model.planned.length})</button></div>
+        <div class="strip-actions"><button class="btn primary" type="button" id="f-send" disabled=${!model.planned.length} onClick=${send}><${Icon} d=${ICONS.arrow} />Крафтить план — в крафт-лист (${model.planned.length})</button>
+          <button class="btn" type="button" id="f-send-calc" disabled=${!model.planned.length} onClick=${sendCalc} title="Позиции плана сразу открываются в калькуляторе одним стеком, минуя крафт-лист"><${Icon} d=${ICONS.calc} />Сразу в калькулятор</button></div></div>
       <div class="card"><div class="tw"><table id="plan-table">
         <thead><tr>${HEADS.map(([k, l]) => html`<th key=${k} class="sortable" aria-sort=${st.sort.key === k ? (st.sort.dir === 'desc' ? 'descending' : 'ascending') : null} onClick=${() => setSort(k)}>${l}${st.sort.key === k ? (st.sort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</th>`)}<th></th></tr></thead>
         <tbody>${visible.map((x) => {
