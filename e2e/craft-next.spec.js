@@ -559,3 +559,38 @@ test('крафт-лист и стек калькулятора: у позици�
   await page.locator('.subtabs button', { hasText: 'Продажа' }).click();
   await expect(page.locator('#stack-sales thead')).toContainText('Оборот / день');
 });
+
+// ---------- справочники предметов ----------
+test('справочники при «слишком много запросов»: страница ждёт и повторяет — названия предметов и категории не остаются пустыми', async ({ page }) => {
+  const tries = { items: 0, groups: 0 };
+  const limited = (kind) => (route) => {
+    tries[kind]++;
+    if (tries[kind] === 1) return route.fulfill({ status: 429, headers: { 'retry-after': '1' }, json: { error: 'слишком много запросов, попробуйте через минуту' } });
+    return route.continue();
+  };
+  await page.route('**/api/items*', limited('items'));
+  await page.route('**/api/item-groups*', limited('groups'));
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: SCAN }));
+  await page.goto('/craft.html');
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-rows > *').first()).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('#ref-error')).toHaveCount(0);
+  expect(tries.items).toBe(2);
+  await page.locator('[data-tab="calc"]').click();
+  await page.locator('#c-cat').selectOption('weapon');
+  await page.locator('#c-search').focus();
+  await expect(page.locator('.suggest-col').first()).toBeVisible({ timeout: 10000 });          // колонки по группам оружия — из справочника групп
+});
+
+test('справочник не загрузился: предупреждение с кнопкой «Повторить», после неё названия появляются без перезагрузки страницы', async ({ page }) => {
+  let broken = true;
+  await page.route('**/api/items*', (route) => (broken ? route.fulfill({ status: 500, contentType: 'text/html', body: 'ошибка' }) : route.continue()));
+  await page.goto('/craft.html');
+  await expect(page.locator('#ref-error')).toContainText('справочник предметов');
+  broken = false;
+  await page.locator('#ref-retry').click();
+  await expect(page.locator('#ref-error')).toHaveCount(0);
+  await page.locator('[data-tab="calc"]').click();
+  await page.locator('#c-search').fill('лук');
+  await expect(page.locator('.suggest button').first()).toBeVisible();
+});

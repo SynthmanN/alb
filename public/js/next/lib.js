@@ -69,7 +69,6 @@ export const cityName = (c) => String(c || '').replace(/^(Fort)(Sterling)$/, '$1
 
 // ---------- предметы ----------
 let itemsById = new Map();
-export const itemsReady = fetch('/api/items').then((r) => r.json()).then((items) => { itemsById = new Map(items.map((i) => [i.id, i])); }).catch(() => {});
 export const findItem = (id) => itemsById.get(id) || null;
 export const allItems = () => [...itemsById.values()];
 // «T4 Меч (знаток)» → «Меч (знаток)»: тир показывает отдельная метка
@@ -81,7 +80,6 @@ export const auctionName = (name) => String(name || '').replace(/^T\d+\s+/, '').
 
 // группы оружия (для выбора предмета по категориям и подсказки «где крафтить»)
 let weaponGroups = [];
-export const groupsReady = fetch('/api/item-groups').then((r) => r.json()).then((d) => { weaponGroups = d.weapon || []; }).catch(() => {});
 export const getWeaponGroups = () => weaponGroups;
 
 // ---------- API ----------
@@ -146,6 +144,19 @@ export async function apiPost(path, body) {
   if (path.includes('manual-price')) clearApiCache();                    // вписанная цена меняет расчёты — кэш недействителен
   return res.json().catch(() => ({}));
 }
+
+// ---------- справочники (предметы и группы оружия) ----------
+// Без них у предметов нет названий, а список категорий пуст, поэтому грузим через общий слой запросов: при «слишком много запросов» он ждёт и повторяет.
+// Статус — в refStore: если справочник так и не загрузился, страница показывает предупреждение с кнопкой «Повторить», а не молча остаётся пустой.
+export const refStore = createStore({ items: 'loading', groups: 'loading', error: '' });
+const loadRef = (key, path, apply) => apiGet(path, {})
+  .then((d) => { apply(d); refStore.set({ [key]: 'ok' }); })
+  .catch((err) => { refStore.set({ [key]: 'failed', error: err.message }); });
+const loadItems = () => loadRef('items', '/api/items', (items) => { itemsById = new Map(items.map((i) => [i.id, i])); });
+const loadGroups = () => loadRef('groups', '/api/item-groups', (d) => { weaponGroups = d.weapon || []; });
+export const itemsReady = loadItems();
+export const groupsReady = loadGroups();
+export const reloadReference = () => { refStore.set({ items: 'loading', groups: 'loading', error: '' }); return Promise.all([loadItems(), loadGroups()]); };
 
 // ---------- буфер обмена ----------
 export async function copyText(text) {
