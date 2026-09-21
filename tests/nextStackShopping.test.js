@@ -75,13 +75,14 @@ describe('свои цены закрывают материал', () => {
 });
 
 describe('сводка закупки', () => {
-  it('одинаковый материал нескольких позиций складывается, остаётся «для каких позиций и сколько»', () => {
+  it('одинаковый материал нескольких позиций просто складывается', () => {
     const d1 = base([row({ resource: 'T4_CLOTH', queryId: 'T4_CLOTH', neededToBuy: 40 })]);
     const d2 = base([row({ resource: 'T4_CLOTH', queryId: 'T4_CLOTH', neededToBuy: 6 })]);
-    const merged = mergeRows([acquisitionRows(d1), acquisitionRows(d2)], [{ uid: 'a' }, { uid: 'b' }]);
+    const merged = mergeRows([acquisitionRows(d1), acquisitionRows(d2)]);
     expect(merged).toHaveLength(1);
     expect(merged[0].needed).toBe(46);
-    expect(merged[0].uses.map((u) => [u.owner.uid, u.needed])).toEqual([['a', 40], ['b', 6]]);
+    // убрали позицию из стека — её материалы уходят из сводки
+    expect(mergeRows([acquisitionRows(d1)])[0].needed).toBe(40);
   });
 });
 

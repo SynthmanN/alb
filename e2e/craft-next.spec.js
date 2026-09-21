@@ -493,8 +493,7 @@ test('стек: сводная закупка — для каких позици
   await page.locator('#open-in-calc').click();
   await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
   const cloth = page.locator('#shopping .shop[data-res="T4_CLOTH"]');
-  await expect(cloth.locator('.use-row')).toHaveCount(2);                                          // ткань нужна обеим позициям стека
-  await expect(cloth).toContainText('40');
+  await expect(cloth).toContainText('40');                                                          // ткань двух позиций сложена в одну строку
   // руна: в ответе нет ни одной рыночной цены по городам — панель всё равно есть, со всеми активными городами
   const rune = page.locator('#shopping .shop[data-res="T4_RUNE"]');
   await rune.locator('details.cityprices summary').click();

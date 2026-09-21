@@ -59,13 +59,11 @@ export function withOverride(row, ov) {
 export const missingRows = (rows) => rows.filter((r) => r.missing);
 
 // Сводка нескольких позиций: одинаковые материалы складываются, города объединяются
-// owners[i] — описание позиции, которой принадлежат rows list[i]: в строке сводки остаётся, для каких позиций и сколько нужно
-export function mergeRows(list, owners = []) {
+export function mergeRows(list) {
   const map = new Map();
-  list.forEach((rows, i) => {
+  for (const rows of list) {
     for (const r of rows) {
-      const e = map.get(r.id) || { id: r.id, key: r.key || r.id, name: r.name, needed: 0, cities: new Map(), missing: false, uses: [] };
-      if (owners[i]) e.uses.push({ owner: owners[i], needed: r.needed, why: r.why || '' });
+      const e = map.get(r.id) || { id: r.id, key: r.key || r.id, name: r.name, needed: 0, cities: new Map(), missing: false };
       e.needed += r.needed;
       if (r.missing) e.missing = true;
       for (const c of r.cities) {
@@ -76,9 +74,9 @@ export function mergeRows(list, owners = []) {
       }
       map.set(r.id, e);
     }
-  });
+  }
   return [...map.values()].map((e) => {
     const cities = [...e.cities.entries()].map(([city, c]) => ({ city, qty: c.qty, price: c.cost / c.qty }));
-    return { id: e.id, key: e.key, name: e.name, needed: e.needed, uses: e.uses, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
+    return { id: e.id, key: e.key, name: e.name, needed: e.needed, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
   }).sort((a, b) => b.sum - a.sum);
 }
