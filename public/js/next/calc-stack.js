@@ -4,7 +4,8 @@ import { html, useStore, useState, fmt, signed, tone, fmtDays, itemLabel, itemTi
 import { stack } from './list.js';
 import { stackDef } from './listcalc.js';
 import { calcStore, emptyManual } from './calc-store.js';
-import { StackCards, StackTotals, StackShopping, useStackData } from './stack-ui.js';
+import { StackCards, StackTotals, useStackData } from './stack-ui.js';
+import { StackShopping } from './stack-shopping.js';
 import { ItemPicker } from './picker.js';
 import { Glyph, Tags, Icon, ICONS, toast } from './ui.js';
 import { itemProfit } from './logic/stack.js';

@@ -5,11 +5,20 @@ const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 // Рыночные цены по городам для каждого материала ответа калькулятора: { ключ материала: [{ city, price }] } (цены без комиссии)
 export function priceLists(data) {
   const lists = {};
+  const fee = data.setupFeeRate ?? SETUP_FEE;
+  const keyOf = (r) => r.queryId || r.resource;                                   // с зачарованием: плащ .1 и .3 — разные материалы
+  // материал без цен на рынке тоже получает (пустой) список: в панели «Все города» можно вписать свою цену
   for (const r of data.recipe || []) {
-    if (r.materialSource !== 'points' && r.cityPrices && r.cityPrices.length) lists[r.resource] = r.cityPrices.map(({ city, price }) => ({ city, price }));
+    if (r.materialSource !== 'points') lists[keyOf(r)] = (r.cityPrices || []).map(({ city, price }) => ({ city, price }));
   }
   for (const st of (data.enchantAfterCraft && data.enchantAfterCraft.steps) || []) {
-    if (st.cityPrices && st.cityPrices.length) lists[st.materialId] = st.cityPrices.map(({ city, price }) => ({ city, price }));
+    lists[st.materialId] = (st.cityPrices || []).map(({ city, price }) => ({ city, price }));
+  }
+  // компоненты крафта и переработки (ткань, кожа, сырьё): сервер отдаёт только выбранный город — он и попадает в список (цена без комиссии)
+  const seed = (cp) => { if (!lists[cp.id]) lists[cp.id] = cp.city && cp.price ? [{ city: cp.city, price: cp.price / (1 + fee) }] : []; };
+  for (const r of data.recipe || []) {
+    if (r.materialSource === 'craft' && r.craftOption) r.craftOption.components.forEach(seed);
+    if (r.materialSource === 'refine' && r.refineOption) r.refineOption.components.forEach(seed);
   }
   return lists;
 }

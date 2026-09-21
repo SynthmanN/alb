@@ -487,6 +487,34 @@ test('стек: план продажи по городам правится п�
   await expect(page.locator('#city-plan .plan-city-price[data-city="Lymhurst"]')).toHaveValue('3100');
 });
 
+test('стек: сводная закупка — для каких позиций, все города (даже без данных) со своей ценой, единая своя цена и лог закупок по лотам', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
+  const cloth = page.locator('#shopping .shop[data-res="T4_CLOTH"]');
+  await expect(cloth.locator('.use-chip')).toHaveCount(2);                                          // ткань нужна обеим позициям стека
+  await expect(cloth).toContainText('40');
+  // руна: в ответе нет ни одной рыночной цены по городам — панель всё равно есть, со всеми активными городами
+  const rune = page.locator('#shopping .shop[data-res="T4_RUNE"]');
+  await rune.locator('details.cityprices summary').click();
+  for (const city of ['Lymhurst', 'Martlock', 'Thetford', 'Bridgewatch', 'Fort Sterling']) await expect(rune.locator(`input[data-city="${city}"]`)).toBeVisible();
+  await rune.locator('input[data-city="Bridgewatch"]').fill('3');                                    // своя цена города без рыночных данных
+  await expect(rune).toContainText('своя цена');
+  // единая своя цена материала
+  await cloth.locator('input.manual-price').fill('50');
+  await expect(cloth).toContainText('2 000');                                                        // 40 шт × 50
+  await cloth.locator('input.manual-price').fill('');
+  // лог закупок по лотам: включается в параметрах и работает в самой сводной закупке
+  await page.getByRole('button', { name: 'Ещё' }).click();
+  await page.getByText('Лог закупок по лотам').click();
+  await cloth.locator('.lot-add').click();
+  await cloth.locator('.lot-qty').fill('100');
+  await cloth.locator('.lot-price').fill('150');
+  await expect(cloth.locator('.lot-sum')).toContainText('куплено 100 из 40');
+  await expect(cloth).toContainText('6 000');                                                        // 40 шт × средняя 150
+});
+
 test('свои цены материалов общие: вписанная в стеке цена города видна в калькуляторе одной позиции и в листе', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await twoItemsInList(page, log);

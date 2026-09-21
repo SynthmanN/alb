@@ -4,7 +4,8 @@ import { html, useStore, Fragment, itemLabel, fmt, signed, tone, copyText, aucti
 import { craftList, list, clearList } from './list.js';
 import { listDef } from './listcalc.js';
 import { drawerStore, nav } from './nav.js';
-import { StackCards, StackTotals, StackShopping, useStackData } from './stack-ui.js';
+import { StackCards, StackTotals, useStackData } from './stack-ui.js';
+import { StackShopping } from './stack-shopping.js';
 import { Switch, Icon, ICONS, toast } from './ui.js';
 import { afterPossible } from './logic/stack.js';
 import { openListInCalculator } from './stack-open.js';

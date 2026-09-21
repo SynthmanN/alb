@@ -39,7 +39,7 @@ export function acquisitionRows(data, nameOf = (id) => id) {
           push({ id: cp.id, key: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} → ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
         });
       } else {
-        push({ id: rid, key: r.resource, why: r.enchanted ? `зачарование .${data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity });
+        push({ id: rid, key: rid, why: r.enchanted ? `зачарование .${data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity });
       }
     }
   }
@@ -59,23 +59,26 @@ export function withOverride(row, ov) {
 export const missingRows = (rows) => rows.filter((r) => r.missing);
 
 // Сводка нескольких позиций: одинаковые материалы складываются, города объединяются
-export function mergeRows(list) {
+// owners[i] — описание позиции, которой принадлежат rows list[i]: в строке сводки остаётся, для каких позиций и сколько нужно
+export function mergeRows(list, owners = []) {
   const map = new Map();
-  for (const rows of list) {
+  list.forEach((rows, i) => {
     for (const r of rows) {
-      const e = map.get(r.id) || { id: r.id, key: r.key || r.id, name: r.name, needed: 0, cities: new Map(), missing: false };
+      const e = map.get(r.id) || { id: r.id, key: r.key || r.id, name: r.name, needed: 0, cities: new Map(), missing: false, uses: [] };
+      if (owners[i]) e.uses.push({ owner: owners[i], needed: r.needed, why: r.why || '' });
       e.needed += r.needed;
       if (r.missing) e.missing = true;
       for (const c of r.cities) {
+        if (!(c.qty > 0) || !Number.isFinite(c.price)) continue;                       // город без штук или без цены в сводку не идёт
         const cur = e.cities.get(c.city) || { qty: 0, cost: 0 };
         cur.qty += c.qty; cur.cost += c.qty * c.price;
         e.cities.set(c.city, cur);
       }
       map.set(r.id, e);
     }
-  }
+  });
   return [...map.values()].map((e) => {
     const cities = [...e.cities.entries()].map(([city, c]) => ({ city, qty: c.qty, price: c.cost / c.qty }));
-    return { id: e.id, key: e.key, name: e.name, needed: e.needed, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
+    return { id: e.id, key: e.key, name: e.name, needed: e.needed, uses: e.uses, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
   }).sort((a, b) => b.sum - a.sum);
 }

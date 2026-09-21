@@ -1,17 +1,13 @@
 // Общие компоненты стека позиций: карточки (включить/выключить, количество, детали за серебро, цена продажи), итоги и сводная закупка.
 // Используются и панелью крафт-листа, и калькулятором в режиме стека: def = { ops, engine } — хранилище позиций и его расчёт.
-import { html, useStore, useState, useMemo, fmt, signed, tone, itemLabel, itemTier, copyText, auctionName, apiPost } from './lib.js';
+import { html, Fragment, useStore, useState, useMemo, fmt, signed, tone, itemLabel, itemTier, apiPost } from './lib.js';
 import { settings, activeCities } from './settings.js';
-import { prices, setCityOwn } from './prices.js';
-import { drawerStore } from './nav.js';
-import { CityPriceList } from './citylist.js';
-import { Glyph, Tags, CityPill, Turnover, toast } from './ui.js';
+import { prices } from './prices.js';
+import { Glyph, Tags, Turnover, toast } from './ui.js';
 import { missingPrices, itemProfit, stackTotals } from './logic/stack.js';
 import { turnoverPerDay, turnoverInfo } from './logic/turnover.js';
-import { acquisitionRows, mergeRows, withOverride } from './logic/acquire.js';
-import { adjustData, makeOverride } from './logic/adjust.js';
+import { adjustData } from './logic/adjust.js';
 import { applyItemPlan } from './logic/planEdit.js';
-import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
 
 // Данные стека одним объектом: позиции, результаты расчёта со своими ценами материалов, итоги
 export function useStackData({ ops, engine }) {
@@ -96,29 +92,4 @@ export function StackTotals({ data }) {
       <div><span>Очки${faction ? ` из ${fmt(faction.points)}` : ''}</span><b class=${over ? 'neg' : ''}>${fmt(t.points)}</b></div><div><span>Плащей / позиций</span><b>${fmt(t.capes)} / ${t.items}</b></div></div>
     ${over ? html`<div class="note neg" style="margin:0">Очков не хватает: ${fmt(t.points - faction.points)}</div>` : null}
     ${t.noPrice || t.pending || t.errors ? html`<div class="note" style="margin:0">${t.pending ? `Считается позиций: ${t.pending}. ` : ''}${t.noPrice ? `Не хватает цен материалов или продажи (в итоги не входят): ${t.noPrice} — впиши их в карточках. ` : ''}${t.errors ? `С ошибкой: ${t.errors}.` : ''}</div>` : null}</${Fragment}>`;
-}
-import { Fragment } from './lib.js';
-
-// Сводная закупка по включённым позициям: одинаковые материалы складываются, у каждого — панель «Все города» со своими ценами (общие для всего сайта)
-export function StackShopping({ data }) {
-  const { checks } = useStore(drawerStore);
-  const { items, results, prices: pr, cities, settings: s } = data;
-  const active = items.filter((i) => i.on !== false && results.get(i.uid) && !results.get(i.uid).error);
-  const lists = {};
-  let fee = SETUP_FEE;
-  for (const i of active) { const d = results.get(i.uid); fee = d.setupFeeRate ?? fee; for (const [k, v] of Object.entries(priceLists(d))) if (!lists[k]) lists[k] = v; }
-  const m = makeOverride(lists, pr, { purchaseLog: s.purchaseLog, cities, fee });
-  const rows = mergeRows(active.map((i) => acquisitionRows(results.get(i.uid), itemLabel))).map((r) => withOverride(r, m.override(r.key)));
-  if (!rows.length) return null;
-  const done = rows.filter((r) => checks[r.id]).length;
-  const total = rows.reduce((sum, r) => sum + (r.sum || 0), 0);
-  const copy = async (r) => toast((await copyText(auctionName(r.name))) ? `Скопировано: ${auctionName(r.name)}` : 'Не удалось скопировать');
-  return html`<div id="shopping"><div class="grouphead">Закупить для всех активных позиций <span class="muted" style="text-transform:none;letter-spacing:0">· куплено ${done} из ${rows.length}</span></div>
-    <div class="shop-list">${rows.map((r) => html`<div class=${`shop ${checks[r.id] ? 'done' : ''}`} key=${r.id}>
-      <div class="shop-l"><input type="checkbox" class="ck" checked=${!!checks[r.id]} onChange=${(e) => drawerStore.set({ checks: { ...checks, [r.id]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
-        <div class="shop-body"><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copy(r)}>${r.name}</button>${r.manual ? html` <small class="is-manual-note">своя</small>` : null}
-          <span class="shop-c">${r.cities.map((c) => html`<${CityPill} key=${c.city} name=${c.city} />`)}</span>
-          ${lists[r.key] ? html`<${CityPriceList} resKey=${r.key} list=${lists[r.key]} own=${pr.cityOwn[r.key]} fee=${fee} onSet=${(city, v) => setCityOwn(r.key, city, v)} />` : null}</div></div>
-      <span class="shop-n"><b>${fmt(r.needed)}</b> шт<br /><span class="neg">${fmt(r.sum)}</span></span></div>`)}</div>
-    <div class="statusline" style="padding:10px 0 0;border:0">Итого на закупку: <b class="neg">${fmt(total)}</b>. Складываются результаты по отдельно посчитанным позициям: общий объём одинакового материала мог бы поднять цену чуть выше. Свои цены материалов общие для калькулятора и листа.</div></div>`;
 }

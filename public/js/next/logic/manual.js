@@ -23,24 +23,48 @@ export function applyManualPrices(data, ctx) {
   const d = { ...data, recipe: data.recipe.map((r) => ({ ...r })) };
   let materialDelta = 0;                 // изменение себестоимости за штуку от своих цен на материалы рецепта (с учётом возврата)
   let nominalDelta = 0;
+  const gearRate = data.rrrOptions && data.rrrOptions.gearRate ? data.rrrOptions.gearRate : 0;
   for (const r of d.recipe) {
-    if (r.cheapestPrice === null || r.materialSource === 'points') continue;
+    if (r.materialSource === 'points') continue;
+    const key = r.queryId || r.resource;                                                  // ключ свой цены — с зачарованием: плащ .1 и .3 — разные материалы
+    if (r.cheapestPrice === null) {
+      // Цены на рынке нет — своя цена (единая или города) закрывает материал: он входит в себестоимость и позиция перестаёт быть «без цены»
+      const cbm = cityBuy(key);
+      const om = own(key);
+      const pm = om !== undefined ? om : cbm !== undefined ? cbm.price : undefined;
+      if (pm === undefined) continue;
+      const fm = r.returnable === false ? 1 : 1 - gearRate;
+      materialDelta += pm * fm * r.count;
+      nominalDelta += pm * r.count;
+      r.cheapestPrice = pm; r.buyPrice = pm; r.cheapestCity = cbm !== undefined && om === undefined ? cbm.city : null; r.buyCity = r.cheapestCity;
+      r.materialSource = 'buy'; r.manualPrice = true; r.filledByOwn = true;
+      continue;
+    }
     const oldPrice = r.cheapestPrice;
     // Своя цена сырья или полуфабриката предыдущего тира (из плана закупки) тоже пересчитывает «купить или переработать»
-    const cb = cityBuy(r.resource);                                                       // своя цена города: закупка по ней (без комиссии), город меняется
-    const ownComp = r.refineOption ? r.refineOption.components.some((cp) => own(cp.id) !== undefined) : false;
+    const cb = cityBuy(key);                                                       // своя цена города: закупка по ней (без комиссии), город меняется
+    const compPrice = (cp) => { const oc = own(cp.id); if (oc !== undefined) return oc; const cc = cityBuy(cp.id); return cc !== undefined ? cc.price : undefined; };   // своя цена компонента: единая или города
+    const ownComp = r.refineOption ? r.refineOption.components.some((cp) => compPrice(cp) !== undefined) : false;
     if ((ownComp || cb !== undefined) && r.refineOption) {
       const rate = r.refineOption.rate;
-      const rawCost = r.refineOption.components.reduce((sum, cp) => { const o = own(cp.id); return sum + cp.count * (o !== undefined ? o : cp.price); }, 0);
+      const rawCost = r.refineOption.components.reduce((sum, cp) => { const o = compPrice(cp); return sum + cp.count * (o !== undefined ? o : cp.price); }, 0);
       const alt = rawCost * (1 - rate);
       const buy = cb !== undefined ? cb.price : (r.materialSource === 'refine' ? r.buyPrice : r.cheapestPrice);
       r.refineOption = { ...r.refineOption, rate, rawCost, price: alt };
       if (buy === null || alt <= buy * 0.95) { r.materialSource = 'refine'; r.cheapestPrice = alt; r.cheapestCity = r.refineOption.city; r.priceSource = 'refine'; r.buyPrice = buy; }   // выгода меньше 5% — не переработка
       else { r.materialSource = 'buy'; r.cheapestPrice = buy; r.cheapestCity = cb !== undefined ? cb.city : r.buyCity; r.priceSource = null; if (cb !== undefined) r.manualPrice = true; }
+    } else if (r.materialSource === 'craft' && r.craftOption && r.craftOption.components.some((cp) => compPrice(cp) !== undefined)) {
+      // Крафт ингредиента самому: ткань и кожа по своим ценам (с возвратом при крафте); готовый — по своей цене города или рыночной
+      const comps = r.craftOption.components.map((cp) => { const o = compPrice(cp); return o === undefined ? cp : { ...cp, price: o, manual: true }; });
+      const alt = r.craftOption.price + comps.reduce((sum, cp, i) => sum + cp.count * cp.factor * (cp.price - r.craftOption.components[i].price), 0);
+      const buy = cb !== undefined ? cb.price : r.buyPrice;
+      r.craftOption = { ...r.craftOption, price: alt, components: comps };
+      if (buy === null || buy === undefined || alt <= buy) { r.cheapestPrice = alt; r.priceSource = 'craft'; }
+      else { r.materialSource = 'buy'; r.cheapestPrice = buy; r.cheapestCity = cb !== undefined ? cb.city : r.buyCity; r.priceSource = null; r.manualPrice = true; }
     } else if (cb !== undefined && r.materialSource === 'craft' && cb.price < r.cheapestPrice * 0.95) {   // купить готовый по своей цене выгоднее крафта самому
       r.materialSource = 'buy'; r.cheapestPrice = cb.price; r.cheapestCity = cb.city; r.priceSource = null; r.manualPrice = true;
     }
-    let o = own(r.resource);
+    let o = own(key);
     if (o === undefined && cb !== undefined && r.materialSource === 'buy' && !r.manualPrice) { o = cb.price; r.cheapestCity = cb.city; }
     const p = o !== undefined ? o : r.cheapestPrice;
     const factor = r.returnable === false ? 1 : 1 - (r.rrr || 0);
@@ -48,6 +72,7 @@ export function applyManualPrices(data, ctx) {
     nominalDelta += (p - oldPrice) * r.count;
     if (o !== undefined && p !== r.cheapestPrice) { r.marketPrice = r.cheapestPrice; r.cheapestPrice = p; r.manualPrice = true; }   // рыночная цена остаётся серой подсказкой в поле
   }
+  if (d.recipe.some((r) => r.filledByOwn) && d.hasAllMaterialPrices === false && d.recipe.every((r) => r.materialSource === 'points' || r.cheapestPrice !== null)) d.hasAllMaterialPrices = true;
   const baseFlow = data.enchantAfterCraft || data.baseChoice;
   let stepsDelta = 0;
   if (data.enchantAfterCraft) {
@@ -55,9 +80,9 @@ export function applyManualPrices(data, ctx) {
     for (const st of d.enchantAfterCraft.steps) {
       const sb = cityBuy(st.materialId);
       const p = own(st.materialId) !== undefined ? own(st.materialId) : sb !== undefined ? sb.price : undefined;
-      if (p === undefined || st.cheapestPrice === null) continue;
+      if (p === undefined) continue;
       if (sb !== undefined && own(st.materialId) === undefined) st.cheapestCity = sb.city;
-      stepsDelta += (p - st.cheapestPrice) * st.count;
+      stepsDelta += (p - (st.cheapestPrice === null ? 0 : st.cheapestPrice)) * st.count;      // цены на рынке нет — своя цена закрывает шаг
       st.cheapestPrice = p;
       st.cost = p * st.count;
       st.manualPrice = true;
@@ -68,10 +93,16 @@ export function applyManualPrices(data, ctx) {
   if (baseFlow) {
     // База .0: снова выбираем «купить или скрафтить» — с учётом своих цен на материалы
     const craft = baseFlow.baseCraftCostPerUnit === null ? null : baseFlow.baseCraftCostPerUnit + materialDelta;
-    const buy = baseFlow.baseBuy ? baseFlow.baseBuy.price : null;
+    // готовая база .0 по своей цене (единая или города): ключ — id самой вещи
+    let baseBuy = baseFlow.baseBuy || null;
+    const ob = own(data.itemId);
+    const cbb = cityBuy(data.itemId);
+    if (ob !== undefined) baseBuy = { ...(baseBuy || {}), city: baseBuy ? baseBuy.city : null, price: ob, manual: true };
+    else if (cbb !== undefined) baseBuy = { ...(baseBuy || {}), city: cbb.city, price: cbb.price, manual: true };
+    const buy = baseBuy ? baseBuy.price : null;
     const source = buy !== null && (craft === null || buy < craft) ? 'buy' : 'craft';
     const baseCost = source === 'buy' ? buy : craft;
-    const copy = { ...baseFlow, baseCraftCostPerUnit: craft, baseSource: source, baseCostPerUnit: baseCost };
+    const copy = { ...baseFlow, baseBuy, baseCraftCostPerUnit: craft, baseSource: source, baseCostPerUnit: baseCost };
     if (data.enchantAfterCraft) d.enchantAfterCraft = { ...d.enchantAfterCraft, ...copy };
     else d.baseChoice = copy;
     effective = baseCost + (data.enchantAfterCraft ? d.enchantAfterCraft.stepsCostPerUnit : 0);
