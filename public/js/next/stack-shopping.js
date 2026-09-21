@@ -22,10 +22,13 @@ const dedupe = (uses) => {
   return [...m.values()];
 };
 
+// «Нужно для»: каждая позиция стека отдельной строкой — название, метки, сколько штук; почему материал нужен — под названием
 function Uses({ uses }) {
   if (!uses.length) return null;
-  return html`<div class="shop-uses" aria-label="Для каких позиций">${dedupe(uses).map((u) => html`<span class="use-chip" key=${u.owner.uid + u.why} title=${u.why || itemLabel(u.owner.itemId)}>
-    <${Tags} tier=${itemTier(u.owner.itemId)} enchant=${u.owner.enchant} quality=${u.owner.quality} /><b>${fmt(u.needed)}</b> шт${u.why ? html` <small class="muted">${u.why}</small>` : null}</span>`)}</div>`;
+  return html`<div class="shop-uses" aria-label="Для каких позиций"><span class="pl">Нужно для</span>${dedupe(uses).map((u) => html`<div class="use-row" key=${u.owner.uid + u.why}>
+    <div class="use-main"><b class="use-name">${itemLabel(u.owner.itemId)}</b><${Tags} tier=${itemTier(u.owner.itemId)} enchant=${u.owner.enchant} quality=${u.owner.quality} /></div>
+    <div class="use-qty"><b>${fmt(u.needed)}</b> шт</div>
+    ${u.why ? html`<div class="use-why muted">${u.why}</div>` : null}</div>`)}</div>`;
 }
 
 export function StackShopping({ data }) {
@@ -49,7 +52,7 @@ export function StackShopping({ data }) {
         <div class="shop-l"><input type="checkbox" class="ck" checked=${!!checks[r.id]} onChange=${(e) => drawerStore.set({ checks: { ...checks, [r.id]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
           <div class="shop-body"><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copy(r)}>${r.name}</button>${r.manual ? html` <small class="is-manual-note">своя цена</small>` : null}
             <${Uses} uses=${r.uses || []} />
-            <span class="shop-c">${r.cities.length ? r.cities.map((c) => html`<span key=${c.city}><${CityPill} name=${c.city} /> <small class="muted">${fmt(c.qty)} × ${fmt(c.price, c.price < 100 ? 1 : 0)}</small></span>`) : html`<span class="pill w">нет цены на рынке — впиши свою</span>`}${r.missing && r.cities.length ? html`<span class="pill w" title="У части позиций нет цены на рынке — впиши свою, и она закроет все позиции">у части позиций нет цены</span>` : null}</span>
+            <span class="shop-c">${r.cities.length ? r.cities.map((c) => html`<span key=${c.city}><${CityPill} name=${c.city} /> <small class="muted">${fmt(c.qty)} шт по ${fmt(c.price, c.price < 100 ? 1 : 0)}</small></span>`) : html`<span class="pill w">нет цены на рынке — впиши свою</span>`}${r.missing && r.cities.length ? html`<span class="pill w" title="У части позиций нет цены на рынке — впиши свою, и она закроет все позиции">у части позиций нет цены</span>` : null}</span>
             <div class="shop-own"><span class="muted">Своя цена за шт</span> <${OwnPrice} resKey=${r.key} market=${unit} needed=${r.needed} scope="stack" /></div>
             <${CityPriceList} resKey=${r.key} list=${lists[r.key] || []} own=${pr.cityOwn[r.key]} fee=${fee} onSet=${(city, v) => setCityOwn(r.key, city, v)} />
           </div></div>

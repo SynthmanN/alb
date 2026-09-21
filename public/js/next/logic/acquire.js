@@ -31,12 +31,12 @@ export function acquisitionRows(data, nameOf = (id) => id) {
       const rid = r.queryId || r.resource;
       if (r.materialSource === 'craft' && r.craftOption) {
         for (const cp of r.craftOption.components) {
-          push({ id: cp.id, key: cp.id, why: `для крафта: ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * cp.factor), srv: planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id), price: cp.price, city: cp.city });
+          push({ id: cp.id, key: cp.id, why: `для крафта самому: ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * cp.factor), srv: planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id), price: cp.price, city: cp.city });
         }
       } else if (r.materialSource === 'refine' && r.refineOption) {
         r.refineOption.components.forEach((cp, i) => {
           const role = i === 0 ? 'raw' : 'prev';
-          push({ id: cp.id, key: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} → ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
+          push({ id: cp.id, key: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} для переработки в ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
         });
       } else {
         push({ id: rid, key: rid, why: r.enchanted ? `зачарование .${data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity });
