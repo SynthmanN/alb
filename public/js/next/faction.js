@@ -21,7 +21,7 @@ async function loadPlan(sig) {
   const id = ++runId;
   factionStore.set({ loading: true, error: '' });
   try {
-    const data = await apiGet('/api/faction-plan', { ...commonParams(), faction: st.faction, ...(st.extras.length ? { extra: st.extras.join(',') } : {}) });
+    const data = await apiGet('/api/faction-plan', { ...commonParams(), faction: st.faction, ...(st.extras.length ? { extra: st.extras.join(',') } : {}) }, { ttl: 60000 });
     if (id !== runId) return;
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
     factionStore.set({ data, sig, loading: false });

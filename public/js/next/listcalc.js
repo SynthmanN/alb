@@ -3,6 +3,7 @@
 // у крафт-листа и стека калькулятора свои результаты, но одна логика.
 import { createStore, apiGet } from './lib.js';
 import { list, stack } from './list.js';
+import { calcStore } from './calc-store.js';
 import { commonParams, settings } from './settings.js';
 import { decideAfter, afterPossible, silverParts } from './logic/stack.js';
 
@@ -21,13 +22,14 @@ async function fetchOne(item, after, faction, common) {
       const sp = silverParts(item);
       if (sp.length) params.partsSilver = sp.join(',');
     }
-    return await apiGet('/api/craft-calc', params);
+    return await apiGet('/api/craft-calc', params, { ttl: 90000 });
   } catch (err) {
     return { error: err.message };
   }
 }
 
-export function createStackEngine(ops) {
+// enabled() — нужен ли расчёт сейчас (стек калькулятора считается только в режиме стека; лист — всегда, его итоги видны в доке)
+export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}) {
   const store = createStore({ results: new Map(), pairs: new Map(), pending: 0 });
   const cache = new Map();                       // uid → { sig, data, pair }
   let timer = null;
@@ -40,6 +42,7 @@ export function createStackEngine(ops) {
     store.set({ results, pairs });
   };
   async function run() {
+    if (!enabled()) return;
     const my = ++token;
     const { items, faction, autoAfter } = ops.store.get();
     const common = commonParams();
@@ -68,6 +71,7 @@ export function createStackEngine(ops) {
   const schedule = () => { clearTimeout(timer); timer = setTimeout(run, 450); };
   ops.store.subscribe(schedule);
   settings.subscribe(schedule);
+  for (const w of watch) w.subscribe(schedule);
   schedule();
   return {
     store,
@@ -87,7 +91,7 @@ export function createStackEngine(ops) {
 }
 
 export const listEngine = createStackEngine(list);
-export const stackEngine = createStackEngine(stack);
+export const stackEngine = createStackEngine(stack, { enabled: () => calcStore.get().stackMode, watch: [calcStore] });
 export const listCalc = listEngine.store;
 export const invalidateItem = listEngine.invalidate;
 export const redecide = listEngine.redecide;

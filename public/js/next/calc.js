@@ -31,7 +31,7 @@ export async function runCalc(sig) {
       const sp = [c.crestSilver ? 'crest' : null, c.heartSilver ? 'heart' : null].filter(Boolean);
       if (sp.length) params.partsSilver = sp.join(',');
     }
-    const data = await apiGet('/api/craft-calc', params);
+    const data = await apiGet('/api/craft-calc', params, { ttl: 90000 });
     if (id !== runId) return;
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
     calcStore.set({ data, sig, loading: false, checks: {}, toggles: null, manualQty: {} });      // план продажи сбрасывается с новым расчётом; свои цены остаются

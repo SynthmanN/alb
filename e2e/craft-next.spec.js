@@ -482,3 +482,34 @@ test('фракционный план: «Сразу в калькулятор» 
   await expect(page.locator('#dock-count')).toHaveText('0');                                              // лист не тронут
   await expect.poll(() => log.calc.some((q) => q.get('faction') === 'LYMHURST')).toBe(true);
 });
+
+// ---------- лимит запросов сервера (60 в минуту на /api) ----------
+test('открытие стека и повторные расчёты не плодят запросы: одинаковые расчёты берутся из кэша страницы', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await expect(page.locator('#drawer-list .li-card').first()).toContainText('профит');
+  await expect.poll(() => log.calc.length).toBeGreaterThanOrEqual(2);
+  await page.waitForTimeout(1500);                                                                         // движок листа закончил
+  const afterList = log.calc.length;
+  await page.locator('#open-in-calc').click();
+  await expect(page.locator('#stack-verdict')).toBeVisible();
+  await expect(page.locator('#panel-calc .li-card').first()).toContainText('профит');
+  await page.waitForTimeout(1500);
+  expect(log.calc.length).toBe(afterList);                                                                 // стек взял результаты листа из кэша, ни одного нового запроса
+});
+
+test('ответ 429 «слишком много запросов»: страница сама ждёт и повторяет, вместо ошибки в калькуляторе', async ({ page }) => {
+  let tries = 0;
+  await page.route('**/api/craft-calc*', (route) => {
+    tries++;
+    if (tries === 1) return route.fulfill({ status: 429, headers: { 'retry-after': '1' }, json: { error: 'слишком много запросов, попробуйте через минуту' } });
+    return route.fulfill({ json: calc(new URL(route.request().url()).searchParams) });
+  });
+  await page.goto('/craft.html');
+  await page.locator('[data-tab="calc"]').click();
+  await page.locator('#c-search').fill('лук');
+  await page.locator('.suggest button').first().click();
+  await expect(page.locator('#verdict')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('.err')).toHaveCount(0);
+  expect(tries).toBe(2);
+});

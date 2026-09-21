@@ -85,20 +85,65 @@ export const groupsReady = fetch('/api/item-groups').then((r) => r.json()).then(
 export const getWeaponGroups = () => weaponGroups;
 
 // ---------- API ----------
-export async function apiGet(path, params) {
-  const qs = params instanceof URLSearchParams ? params : new URLSearchParams(Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => [k, String(v)]));
-  let res;
-  try { res = await fetch(`${path}?${qs}`); } catch (e) { throw new Error('нет связи с сервером — проверь, что он запущен'); }
-  if (!(res.headers.get('content-type') || '').includes('json')) {
-    const hint = res.status === 404 ? 'этого запроса нет на сервере — перезапусти сервер после обновления кода' : res.status >= 500 ? 'сервер упал или перезапускается — подожди минуту и повтори' : 'сервер ответил не JSON';
-    throw new Error(`сервер ответил HTTP ${res.status}: ${hint}`);
+// Сервер пускает не больше 60 запросов в минуту на /api с одного адреса (независимо от источника данных: краулер или AODP), поэтому страница
+// держит общий бюджет: запросы сверх него ждут своей очереди, одинаковые запросы кэшируются и не дублируются, а 429 повторяется сам.
+export const apiLimits = { windowMs: 60000, budget: 40, retries: 2, retryMs: 15000 };
+const stamps = [];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function takeSlot() {
+  for (;;) {
+    const now = Date.now();
+    while (stamps.length && now - stamps[0] > apiLimits.windowMs) stamps.shift();
+    if (stamps.length < apiLimits.budget) { stamps.push(now); return; }
+    await sleep(stamps[0] + apiLimits.windowMs - now + 50);
   }
-  const data = await res.json();
-  if (data && data.error) throw new Error(data.details ? `${data.error} (${data.details})` : data.error);
-  return data;
+}
+const apiCache = new Map();                    // ключ запроса → { ts, promise }
+export const clearApiCache = () => apiCache.clear();
+export const resetApiBudget = () => { stamps.length = 0; };
+
+async function fetchJsonOnce(url, init) {
+  await takeSlot();
+  let res;
+  try { res = await fetch(url, init); } catch (e) { throw new Error('нет связи с сервером — проверь, что он запущен'); }
+  return res;
+}
+async function request(url, init) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetchJsonOnce(url, init);
+    if (res.status === 429 && attempt < apiLimits.retries) {         // слишком много запросов: ждём и повторяем
+      const ra = parseInt(res.headers.get('retry-after') || '', 10);
+      await sleep(Number.isFinite(ra) && ra > 0 ? ra * 1000 : apiLimits.retryMs);
+      continue;
+    }
+    if (!(res.headers.get('content-type') || '').includes('json')) {
+      const hint = res.status === 404 ? 'этого запроса нет на сервере — перезапусти сервер после обновления кода' : res.status >= 500 ? 'сервер упал или перезапускается — подожди минуту и повтори' : 'сервер ответил не JSON';
+      throw new Error(`сервер ответил HTTP ${res.status}: ${hint}`);
+    }
+    const data = await res.json();
+    if (data && data.error) throw new Error(data.details ? `${data.error} (${data.details})` : data.error);
+    return data;
+  }
+}
+// ttl — сколько миллисекунд ответ считается свежим (расчёты позиций одинаковы для листа, стека и калькулятора; 0 — не кэшировать)
+export async function apiGet(path, params, { ttl = 0 } = {}) {
+  const qs = params instanceof URLSearchParams ? params : new URLSearchParams(Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => [k, String(v)]));
+  qs.sort();
+  const url = `${path}?${qs}`;
+  if (ttl > 0) {
+    const hit = apiCache.get(url);
+    if (hit && Date.now() - hit.ts < ttl) return hit.promise;
+    const promise = request(url);
+    apiCache.set(url, { ts: Date.now(), promise });
+    promise.catch(() => { if (apiCache.get(url) && apiCache.get(url).promise === promise) apiCache.delete(url); });
+    return promise;
+  }
+  return request(url);
 }
 export async function apiPost(path, body) {
+  await takeSlot();
   const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (path.includes('manual-price')) clearApiCache();                    // вписанная цена меняет расчёты — кэш недействителен
   return res.json().catch(() => ({}));
 }
 
