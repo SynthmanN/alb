@@ -2,11 +2,13 @@
 // Сервер (/api/faction-plan) отдаёт позиции и рыночные цены, весь расчёт — здесь, поэтому любая вписанная цена мгновенно пересчитывает план.
 export const HEART_POINTS = 3000;
 export const CREST_POINTS = { 4: 400, 5: 2250, 6: 3000, 7: 7500, 8: 15000 };
+export const MAX_PLAN_STEPS = 20000;                     // защита от зависания: опечатка в очках (лишние нули) без потолка оборота не должна крутить план бесконечно
 export const AFTER_MIN_GAIN = 0.05;                      // «после крафта» выбирается, если дешевле прямого на 5% и больше
+import { marketCap } from './turnover.js';
 export const rowKey = (r) => `${r.tier}|${r.enchant}|${r.quality}`;
 const has = (v) => v !== null && v !== undefined;
 
-// ctx: { taxRate, setupFeeRate, days, own: {ключ: цена}, limits: {ключ строки: штук}, mode: 'mixed' | 'points' }
+// ctx: { taxRate, setupFeeRate, days, own: {ключ: цена}, limits: {ключ строки: штук}, mode: 'mixed' | 'points', ignoreCap: без потолка оборота (свой лимит остаётся) }
 // Ключи вписанных цен: mat:<id> (плащ, руны — рыночная цена, к ней добавляется комиссия 2.5%), part:<id> (герб, сердце), sale:<ключ строки> (продажа плаща)
 export function computeRow(r, ctx) {
   const own = ctx.own || {};
@@ -33,7 +35,8 @@ export function computeRow(r, ctx) {
   const buy = (p) => (has(p) ? p * (1 + fee) : null);                     // деталь за серебро — свой Buy Order, комиссия 2.5%
   const vol = r.sale && has(r.sale.dailyVolume) ? r.sale.dailyVolume : null;
   const limit = ctx.limits && has(ctx.limits[rowKey(r)]) ? ctx.limits[rowKey(r)] : undefined;
-  const cap = limit !== undefined ? limit : vol !== null ? Math.max(Math.floor(vol * ctx.days), 1) : null;   // null — потолок неизвестен
+  const capMarket = marketCap(vol, ctx.days);                                                              // сколько рынок берёт за окно истории
+  const cap = limit !== undefined ? limit : ctx.ignoreCap ? null : capMarket;                              // null — потолка нет или он неизвестен
   const pointsAll = HEART_POINTS + CREST_POINTS[r.tier];
   const profitAll = net !== null && cost !== null ? net - cost : null;
   const partsNet = has(crestPrice) && has(heartPrice) ? (crestPrice + heartPrice) * (1 - ctx.taxRate - fee) : null;   // что дала бы продажа деталей вместо крафта
@@ -56,7 +59,7 @@ export function computeRow(r, ctx) {
   if (!has(grossSale)) missing.push({ key: saleKey, label: 'Цена продажи плаща', hint: 'своя цена продажи', sale: true });
   if (!has(crestPrice)) missing.push({ key: crestKey, id: r.crestId, label: `Герб T${r.tier}`, hint: 'рыночная цена — для варианта «за серебро» и сравнения с продажей', part: true });
   if (!has(heartPrice)) missing.push({ key: heartKey, id: r.heartId, label: 'Сердце', hint: 'рыночная цена', part: true });
-  return { r, key: rowKey(r), cost, path, grossSale, net, profitAll, partsNet, cap, vol, variants, missing, pointsAll, crestPrice, heartPrice };
+  return { r, key: rowKey(r), cost, path, grossSale, net, profitAll, partsNet, cap, capMarket, vol, variants, missing, pointsAll, crestPrice, heartPrice };
 }
 
 // Жадный план: на каждом шаге берётся лучший «профит на очко» среди вариантов; одна деталь за серебро может позже «дорасти» до варианта «всё за очки».
@@ -65,7 +68,7 @@ export function buildPlan(computed, { points, mode }) {
   let left = points;
   const state = new Map(computed.map((c) => [c.key, { c, units: [] }]));
   let lastEff = null;
-  for (;;) {
+  for (let step = 0; step < MAX_PLAN_STEPS; step++) {
     let best = null;
     for (const s of state.values()) {
       const c = s.c;
@@ -100,7 +103,8 @@ export function buildPlan(computed, { points, mode }) {
     const units = state.get(c.key).units;
     const byVariant = {};
     for (const u of units) byVariant[u.id] = (byVariant[u.id] || 0) + 1;
-    return { c, byVariant, qty: units.length, points: units.reduce((s, u) => s + u.points, 0), profit: units.reduce((s, u) => s + u.profit, 0) };
+    const qty = units.length;
+    return { c, byVariant, qty, capped: c.cap !== null && qty >= c.cap, days: c.vol > 0 ? qty / c.vol : null, points: units.reduce((s, u) => s + u.points, 0), profit: units.reduce((s, u) => s + u.profit, 0) };
   });
   return { rows, left, lastEff };
 }
@@ -122,7 +126,7 @@ export function planToListItems(rows) {
   for (const x of rows.filter((r) => r.qty > 0)) {
     for (const [variant, n] of Object.entries(x.byVariant)) {
       items.push({
-        itemId: x.c.r.itemId, enchant: x.c.r.enchant, quality: x.c.r.quality, quantity: n, salePrice: x.c.grossSale,
+        itemId: x.c.r.itemId, enchant: x.c.r.enchant, quality: x.c.r.quality, quantity: n, salePrice: x.c.grossSale, dailyVolume: x.c.vol,
         after: x.c.r.enchant > 0 && x.c.path === 'after', crestSilver: variant === 'heart', heartSilver: variant === 'crest', faction: true,
       });
     }

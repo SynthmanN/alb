@@ -9,6 +9,8 @@ import { ItemPicker } from './picker.js';
 import { Glyph, Tags, Icon, ICONS, toast } from './ui.js';
 import { itemProfit } from './logic/stack.js';
 import { profitOf } from './logic/profit.js';
+import { turnoverPerDay, turnoverInfo } from './logic/turnover.js';
+import { settings } from './settings.js';
 
 // «Подробнее»: позиция открывается в обычном калькуляторе (все вкладки и ручной план продажи), стек остаётся полосой сверху
 export function focusStackItem(x) {
@@ -30,7 +32,8 @@ export function StackFocusBar() {
 // Таблица продаж стека: по каждой позиции цена, профит, срок продажи и очки; клик по строке — «подробнее»
 function SalesTable({ data }) {
   const { items, results } = data;
-  return html`<div class="card tw" id="stack-sales"><table><thead><tr><th>Позиция</th><th>Кол-во</th><th>Вложения / шт</th><th>Профит / шт</th><th>Профит всего</th><th>Срок продажи</th><th>Очки</th></tr></thead>
+  const windowDays = useStore(settings).hist;
+  return html`<div class="card tw" id="stack-sales"><table><thead><tr><th>Позиция</th><th>Кол-во</th><th>Вложения / шт</th><th>Профит / шт</th><th>Профит всего</th><th>Оборот / день</th><th>Срок продажи</th><th>Очки</th></tr></thead>
     <tbody>${items.map((x) => {
       const d = results.get(x.uid);
       const ok = d && !d.error;
@@ -42,6 +45,7 @@ function SalesTable({ data }) {
         <td class="neg">${ok ? fmt(d.effectiveCostPerUnit) : '—'}</td>
         <td class=${tone(pf && pf.unit)}>${pf ? signed(pf.unit) : '—'}</td>
         <td class=${tone(pf && pf.unit)}>${pf ? signed(pf.unit * x.quantity) : '—'}</td>
+        <td>${ok ? (() => { const t = turnoverInfo(x.quantity, turnoverPerDay(x, d).perDay, windowDays); return t.perDay === null ? '—' : html`<span class=${t.slow ? 'scan-stale' : ''} title=${`${fmt(x.quantity)} шт при обороте ${fmt(t.perDay, 1)} шт/день: ≈ ${fmtDays(t.days)}`}>${fmt(t.perDay, 1)}</span>`; })() : '—'}</td>
         <td>${p && p.days !== null ? fmtDays(p.days) : '—'}</td>
         <td>${ok && d.faction ? fmt(d.faction.pointsPerCape * x.quantity) : '—'}</td></tr>`;
     })}</tbody></table>

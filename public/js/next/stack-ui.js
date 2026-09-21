@@ -5,8 +5,9 @@ import { settings, activeCities } from './settings.js';
 import { prices, setCityOwn } from './prices.js';
 import { drawerStore } from './nav.js';
 import { CityPriceList } from './citylist.js';
-import { Glyph, Tags, CityPill, toast } from './ui.js';
+import { Glyph, Tags, CityPill, Turnover, toast } from './ui.js';
 import { missingPrices, itemProfit, stackTotals } from './logic/stack.js';
+import { turnoverPerDay, turnoverInfo } from './logic/turnover.js';
 import { acquisitionRows, mergeRows, withOverride } from './logic/acquire.js';
 import { adjustData, makeOverride } from './logic/adjust.js';
 import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
@@ -48,6 +49,7 @@ function MissingInput({ m, item, def }) {
 // Карточка позиции. Клик по значку и названию включает или выключает позицию (зелёная / серая); серые не входят в расчёт
 export function StackCard({ def, x, result, pair, onDetail, detailLabel = 'Открыть в калькуляторе' }) {
   const { ops, engine } = def;
+  const windowDays = useStore(settings).hist;
   const d = result && !result.error ? result : null;
   const pf = d ? itemProfit(x, d) : null;
   const miss = d ? missingPrices(d) : [];
@@ -68,6 +70,7 @@ export function StackCard({ def, x, result, pair, onDetail, detailLabel = 'От�
       <button class="x" type="button" aria-label="Убрать" title="Убрать" onClick=${() => ops.remove(x.uid)}>✕</button>
     </div>
     <div class="li-line">${!result ? html`<span class="muted">считаю…</span>` : result.error ? html`<span class="neg">${result.error}</span>` : html`вложения <b>${miss.length ? '—' : fmt(d.totalCost)}</b> · профит <b class=${tone(total)}>${total === null ? (miss.length ? 'не хватает цен' : 'нет цены продажи') : signed(total)}</b>${pts !== null ? html` · очков ${fmt(pts)}` : null}${afterNote}`}</div>
+    ${d ? html`<div class="li-turn"><${Turnover} info=${turnoverInfo(x.quantity, turnoverPerDay(x, d).perDay, windowDays)} qty=${x.quantity} /></div>` : null}
     <div class="li-opts">
       ${x.faction ? html`<label class="switch sm"><input type="checkbox" checked=${!!x.crestSilver} onChange=${(e) => ops.patch(x.uid, { crestSilver: e.target.checked })} /> герб за серебро</label>
         <label class="switch sm"><input type="checkbox" checked=${!!x.heartSilver} onChange=${(e) => ops.patch(x.uid, { heartSilver: e.target.checked })} /> сердце за серебро</label>` : null}

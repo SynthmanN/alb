@@ -381,6 +381,12 @@ label.chipin input { width: 130px; padding: 7px 10px; border-radius: 10px; font-
 .li-line { margin: 8px 0 0; font-size: 13.5px; color: var(--muted); }
 .li-line b { color: var(--text); font-weight: 600; }
 .li-line b.pos { color: var(--good); } .li-line b.neg { color: var(--bad); }
+.li-turn { margin: 4px 0 0; font-size: 13px; }
+.turn { color: var(--muted); }
+.turn b { color: var(--text); font-weight: 600; }
+.turn.slow, .turn.slow b { color: var(--warn); }
+.turn.none { font-style: italic; }
+.note.warn { color: var(--warn); margin: 0 0 12px; }
 .li-opts { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-end; margin-top: 10px; }
 .li-miss { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-2); }
 .li-miss .pl { flex: 1 1 100%; }

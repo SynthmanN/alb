@@ -1,5 +1,5 @@
 // Общие компоненты: метки предмета (тир, зачарование, качество), значок предмета, города, переключатели, уведомления.
-import { html, createStore, useStore, useState, QN, CITY_CLS, iconUrl } from './lib.js';
+import { html, createStore, useStore, useState, QN, CITY_CLS, iconUrl, fmt, fmtDays } from './lib.js';
 
 export const toastStore = createStore({ msg: '', id: 0 });
 let toastTimer = null;
@@ -55,3 +55,10 @@ export const ICONS = {
   list: '<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
 };
 export const Spinner = () => html`<span class="spin" aria-hidden="true"></span>`;
+
+// Оборот плаща: «~1,3 шт/день · 8 шт ≈ 6 дн». info — результат logic/turnover.js → turnoverInfo; slow подсвечивается предупреждением
+export function Turnover({ info, qty, short = false }) {
+  if (!info || info.perDay === null) return html`<span class="turn none" title="Нет сделок за окно истории — оборот неизвестен">оборот неизвестен</span>`;
+  const sell = info.days !== null && qty > 0 ? html` · ${fmt(qty)} шт ≈ <b>${fmtDays(info.days)}</b>` : null;
+  return html`<span class=${`turn ${info.slow ? 'slow' : ''}`} title=${info.slow ? 'Рынок выкупит партию дольше окна истории — цена может просесть' : 'Сколько штук в день покупает рынок'}>оборот <b>${fmt(info.perDay, 1)}</b> шт/день${short ? null : sell}</span>`;
+}

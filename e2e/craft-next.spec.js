@@ -513,3 +513,49 @@ test('ответ 429 «слишком много запросов»: стран�
   await expect(page.locator('.err')).toHaveCount(0);
   expect(tries).toBe(2);
 });
+
+// ---------- оборот плащей ----------
+// очки вводятся как человек: выделить всё и набрать (fill() добавил бы цифры к прежнему значению)
+async function setPoints(page, value) {
+  await page.locator('#f-points').click();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type(value);
+  await page.locator('#f-points').blur();
+}
+
+test('план: колонка «Оборот/день» и метка «потолок»; «Игнорировать потолок» тратит очки дальше и предупреждает о сроке продажи', async ({ page }) => {
+  const log = { plan: [], calc: [], saved: [], scan: [] };
+  await mockFaction(page, log);
+  await page.goto('/craft.html');
+  await page.locator('[data-tab="faction"]').click();
+  await setPoints(page, '90000');
+  await expect(page.locator('#plan-table thead')).toContainText('Оборот/день');
+  const top = page.locator('#plan-table tr[data-row="6|3|1"]');
+  await expect(top).toContainText('потолок 3');            // оборот 1 шт/день × окно 3 дня
+  await expect(top).toContainText('× 3');
+  await expect(top.locator('.pill.w', { hasText: 'потолок' })).toBeVisible();
+  await expect(page.locator('#f-capes')).toHaveText('6');
+  await expect(page.locator('#f-ceil-note')).toHaveCount(0);
+  await page.locator('[aria-label="Потолок оборота"] button', { hasText: 'Игнорировать' }).click();
+  await expect(page.locator('#f-ceil-note')).toContainText('Потолок оборота выключен');
+  await expect.poll(async () => Number(await page.locator('#f-capes').innerText())).toBeGreaterThan(6);
+  await expect(page.locator('#plan-table tr.on-plan small.scan-stale').first()).toContainText('на продажу');
+  await page.locator('[aria-label="Потолок оборота"] button', { hasText: 'Учитывать' }).click();
+  await expect(page.locator('#f-capes')).toHaveText('6');
+});
+
+test('крафт-лист и стек калькулятора: у позиций из плана виден оборот и срок продажи партии', async ({ page }) => {
+  const log = { plan: [], calc: [], saved: [], scan: [] };
+  await mockFaction(page, log);
+  await page.goto('/craft.html');
+  await page.locator('[data-tab="faction"]').click();
+  await setPoints(page, '90000');
+  await expect(page.locator('#plan-table tbody tr.on-plan')).toHaveCount(2);
+  await page.locator('#f-send-calc').click();
+  const cards = page.locator('#panel-calc .li-card');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first().locator('.li-turn')).toContainText('оборот 1,0 шт/день');
+  await expect(cards.first().locator('.li-turn')).toContainText('3 шт ≈');
+  await page.locator('.subtabs button', { hasText: 'Продажа' }).click();
+  await expect(page.locator('#stack-sales thead')).toContainText('Оборот / день');
+});

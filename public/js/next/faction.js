@@ -1,6 +1,6 @@
 // Фракционный план: на какие плащи потратить очки фракции. Сервер отдаёт позиции и рыночные цены, расчёт плана — на клиенте (logic/factionPlan.js):
 // любая вписанная цена или лимит сразу пересчитывает список. Зелёные позиции — в плане, серые — нет данных или менее выгодно.
-import { html, Fragment, createStore, useStore, useState, useEffect, fmt, signed, tone, apiGet, apiPost, itemLabel, fmtAge } from './lib.js';
+import { html, Fragment, createStore, useStore, useState, useEffect, fmt, signed, tone, apiGet, apiPost, itemLabel, fmtAge, fmtDays } from './lib.js';
 import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
 import { Glyph, Tags, Seg, Icon, ICONS, Spinner, toast } from './ui.js';
@@ -11,9 +11,9 @@ import { computeRow, buildPlan, sortPlanRows, planToListItems, rowKey } from './
 
 export const FACTIONS = [['MARTLOCK', 'Мартлок'], ['LYMHURST', 'Лимхёрст'], ['BRIDGEWATCH', 'Бридгуотч'], ['FORTSTERLING', 'Форт Стерлинг'], ['THETFORD', 'Тетфорд'], ['CAERLEON', 'Каэрлеон'], ['BRECILIEN', 'Бресилиен']];
 export const factionStore = createStore({
-  faction: 'LYMHURST', points: 76000, mode: 'mixed', extras: [], own: {}, limits: {}, data: null, loading: false, error: '', sig: '',
+  faction: 'LYMHURST', points: 76000, mode: 'mixed', ceil: 'on', extras: [], own: {}, limits: {}, data: null, loading: false, error: '', sig: '',
   sort: { key: 'planProfit', dir: 'desc' }, showAll: false, edit: null, addOpen: false, add: { tier: 4, ench: 0, q: 4 },
-}, { key: 'albion_next_faction', pick: (s) => ({ faction: s.faction, points: s.points, mode: s.mode, extras: s.extras, limits: s.limits }) });
+}, { key: 'albion_next_faction', pick: (s) => ({ faction: s.faction, points: s.points, mode: s.mode, ceil: s.ceil, extras: s.extras, limits: s.limits }) });
 
 let runId = 0;
 async function loadPlan(sig) {
@@ -30,7 +30,7 @@ async function loadPlan(sig) {
   }
 }
 
-const HEADS = [['name', 'Плащ'], ['sale', 'Продажа'], ['cost', 'Себестоимость'], ['profit', 'Профит/шт'], ['points', 'Очков'], ['perPoint', 'На очко'], ['qty', 'В плане'], ['planProfit', 'Профит по плану']];
+const HEADS = [['name', 'Плащ'], ['sale', 'Продажа'], ['vol', 'Оборот/день'], ['cost', 'Себестоимость'], ['profit', 'Профит/шт'], ['points', 'Очков'], ['perPoint', 'На очко'], ['qty', 'В плане'], ['planProfit', 'Профит по плану']];
 const ROWS_SHOWN = 12;
 
 // вписанная цена сохраняется на сервере (общая, «недостоверная», живёт до 10 дней), пока AODP не даст данные
@@ -68,7 +68,7 @@ function Editor({ c, st }) {
   const d = st.data;
   const own = st.own;
   const f = (key, label, serverPrice, hint) => html`<${Field} label=${label} hint=${hint} value=${own[key]} placeholder=${serverPrice !== null && serverPrice !== undefined ? Math.round(serverPrice) : 'нет данных'} onInput=${(v) => setOwn(key, r, v)} manual=${own[key] !== undefined} />`;
-  return html`<tr class="editrow"><td colspan="9"><div class="editbox">
+  return html`<tr class="editrow"><td colspan="10"><div class="editbox">
     <div class="pl">Свои цены — список пересчитается сразу; вписанное сохраняется как общая «недостоверная» цена на ${d.manualTtlDays} дн.</div>
     <div class="editgrid">
       ${f(`sale:${c.key}`, 'Цена продажи плаща', r.sale ? r.sale.avgPrice : null, 'Средняя цена сделок; своя — для позиций без истории')}
@@ -77,7 +77,7 @@ function Editor({ c, st }) {
       ${r.runes.map((x) => f(`mat:${x.id}`, x.label, x.price, `${x.count} шт на плащ`))}
       ${f(`part:${r.crestId}`, `Герб T${r.tier}`, r.crest ? r.crest.price : null, 'Рыночная цена (за серебро)')}
       ${f(`part:${r.heartId}`, 'Сердце', r.heart ? r.heart.price : null, 'Рыночная цена (за серебро)')}
-      <label class="chipin" title="Сколько плащей этой позиции брать не больше; по умолчанию оборот × окно истории">Лимит штук<input type="number" min="1" step="1" value=${st.limits[c.key] ?? ''} placeholder=${c.cap === null ? 'неизвестен' : `≤ ${c.cap}`} onInput=${(e) => setLimit(c.key, e.target.value)} /></label>
+      <label class="chipin" title="Сколько плащей этой позиции брать не больше; по умолчанию оборот × окно истории">Лимит штук<input type="number" min="1" step="1" value=${st.limits[c.key] ?? ''} placeholder=${c.capMarket === null ? 'неизвестен' : `≤ ${c.capMarket}`} onInput=${(e) => setLimit(c.key, e.target.value)} /></label>
     </div></div></td></tr>`;
 }
 
@@ -107,7 +107,7 @@ export function FactionTab() {
   const d = st.data;
   const model = (() => {
     if (!d) return null;
-    const ctx = { taxRate: d.taxRate, setupFeeRate: d.setupFeeRate, days: d.days, own: st.own, limits: st.limits, mode: st.mode };
+    const ctx = { taxRate: d.taxRate, setupFeeRate: d.setupFeeRate, days: d.days, own: st.own, limits: st.limits, mode: st.mode, ignoreCap: st.ceil === 'off' };
     const computed = d.rows.map((r) => computeRow(r, ctx));
     const plan = buildPlan(computed, { points: st.points, mode: st.mode });
     const rows = sortPlanRows(plan.rows, st.sort);
@@ -129,12 +129,14 @@ export function FactionTab() {
   const totalProfit = model ? model.plan.rows.reduce((a, x) => a + x.profit, 0) : 0;
   const capes = model ? model.planned.reduce((a, x) => a + x.qty, 0) : 0;
   const buyHearts = model ? model.plan.rows.reduce((a, x) => a + (x.byVariant.crest || 0), 0) : 0;
+  const slowRows = model ? model.planned.filter((x) => x.days !== null && x.days > d.days) : [];
   const visible = model ? (st.showAll ? model.rows : model.rows.slice(0, ROWS_SHOWN)) : [];
   return html`<section class="panel" id="panel-faction">
     <div class="plan-h">
       <label class="f">Фракция<select id="f-fac" value=${st.faction} onChange=${(e) => set({ faction: e.target.value })}>${FACTIONS.map(([id, n]) => html`<option value=${id} selected=${st.faction === id}>${n}</option>`)}</select></label>
       <label class="f">Очков<input id="f-points" type="text" inputmode="numeric" value=${pointsText ?? fmt(st.points)} onFocus=${() => setPointsText(String(st.points))} onInput=${(e) => { setPointsText(e.target.value); set({ points: parseInt(e.target.value.replace(/\D/g, ''), 10) || 0 }); }} onBlur=${() => setPointsText(null)} /></label>
       <${Seg} label="Детали" value=${st.mode} onChange=${(v) => set({ mode: v })} options=${[['mixed', 'Оптимально'], ['points', 'Всё за очки']]} />
+      <${Seg} label="Потолок оборота" value=${st.ceil} onChange=${(v) => set({ ceil: v })} options=${[['on', 'Учитывать'], ['off', 'Игнорировать']]} />
       <button class="btn" type="button" id="f-add" onClick=${() => set({ addOpen: !st.addOpen })}><${Icon} d=${ICONS.plus} />Добавить позицию</button>
     </div>
     ${st.addOpen ? html`<${AddForm} st=${st} />` : null}
@@ -149,6 +151,7 @@ export function FactionTab() {
         ${buyHearts ? html`<div><span>Докупить за серебро</span><b>${fmt(buyHearts)} сердец</b></div>` : null}</div>
         <div class="strip-actions"><button class="btn primary" type="button" id="f-send" disabled=${!model.planned.length} onClick=${send}><${Icon} d=${ICONS.arrow} />Крафтить план — в крафт-лист (${model.planned.length})</button>
           <button class="btn" type="button" id="f-send-calc" disabled=${!model.planned.length} onClick=${sendCalc} title="Позиции плана сразу открываются в калькуляторе одним стеком, минуя крафт-лист"><${Icon} d=${ICONS.calc} />Сразу в калькулятор</button></div></div>
+      ${st.ceil === 'off' && slowRows.length ? html`<div class="note warn" id="f-ceil-note" role="status">Потолок оборота выключен: ${slowRows.length} поз. рынок выкупит дольше ${fmt(d.days)} дн (дольше всех — ${fmtDays(Math.max(...slowRows.map((x) => x.days)))}). Цена продажи может просесть.</div>` : null}
       <div class="card"><div class="tw"><table id="plan-table">
         <thead><tr>${HEADS.map(([k, l]) => html`<th key=${k} class="sortable" aria-sort=${st.sort.key === k ? (st.sort.dir === 'desc' ? 'descending' : 'ascending') : null} onClick=${() => setSort(k)}>${l}${st.sort.key === k ? (st.sort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</th>`)}<th></th></tr></thead>
         <tbody>${visible.map((x) => {
@@ -159,11 +162,12 @@ export function FactionTab() {
           return html`<${Fragment} key=${c.key}><tr class=${on ? 'on-plan' : 'off'} data-row=${c.key}>
             <td><div class="item"><${Glyph} id=${r.itemId} tier=${r.tier} enchant=${r.enchant} quality=${r.quality} /><div><b>${itemLabel(r.itemId)}</b><div style="margin-top:3px"><${Tags} tier=${r.tier} enchant=${r.enchant} quality=${r.quality} />${c.path === 'after' ? html` <span class="pill n">чары после крафта</span>` : null}${r.source === 'extra' ? html` <span class="pill n">добавлено</span>` : null}</div></div></div></td>
             <td>${fmt(c.grossSale)}${r.sale && r.sale.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}</td>
+            <td>${c.vol === null ? html`<span class="muted" title="Нет сделок за окно истории">—</span>` : html`${fmt(c.vol, 1)}${c.capMarket !== null ? html`<br /><small class="muted" title="Сколько штук рынок берёт за окно истории — потолок плана">потолок ${fmt(c.capMarket)}</small>` : null}`}</td>
             <td>${c.cost === null ? html`<button type="button" class="pill w" onClick=${() => set({ edit: isEdit ? null : c.key })}>нужна цена ✎</button>` : html`<span class="neg">${fmt(c.cost)}</span>`}</td>
             <td class=${tone(c.profitAll)}>${c.profitAll === null ? '—' : signed(c.profitAll)}</td>
             <td>${fmt(c.pointsAll)}</td>
             <td>${c.profitAll === null ? '—' : fmt(c.profitAll / c.pointsAll, 1)}${c.partsNet !== null ? html`<br /><small class="muted" title="Сколько дала бы продажа герба и сердца на рынке вместо крафта плаща">детали: ${fmt(c.partsNet)}</small>` : null}</td>
-            <td>${on ? html`<span class="pill g">× ${fmt(x.qty)}</span>` : html`<span class="pill n">не в плане</span>`}</td>
+            <td>${on ? html`<span class="pill g">× ${fmt(x.qty)}</span>${x.capped ? html` <span class="pill w" title="Позиция упёрлась в потолок оборота или свой лимит — очки пошли на другие позиции">потолок</span>` : null}${x.days !== null && x.days > d.days ? html`<br /><small class="scan-stale" title=${`Рынок выкупит ${fmt(x.qty)} шт при обороте ${fmt(c.vol, 1)} шт/день дольше окна истории (${fmt(d.days)} дн)`}>≈ ${fmtDays(x.days)} на продажу</small>` : null}` : html`<span class="pill n">не в плане</span>`}</td>
             <td class=${on ? 'pos' : ''}>${on ? signed(x.profit) : '—'}</td>
             <td><button type="button" class="edit" title="Вписать свои цены или лимит" aria-label="Свои цены" onClick=${() => set({ edit: isEdit ? null : c.key })}>✎</button></td></tr>
             ${isEdit ? html`<${Editor} c=${c} st=${st} />` : null}</${Fragment}>`;
