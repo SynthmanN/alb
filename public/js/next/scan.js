@@ -13,7 +13,7 @@ export async function runScan() {
   const sc = scanStore.get();
   scanStore.set({ loading: true, error: '' });
   try {
-    const params = { ...commonParams(), mode: sc.mode, category: sc.category, enchantMode: sc.after ? 'after' : 'direct', liquidity: 'sum', minDaily: sc.minDaily || 0 };
+    const params = { ...commonParams(), mode: sc.mode, category: sc.category, enchantMode: sc.after ? 'auto' : 'direct', liquidity: 'sum', minDaily: sc.minDaily || 0 };
     const data = await apiGet('/api/unified-scan', params);
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
     scanStore.set({ data, loading: false, open: null });
@@ -23,6 +23,8 @@ export async function runScan() {
 }
 
 const COLS = [['name', 'Предмет', ''], ['cost', 'Себестоимость → продажа', 'r hide-n'], ['profitPerUnit', 'Профит с штуки', 'r'], ['marketProfitPerDay', 'Маржа рынка в день', 'r hide-n']];
+// чары после крафта у строки: сервер помечает её сам (режим auto — только там, где выгоднее прямого на 7%); старые ответы — по режиму скана
+const isAfter = (r, data) => (r.after !== undefined ? !!r.after && r.enchant > 0 : data.enchantMode === 'after' && r.enchant > 0);
 const rowKey = (r) => `${r.itemId}|${r.enchant}|${r.quality}`;
 
 function sortRows(rows, { k, dir }) {
@@ -37,8 +39,8 @@ function Detail({ r, data }) {
   const [qty, setQty] = useState(10);
   const net = r.cost + r.profitPerUnit;
   const stale = r.freshMinutes !== null && r.freshMinutes !== undefined && r.freshMinutes > 180;
-  const add = () => { addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: qty, cost: r.cost, profit: r.profitPerUnit, after: !!data.enchantMode && data.enchantMode === 'after' && r.enchant > 0 }); toast(`В крафт-листе: ${itemLabel(r.itemId)} × ${qty}`); };
-  const open = () => nav.openCalc({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: qty, after: data.enchantMode === 'after' && r.enchant > 0 });
+  const add = () => { addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: qty, cost: r.cost, profit: r.profitPerUnit, after: isAfter(r, data) }); toast(`В крафт-листе: ${itemLabel(r.itemId)} × ${qty}`); };
+  const open = () => nav.openCalc({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: qty, after: isAfter(r, data) });
   return html`<div class="detail">
     <div class="k"><span>Себестоимость</span><b class="neg">${fmt(r.cost)}</b></div>
     <div class="k"><span>Продажа после налога</span><b>${fmt(net)}</b></div>
@@ -72,7 +74,7 @@ export function ScanTab() {
       <label class="f">Категория<select id="s-cat" value=${sc.category} onChange=${(e) => set({ category: e.target.value })}>
         ${[['all', 'Всё'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['cape', 'Плащи']].map(([v, t]) => html`<option value=${v} selected=${sc.category === v}>${t}</option>`)}</select></label>
       <label class="f" style="width:130px">Оборот от, шт/день<input id="s-min" type="number" min="0" step="0.5" value=${sc.minDaily} onInput=${(e) => set({ minDaily: e.target.value })} /></label>
-      <${Switch} checked=${sc.after} onChange=${(v) => set({ after: v })} title="Считать чары как «плащ .0 + руны, души, реликты», если так выгоднее">Зачарка после крафта</${Switch}>
+      <${Switch} checked=${sc.after} onChange=${(v) => set({ after: v })} title="Чары после крафта («плащ .0 + руны, души, реликты») считаются только там, где они выгоднее прямого крафта не меньше чем на 7% профита; остальной гир — прямым крафтом">Зачарка после крафта</${Switch}>
     </div>
     <div class="runbox">
       <button class="btn primary big" id="scan-run" type="button" disabled=${sc.loading} onClick=${runScan}>${sc.loading ? html`<${Spinner} />Считаю…` : html`<${Icon} d=${ICONS.search} />${data ? 'Обновить скан' : 'Сканировать'}`}</button>
@@ -87,11 +89,11 @@ export function ScanTab() {
         const it = findItem(r.itemId);
         return html`<div key=${key}>
           <div class=${`row ${isOpen ? 'open' : ''}`} onClick=${() => set({ open: isOpen ? null : key })} role="button" tabindex="0" onKeyDown=${(e) => { if (e.key === 'Enter') set({ open: isOpen ? null : key }); }}>
-            <div class="it"><${Glyph} id=${r.itemId} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} /><div style="min-width:0"><b>${itemLabel(r.itemId)}</b><${Tags} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} /></div></div>
+            <div class="it"><${Glyph} id=${r.itemId} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} /><div style="min-width:0"><b>${itemLabel(r.itemId)}</b><${Tags} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} />${isAfter(r, data) ? html` <span class="pill n" title="Выгоднее прямого крафта: плащ .0 + руны, души, реликты (не меньше чем на 7% профита)">чары после крафта</span>` : null}</div></div>
             <div class="cell r hide-n"><span class="neg">${fmt(r.cost)}</span> <span class="muted">→</span> ${fmt(r.cost + r.profitPerUnit)}<small>расходы → доход</small></div>
             <div class="cell r"><b class="pos">${signed(r.profitPerUnit)}</b><small>${fmt(r.profitPct, 0)}% к вложениям</small></div>
             <div class="cell r hide-n"><b>${fmt(r.marketProfitPerDay)}</b><small>${fmt(r.dailyVolume, 0)} шт/день</small></div>
-            <div><button class="btn sm" type="button" title="В крафт-лист" aria-label="В крафт-лист" onClick=${(e) => { e.stopPropagation(); addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: 1, cost: r.cost, profit: r.profitPerUnit, after: data.enchantMode === 'after' && r.enchant > 0 }); toast(`В крафт-листе: ${itemLabel(r.itemId)}`); }}>+</button></div>
+            <div><button class="btn sm" type="button" title="В крафт-лист" aria-label="В крафт-лист" onClick=${(e) => { e.stopPropagation(); addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: 1, cost: r.cost, profit: r.profitPerUnit, after: isAfter(r, data) }); toast(`В крафт-листе: ${itemLabel(r.itemId)}`); }}>+</button></div>
           </div>
           ${isOpen ? html`<${Detail} r=${r} data=${data} />` : null}</div>`;
       })}</div>` : null}

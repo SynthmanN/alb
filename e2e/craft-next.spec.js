@@ -62,7 +62,7 @@ test('скан → раскрыть строку → в крафт-лист → 
   await expect(page.locator('#scan-rows .row')).toHaveCount(2);
   expect(log.scan[0].get('gearRrrCustom')).toBe('15.3');
   expect(log.scan[0].get('source')).toBe('jug');
-  expect(log.scan[0].get('enchantMode')).toBe('after');
+  expect(log.scan[0].get('enchantMode')).toBe('auto');
   await expect(page.locator('#scan-rows .row').first()).toContainText('5 100 000');                    // по умолчанию — по марже рынка в день
   await page.locator('#scan-rows .row').nth(1).click();
   await expect(page.locator('.detail')).toContainText('Свежесть цен');
@@ -656,4 +656,27 @@ test('справочник не загрузился: предупреждени
   await page.locator('[data-tab="calc"]').click();
   await page.locator('#c-search').fill('лук');
   await expect(page.locator('.suggest button').first()).toBeVisible();
+});
+
+test('скан: «чары после крафта» — только у строк, где сервер выбрал этот путь; метка в строке и «после» в калькуляторе только у них', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await mock(page, log);
+  const flagged = { ...SCAN, enchantMode: 'auto', results: [{ ...SCAN.results[0], after: true }, { ...SCAN.results[1], after: false }] };
+  await page.route('**/api/unified-scan*', (route) => { log.scan.push(new URL(route.request().url()).searchParams); route.fulfill({ json: flagged }); });
+  await page.goto('/craft.html');
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-rows .row')).toHaveCount(2);
+  const capeRow = page.locator('#scan-rows .row', { hasText: 'Плащ' });
+  const bowRow = page.locator('#scan-rows .row').filter({ hasNotText: 'Плащ' });
+  expect(log.scan[0].get('enchantMode')).toBe('auto');                                                // тумблер включён по умолчанию — режим «где выгоднее»
+  await expect(bowRow).toContainText('чары после крафта');
+  await expect(capeRow).not.toContainText('чары после крафта');
+  await bowRow.click();
+  await page.locator('.detail .btn', { hasText: 'Открыть в калькуляторе' }).click();
+  await expect.poll(() => log.calc.some((q) => q.get('item') === 'T4_2H_BOW' && q.get('enchantAfterCraft') === 'true')).toBe(true);
+  await page.locator('[data-tab="scan"]').click();
+  await capeRow.click();
+  await page.locator('.detail .btn', { hasText: 'Открыть в калькуляторе' }).click();
+  await expect.poll(() => log.calc.some((q) => q.get('item') === 'T4_CAPE')).toBe(true);
+  expect(log.calc.filter((q) => q.get('item') === 'T4_CAPE').every((q) => q.get('enchantAfterCraft') !== 'true')).toBe(true);
 });

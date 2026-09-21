@@ -2419,12 +2419,33 @@ function instantSellChoice(priceRecords, seriesOfItem, itemId, quality, days, co
   return best;
 }
 
+// «Чары после крафта» — только там, где выгоднее прямого крафта не меньше чем на 7% профита (тот же порог, что у автовыбора в крафт-листе).
+// Для одной комбинации (зачарование × качество) продажа одна и та же, поэтому сравниваются профиты с штуки; нет прямой ветки — берётся «после».
+const ENCHANT_AFTER_MIN_GAIN = 0.07;
+function resolveAfterChoice(candidates) {
+  const byKey = new Map();
+  for (const row of candidates) {
+    const key = `${row.enchant}|${row.quality}`;
+    const cur = byKey.get(key) || {};
+    cur[row.after ? 'after' : 'direct'] = row;
+    byKey.set(key, cur);
+  }
+  const out = [];
+  for (const { direct, after } of byKey.values()) {
+    if (direct && after) out.push(after.profitPerUnit > direct.profitPerUnit + ENCHANT_AFTER_MIN_GAIN * Math.abs(direct.profitPerUnit) ? after : direct);
+    else out.push(direct || after);
+  }
+  return out;
+}
+
 app.get('/api/unified-scan', (req, res) => {
   try {
     const mode = req.query.mode === 'instant' ? 'instant' : 'patient';
     const category = ['weapon', 'armor', 'cape'].includes(req.query.category) ? req.query.category : 'all';
     const days = parseBulkDays(req);
-    const enchantMode = req.query.enchantMode === 'after' ? 'after' : 'direct';
+    // 'after' — все чары после крафта (.0–.3), 'direct' — только прямой крафт (.0–.4), 'auto' — прямой крафт, а «чары после крафта» только там, где они
+    // выгоднее прямого не меньше чем на ENCHANT_AFTER_MIN_GAIN (7%) профита; .4 — только прямой
+    const enchantMode = req.query.enchantMode === 'after' ? 'after' : req.query.enchantMode === 'auto' ? 'auto' : 'direct';
     const liquidity = req.query.liquidity === 'best' ? 'best' : 'sum';
     const minDaily = Math.max(parseFloat(req.query.minDaily) || 1, 0);
     // Капитал на одну позицию (серебро) и минимум дней на цикл — вместо «доли рынка»: явные параметры, а не спрятанный процент.
@@ -2462,6 +2483,13 @@ app.get('/api/unified-scan', (req, res) => {
     for (const itemId of gearIds) {
       const item = itemById.get(itemId);
       const after = enchantMode === 'after' || requiresEnchantAfterCraft(itemId);
+      if (enchantMode === 'auto' && !after) {
+        // обе ветки: прямой крафт .0–.4 и «чары после крафта» .1–.3 — что выгоднее, решается после расчёта (resolveAfterChoice)
+        const maxDirect = item.tier >= 4 ? 4 : 0;
+        for (let e = 0; e <= maxDirect; e++) combos.push({ itemId, item, enchant: e, after: false });
+        if (item.tier >= 4 && ENCHANT_MATERIAL_COUNT[item.slot]) for (let e = 1; e <= 3; e++) combos.push({ itemId, item, enchant: e, after: true });
+        continue;
+      }
       if (after && !ENCHANT_MATERIAL_COUNT[item.slot]) continue;
       // .4 (Awakening) — обычная, просто более дорогая комбинация: крафтится напрямую из .4-сырья и торгуется как любой лот, поэтому в общем
       // переборе наравне с .0–.3. Рунами до .4 не дойти — при «зачаровать после крафта» потолок .3.
@@ -2526,7 +2554,7 @@ app.get('/api/unified-scan', (req, res) => {
     };
 
     // Общая часть: из себестоимости, продажи и закупки — строка результата (или null, если предмет не проходит отбор).
-    const buildRow = ({ kind, itemId, finishedId, enchant, quality, tier, type, cost, quoteDates, needs, refined = [], points = null, partsNet = null }) => {
+    const buildRow = ({ kind, itemId, finishedId, enchant, quality, tier, type, after = false, cost, quoteDates, needs, refined = [], points = null, partsNet = null }) => {
       const seriesOfItem = finishedHistory.get(finishedId) || [];
       let sellPrice, dailyVolume, sellCities, profitPerUnit, marketDailyVolume, sellDate = null;
       let blackMarketRow = false;
@@ -2561,7 +2589,7 @@ app.get('/api/unified-scan', (req, res) => {
         tradeHours = Math.min(tradeHours, weakest);
       }
       return {
-        kind, itemId, enchant, quality, tier, type, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
+        kind, itemId, enchant, quality, tier, type, after: !!after, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
         dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, marketProfitPerDay,
         freshMinutes, rankScore,
         ...(points ? { factionPoints: points, profitPerPoint: profitPerUnit / points, partsNet, partsPerPoint: partsNet === null ? null : partsNet / points, craftBeatsParts: partsNet === null ? true : profitPerUnit > partsNet } : {}),
@@ -2620,12 +2648,12 @@ app.get('/api/unified-scan', (req, res) => {
       }
       const finishedId = gearEnchantId(c.itemId, c.enchant);
       for (const quality of ALL_QUALITIES) {
-        const row = buildRow({ kind: 'gear', itemId: c.itemId, finishedId, enchant: c.enchant, quality, tier: c.item.tier, cost, quoteDates, needs, refined, points, partsNet });
+        const row = buildRow({ kind: 'gear', itemId: c.itemId, finishedId, enchant: c.enchant, quality, tier: c.item.tier, after: c.after, cost, quoteDates, needs, refined, points, partsNet });
         if (row && faction) allCandidates.push(row);
         if (row) { if (!byItem.has(c.itemId)) byItem.set(c.itemId, []); byItem.get(c.itemId).push(row); }
       }
     }
-    for (const candidates of byItem.values()) pushBest(candidates);
+    for (const candidates of byItem.values()) pushBest(enchantMode === 'auto' ? resolveAfterChoice(candidates) : candidates);
 
     rows.sort((a, b) => (faction ? b.profitPerPoint - a.profitPerPoint : b.rankScore - a.rankScore));
     // План трат очков (подрежим): жадно по профиту на очко среди комбинаций, где крафт плаща выгоднее продажи герба и сердца; на комбинацию — не больше,
@@ -2650,7 +2678,7 @@ app.get('/api/unified-scan', (req, res) => {
       mode, enchantMode, liquidity, days, materialHours, taxRate,
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
-      rrrOptions: rrrOpts, refineRate: refineParams.rate, experiments: { materialLiquidity, confidenceMaterials }, enchantRange: enchantMode === 'after' ? '.0–.3' : '.0–.4',
+      rrrOptions: rrrOpts, refineRate: refineParams.rate, experiments: { materialLiquidity, confidenceMaterials }, enchantRange: enchantMode === 'after' ? '.0–.3' : '.0–.4',        // 'auto': прямой .0–.4, чары после крафта — .1–.3 только где выгоднее на 7%
       scanned: combos.length, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
     };
     unifiedScanCache = { key: cacheKey, ts: now, data };

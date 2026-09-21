@@ -172,6 +172,53 @@ describe('GET /api/unified-scan', () => {
     expect(res.results.find((r) => r.itemId === 'T4_MAIN_SWORD')).toBeUndefined();
   });
 
+  describe("enchantMode=auto: «чары после крафта» только там, где выгоднее прямого на 7%", () => {
+    const seedRunes = (price) => { seedMaterial('T4_RUNE', price); seedMaterial('T4_SOUL', price); seedMaterial('T4_RELIC', price); };
+    const sword = async (extra = {}) => (await scan({ mode: 'patient', ...extra })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+
+    it('после крафта дешевле прямого сильно — берётся «после», строка помечена after', async () => {
+      seedMaterial('T4_METALBAR_LEVEL1@1', 300); seedMaterial('T4_LEATHER_LEVEL1@1', 300);         // прямой .1 дорогой
+      seedRunes(10);                                                                                 // руны почти даром
+      seedSales('T4_MAIN_SWORD@1', { avg: 12000, perDay: 30 });
+      const row = await sword({ enchantMode: 'auto' });
+      expect(row).toMatchObject({ enchant: 1, after: true });
+      const direct = await sword({ enchantMode: 'direct' });
+      expect(direct).toMatchObject({ enchant: 1, after: false });
+      expect(row.cost).toBeLessThan(direct.cost);
+      expect(row.profitPerUnit).toBeGreaterThan(direct.profitPerUnit * 1.07);
+    });
+
+    it('прямой крафт не хуже — остаётся прямой, хотя тумблер включён', async () => {
+      seedMaterial('T4_METALBAR_LEVEL1@1', 100); seedMaterial('T4_LEATHER_LEVEL1@1', 100);         // прямой .1 дёшев
+      seedRunes(10);                                                                                 // руны заметно дороже прямого крафта, но «после» всё равно прибыльно
+      seedSales('T4_MAIN_SWORD@1', { avg: 12000, perDay: 30 });
+      expect(await sword({ enchantMode: 'auto' })).toMatchObject({ enchant: 1, after: false });
+      expect(await sword({ enchantMode: 'after' })).toMatchObject({ enchant: 1, after: true });       // «все после» — прежнее поведение
+    });
+
+    it('разница меньше 7% профита — остаётся прямой', async () => {
+      // прямой .1: 24 × 100 × 1.025 = 2460 материалов; «после»: база .0 = 2460 + руны — подбираем руны так, чтобы выигрыш был около 3% профита
+      seedMaterial('T4_METALBAR_LEVEL1@1', 200); seedMaterial('T4_LEATHER_LEVEL1@1', 200);         // прямой: 4920
+      seedSales('T4_MAIN_SWORD@1', { avg: 12000, perDay: 30 });
+      const profitDirect = 12000 * (1 - 0.08 - 0.025) - 4920;
+      const runeBudget = 4920 - 2460 - 0.03 * profitDirect;                                            // «после» дешевле прямого на 3% профита
+      const perRune = runeBudget / 1.025 / 288;                                                        // 288 рун на одноручное за уровень
+      seedRunes(perRune);
+      const after = await sword({ enchantMode: 'after' });
+      const direct = await sword({ enchantMode: 'direct' });
+      const gain = (after.profitPerUnit - direct.profitPerUnit) / direct.profitPerUnit;
+      expect(gain).toBeGreaterThan(0);
+      expect(gain).toBeLessThan(0.07);                                                                 // «после» лучше, но меньше порога
+      expect(await sword({ enchantMode: 'auto' })).toMatchObject({ enchant: 1, after: false });
+    });
+
+    it('.4 в режиме auto берётся прямым крафтом (после крафта до .4 не дойти)', async () => {
+      seedMaterial('T4_METALBAR_LEVEL4@4', 100); seedMaterial('T4_LEATHER_LEVEL4@4', 100);
+      seedSales('T4_MAIN_SWORD@4', { avg: 30000, perDay: 30 });
+      expect(await sword({ enchantMode: 'auto' })).toMatchObject({ enchant: 4, after: false });
+    });
+  });
+
   it('индекс доверия: 6 часов торговли — 23%, а не «уверенные» 100%; в ответе есть tradeHours', async () => {
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });          // seedSales кладёт по одной точке в день, 6 дней
     const row = (await scan({ mode: 'patient' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
