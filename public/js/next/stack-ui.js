@@ -10,6 +10,7 @@ import { missingPrices, itemProfit, stackTotals } from './logic/stack.js';
 import { turnoverPerDay, turnoverInfo } from './logic/turnover.js';
 import { acquisitionRows, mergeRows, withOverride } from './logic/acquire.js';
 import { adjustData, makeOverride } from './logic/adjust.js';
+import { applyItemPlan } from './logic/planEdit.js';
 import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
 
 // Данные стека одним объектом: позиции, результаты расчёта со своими ценами материалов, итоги
@@ -22,9 +23,10 @@ export function useStackData({ ops, engine }) {
   const citiesKey = cities.join();
   const results = useMemo(() => {
     const out = new Map();
-    for (const [uid, d] of raw) out.set(uid, adjustData(d, pr, { purchaseLog: s.purchaseLog, cities }));
+    const planOf = new Map(items.map((i) => [i.uid, i.plan]));
+    for (const [uid, d] of raw) out.set(uid, applyItemPlan(adjustData(d, pr, { purchaseLog: s.purchaseLog, cities }), planOf.get(uid)));   // правки плана продажи позиции — в профит
     return out;
-  }, [raw, pr, s.purchaseLog, citiesKey]);
+  }, [raw, pr, s.purchaseLog, citiesKey, items]);
   const t = useMemo(() => {
     const total = stackTotals(items, results, faction ? faction.points : 0);
     // позиции, ещё не посчитанные, дают в итоги приблизительные цифры из скана (себестоимость и профит при добавлении)

@@ -6,7 +6,7 @@ import { meta } from './params.js';
 import { Glyph, Tags, CityPill, Switch, Icon, ICONS, Spinner, toast } from './ui.js';
 import { addToList, craftList } from './list.js';
 import { navStore, nav } from './nav.js';
-import { calcStore, emptyManual, derive } from './calc-store.js';
+import { calcStore, emptyManual, derive, planOfStore } from './calc-store.js';
 import { prices } from './prices.js';
 import { ItemPicker, GEAR, familyOf } from './picker.js';
 import { StackView, StackFocusBar } from './calc-stack.js';
@@ -110,8 +110,8 @@ function SingleCalc() {
     return () => clearTimeout(t);
   }, [sig, c.itemId]);
   useEffect(() => {                                              // правки позиции в фокусе (тир, чары, качество, количество) идут в стек
-    if (c.stackMode && c.stackFocus && c.itemId) stack.patch(c.stackFocus, { itemId: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, after: c.after });
-  }, [c.stackFocus, c.itemId, c.enchant, c.quality, c.qty, c.after]);
+    if (c.stackMode && c.stackFocus && c.itemId) stack.patch(c.stackFocus, { itemId: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, after: c.after, plan: planOfStore(c) });
+  }, [c.stackFocus, c.itemId, c.enchant, c.quality, c.qty, c.after, c.toggles, c.manualQty, c.cityPrices, c.strategy]);
   const set = (p) => calcStore.set(p);
   const { d, st, p, override, lists } = useMemo(() => derive(c, s, pr), [c.data, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;

@@ -440,8 +440,8 @@ test('крафт-лист → калькулятор стеком: активн�
   await expect(page.locator('#stack-sale-plans')).toContainText('План продажи через Sell Order по городам');
   await expect(page.locator('#stack-sale-plans .sale-plan')).toHaveCount(2);                                // по плану продажи на каждую позицию
   const plan = page.locator('#stack-sale-plans .sale-plan').first();
-  await expect(plan.locator('.stack-city-table tr[data-city="Lymhurst"]')).toContainText('2 500');           // цена города
-  await expect(plan.locator('.stack-city-table tr[data-city="Lymhurst"]')).toContainText('+377');            // профит с шт
+  await expect(plan.locator('.city-table tr[data-city="Lymhurst"]')).toContainText('2 500');           // цена города
+  await expect(plan.locator('.city-table tr[data-city="Lymhurst"]')).toContainText('+377');            // профит с шт
   await expect(plan).toContainText('Распределено');
   await expect(plan).toContainText('Срок распродажи по плану');
   await expect(plan).toContainText('оборот 8,0 шт/день');
@@ -460,14 +460,31 @@ test('крафт-лист → калькулятор стеком: активн�
   await expect(page.locator('#drawer-list .li-card').first().locator('.qty input')).toHaveValue('1');
 });
 
-test('стек: «Изменить план» открывает позицию на вкладке «Продажа» с планом по городам', async ({ page }) => {
+test('стек: план продажи по городам правится прямо в карточке позиции — количество, своя цена города, сброс; правки не плодят запросы и видны в подробном виде', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await twoItemsInList(page, log);
   await page.locator('#open-in-calc').click();
+  await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
+  const cardsBefore = log.calc.length;
   await page.getByRole('tab', { name: 'Продажа' }).click();
-  await page.locator('#stack-sale-plans .sale-plan').first().getByRole('button', { name: 'Изменить план' }).click();
-  await expect(page.locator('#stack-focus-bar')).toBeVisible();
-  await expect(page.locator('#city-plan')).toContainText('План продажи через Sell Order по городам');
+  await expect(page.getByRole('button', { name: 'Изменить план' })).toHaveCount(0);                        // отдельного окна нет
+  const plan = page.locator('#stack-sale-plans .sale-plan').first();
+  const row = plan.locator('.city-table tr[data-city="Lymhurst"]');
+  await row.locator('.plan-city-price').fill('3000');                                                        // своя цена города
+  await expect(row).toContainText('3 000');
+  await expect(row.locator('.plan-city-price')).toHaveClass(/is-manual/);
+  await row.locator('.plan-qty').fill('1');
+  await expect(plan.locator('.plan-reset')).toBeVisible();
+  await plan.locator('.plan-reset').click();
+  await expect(row.locator('.plan-city-price')).toHaveValue('');
+  await expect(plan.locator('.plan-reset')).toHaveCount(0);
+  await page.locator('#stack-sale-plans .sale-plan').nth(1).locator('.sale-strategy').selectOption('even');
+  expect(log.calc.length).toBe(cardsBefore);                                                                 // правки плана продажи — без запросов к серверу
+  // правка сохраняется в позиции: видна и в подробном виде
+  await row.locator('.plan-city-price').fill('3100');
+  await page.locator('#stack-sales tbody tr').first().click();
+  await page.getByRole('tab', { name: 'Продажа' }).click();
+  await expect(page.locator('#city-plan .plan-city-price[data-city="Lymhurst"]')).toHaveValue('3100');
 });
 
 test('свои цены материалов общие: вписанная в стеке цена города видна в калькуляторе одной позиции и в листе', async ({ page }) => {

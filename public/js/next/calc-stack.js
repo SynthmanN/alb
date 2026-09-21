@@ -11,12 +11,13 @@ import { itemProfit } from './logic/stack.js';
 import { profitOf } from './logic/profit.js';
 import { turnoverPerDay, turnoverInfo } from './logic/turnover.js';
 import { salePlanOf } from './stack-sales.js';
+import { manualFromPlan } from './calc-store.js';
 import { settings } from './settings.js';
 import { StackSalePlans } from './stack-sales.js';
 
 // «Подробнее»: позиция открывается в обычном калькуляторе (все вкладки и ручной план продажи), стек остаётся полосой сверху
 export function focusStackItem(x) {
-  calcStore.set({ stackFocus: x.uid, itemId: x.itemId, enchant: x.enchant, quality: x.quality, qty: x.quantity, after: !!x.after, faction: !!x.faction, crestSilver: !!x.crestSilver, heartSilver: !!x.heartSilver, data: null, sig: '', error: '', sub: 'buy', ...emptyManual() });
+  calcStore.set({ stackFocus: x.uid, itemId: x.itemId, enchant: x.enchant, quality: x.quality, qty: x.quantity, after: !!x.after, faction: !!x.faction, crestSilver: !!x.crestSilver, heartSilver: !!x.heartSilver, data: null, sig: '', error: '', sub: 'buy', ...manualFromPlan(x.plan) });
 }
 export const leaveStack = () => calcStore.set({ stackMode: false, stackFocus: null });
 
@@ -48,7 +49,7 @@ function SalesTable({ data }) {
         <td class=${tone(pf && pf.unit)}>${pf ? signed(pf.unit) : '—'}</td>
         <td class=${tone(pf && pf.unit)}>${pf ? signed(pf.unit * x.quantity) : '—'}</td>
         <td>${ok ? (() => { const t = turnoverInfo(x.quantity, turnoverPerDay(x, d).perDay, windowDays); return t.perDay === null ? '—' : html`<span class=${t.slow ? 'scan-stale' : ''} title=${`${fmt(x.quantity)} шт при обороте ${fmt(t.perDay, 1)} шт/день: ≈ ${fmtDays(t.days)}`}>${fmt(t.perDay, 1)}</span>`; })() : '—'}</td>
-        <td>${(() => { const sp = ok ? salePlanOf(d) : null; const days = sp && sp.totalQty > 0 ? sp.planDays : p && p.days; return days !== null && days !== undefined ? fmtDays(days) : '—'; })()}</td>
+        <td>${(() => { const sp = ok ? salePlanOf(x, d) : null; const days = sp && sp.totalQty > 0 ? sp.planDays : p && p.days; return days !== null && days !== undefined ? fmtDays(days) : '—'; })()}</td>
         <td>${ok && d.faction ? fmt(d.faction.pointsPerCape * x.quantity) : '—'}</td></tr>`;
     })}</tbody></table>
     <div class="statusline">Цена продажи — из плана или своя (в карточке позиции); срок — по плану продажи по городам выше. Клик по строке открывает позицию подробно.</div></div>`;
@@ -63,7 +64,6 @@ export function StackView() {
   const add = (id) => { stack.add({ itemId: id, enchant: 0, quality: 4, quantity: 1 }); setAdding(false); toast(`В стек добавлено: ${itemLabel(id)}`); };
   const subs = [['buy', 'Закупка'], ['sell', 'Продажа']];
   const windowDays = useStore(settings).hist;
-  const openSalePlan = (x) => { focusStackItem(x); calcStore.set({ sub: 'sell' }); };
   return html`<section class="panel" id="panel-calc">
     <div class="stackhead">
       <div><div class="grouphead">Стек калькулятора <span class="muted" style="text-transform:none;letter-spacing:0">· ${items.filter((i) => i.on !== false).length} из ${items.length} в расчёте${faction ? ` · ${faction.name}` : ''}</span></div>
@@ -75,6 +75,6 @@ export function StackView() {
       <div class="card verdict stackverdict" id="stack-verdict"><div class="stackbody"><${StackTotals} data=${data} /></div></div>
       <${StackCards} def=${stackDef} data=${data} onDetail=${focusStackItem} detailLabel="Подробнее" />
       <div class="subtabs" role="tablist" style="margin-top:20px">${subs.map(([id, t]) => html`<button type="button" role="tab" key=${id} aria-selected=${String(c.sub === id)} onClick=${() => set({ sub: id })}>${t}</button>`)}</div>
-      ${c.sub === 'sell' ? html`<${StackSalePlans} data=${data} windowDays=${windowDays} onDetail=${openSalePlan} /><div class="grouphead" style="margin-top:22px">Сводка по позициям</div><${SalesTable} data=${data} />` : html`<${StackShopping} data=${data} />`}`}
+      ${c.sub === 'sell' ? html`<${StackSalePlans} def=${stackDef} data=${data} windowDays=${windowDays} /><div class="grouphead" style="margin-top:22px">Сводка по позициям</div><${SalesTable} data=${data} />` : html`<${StackShopping} data=${data} />`}`}
   </section>`;
 }

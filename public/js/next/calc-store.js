@@ -2,6 +2,7 @@
 // план продажи по городам. Своё пересчитывает результат на месте (logic/manual.js) — без запроса к серверу.
 import { createStore } from './lib.js';
 import { applyManualPrices, salePlanState } from './logic/manual.js';
+import { emptyPlan, withCityPrice, withToggle, withManualQty, withStrategy, resetPlanState } from './logic/planEdit.js';
 import { profitOf } from './logic/profit.js';
 import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
 import { makeOverride } from './logic/adjust.js';
@@ -10,7 +11,8 @@ import { activeCities } from './settings.js';
 
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 // своё для одной вещи (цены материалов — общие, в prices.js): цена мгновенной продажи, цены городов продажи, план продажи по городам
-export const emptyManual = () => ({ sellPrice: null, cityPrices: {}, toggles: null, manualQty: {}, strategy: 'profit' });
+export const emptyManual = () => ({ sellPrice: null, ...emptyPlan() });
+export const manualFromPlan = (plan) => ({ sellPrice: null, ...emptyPlan(), ...(plan || {}) });
 export const calcStore = createStore({
   itemId: null, enchant: 0, quality: 4, qty: 10, after: false, faction: false, crestSilver: false, heartSilver: false, sub: 'buy',
   data: null, loading: false, error: '', sig: '', checks: {}, ...emptyManual(),
@@ -20,38 +22,16 @@ const set = (p) => calcStore.set(p);
 const num = (raw) => { const v = parseFloat(raw); return Number.isFinite(v) && v >= 0 ? v : null; };
 
 export const setSellPrice = (raw) => set({ sellPrice: raw === '' ? null : num(raw) });
-export function setCityPrice(city, raw) {
-  const cityPrices = { ...calcStore.get().cityPrices };
-  const v = num(raw);
-  if (v !== null && raw !== '') cityPrices[city] = v; else delete cityPrices[city];
-  set({ cityPrices });
-}
-// первое включение/выключение города фиксирует набор городов автоплана, дальше набор ведёт пользователь
-function ensureToggles(c) {
-  if (c.toggles && Object.keys(c.toggles).length) return { ...c.toggles };
-  const p = c.data && c.data.patientSell;
-  const auto = p && p.plan ? p.plan.cities.map((x) => x.city) : [];
-  const t = {};
-  for (const x of (p ? p.byCity : [])) t[x.city] = auto.includes(x.city);
-  return t;
-}
-export function setToggle(city, on) {
-  const c = calcStore.get();
-  const toggles = ensureToggles(c);
-  toggles[city] = on;
-  const manualQty = { ...c.manualQty };
-  if (!on) delete manualQty[city];
-  set({ toggles, manualQty });
-}
-export function setManualQty(city, raw) {
-  const c = calcStore.get();
-  const manualQty = { ...c.manualQty, [city]: Math.max(Math.floor(Number(raw) || 0), 0) };
-  let toggles = c.toggles;
-  if (Number(raw) > 0) { toggles = ensureToggles(c); toggles[city] = true; }       // вписанное количество включает город в план
-  set({ manualQty, toggles });
-}
-export const setStrategy = (strategy) => set({ strategy });
-export const resetPlan = () => set({ manualQty: {}, toggles: null, cityPrices: {} });
+// правки плана продажи: чистые функции из logic/planEdit.js над полями calcStore
+const planOfStore = (c) => ({ toggles: c.toggles, manualQty: c.manualQty, cityPrices: c.cityPrices, strategy: c.strategy });
+const patientOf = (c) => (c.data && c.data.patientSell) || null;
+export const setCityPrice = (city, raw) => set(withCityPrice(planOfStore(calcStore.get()), city, raw));
+export const setToggle = (city, on) => { const c = calcStore.get(); set(withToggle(planOfStore(c), patientOf(c), city, on)); };
+export const setManualQty = (city, raw) => { const c = calcStore.get(); set(withManualQty(planOfStore(c), patientOf(c), city, raw)); };
+export const setStrategy = (strategy) => set(withStrategy(planOfStore(calcStore.get()), strategy));
+export const resetPlan = () => set(resetPlanState(planOfStore(calcStore.get())));
+export const calcPlanActions = { setStrategy, setToggle, setManualQty, setCityPrice, reset: resetPlan };
+export { planOfStore };
 export const resetOwn = () => { resetPrices(); set({ sellPrice: null }); };
 
 // Всё производное от ответа сервера и «своего»: пересчитанный результат, живой план продажи, профит
