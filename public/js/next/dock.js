@@ -1,13 +1,34 @@
 // Крафт-лист: плавающий «док» с итогами и выдвижная панель — позиции (количество, детали за серебро, цена продажи), итоги, сводная закупка.
 import { html, createStore, useStore, useState, Fragment, fmt, signed, tone, itemLabel, itemTier, copyText, auctionName, apiPost } from './lib.js';
-import { craftList, setQuantity, removeFromList, clearList, patchItem, setAutoAfter, setFaction } from './list.js';
+import { craftList, setQuantity, removeFromList, clearList, patchItem, setAutoAfter, setListCityOwn } from './list.js';
+import { settings, activeCities } from './settings.js';
+import { CityPriceList } from './citylist.js';
 import { listCalc, invalidateItem, redecide } from './listcalc.js';
 import { Glyph, Tags, CityPill, Switch, Icon, ICONS, toast } from './ui.js';
 import { nav } from './nav.js';
 import { missingPrices, itemProfit, stackTotals, afterPossible } from './logic/stack.js';
-import { acquisitionRows, mergeRows } from './logic/acquire.js';
+import { acquisitionRows, mergeRows, withOverride } from './logic/acquire.js';
+import { applyManualPrices } from './logic/manual.js';
+import { priceLists, bestBuy, SETUP_FEE } from './logic/cityPrices.js';
 
 export const drawerStore = createStore({ open: false, checks: {} });
+
+// Результаты позиций с учётом своих цен городов, вписанных в списке закупки (цены общие для всех позиций: рынок один)
+function useAdjusted(results) {
+  const { cityOwn } = useStore(craftList);
+  const s = useStore(settings);
+  const cities = activeCities(s);
+  const own = cityOwn || {};
+  if (!Object.keys(own).length) return { results, own, cities };
+  const out = new Map();
+  for (const [uid, d] of results) {
+    if (!d || d.error) { out.set(uid, d); continue; }
+    const lists = priceLists(d);
+    const fee = d.setupFeeRate ?? SETUP_FEE;
+    out.set(uid, applyManualPrices(d, { hasOwn: true, ownPrice: () => undefined, buyPrice: (res) => bestBuy(lists[res], own[res], cities, fee), sellPrice: null, cityPrices: {} }));
+  }
+  return { results: out, own, cities };
+}
 
 function totals(items, results, faction) {
   const t = stackTotals(items, results, faction ? faction.points : 0);
@@ -18,7 +39,8 @@ function totals(items, results, faction) {
 
 export function Dock() {
   const { items, faction } = useStore(craftList);
-  const { results } = useStore(listCalc);
+  const raw = useStore(listCalc).results;
+  const { results } = useAdjusted(raw);
   const t = totals(items, results, faction);
   return html`<div class="dock" id="dock" role="region" aria-label="Крафт-лист">
     <div class="d"><span>Крафт-лист</span><b><span class="cnt" id="dock-count">${items.length}</span></b></div>
@@ -71,26 +93,35 @@ function ItemCard({ x, result, pair, autoAfter }) {
   </div>`;
 }
 
-function Shopping({ items, results }) {
+function Shopping({ items, results, own, cities }) {
   const { checks } = useStore(drawerStore);
-  const rows = mergeRows(items.filter((i) => i.on !== false && results.get(i.uid) && !results.get(i.uid).error).map((i) => acquisitionRows(results.get(i.uid), itemLabel)));
+  const active = items.filter((i) => i.on !== false && results.get(i.uid) && !results.get(i.uid).error);
+  const lists = {};
+  let fee = SETUP_FEE;
+  for (const i of active) { const d = results.get(i.uid); fee = d.setupFeeRate ?? fee; for (const [k, v] of Object.entries(priceLists(d))) if (!lists[k]) lists[k] = v; }
+  const rows = mergeRows(active.map((i) => acquisitionRows(results.get(i.uid), itemLabel))).map((r) => {
+    const b = own[r.key] ? bestBuy(lists[r.key], own[r.key], cities, fee) : undefined;
+    return b ? withOverride(r, { price: b.price, city: b.city }) : r;
+  });
   if (!rows.length) return null;
   const done = rows.filter((r) => checks[r.id]).length;
-  const total = rows.reduce((s, r) => s + r.sum, 0);
+  const total = rows.reduce((s, r) => s + (r.sum || 0), 0);
   const copy = async (r) => toast((await copyText(auctionName(r.name))) ? `Скопировано: ${auctionName(r.name)}` : 'Не удалось скопировать');
   return html`<div id="shopping"><div class="grouphead">Закупить для всего листа <span class="muted" style="text-transform:none;letter-spacing:0">· куплено ${done} из ${rows.length}</span></div>
     <div class="shop-list">${rows.map((r) => html`<div class=${`shop ${checks[r.id] ? 'done' : ''}`} key=${r.id}>
-      <label class="shop-l"><input type="checkbox" class="ck" checked=${!!checks[r.id]} onChange=${(e) => drawerStore.set({ checks: { ...checks, [r.id]: e.target.checked } })} />
-        <span><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copy(r)}>${r.name}</button>
-          <span class="shop-c">${r.cities.map((c) => html`<${CityPill} key=${c.city} name=${c.city} />`)}</span></span></label>
+      <div class="shop-l"><input type="checkbox" class="ck" checked=${!!checks[r.id]} onChange=${(e) => drawerStore.set({ checks: { ...checks, [r.id]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
+        <div class="shop-body"><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copy(r)}>${r.name}</button>
+          <span class="shop-c">${r.cities.map((c) => html`<${CityPill} key=${c.city} name=${c.city} />`)}</span>
+          ${lists[r.key] ? html`<${CityPriceList} resKey=${r.key} list=${lists[r.key]} own=${own[r.key]} fee=${fee} onSet=${(city, v) => setListCityOwn(r.key, city, v)} />` : null}</div></div>
       <span class="shop-n"><b>${fmt(r.needed)}</b> шт<br /><span class="neg">${fmt(r.sum)}</span></span></div>`)}</div>
-    <div class="statusline" style="padding:10px 0 0;border:0">Итого на закупку: <b class="neg">${fmt(total)}</b>. Складываются результаты по отдельно посчитанным позициям: общий объём одинакового материала мог бы поднять цену чуть выше.</div></div>`;
+    <div class="statusline" style="padding:10px 0 0;border:0">Итого на закупку: <b class="neg">${fmt(total)}</b>. Складываются результаты по отдельно посчитанным позициям: общий объём одинакового материала мог бы поднять цену чуть выше. Свои цены городов общие для всего листа.</div></div>`;
 }
 
 export function ListDrawer() {
   const { open } = useStore(drawerStore);
   const { items, faction, autoAfter } = useStore(craftList);
-  const { results, pairs, pending } = useStore(listCalc);
+  const { results: rawResults, pairs } = useStore(listCalc);
+  const { results, own, cities } = useAdjusted(rawResults);
   if (!open) return null;
   const close = () => drawerStore.set({ open: false });
   const t = totals(items, results, faction);
@@ -112,7 +143,7 @@ export function ListDrawer() {
           ${t.noPrice || t.pending || t.errors ? html`<div class="note" style="margin:0">${t.pending ? `Считается позиций: ${t.pending}. ` : ''}${t.noPrice ? `Не хватает цен материалов или продажи (в итоги не входят): ${t.noPrice} — впиши их в карточках. ` : ''}${t.errors ? `С ошибкой: ${t.errors}.` : ''}</div>` : null}
           ${anyEligible ? html`<${Switch} checked=${autoAfter} onChange=${setAutoAfter} title="Для каждой позиции считаются оба пути; чары после крафта применяются, если профит выше на 7% и больше">Зачаровать после крафта — там, где профит выше на 7% и больше</${Switch}>` : null}
           <div><div class="grouphead">Позиции</div><div class="li-cards">${items.map((x) => html`<${ItemCard} key=${x.uid} x=${x} result=${results.get(x.uid)} pair=${pairs.get(x.uid)} autoAfter=${autoAfter} />`)}</div></div>
-          <${Shopping} items=${items} results=${results} />
+          <${Shopping} items=${items} results=${results} own=${own} cities=${cities} />
           <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" onClick=${copyNames}>Скопировать список</button><button class="btn ghost" type="button" onClick=${clearList}>Очистить</button></div>`}
       </div></aside></${Fragment}>`;
 }

@@ -1,7 +1,7 @@
 // Вкладка «Продажа»: мгновенно в Buy Order (со своей ценой) и терпеливо через Sell Order — план по городам с включением городов, своим количеством,
 // своей ценой города и стратегией распределения; порог продажи, потолок себестоимости и полоса цены, сравнение по качеству. И «Сравнение по тирам».
 import { html, useStore, fmt, signed, tone, fmtDays, QN } from './lib.js';
-import { calcStore, setSellPrice, setCityPrice, setToggle, setManualQty, setStrategy, resetPlan } from './calc-store.js';
+import { calcStore, emptyManual, setSellPrice, setCityPrice, setToggle, setManualQty, setStrategy, resetPlan } from './calc-store.js';
 import { CityPill } from './ui.js';
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -121,7 +121,7 @@ export function TiersTab({ c, d }) {
   const rows = d.tierComparison || [];
   if (!rows.length) return html`<div class="card empty">Сравнение по тирам для этого предмета недоступно.</div>`;
   return html`<div id="sub-tiers"><div class="card tw"><table><thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать (Buy Order)</th><th>Профит / шт (Buy Order)</th><th>Профит / шт (Sell Order, по истории)</th></tr></thead>
-    <tbody>${rows.map((t) => html`<tr key=${t.itemId} class=${t.isCurrent ? 'sel' : 'click'} title=${`Переключить на T${t.tier}`} onClick=${() => { if (!t.isCurrent) calcStore.set({ itemId: t.itemId, data: null, sig: '', own: {}, lots: {}, sellPrice: null, cityPrices: {}, toggles: null, manualQty: {} }); }}>
+    <tbody>${rows.map((t) => html`<tr key=${t.itemId} class=${t.isCurrent ? 'sel' : 'click'} title=${`Переключить на T${t.tier}`} onClick=${() => { if (!t.isCurrent) calcStore.set({ itemId: t.itemId, data: null, sig: '', ...emptyManual() }); }}>
       <td><span class=${`tag t${t.tier}`}>T${t.tier}</span>${t.enchant ? html` <span class="tag e">.${t.enchant}</span>` : null}${t.enchantCapped && t.tier < 4 ? html` <span class="scan-stale" title="Зачарование доступно только с T4">без чарки</span>` : null}</td>
       <td class="neg">${t.cost !== null ? fmt(t.cost) : 'нет цен на материалы'}</td>
       <td>${t.bestQuality ? html`<span class=${`tag q${t.bestQuality}`}>${QN[t.bestQuality]}</span>` : '—'}</td>

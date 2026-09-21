@@ -49,6 +49,12 @@ export function acquisitionRows(data, nameOf = (id) => id) {
   return rows;
 }
 
+// Строка закупки по своей цене (ov: { price, city? }): цена и сумма пересчитываются, если задан город — вся партия идёт в него
+export function withOverride(row, ov) {
+  if (!ov) return row;
+  return { ...row, unit: ov.price, cities: ov.city ? [{ city: ov.city, qty: row.needed, price: ov.price }] : row.cities, sum: ov.price * row.needed, missing: false, manual: true };
+}
+
 // Строки, где не хватает цены материала (можно вписать свою)
 export const missingRows = (rows) => rows.filter((r) => r.missing);
 
@@ -57,7 +63,7 @@ export function mergeRows(list) {
   const map = new Map();
   for (const rows of list) {
     for (const r of rows) {
-      const e = map.get(r.id) || { id: r.id, name: r.name, needed: 0, cities: new Map(), missing: false };
+      const e = map.get(r.id) || { id: r.id, key: r.key || r.id, name: r.name, needed: 0, cities: new Map(), missing: false };
       e.needed += r.needed;
       if (r.missing) e.missing = true;
       for (const c of r.cities) {
@@ -70,6 +76,6 @@ export function mergeRows(list) {
   }
   return [...map.values()].map((e) => {
     const cities = [...e.cities.entries()].map(([city, c]) => ({ city, qty: c.qty, price: c.cost / c.qty }));
-    return { id: e.id, name: e.name, needed: e.needed, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
+    return { id: e.id, key: e.key, name: e.name, needed: e.needed, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
   }).sort((a, b) => b.sum - a.sum);
 }

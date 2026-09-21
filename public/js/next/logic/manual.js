@@ -12,9 +12,10 @@ export function lotsAverage(lots) {
   return qty > 0 ? { qty, avg: sum / qty } : null;
 }
 
-// ctx: { ownPrice(resource) → цена | undefined, hasOwn: bool, sellPrice: число | null, cityPrices: { город: цена } }
+// ctx: { ownPrice(resource) → цена | undefined, buyPrice(resource) → { price, city } | undefined (свои цены городов), hasOwn: bool, sellPrice: число | null, cityPrices: { город: цена } }
 export function applyManualPrices(data, ctx) {
   const own = ctx.ownPrice || (() => undefined);
+  const cityBuy = ctx.buyPrice || (() => undefined);
   const cityPrices = ctx.cityPrices || {};
   const sellPrice = ctx.sellPrice === undefined ? null : ctx.sellPrice;
   const hasCity = Object.keys(cityPrices).length > 0;
@@ -26,17 +27,21 @@ export function applyManualPrices(data, ctx) {
     if (r.cheapestPrice === null || r.materialSource === 'points') continue;
     const oldPrice = r.cheapestPrice;
     // Своя цена сырья или полуфабриката предыдущего тира (из плана закупки) тоже пересчитывает «купить или переработать»
+    const cb = cityBuy(r.resource);                                                       // своя цена города: закупка по ней (без комиссии), город меняется
     const ownComp = r.refineOption ? r.refineOption.components.some((cp) => own(cp.id) !== undefined) : false;
-    if (ownComp && r.refineOption) {
+    if ((ownComp || cb !== undefined) && r.refineOption) {
       const rate = r.refineOption.rate;
       const rawCost = r.refineOption.components.reduce((sum, cp) => { const o = own(cp.id); return sum + cp.count * (o !== undefined ? o : cp.price); }, 0);
       const alt = rawCost * (1 - rate);
-      const buy = r.materialSource === 'refine' ? r.buyPrice : r.cheapestPrice;
+      const buy = cb !== undefined ? cb.price : (r.materialSource === 'refine' ? r.buyPrice : r.cheapestPrice);
       r.refineOption = { ...r.refineOption, rate, rawCost, price: alt };
       if (buy === null || alt <= buy * 0.95) { r.materialSource = 'refine'; r.cheapestPrice = alt; r.cheapestCity = r.refineOption.city; r.priceSource = 'refine'; r.buyPrice = buy; }   // выгода меньше 5% — не переработка
-      else { r.materialSource = 'buy'; r.cheapestPrice = buy; r.cheapestCity = r.buyCity; r.priceSource = null; }
+      else { r.materialSource = 'buy'; r.cheapestPrice = buy; r.cheapestCity = cb !== undefined ? cb.city : r.buyCity; r.priceSource = null; if (cb !== undefined) r.manualPrice = true; }
+    } else if (cb !== undefined && r.materialSource === 'craft' && cb.price < r.cheapestPrice * 0.95) {   // купить готовый по своей цене выгоднее крафта самому
+      r.materialSource = 'buy'; r.cheapestPrice = cb.price; r.cheapestCity = cb.city; r.priceSource = null; r.manualPrice = true;
     }
-    const o = own(r.resource);
+    let o = own(r.resource);
+    if (o === undefined && cb !== undefined && r.materialSource === 'buy' && !r.manualPrice) { o = cb.price; r.cheapestCity = cb.city; }
     const p = o !== undefined ? o : r.cheapestPrice;
     const factor = r.returnable === false ? 1 : 1 - (r.rrr || 0);
     materialDelta += (p * factor - oldPrice * factor) * r.count;
@@ -48,8 +53,10 @@ export function applyManualPrices(data, ctx) {
   if (data.enchantAfterCraft) {
     d.enchantAfterCraft = { ...data.enchantAfterCraft, steps: data.enchantAfterCraft.steps.map((st) => ({ ...st })) };
     for (const st of d.enchantAfterCraft.steps) {
-      const p = own(st.materialId);
+      const sb = cityBuy(st.materialId);
+      const p = own(st.materialId) !== undefined ? own(st.materialId) : sb !== undefined ? sb.price : undefined;
       if (p === undefined || st.cheapestPrice === null) continue;
+      if (sb !== undefined && own(st.materialId) === undefined) st.cheapestCity = sb.city;
       stepsDelta += (p - st.cheapestPrice) * st.count;
       st.cheapestPrice = p;
       st.cost = p * st.count;

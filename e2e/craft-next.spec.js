@@ -352,3 +352,40 @@ test('/craft.html загружается без ошибок JS и с общей
   await page.waitForLoadState('networkidle');
   expect(errors).toEqual([]);
 });
+
+// ---------- цены материала по городам ----------
+test('панель «Все города» материала: серая рыночная цена, своя цена города меняет выбор города и себестоимость, «Сбросить» возвращает рынок', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  const panel = page.locator('#craft-recipe-table details.cityprices[data-res="T4_CLOTH"]');
+  await panel.locator('summary').click();
+  await expect(panel.locator('.cp-row')).toHaveCount(5);                                                    // все пять основных городов (у трёх нет рыночной цены — своя вписывается)
+  await expect(panel.locator('.cp-row.is-best')).toContainText('Martlock');
+  await expect(panel.locator('input[data-city="Martlock"]')).toHaveAttribute('placeholder', '100');           // серым — рыночная цена
+  await expect(panel.locator('.cp-row', { hasText: 'Bridgewatch' })).toContainText('нет цены');
+  const before = log.calc.length;
+  await panel.locator('input[data-city="Lymhurst"]').fill('50');                                             // (50 − 100) × 20 × (1 − 0.25) = −750
+  await expect(panel.locator('.cp-row.is-best')).toContainText('Lymhurst');
+  await expect(page.locator('#cost-summary')).toContainText('1 110');
+  await expect(page.locator('#buy-table')).toContainText('своя');
+  expect(log.calc.length).toBe(before);                                                                       // без запроса к серверу
+  await panel.locator('input[data-city="Bridgewatch"]').fill('40');                                          // город без рыночной цены со своей ценой
+  await expect(panel.locator('.cp-row.is-best')).toContainText('Bridgewatch');
+  await expect(panel.locator('summary')).toContainText('своих 2');
+  await page.locator('.manual-reset').click();
+  await expect(page.locator('#cost-summary')).toContainText('1 860');
+});
+
+test('крафт-лист: панель «Все города» в сводной закупке, своя цена города пересчитывает итоги листа', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  await page.locator('#calc-add').click();
+  await page.locator('#open-list').click();
+  const row = page.locator('#shopping .shop', { hasText: 'Изысканная ткань' });
+  await expect(row).toContainText('2 000');                                                                   // 20 шт × 100
+  await row.locator('details.cityprices summary').click();
+  await row.locator('input[data-city="Martlock"]').fill('50');
+  await expect(row).toContainText('1 000');                                                                   // 20 шт × 50
+  await expect(page.locator('#drawer-list .totals')).toContainText('11 100');                                    // (1860 − 750) × 10 шт
+  await expect(page.locator('#dock-inv')).toContainText('11 100');
+});

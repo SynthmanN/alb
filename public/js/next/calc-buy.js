@@ -2,9 +2,10 @@
 // база .0, чары после крафта, логистика по телепорту.
 import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, copyText, auctionName, apiPost } from './lib.js';
 import { settings } from './settings.js';
-import { calcStore, setOwn, addLot, setLot, delLot, resetOwn } from './calc-store.js';
+import { calcStore, setOwn, setCityOwn, addLot, setLot, delLot, resetOwn } from './calc-store.js';
+import { CityPriceList } from './citylist.js';
 import { CityPill, Tags, toast } from './ui.js';
-import { acquisitionRows } from './logic/acquire.js';
+import { acquisitionRows, withOverride } from './logic/acquire.js';
 import { lotsAverage } from './logic/manual.js';
 
 const unitPlaceholder = (p) => (p === null || p === undefined ? 'своя цена' : String(Math.round(p * (Math.abs(p) < 100 ? 10 : 1)) / (Math.abs(p) < 100 ? 10 : 1)));
@@ -53,9 +54,7 @@ const sourceLine = (r, nameFn) => {
   if (r.materialSource === 'craft' && r.craftOption && !r.manualPrice) {
     return html`<span class="refine-source" title=${`Сам плащ-ингредиент в рецепте не возвращается, но если крафтить его самому — возврат при крафте действует на ткань и кожу${r.buyPrice ? `; готовый на рынке — ${fmt(r.buyPrice)}` : ''}`}>🔨 выгоднее скрафтить самому: ${fmt(r.cheapestPrice)}${r.buyPrice ? ` (−${Math.round((1 - r.cheapestPrice / r.buyPrice) * 100)}%)` : ''}</span><br /><small>${parts(r.craftOption)}</small>`;
   }
-  const cp = r.cityPrices;
-  if (!cp || cp.length < 2) return html`<span><${CityPill} name=${r.cheapestCity} /> ${fmt(r.cheapestPrice)}</span>`;
-  return html`<details class="city-prices"><summary><${CityPill} name=${r.cheapestCity} /> ${fmt(r.cheapestPrice)}</summary><ul>${cp.map((x) => html`<li key=${x.city}><${CityPill} name=${x.city} /> ${fmt(x.price)}${x.price > r.cheapestPrice ? html` <small>(+${((x.price / r.cheapestPrice - 1) * 100).toFixed(0)}%)</small>` : null}</li>`)}</ul></details>`;
+  return html`<span><${CityPill} name=${r.cheapestCity} /> ${fmt(r.cheapestPrice)}</span>`;
 };
 
 function acquireRowsFor(d, r) {
@@ -69,7 +68,7 @@ function acquireDaysFor(d, r) {
   return Math.max(...rows.map((x) => x.daysToAcquire));
 }
 
-function RecipeTable({ d, invalidate }) {
+function RecipeTable({ d, c, lists, invalidate }) {
   const rowsData = d.recipe.map((r) => ({ ...r, needed: r.neededToBuy ?? r.count * d.quantity, byRecipe: r.count * d.quantity, enchStep: null }));
   if (d.enchantAfterCraft) {
     for (const st of d.enchantAfterCraft.steps) rowsData.push({ resourceName: st.materialName, resource: st.materialId, enchanted: false, enchStep: st.level, needed: st.count * d.quantity, byRecipe: st.count * d.quantity, returnable: false, cheapestCity: st.cheapestCity, cheapestPrice: st.cheapestPrice, cityPrices: st.cityPrices, manualPrice: st.manualPrice });
@@ -89,7 +88,7 @@ function RecipeTable({ d, invalidate }) {
         <td>${fmt(r.needed)}${r.byRecipe !== undefined && r.byRecipe !== r.needed ? html`<br /><small>по рецепту ${fmt(r.byRecipe)}</small>` : null}</td>
         <td>${missing ? html`<span class="pill w">нет цены</span> <${MissingServerPrice} id=${id} label=${nameOf(d, id)} onSaved=${invalidate} />`
           : r.materialSource === 'points' ? html`<span class="pill n" title="Получено у интенданта за фракционные очки — в серебре 0">за очки: ${fmt(r.points)} на шт · ${fmt(r.points * d.quantity)} на ${fmt(d.quantity)} шт</span>`
-          : html`${sourceLine(r, (x) => nameOf(d, x))}${r.priceSource === 'quote' ? html`<br /><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>` : null}${r.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}<br /><${OwnPrice} resKey=${r.resource} market=${r.marketPrice ?? r.cheapestPrice} needed=${r.needed} scope="recipe" />`}</td>
+          : html`${sourceLine(r, (x) => nameOf(d, x))}${r.priceSource === 'quote' ? html`<br /><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>` : null}${r.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}<br /><${OwnPrice} resKey=${r.resource} market=${r.marketPrice ?? r.cheapestPrice} needed=${r.needed} scope="recipe" />${lists[r.resource] ? html`<br /><${CityPriceList} resKey=${r.resource} list=${lists[r.resource]} own=${c.cityOwn[r.resource]} fee=${d.setupFeeRate} label=${r.materialSource === 'buy' ? 'Все города' : 'Готовый — все города'} onSet=${(city, v) => setCityOwn(r.resource, city, v)} />` : null}`}</td>
         <td class=${missing ? 'neg' : ''}>${missing ? '—' : fmt(r.cheapestPrice * r.needed)}</td>
         <td>${days !== null ? fmtDays(days) : '—'}${bottleneck === r.resource ? ' 🐢' : ''}</td>
         <td>${r.materialSource === 'craft' && r.craftOption ? html`<span title="Плащ-ингредиент не возвращается, но при крафте плаща самому ткань и кожа возвращаются">${fmt((d.rrrOptions ? d.rrrOptions.gearRate : 0) * 100, 1)}% на ткань и кожу</span>`
@@ -98,31 +97,27 @@ function RecipeTable({ d, invalidate }) {
     <tfoot><tr class="materials-total"><td colspan="3">Итого материалы к закупке (с учётом возврата)</td><td class="neg">${fmt(total)}</td><td></td><td></td></tr></tfoot></table></div></div>`;
 }
 
-function PlanTable({ d, c }) {
-  const s = useStore(settings);
+function PlanTable({ d, c, override }) {
   const rows = useMemo(() => acquisitionRows(d, itemLabel), [d]);
   const done = rows.filter((r) => c.checks[r.key]).length;
-  const ownFor = (r) => {
-    if (s.purchaseLog) { const a = lotsAverage(c.lots[r.key]); if (a) return a.avg; }
-    return Object.prototype.hasOwnProperty.call(c.own, r.key) ? c.own[r.key] : undefined;
-  };
   let total = 0;
-  const view = rows.map((r) => { const own = ownFor(r); const unit = own !== undefined ? own : r.unit; const sum = unit === null || unit === undefined ? null : unit * r.needed; if (sum !== null) total += sum; return { r, own, unit, sum }; });
+  const view = rows.map((raw) => { const ov = override(raw.key); const r = ov ? withOverride(raw, ov) : raw; if (r.sum !== null) total += r.sum; return { r, own: ov ? ov.price : undefined }; });
   return html`<div class="card" style="margin-top:14px"><div class="tw"><table id="buy-table">
     <thead><tr><th>Что покупаем</th><th>Нужно</th><th>Где и по чём</th><th>Цена / шт</th><th>Своя цена</th><th>Сумма</th><th>Дней</th></tr></thead>
-    <tbody>${view.map(({ r, own, unit, sum }) => html`<tr key=${r.key + r.why} class=${c.checks[r.key] ? 'done' : ''}>
+    <tbody>${view.map(({ r, own }) => html`<tr key=${r.key + r.why} class=${c.checks[r.key] ? 'done' : ''}>
       <td><input type="checkbox" class="ck" checked=${!!c.checks[r.key]} onChange=${(e) => calcStore.set({ checks: { ...c.checks, [r.key]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
         <button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copyName(r.name)}>${r.name}</button>
         ${r.why ? html`<div class="muted" style="font-size:12.5px;margin-left:28px">${r.why}</div>` : null}</td>
       <td>${fmt(r.needed)}</td>
       <td class="plan-cities">${r.cities.length ? r.cities.map((x) => html`<div key=${x.city}><${CityPill} name=${x.city} /> <span class="muted">${fmt(x.qty)} шт по ${fmt(x.price, x.price < 100 ? 1 : 0)}</span></div>`) : html`<span class="pill w">нет данных</span>`}</td>
-      <td class="neg">${unit === null || unit === undefined ? 'нет цены' : fmt(unit, unit < 100 ? 1 : 0)}${own !== undefined ? html` <small class="is-manual-note">своя</small>` : null}</td>
-      <td><${OwnPrice} resKey=${r.key} market=${r.unit} needed=${r.needed} scope="plan" /></td>
-      <td class="neg">${sum === null ? '—' : fmt(sum)}</td>
+      <td class="neg">${r.unit === null || r.unit === undefined ? 'нет цены' : fmt(r.unit, r.unit < 100 ? 1 : 0)}${own !== undefined ? html` <small class="is-manual-note">своя</small>` : null}</td>
+      <td><${OwnPrice} resKey=${r.key} market=${raw0(rows, r.key)} needed=${r.needed} scope="plan" /></td>
+      <td class="neg">${r.sum === null || r.sum === undefined ? '—' : fmt(r.sum)}</td>
       <td>${r.days !== null && r.days !== undefined ? fmtDays(r.days) : '—'}</td></tr>`)}</tbody>
     <tfoot><tr class="materials-total"><td colspan="5">Итого на план закупки</td><td class="neg">${fmt(total)}</td><td></td></tr></tfoot></table></div>
     <div class="statusline">Куплено ${done} из ${rows.length} позиций · что и где покупать — с учётом возврата при переработке и при крафте</div></div>`;
 }
+const raw0 = (rows, key) => { const r = rows.find((x) => x.key === key); return r ? r.unit : null; };
 
 function Teleport({ d }) {
   const t = d.teleport;
@@ -137,15 +132,15 @@ function Teleport({ d }) {
       <div><span>Себестоимость с логистикой / шт</span><b>${fmt(t.costPerUnit)}</b></div>${opt('Продажа через Sell Order', t.patient)}${opt('Продажа в Buy Order', t.instant)}</div>`);
 }
 
-export function BuyTab({ c, d, invalidate }) {
+export function BuyTab({ c, d, lists, override, invalidate }) {
   const s = useStore(settings);
   const eac = d.enchantAfterCraft;
   const b = d.baseChoice;
   return html`<div id="sub-buy">
     ${d.hasAllMaterialPrices === false ? html`<p class="calc-note warnline">⚠ По части материалов (например, чертежи и жетоны фракций) нет рыночных цен в выбранных городах — итоговая себестоимость занижена на их стоимость.</p>` : null}
-    <${RecipeTable} d=${d} invalidate=${invalidate} />
-    <${PlanTable} d=${d} c=${c} />
-    ${d.manualPrices && (Object.keys(c.own).length || Object.keys(c.lots).length) ? html`<p class="note"><button type="button" class="btn sm manual-reset" onClick=${resetOwn}>Сбросить свои цены</button> Расчёт идёт по твоим ценам; «Сравнение по тирам» и качеству считает по рыночным.</p>` : null}
+    <${RecipeTable} d=${d} c=${c} lists=${lists} invalidate=${invalidate} />
+    <${PlanTable} d=${d} c=${c} override=${override} />
+    ${d.manualPrices && (Object.keys(c.own).length || Object.keys(c.cityOwn).length || Object.keys(c.lots).length) ? html`<p class="note"><button type="button" class="btn sm manual-reset" onClick=${resetOwn}>Сбросить свои цены</button> Расчёт идёт по твоим ценам; «Сравнение по тирам» и качеству считает по рыночным.</p>` : null}
     <div class="card box" style="margin-top:14px"><div class="kv" id="cost-summary">
       <div><span>Себестоимость материала / шт (сырое)</span><b>${fmt(Math.round(d.materialCostPerUnit))}</b></div>
       <div><span title=${d.rrrPreset ? d.rrrPreset.label : ''}>Себестоимость с учётом возврата (в среднем ${fmt((d.rrrPreset ? d.rrrPreset.rrr : 0) * 100, 1)}%) / шт</span><b>${fmt(Math.round(d.effectiveCostPerUnit))}</b></div></div></div>

@@ -3,9 +3,11 @@
 import { createStore } from './lib.js';
 import { applyManualPrices, lotsAverage, salePlanState } from './logic/manual.js';
 import { profitOf } from './logic/profit.js';
+import { priceLists, bestBuy, SETUP_FEE } from './logic/cityPrices.js';
+import { activeCities } from './settings.js';
 
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-export const emptyManual = () => ({ own: {}, lots: {}, sellPrice: null, cityPrices: {}, toggles: null, manualQty: {}, strategy: 'profit' });
+export const emptyManual = () => ({ own: {}, cityOwn: {}, lots: {}, sellPrice: null, cityPrices: {}, toggles: null, manualQty: {}, strategy: 'profit' });
 export const calcStore = createStore({
   itemId: null, enchant: 0, quality: 4, qty: 10, after: false, faction: false, crestSilver: false, heartSilver: false, sub: 'buy',
   data: null, loading: false, error: '', sig: '', checks: {}, ...emptyManual(),
@@ -59,18 +61,33 @@ export function setManualQty(city, raw) {
 }
 export const setStrategy = (strategy) => set({ strategy });
 export const resetPlan = () => set({ manualQty: {}, toggles: null, cityPrices: {} });
-export const resetOwn = () => set({ own: {}, lots: {}, sellPrice: null });
+// своя цена материала в конкретном городе: { материал: { город: цена } }
+export function setCityOwn(res, city, raw) {
+  const cityOwn = { ...calcStore.get().cityOwn };
+  const m = { ...(cityOwn[res] || {}) };
+  const v = num(raw);
+  if (v !== null && raw !== '') m[city] = v; else delete m[city];
+  if (Object.keys(m).length) cityOwn[res] = m; else delete cityOwn[res];
+  set({ cityOwn });
+}
+export const resetOwn = () => set({ own: {}, cityOwn: {}, lots: {}, sellPrice: null });
 
 // Всё производное от ответа сервера и «своего»: пересчитанный результат, живой план продажи, профит
 export function derive(c, settings) {
   if (!c.data) return { d: null, st: null, p: null };
+  const lists = priceLists(c.data);
+  const cities = activeCities(settings);
+  const fee = c.data.setupFeeRate ?? SETUP_FEE;
+  const buyPrice = (res) => bestBuy(lists[res], c.cityOwn[res], cities, fee);
   const ownPrice = (res) => {
     if (settings.purchaseLog) { const a = lotsAverage(c.lots[res]); if (a) return a.avg; }
     return has(c.own, res) ? c.own[res] : undefined;
   };
-  const hasOwn = Object.keys(c.own).length > 0 || (settings.purchaseLog && Object.values(c.lots).some((l) => lotsAverage(l)));
-  const d = applyManualPrices(c.data, { ownPrice, hasOwn, sellPrice: c.sellPrice, cityPrices: c.cityPrices });
+  // что покупаем по своей цене: единая своя цена (или лог лотов) важнее цен городов
+  const override = (res) => { const o = ownPrice(res); if (o !== undefined) return { price: o }; const b = buyPrice(res); return b ? { price: b.price, city: b.city } : undefined; };
+  const hasOwn = Object.keys(c.own).length > 0 || Object.keys(c.cityOwn).length > 0 || (settings.purchaseLog && Object.values(c.lots).some((l) => lotsAverage(l)));
+  const d = applyManualPrices(c.data, { ownPrice, buyPrice, hasOwn, sellPrice: c.sellPrice, cityPrices: c.cityPrices });
   const st = d.patientSell ? salePlanState(d.patientSell, d, { toggles: c.toggles, manualQty: c.manualQty, strategy: c.strategy }) : null;
   const p = profitOf(d, st);
-  return { d, st, p, ownPrice };
+  return { d, st, p, ownPrice, override, lists };
 }

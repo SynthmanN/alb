@@ -131,7 +131,7 @@ export function CalcTab() {
     return () => clearTimeout(t);
   }, [sig, c.itemId]);
   const set = (p) => calcStore.set(p);
-  const { d, st, p } = useMemo(() => derive(c, s), [c.data, c.own, c.lots, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
+  const { d, st, p, override, lists } = useMemo(() => derive(c, s), [c.data, c.own, c.cityOwn, c.lots, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
   const subs = [['buy', 'Закупка'], ['sell', 'Продажа'], ['tiers', 'Сравнение по тирам']];
@@ -152,6 +152,6 @@ export function CalcTab() {
       <div class="statusnote" style="margin:0 2px 10px;text-align:left" id="calc-source">${d.dataSource === 'aodp' ? 'Данные: AODP напрямую' : `Данные: краулер${d.jug && d.jug.lastPricePass ? ` · цены обновлены ${fmtAge((Date.now() - d.jug.lastPricePass) / 60000)}` : ''}`}${d.blackMarket ? ' · Чёрный Рынок — живым запросом (краулер его не собирает)' : ''}${c.loading ? ' · пересчитываю…' : ''}</div>
       <${Verdict} c=${c} d=${d} p=${p} st=${st} />
       <div class="subtabs" role="tablist">${subs.map(([id, t]) => html`<button type="button" role="tab" key=${id} aria-selected=${String(c.sub === id)} onClick=${() => set({ sub: id })}>${t}</button>`)}</div>
-      ${c.sub === 'buy' ? html`<${BuyTab} c=${c} d=${d} invalidate=${invalidate} />` : c.sub === 'sell' ? html`<${SellTab} c=${c} d=${d} p=${p} st=${st} />` : html`<${TiersTab} c=${c} d=${d} />`}</div>` : null}
+      ${c.sub === 'buy' ? html`<${BuyTab} c=${c} d=${d} lists=${lists} override=${override} invalidate=${invalidate} />` : c.sub === 'sell' ? html`<${SellTab} c=${c} d=${d} p=${p} st=${st} />` : html`<${TiersTab} c=${c} d=${d} />`}</div>` : null}
   </section>`;
 }
