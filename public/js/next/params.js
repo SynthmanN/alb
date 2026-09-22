@@ -23,7 +23,8 @@ const CUSTOM = {
   days: { hint: TIME_HINT, parse: (t) => { const h = parseTimeToHours(t); return h === null ? null : Math.min(Math.max(h / 24, 1 / 24), 30); }, show: (v) => (v >= 1 ? `${Math.round(v * 100) / 100}д` : `${Math.round(v * 24)}ч`), placeholder: '12ч или 2д' },
   hours: { hint: TIME_HINT, parse: (t) => { const h = parseTimeToHours(t); return h === null ? null : Math.min(Math.max(h, 1), 240); }, show: (v) => (v >= 24 && v % 24 === 0 ? `${v / 24}д` : `${Math.round(v * 10) / 10}ч`), placeholder: '36ч или 2д' },
 };
-function Select({ id, label, value, options, onChange, kind }) {
+// Пресет + «Своё…» (текст с единицей: 12ч/2д — parseTimeToHours) — используется и в окне «Свежесть данных» (freshness.js), не только тут
+export function Select({ id, label, value, options, onChange, kind }) {
   const isPreset = options.some(([v]) => String(v) === String(value));
   const [forced, setForced] = useState(false);
   const custom = forced || !isPreset;

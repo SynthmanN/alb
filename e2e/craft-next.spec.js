@@ -288,22 +288,27 @@ test('док крафт-листа на широком экране стоит �
 
 
 // ---------- свежесть данных ----------
-async function mockFreshness(page, { staleIds = [], freshIds = [] } = {}) {
-  const state = new Map();
-  for (const id of staleIds) state.set(id, { id, priceAgeMinutes: 6 * 1440, historyAgeDays: null, stale: true });
-  for (const id of freshIds) state.set(id, { id, priceAgeMinutes: 20, historyAgeDays: 0.1, stale: false });
+async function mockFreshness(page, { staleIds = [], freshIds = [], ages = {} } = {}) {
+  const ageDays = new Map(Object.entries(ages));                     // возраст в днях — «устарело» решается относительно запрошенного порога
+  for (const id of staleIds) ageDays.set(id, 6);
+  for (const id of freshIds) ageDays.set(id, 20 / 1440);
+  const itemFor = (id, staleDays) => {
+    const age = ageDays.has(id) ? ageDays.get(id) : Infinity;
+    return { id, priceAgeMinutes: Number.isFinite(age) ? Math.round(age * 1440) : null, historyAgeDays: null, stale: !(age <= staleDays) };
+  };
   const log = { get: [], refresh: [] };
   await page.route('**/api/freshness?*', (route) => {
     const q = new URL(route.request().url()).searchParams;
     log.get.push(q);
-    const ids = q.get('ids').split(',');
-    route.fulfill({ json: { staleDays: 3, items: ids.map((id) => state.get(id) || { id, priceAgeMinutes: null, historyAgeDays: null, stale: true }) } });
+    const staleDays = Number(q.get('staleDays')) || 3;
+    route.fulfill({ json: { staleDays, items: q.get('ids').split(',').map((id) => itemFor(id, staleDays)) } });
   });
   await page.route('**/api/freshness/refresh', (route) => {
     const body = route.request().postDataJSON();
     log.refresh.push(body.ids);
-    const items = body.ids.map((id) => { const fresh = { id, priceAgeMinutes: 5, historyAgeDays: 0.05, stale: false }; state.set(id, fresh); return fresh; });
-    route.fulfill({ json: { staleDays: 3, items } });
+    for (const id of body.ids) ageDays.set(id, 20 / 1440);          // «обновили» — стало почти только что
+    const staleDays = body.staleDays || 3;
+    route.fulfill({ json: { staleDays, items: body.ids.map((id) => itemFor(id, staleDays)) } });
   });
   return log;
 }
@@ -339,6 +344,29 @@ test('свежесть данных: кнопка есть и в стеке ка
   await expect(page.locator('#freshness-dialog')).toBeVisible();
   await page.locator('.modal-scrim').click({ position: { x: 5, y: 5 } });
   await expect(page.locator('#freshness-dialog')).toHaveCount(0);
+});
+
+test('свежесть данных: порог — пресет и «Своё…» (12ч/2д), меняется сразу без перезагрузки окна, помнит выбор при повторном открытии', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  // T4_CLOTH — 2 дня назад: по умолчанию (3 дня) свежо, при более коротком пороге — устарело
+  const fresh = await mockFreshness(page, { ages: { T4_CLOTH: 2, T4_RUNE: 20 / 1440, T4_2H_BOW: 20 / 1440, T4_CAPE: 20 / 1440 } });
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('#freshness-dialog')).toBeVisible();
+  expect(fresh.get[0].get('staleDays')).toBe('3');
+  await expect(page.locator('.fresh-row')).toHaveCount(0);                                    // 2 дня < 3 — свежо
+  await page.locator('#freshness-stale').selectOption('1');
+  await expect.poll(() => fresh.get[fresh.get.length - 1].get('staleDays')).toBe('1');
+  await expect(page.locator('.fresh-row')).toHaveCount(1);                                     // 2 дня > 1 день — устарело
+  await expect(page.locator('#freshness-dialog')).toContainText('свежее 1.0 дн.');
+  await page.locator('#freshness-stale').selectOption('__custom__');
+  await page.locator('#freshness-stale-custom').fill('12ч');
+  await expect.poll(() => Number(fresh.get[fresh.get.length - 1].get('staleDays'))).toBeCloseTo(0.5, 6);
+  await expect(page.locator('.fresh-row')).toHaveCount(1);                                     // 2 дня > 12ч — по-прежнему устарело
+  await page.locator('#freshness-dialog').getByRole('button', { name: 'Закрыть' }).click();
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('#freshness-stale')).toHaveValue('__custom__');                     // выбор порога запомнился
+  await expect(page.locator('#freshness-stale-custom')).toHaveValue('12ч');
 });
 
 // ---------- перенесённое из старой страницы: свои цены, лог закупок, план продажи, потолок/полоса/порог, телепорт, «Своё…», выбор по категориям ----------

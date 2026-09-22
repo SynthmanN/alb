@@ -5,17 +5,20 @@
 // сейчас, не дожидаясь своего часа. Компонент не знает, откуда взялись id — их собирает вызывающая сторона (logic/freshness.js).
 import { html, createStore, useStore, fmt, fmtDays, apiGet, apiPost } from './lib.js';
 import { Icon, ICONS, Spinner, toast } from './ui.js';
+import { Select } from './params.js';
 
-const STALE_DAYS = 3; // как на сервере (FRESHNESS_STALE_DAYS) — только для подписи, решение «устарело» всегда приходит с сервера
+const STALE_PRESETS = [[1, '1 день'], [3, '3 дня'], [7, '7 дней']];   // те же числа, что у «Истории гира» в параметрах — знакомый выбор
 const REFRESH_CHUNK = 60; // сервер режет запрос на обновление до 60 id за раз — при большем количестве бьём на порции сами
 
-export const freshnessStore = createStore({ open: false, onRefreshed: null, items: [], names: new Map(), loading: false, error: '', refreshingId: null, refreshingAll: false });
+// staleDays — свой порог «устарело» (пресет или вписанный текстом: 12ч/2д), запоминается в браузере между сессиями
+export const freshnessStore = createStore({ open: false, onRefreshed: null, items: [], names: new Map(), loading: false, error: '', refreshingId: null, refreshingAll: false, staleDays: 3 },
+  { key: 'albion_next_freshness', pick: (s) => ({ staleDays: s.staleDays }) });
 
 async function load(ids) {
   try {
-    const data = await apiGet('/api/freshness', { ids: [...ids].join(',') });
+    const data = await apiGet('/api/freshness', { ids: [...ids].join(','), staleDays: freshnessStore.get().staleDays });
     if (!freshnessStore.get().open) return;                 // окно закрыли, пока грузилось — ответ не нужен
-    freshnessStore.set({ items: data.items, loading: false });
+    freshnessStore.set({ items: data.items, loading: false, staleDays: data.staleDays });   // сервер мог обрезать порог до границ 1ч–30д
   } catch (err) {
     freshnessStore.set({ loading: false, error: err.message });
   }
@@ -27,6 +30,12 @@ export function openFreshness(named, onRefreshed) {
   load(named.keys());
 }
 export const closeFreshness = () => freshnessStore.set({ open: false });
+// Смена порога, пока окно открыто, сразу перепроверяет тот же список с новым порогом — как «вписанная цена мгновенно пересчитывает» везде на сайте
+export function setStaleDays(v) {
+  freshnessStore.set({ staleDays: v });
+  const s = freshnessStore.get();
+  if (s.open && s.names.size) { freshnessStore.set({ loading: true, error: '' }); load(s.names.keys()); }
+}
 
 // Крафт-лист и стек калькулятора считают позиции сами (def = listDef/stackDef из listcalc.js) — обновлённые материалы для них
 // нужно пересчитать явно, иначе старые цифры провисят до истечения кэша. У фракционного плана явного def нет: он использует
@@ -38,7 +47,7 @@ function afterRefresh() {
   if (cb) cb();
 }
 async function applyRefresh(ids) {
-  const data = await apiPost('/api/freshness/refresh', { ids });
+  const data = await apiPost('/api/freshness/refresh', { ids, staleDays: freshnessStore.get().staleDays });
   const byId = new Map(data.items.map((x) => [x.id, x]));
   freshnessStore.set((s) => ({ items: s.items.map((x) => byId.get(x.id) || x) }));
 }
@@ -79,7 +88,8 @@ export function FreshnessDialog() {
   return html`<div class="scrim modal-scrim" onClick=${closeFreshness}>
     <aside class="modal" id="freshness-dialog" role="dialog" aria-label="Свежесть данных" onClick=${(e) => e.stopPropagation()}>
       <header><h3>Свежесть данных</h3><button class="btn sm" type="button" onClick=${closeFreshness}>Закрыть</button></header>
-      <p class="note" style="margin:0 22px 14px">Материалы и предметы этого списка, у которых нет цены или сделки свежее ${STALE_DAYS} дн. Открой их на рынке в игре (клиент AODP их посчитает) и обнови здесь.</p>
+      <div style="padding:2px 22px 0"><${Select} id="freshness-stale" label="Считать устаревшим, если старше" value=${s.staleDays} options=${STALE_PRESETS} onChange=${setStaleDays} kind="days" /></div>
+      <p class="note" style="margin:10px 22px 14px">Материалы и предметы этого списка, у которых нет цены или сделки свежее ${fmtDays(s.staleDays)}. Открой их на рынке в игре (клиент AODP их посчитает) и обнови здесь.</p>
       <div class="scroll">
         ${s.loading ? html`<div class="empty"><${Spinner} />Проверяю…</div>`
           : s.error ? html`<div class="card err" role="alert">Ошибка: ${s.error}</div>`

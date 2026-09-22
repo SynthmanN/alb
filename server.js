@@ -2758,10 +2758,15 @@ function addManualPriceRecords(records, ids, cities, quality = 1, now = Date.now
 // Идея: AODP знает не про всё (авантюрный гир, гербы фракций, редко торгуемые полуфабрикаты), а то, что знает — иногда устарело.
 // Вместо того чтобы гадать по цене, вписанной вручную, можно пойти в игру, открыть эти предметы на рынке (клиент AODP их считает)
 // и вернуться сюда за настоящими свежими данными — краулер их не соберёт сам раньше своего часа. Возраст = самый свежий из двух
-// сигналов (цена ИЛИ сделка) — если он не найден или старше FRESHNESS_STALE_DAYS, позиция считается устаревшей.
-const FRESHNESS_STALE_DAYS = 3;
+// сигналов (цена ИЛИ сделка) — если он не найден или старше порога (по умолчанию 3 дня, можно вписать своё — от часа до 30 дней,
+// как «История гира»/«История сырья» в панели параметров), позиция считается устаревшей.
+const FRESHNESS_STALE_DAYS_DEFAULT = 3;
 const FRESHNESS_HISTORY_HOURS = 72;                // окно «Обновить»: свежие сделки, а не вся 10-дневная история заново
-function freshnessOf(id, { cities, now }) {
+function parseFreshnessStaleDays(req) {
+  const v = parseFloat(req.query.staleDays ?? req.body?.staleDays);
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1 / 24), 30) : FRESHNESS_STALE_DAYS_DEFAULT;
+}
+function freshnessOf(id, { cities, now, staleDays }) {
   const prices = readPrices(jugDb, [id], { cities });
   let priceAgeMinutes = null;
   for (const r of prices) for (const d of [r.sell_price_min_date, r.buy_price_max_date]) {
@@ -2777,15 +2782,16 @@ function freshnessOf(id, { cities, now }) {
     if (historyAgeDays === null || age < historyAgeDays) historyAgeDays = age;
   }
   const bestAgeDays = Math.min(priceAgeMinutes === null ? Infinity : priceAgeMinutes / 1440, historyAgeDays === null ? Infinity : historyAgeDays);
-  return { id, priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !(bestAgeDays <= FRESHNESS_STALE_DAYS) };
+  return { id, priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !(bestAgeDays <= staleDays) };
 }
 app.get('/api/freshness', (req, res) => {
   try {
     const ids = [...new Set(String(req.query.ids || '').split(',').map((s) => s.trim()).filter(Boolean))].slice(0, 300);
     if (!ids.length) return res.status(400).json({ error: 'ids не указаны' });
     const cities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const staleDays = parseFreshnessStaleDays(req);
     const now = Date.now();
-    res.json({ staleDays: FRESHNESS_STALE_DAYS, items: ids.map((id) => freshnessOf(id, { cities, now })) });
+    res.json({ staleDays, items: ids.map((id) => freshnessOf(id, { cities, now, staleDays })) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'не удалось проверить свежесть данных', details: err.message });
@@ -2799,6 +2805,7 @@ app.post('/api/freshness/refresh', async (req, res) => {
     if (!known.length) return res.status(400).json({ error: 'нет ни одного известного id' });
     const cities = Array.isArray(req.body?.cities) && req.body.cities.length ? req.body.cities : Object.values(CITY_DISPLAY);
     const locations = cities.map((c) => c.replace(/\s+/g, ''));
+    const staleDays = parseFreshnessStaleDays(req);
     const now = Date.now();
     const [priceRows, historySeries] = await Promise.all([
       marketPrices('aodp', known, ALL_QUALITIES),
@@ -2806,7 +2813,7 @@ app.post('/api/freshness/refresh', async (req, res) => {
     ]);
     upsertPriceSnapshots(jugDb, priceRows, now);
     upsertHistoryBatch(jugDb, historySeries, now);
-    res.json({ staleDays: FRESHNESS_STALE_DAYS, items: known.map((id) => freshnessOf(id, { cities, now: Date.now() })) });
+    res.json({ staleDays, items: known.map((id) => freshnessOf(id, { cities, now: Date.now(), staleDays })) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось обновить данные с AODP', details: err.message });

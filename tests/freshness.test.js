@@ -115,3 +115,55 @@ describe('POST /api/freshness/refresh', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('порог «устарело»: свой staleDays (пресет или вписанный)', () => {
+  it('по умолчанию — 3 дня', async () => {
+    seedPrice('T4_CLOTH', 'Martlock', 100, 2 * DAY);
+    const res = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock');
+    expect(res.body.staleDays).toBe(3);
+    expect(res.body.items[0].stale).toBe(false);                       // 2 дня < 3 — свежо
+  });
+
+  it('свой порог короче — то же самое старение уже устарело', async () => {
+    seedPrice('T4_CLOTH', 'Martlock', 100, 2 * DAY);
+    const res = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&staleDays=1');
+    expect(res.body.staleDays).toBe(1);
+    expect(res.body.items[0].stale).toBe(true);
+  });
+
+  it('свой порог длиннее (например, 7 дней) — то же старение остаётся свежим', async () => {
+    seedPrice('T4_CLOTH', 'Martlock', 100, 5 * DAY);
+    const res = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&staleDays=7');
+    expect(res.body.items[0].stale).toBe(false);
+  });
+
+  it('дробные и часовые значения (0.5 дня = 12 часов), нечисло и отрицательное — умолчание', async () => {
+    seedPrice('T4_CLOTH', 'Martlock', 100, 18 * 3600 * 1000);           // 18 часов назад
+    const short = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&staleDays=0.5');
+    expect(short.body.staleDays).toBe(0.5);
+    expect(short.body.items[0].stale).toBe(true);                      // 18ч > 12ч (0.5 дня)
+    const bad = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&staleDays=NaN');
+    expect(bad.body.staleDays).toBe(3);
+    const neg = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&staleDays=-5');
+    expect(neg.body.staleDays).toBe(3);
+  });
+
+  it('за пределами 1 часа – 30 дней — обрезается до границы', async () => {
+    const tiny = await request(app).get('/api/freshness?ids=T4_CLOTH&staleDays=0.0001');
+    expect(tiny.body.staleDays).toBeCloseTo(1 / 24, 6);
+    const huge = await request(app).get('/api/freshness?ids=T4_CLOTH&staleDays=999');
+    expect(huge.body.staleDays).toBe(30);
+  });
+
+  it('POST /refresh тоже уважает свой порог', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
+      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
+      return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: 555, sell_price_min_date: iso(NOW - 2 * DAY), buy_price_max: 0, buy_price_max_date: '0001-01-01T00:00:00' })) };
+    });
+    const res = await request(app).post('/api/freshness/refresh').send({ ids: ['T4_CLOTH'], staleDays: 1 });
+    expect(res.body.staleDays).toBe(1);
+    expect(res.body.items[0].stale).toBe(true);                        // AODP отдал цену 2-дневной давности, порог — 1 день
+  });
+});
