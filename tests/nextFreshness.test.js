@@ -1,6 +1,6 @@
 // Сбор id материалов и самого предмета для окна «Свежесть данных» — logic/freshness.js
 import { describe, it, expect } from 'vitest';
-import { collectIds, collectAllIds } from '../public/js/next/logic/freshness.js';
+import { collectIds, collectAllIds, collectFactionIds } from '../public/js/next/logic/freshness.js';
 
 describe('collectIds', () => {
   it('обычный предмет: сам предмет + материалы рецепта, детали за очки пропускаются', () => {
@@ -73,5 +73,44 @@ describe('collectAllIds', () => {
     ]);
     const ids = [...collectAllIds(results).keys()];
     expect(ids.sort()).toEqual(['T4_A', 'T4_B', 'T4_CLOTH']);
+  });
+});
+
+describe('collectFactionIds', () => {
+  const row = (o = {}) => ({
+    finishedId: 'T6_CAPEITEM_FW_LYMHURST@3', tier: 6, enchant: 3, crestId: 'T6_CAPEITEM_FW_LYMHURST_BP', heartId: 'T1_FACTION_FOREST_TOKEN_1',
+    capeDirect: { id: 'T6_CAPE@3', label: 'Накидка (мастер) .3' }, cape0: { id: 'T6_CAPE', label: 'Накидка (мастер)' },
+    runes: [{ id: 'T6_RUNE', label: 'Руна (мастер)' }, { id: 'T6_SOUL', label: 'Душа (мастер)' }, { id: 'T6_RELIC', label: 'Реликт (мастер)' }],
+    crest: { label: 'Герб города Lymhurst (мастер)' }, heart: { label: 'Сердце древа' },
+    ...o,
+  });
+  const planned = (r, path) => [{ c: { r, path } }];
+
+  it('путь «прямой»: сам плащ, прямой материал, герб и сердце — руны не нужны', () => {
+    const ids = collectFactionIds(planned(row(), 'direct'));
+    expect([...ids.keys()]).toEqual(['T6_CAPEITEM_FW_LYMHURST@3', 'T6_CAPE@3', 'T6_CAPEITEM_FW_LYMHURST_BP', 'T1_FACTION_FOREST_TOKEN_1']);
+    expect(ids.get('T6_CAPE@3')).toBe('Накидка (мастер) .3');
+    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP')).toBe('Герб города Lymhurst (мастер)');
+  });
+
+  it('путь «после крафта»: плащ .0 и все руны — прямой материал не нужен', () => {
+    const ids = collectFactionIds(planned(row(), 'after'));
+    expect([...ids.keys()]).toEqual(['T6_CAPEITEM_FW_LYMHURST@3', 'T6_CAPE', 'T6_RUNE', 'T6_SOUL', 'T6_RELIC', 'T6_CAPEITEM_FW_LYMHURST_BP', 'T1_FACTION_FOREST_TOKEN_1']);
+    expect(ids.get('T6_RUNE')).toBe('Руна (мастер)');
+  });
+
+  it('герб или сердце без единой цены (crest/heart null) — id всё равно попадает в список, чтобы его можно было обновить', () => {
+    const ids = collectFactionIds(planned(row({ crest: null, heart: null }), 'direct'));
+    expect(ids.has('T6_CAPEITEM_FW_LYMHURST_BP')).toBe(true);
+    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP')).toBe('T6_CAPEITEM_FW_LYMHURST_BP');   // название неизвестно — остаётся id
+  });
+
+  it('несколько позиций плана объединяются без повторов', () => {
+    const a = row();
+    const b = row({ finishedId: 'T5_CAPEITEM_FW_LYMHURST@1', capeDirect: { id: 'T5_CAPE@1', label: 'Накидка .1' } });
+    const ids = collectFactionIds([...planned(a, 'direct'), ...planned(b, 'direct')]);
+    expect(ids.has('T6_CAPEITEM_FW_LYMHURST_BP')).toBe(true);
+    expect(ids.has('T5_CAPE@1')).toBe(true);
+    expect([...ids.keys()].filter((id) => id === 'T1_FACTION_FOREST_TOKEN_1')).toHaveLength(1);   // общее сердце — одной строкой
   });
 });

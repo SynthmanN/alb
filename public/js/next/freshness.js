@@ -1,15 +1,15 @@
-// «Свежесть данных»: окно со списком материалов и самого предмета для всех позиций листа/стека — что устарело (старше 3 дней)
-// или совсем без цены. Мысль: краулер обновляет всё по расписанию, а AODP далеко не всегда знает редкие вещи (гербы фракций,
-// авантюрный гир, тонко торгуемые полуфабрикаты) — вместо того чтобы гадать, идёшь в игру, открываешь эти предметы на рынке
-// (клиент AODP их считает) и жмёшь «Обновить» — сайт тянет настоящие свежие данные с AODP прямо сейчас, не дожидаясь своего часа.
+// «Свежесть данных»: окно со списком материалов и самого предмета для позиций крафт-листа, стека калькулятора или фракционного
+// плана — что устарело (старше 3 дней) или совсем без цены. Мысль: краулер обновляет всё по расписанию, а AODP далеко не всегда
+// знает редкие вещи (гербы фракций, авантюрный гир, тонко торгуемые полуфабрикаты) — вместо того чтобы гадать, идёшь в игру,
+// открываешь эти предметы на рынке (клиент AODP их считает) и жмёшь «Обновить» — сайт тянет настоящие свежие данные с AODP прямо
+// сейчас, не дожидаясь своего часа. Компонент не знает, откуда взялись id — их собирает вызывающая сторона (logic/freshness.js).
 import { html, createStore, useStore, fmt, fmtDays, apiGet, apiPost } from './lib.js';
-import { collectAllIds } from './logic/freshness.js';
 import { Icon, ICONS, Spinner, toast } from './ui.js';
 
 const STALE_DAYS = 3; // как на сервере (FRESHNESS_STALE_DAYS) — только для подписи, решение «устарело» всегда приходит с сервера
 const REFRESH_CHUNK = 60; // сервер режет запрос на обновление до 60 id за раз — при большем количестве бьём на порции сами
 
-export const freshnessStore = createStore({ open: false, def: null, items: [], names: new Map(), loading: false, error: '', refreshingId: null, refreshingAll: false });
+export const freshnessStore = createStore({ open: false, onRefreshed: null, items: [], names: new Map(), loading: false, error: '', refreshingId: null, refreshingAll: false });
 
 async function load(ids) {
   try {
@@ -20,19 +20,22 @@ async function load(ids) {
     freshnessStore.set({ loading: false, error: err.message });
   }
 }
-// def — { ops, engine } крафт-листа или стека калькулятора (listDef/stackDef); results — уже посчитанные позиции (data.results из useStackData)
-export function openFreshness(def, results) {
-  const named = collectAllIds(results);
-  freshnessStore.set({ open: true, def, names: named, items: [], loading: true, error: '' });
+// named — Map(id → название): logic/freshness.js (collectAllIds — крафт-лист/стек, collectFactionIds — фракционный план).
+// onRefreshed — что сделать после обновления, чтобы список/план перестал показывать старые цифры (см. invalidateDef ниже).
+export function openFreshness(named, onRefreshed) {
+  freshnessStore.set({ open: true, onRefreshed: onRefreshed || null, names: named, items: [], loading: true, error: '' });
   load(named.keys());
 }
 export const closeFreshness = () => freshnessStore.set({ open: false });
 
-// Материалы обновились — старые посчитанные позиции листа/стека держат прежние цены, пока их не пересчитать заново
-function invalidateAll() {
-  const def = freshnessStore.get().def;
-  if (!def) return;
-  for (const it of def.ops.store.get().items) def.engine.invalidate(it.uid);
+// Крафт-лист и стек калькулятора считают позиции сами (def = listDef/stackDef из listcalc.js) — обновлённые материалы для них
+// нужно пересчитать явно, иначе старые цифры провисят до истечения кэша. У фракционного плана явного def нет: он использует
+// свой onRefreshed напрямую (faction.js — сброс sig, чтобы перезапросить /api/faction-plan заново).
+export const invalidateDef = (def) => { for (const it of def.ops.store.get().items) def.engine.invalidate(it.uid); };
+
+function afterRefresh() {
+  const cb = freshnessStore.get().onRefreshed;
+  if (cb) cb();
 }
 async function applyRefresh(ids) {
   const data = await apiPost('/api/freshness/refresh', { ids });
@@ -41,7 +44,7 @@ async function applyRefresh(ids) {
 }
 export async function refreshOne(id) {
   freshnessStore.set({ refreshingId: id });
-  try { await applyRefresh([id]); invalidateAll(); } catch (err) { toast(`Не удалось обновить: ${err.message}`); }
+  try { await applyRefresh([id]); afterRefresh(); } catch (err) { toast(`Не удалось обновить: ${err.message}`); }
   freshnessStore.set({ refreshingId: null });
 }
 export async function refreshAllStale() {
@@ -50,7 +53,7 @@ export async function refreshAllStale() {
   freshnessStore.set({ refreshingAll: true });
   try {
     for (let i = 0; i < ids.length; i += REFRESH_CHUNK) await applyRefresh(ids.slice(i, i + REFRESH_CHUNK));  // порции — прогресс виден по ходу
-    invalidateAll();
+    afterRefresh();
   } catch (err) {
     toast(`Не удалось обновить: ${err.message}`);
   }
@@ -63,11 +66,10 @@ const ageLabel = (x) => {
   return `обновлялось ${fmtDays(days)} назад`;
 };
 
-// Кнопка-триггер: сколько позиций нужно проверить, открывает окно. results — Map(uid → ответ /api/craft-calc) уже посчитанных позиций
-export function FreshnessButton({ def, results }) {
-  const count = collectAllIds(results).size;
-  if (!count) return null;
-  return html`<button class="btn" type="button" id="freshness-open" onClick=${() => openFreshness(def, results)} title="Что устарело или совсем без цены — среди материалов и предметов в этом списке"><${Icon} d=${ICONS.refresh} />Свежесть данных</button>`;
+// Кнопка-триггер: ids — уже собранный Map(id → название) через collectAllIds/collectFactionIds; пусто — кнопки нет
+export function FreshnessButton({ ids, onRefreshed }) {
+  if (!ids || !ids.size) return null;
+  return html`<button class="btn" type="button" id="freshness-open" onClick=${() => openFreshness(ids, onRefreshed)} title="Что устарело или совсем без цены — среди материалов и предметов в этом списке"><${Icon} d=${ICONS.refresh} />Свежесть данных</button>`;
 }
 
 export function FreshnessDialog() {

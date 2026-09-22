@@ -9,7 +9,8 @@ import { StackShopping } from './stack-shopping.js';
 import { Switch, Icon, ICONS, Glyph, Tags, toast } from './ui.js';
 import { afterPossible } from './logic/stack.js';
 import { openListInCalculator } from './stack-open.js';
-import { FreshnessButton, FreshnessDialog } from './freshness.js';
+import { FreshnessButton, FreshnessDialog, invalidateDef } from './freshness.js';
+import { collectAllIds } from './logic/freshness.js';
 
 export { FreshnessDialog };
 
@@ -71,6 +72,6 @@ export function ListDrawer() {
           ${anyEligible ? html`<${Switch} checked=${autoAfter} onChange=${list.setAutoAfter} title="Для каждой позиции считаются оба пути; чары после крафта применяются, если профит выше на 7% и больше">Зачаровать после крафта — там, где профит выше на 7% и больше</${Switch}>` : null}
           <div><div class="grouphead">Позиции <span class="muted" style="text-transform:none;letter-spacing:0">· клик по позиции включает и выключает её</span></div><${StackCards} def=${listDef} data=${data} onDetail=${openDetail} /></div>
           <${StackShopping} data=${data} />
-          <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" onClick=${copyNames}>Скопировать список</button><${FreshnessButton} def=${listDef} results=${data.results} /><button class="btn ghost" type="button" onClick=${clearList}>Очистить</button></div>`}
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" onClick=${copyNames}>Скопировать список</button><${FreshnessButton} ids=${collectAllIds(data.results)} onRefreshed=${() => invalidateDef(listDef)} /><button class="btn ghost" type="button" onClick=${clearList}>Очистить</button></div>`}
       </div></aside></${Fragment}>`;
 }

@@ -8,6 +8,8 @@ import { replaceFactionItems, notifyListAdd } from './list.js';
 import { drawerStore } from './nav.js';
 import { openStackInCalculator } from './stack-open.js';
 import { computeRow, buildPlan, sortPlanRows, planToListItems, rowKey } from './logic/factionPlan.js';
+import { FreshnessButton } from './freshness.js';
+import { collectFactionIds } from './logic/freshness.js';
 
 export const FACTIONS = [['MARTLOCK', 'Мартлок'], ['LYMHURST', 'Лимхёрст'], ['BRIDGEWATCH', 'Бридгуотч'], ['FORTSTERLING', 'Форт Стерлинг'], ['THETFORD', 'Тетфорд'], ['CAERLEON', 'Каэрлеон'], ['BRECILIEN', 'Бресилиен']];
 export const factionStore = createStore({
@@ -28,6 +30,12 @@ async function loadPlan(sig) {
   } catch (err) {
     if (id === runId) factionStore.set({ loading: false, error: err.message, sig });
   }
+}
+// Перезапрос плана с теми же параметрами: после «Свежесть данных» просто сбросить st.sig не сработает — эффект в FactionTab следит
+// за ВЫЧИСЛЕННОЙ sig (город/точки/параметры панели), а не за st.sig, и не перезапустится, если ни один из них не менялся.
+export function reloadFactionPlan() {
+  const st = factionStore.get();
+  loadPlan(JSON.stringify([st.faction, st.extras, commonParams(settings.get())]));
 }
 
 const HEADS = [['name', 'Плащ'], ['sale', 'Продажа'], ['vol', 'Оборот/день'], ['cost', 'Себестоимость'], ['profit', 'Профит/шт'], ['points', 'Очков'], ['perPoint', 'На очко'], ['qty', 'В плане'], ['planProfit', 'Профит по плану']];
@@ -151,7 +159,8 @@ export function FactionTab() {
         ${model.plan.lastEff !== null ? html`<div title="Профит на очко у последней потраченной порции очков"><span>Цена очка</span><b>≈ ${fmt(model.plan.lastEff, 1)}</b></div>` : null}
         ${buyHearts ? html`<div><span>Докупить за серебро</span><b>${fmt(buyHearts)} сердец</b></div>` : null}</div>
         <div class="strip-actions"><button class="btn primary" type="button" id="f-send" disabled=${!model.planned.length} onClick=${send}><${Icon} d=${ICONS.arrow} />Крафтить план — в крафт-лист (${model.planned.length})</button>
-          <button class="btn" type="button" id="f-send-calc" disabled=${!model.planned.length} onClick=${sendCalc} title="Позиции плана сразу открываются в калькуляторе одним стеком, минуя крафт-лист"><${Icon} d=${ICONS.calc} />Сразу в калькулятор</button></div></div>
+          <button class="btn" type="button" id="f-send-calc" disabled=${!model.planned.length} onClick=${sendCalc} title="Позиции плана сразу открываются в калькуляторе одним стеком, минуя крафт-лист"><${Icon} d=${ICONS.calc} />Сразу в калькулятор</button>
+          <${FreshnessButton} ids=${collectFactionIds(model.planned)} onRefreshed=${reloadFactionPlan} /></div></div>
       ${st.ceil === 'off' && slowRows.length ? html`<div class="note warn" id="f-ceil-note" role="status">Потолок оборота выключен: ${slowRows.length} поз. рынок выкупит дольше ${fmt(d.days)} дн (дольше всех — ${fmtDays(Math.max(...slowRows.map((x) => x.days)))}). Цена продажи может просесть.</div>` : null}
       <div class="card"><div class="tw"><table id="plan-table">
         <thead><tr>${HEADS.map(([k, l]) => html`<th key=${k} class="sortable" aria-sort=${st.sort.key === k ? (st.sort.dir === 'desc' ? 'descending' : 'ascending') : null} onClick=${() => setSort(k)}>${l}${st.sort.key === k ? (st.sort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</th>`)}<th></th></tr></thead>

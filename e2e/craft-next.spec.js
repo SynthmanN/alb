@@ -166,6 +166,31 @@ test('фракционный план: зелёные позиции, недос
   await expect(page.locator('#f-send')).toContainText('Крафтить план');
 });
 
+test('фракционный план: «Свежесть данных» — только позиции, реально вошедшие в план (плащ, герб, сердце), обновление перезапрашивает план заново', async ({ page }) => {
+  const log = { plan: [], calc: [], saved: [], scan: [] };
+  await mockFaction(page, log);
+  await page.goto('/craft.html');
+  await page.locator('[data-tab="faction"]').click();
+  await page.locator('#f-points').fill('90000');
+  await expect(page.locator('#plan-table tbody tr.on-plan')).toHaveCount(2);
+  const fresh = await mockFreshness(page, {
+    staleIds: ['T6_CAPEITEM_FW_MARTLOCK_BP', 'T1_FACTION_HIGHLAND_TOKEN_1'],
+    freshIds: ['T6_CAPEITEM_FW_MARTLOCK@3', 'T6_CAPE@3', 'T5_CAPEITEM_FW_MARTLOCK@2', 'T5_CAPE@2', 'T5_CAPEITEM_FW_MARTLOCK_BP'],
+  });
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('#freshness-dialog')).toBeVisible();
+  const ids = fresh.get[0].get('ids').split(',');
+  expect(ids).toContain('T6_CAPE@3');                                                 // прямой материал плаща T6 .3 — в плане
+  expect(ids).toContain('T6_CAPEITEM_FW_MARTLOCK_BP');                                // герб
+  expect(ids).toContain('T1_FACTION_HIGHLAND_TOKEN_1');                               // сердце
+  expect(ids).not.toContain('T4_CAPE');                                               // T4 .0 в плане нет (не выбран, qty=0)
+  await expect(page.locator('.fresh-row')).toHaveCount(2);
+  const plansBefore = log.plan.length;
+  await page.locator('#freshness-refresh-all').click();
+  await expect(page.locator('#freshness-dialog')).toContainText('Всё свежее');
+  await expect.poll(() => log.plan.length).toBeGreaterThan(plansBefore);              // план перезапрошен — старые цифры не повисли
+});
+
 test('крафт-лист из плана: позиции с количеством, детали за серебро, автовыбор «после крафта» 7%, итоги, сводная закупка с названиями, исключение позиции', async ({ page }) => {
   const log = { plan: [], calc: [], saved: [], scan: [] };
   await mockFaction(page, log);
