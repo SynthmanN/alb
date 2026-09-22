@@ -1,5 +1,5 @@
 // Позиции крафт-листа со фракционными плащами: профит по цене продажи из плана, недостающие цены, автовыбор «чары после крафта».
-export const AFTER_GAIN = 0.07;                          // «после крафта» применяется, если профит выше на 7% и больше
+import { afterCraftWins } from './afterCraft.js';
 export const afterPossible = (item) => item.enchant >= 1 && item.enchant <= 3;
 
 // Недостающие цены материалов в ответе калькулятора (у деталей за очки цены нет и не нужно)
@@ -30,13 +30,11 @@ export function itemProfit(item, d) {
   return null;
 }
 
-// Автовыбор: чары после крафта — если профит выше на 7% и больше (прямой путь без данных — если хоть какие-то есть)
+// Автовыбор: чары после крафта — порог общий с фракционным планом и сканом (logic/afterCraft.js)
 export function decideAfter(item, pair) {
   const pd = itemProfit(item, pair.direct);
   const pa = itemProfit(item, pair.after);
-  if (!pa) return false;
-  if (!pd) return true;
-  return pa.unit > pd.unit + AFTER_GAIN * Math.abs(pd.unit);
+  return afterCraftWins(pd && pd.unit, pa && pa.unit);
 }
 
 export const silverParts = (item) => [item.crestSilver ? 'crest' : null, item.heartSilver ? 'heart' : null].filter(Boolean);

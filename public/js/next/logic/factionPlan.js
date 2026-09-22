@@ -3,8 +3,8 @@
 export const HEART_POINTS = 3000;
 export const CREST_POINTS = { 4: 400, 5: 2250, 6: 3000, 7: 7500, 8: 15000 };
 export const MAX_PLAN_STEPS = 20000;                     // защита от зависания: опечатка в очках (лишние нули) без потолка оборота не должна крутить план бесконечно
-export const AFTER_MIN_GAIN = 0.05;                      // «после крафта» выбирается, если дешевле прямого на 5% и больше
 import { marketCap } from './turnover.js';
+import { afterCraftWins } from './afterCraft.js';
 export const rowKey = (r) => `${r.tier}|${r.enchant}|${r.quality}`;
 const has = (v) => v !== null && v !== undefined;
 
@@ -19,15 +19,21 @@ export function computeRow(r, ctx) {
   const runes = r.runes.map((x) => ({ ...x, price: mat(x.id, x.price) }));
   const runesOk = runes.length > 0 && runes.every((x) => has(x.price));
   const after = r.enchant > 0 && r.maxAfter && runesOk && has(cape0) ? cape0 + runes.reduce((s, x) => s + x.count * x.price, 0) : null;
+  const saleKey = `sale:${rowKey(r)}`;
+  const grossSale = has(own[saleKey]) ? own[saleKey] : (r.sale ? r.sale.avgPrice : null);
+  const net = has(grossSale) ? grossSale * (1 - ctx.taxRate - fee) : null;
+  // Путь выбирается по ПРОФИТУ (продажа у обоих путей одна и та же) — тот же порог и правило, что у крафт-листа и скана (logic/afterCraft.js).
   let cost = null;
   let path = null;
   if (r.enchant === 0) { cost = has(capeDirect) ? capeDirect : null; path = 'direct'; }
   else if (!has(capeDirect)) { cost = after; path = after === null ? null : 'after'; }
-  else if (after !== null && after <= capeDirect * (1 - AFTER_MIN_GAIN)) { cost = after; path = 'after'; }
-  else { cost = capeDirect; path = 'direct'; }
-  const saleKey = `sale:${rowKey(r)}`;
-  const grossSale = has(own[saleKey]) ? own[saleKey] : (r.sale ? r.sale.avgPrice : null);
-  const net = has(grossSale) ? grossSale * (1 - ctx.taxRate - fee) : null;
+  else if (after === null) { cost = capeDirect; path = 'direct'; }
+  else {
+    const profitDirect = has(net) ? net - capeDirect : null;
+    const profitAfter = has(net) ? net - after : null;
+    const useAfter = has(net) ? afterCraftWins(profitDirect, profitAfter) : after < capeDirect;   // нет цены продажи — сравниваем по цене как раньше
+    if (useAfter) { cost = after; path = 'after'; } else { cost = capeDirect; path = 'direct'; }
+  }
   const crestKey = `part:${r.crestId}`;
   const heartKey = `part:${r.heartId}`;
   const crestPrice = has(own[crestKey]) ? own[crestKey] : (r.crest ? r.crest.price : null);
