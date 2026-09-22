@@ -64,3 +64,28 @@ describe('продажа: города вне расчёта', () => {
     expect(st.totalQty).toBe(10);
   });
 });
+
+describe('Чёрный Рынок — та же логика «вне расчёта», что у Caerleon/Brecilien', () => {
+  const bmCity = (price, vol) => ({ city: 'Black Market', avgSellPrice: price, avgDailyVolume: vol, taxRate: 0.105, netPrice: price * 0.895, profitPerUnit: price * 0.895 - 1000, profitIndex: 40, blackMarket: true, inactive: true });
+  const city = (name, price, vol) => ({ city: name, avgSellPrice: price, avgDailyVolume: vol, taxRate: 0.105, netPrice: price * 0.895, profitPerUnit: price * 0.895 - 1000, profitIndex: 10 });
+  const ps = () => ({ marketShare: 1, byCity: [city('Lymhurst', 2000, 20), bmCity(5000, 50)] });      // ЧР дороже всех, но не в плане
+  const data = { quantity: 10, taxRate: 0.08, setupFeeRate: 0.025, effectiveCostPerUnit: 1000 };
+
+  it('дороже всех городов, но не выбран автопланом и выключен по умолчанию', () => {
+    const p = ps();
+    const auto = salePlanByCity(p.byCity, 10, 1, null);
+    expect([...auto.rows.keys()]).toEqual(['Lymhurst']);
+    const st = salePlanState(p, data, { toggles: null, manualQty: {}, strategy: 'profit' });
+    const row = st.rowsData.find((r) => r.c.city === 'Black Market');
+    expect(row).toMatchObject({ qty: 0, enabled: false });
+  });
+
+  it('галочкой включается в план наравне с обычными городами', () => {
+    const p = ps();
+    const plan = withToggle(emptyPlan(), p, 'Black Market', true);
+    const st = salePlanState(p, data, plan);
+    const row = st.rowsData.find((r) => r.c.city === 'Black Market');
+    expect(row.enabled).toBe(true);
+    expect(row.qty).toBeGreaterThan(0);
+  });
+});

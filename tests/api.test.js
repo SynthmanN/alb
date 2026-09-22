@@ -568,7 +568,7 @@ describe('калькулятор крафта: Чёрный Рынок и инд
     expect(premium.taxRate).toBeCloseTo(0.065, 9);                 // с премиумом 4% + 2.5%
   });
 
-  it('индекс профита города = профит% × log2(2 + оборот); план по умолчанию — все прибыльные города, партия по индексу; чистая цена — по налогу каждого', async () => {
+  it('индекс профита города = профит% × log2(2 + оборот) — считается и у Чёрного Рынка; план по умолчанию его не берёт (вне расчёта, как Caerleon/Brecilien), партия по индексу; чистая цена — по налогу каждого', async () => {
     install();
     const d = (await get('&blackMarket=true&premium=true')).body;
     const ps = d.patientSell;
@@ -577,9 +577,10 @@ describe('калькулятор крафта: Чёрный Рынок и инд
       const expectedIndex = ((c.profitPerUnit / cost) * 100) * Math.log2(2 + c.avgDailyVolume);
       expect(c.profitIndex).toBeCloseTo(expectedIndex, 6);
     }
+    expect(ps.byCity.find((c) => c.blackMarket)).toMatchObject({ inactive: true });        // видно в разбивке, но не в плане
     expect(ps.plan.strategy).toBe('maxProfit');
     expect(ps.plan.cities.reduce((s, c) => s + c.qty, 0)).toBe(100);
-    expect(ps.plan.cities.map((c) => c.city).sort()).toEqual(['Black Market', 'Martlock']);
+    expect(ps.plan.cities.map((c) => c.city)).toEqual(['Martlock']);
     const planNet = ps.plan.cities.reduce((s, c) => s + c.qty * ps.byCity.find((b) => b.city === c.city).netPrice, 0) / 100;
     expect(ps.plan.netPricePerUnit).toBeCloseTo(planNet, 6);
     expect(ps.plan.profitPerUnit).toBeCloseTo(planNet - cost, 6);
@@ -604,35 +605,20 @@ describe('калькулятор крафта: мгновенная продаж
   const get = (extra = '') => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock${extra}`);
   beforeEach(() => setJugAll(10, ['Martlock']));
 
-  it('без галочки ЧР мгновенная продажа — только обычные города; с галочкой — лучшая цена ПОСЛЕ налога, с пометкой и своей ставкой', async () => {
+  it('без галочки ЧР мгновенная продажа его вообще не запрашивает; с галочкой — цена видна в таблице, но лучшую цену не выбирает (вне расчёта, как Caerleon/Brecilien)', async () => {
     install();
     const plain = (await get()).body;
     expect(plain.bestSell).toMatchObject({ city: 'Martlock', price: 3000, blackMarket: false });
     expect(plain.netSellPrice).toBeCloseTo(3000 * 0.92, 6);
+    expect(plain.sellPrices.map((p) => p.city)).toEqual(['Martlock']);       // без галочки — ни строки, ни живого запроса к AODP за ним
     const withBm = (await get('&blackMarket=true')).body;
-    expect(withBm.bestSell).toMatchObject({ city: 'Black Market', price: 3300, blackMarket: true });
-    expect(withBm.bestSell.taxRate).toBeCloseTo(0.105, 9);
-    expect(withBm.netSellPrice).toBeCloseTo(3300 * (1 - 0.105), 6);          // 2953.5 > 2760
-    expect(withBm.sellPrices.map((p) => p.city)).toEqual(['Martlock', 'Black Market']);
-    expect(withBm.profitPerUnit).toBeGreaterThan(plain.profitPerUnit);
-  });
-
-  it('ЧР с более высокой ценой, но большим налогом не выигрывает у города, где «на руки» больше', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
-      const u = String(url);
-      if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
-      const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
-      return { ok: true, status: 200, json: async () => ids.flatMap((id) => {
-        const sword = id === 'T4_MAIN_SWORD';
-        return [
-          { item_id: id, city: 'Martlock', quality: 1, sell_price_min: sword ? 0 : 10, sell_price_min_date: NOW(), buy_price_max: sword ? 3000 : 0, buy_price_max_date: NOW() },
-          ...(sword ? [{ item_id: id, city: 'Black Market', quality: 1, sell_price_min: 0, sell_price_min_date: NOW(), buy_price_max: 3050, buy_price_max_date: NOW() }] : []),
-        ];
-      }) };
-    });
-    const d = (await get('&blackMarket=true')).body;                          // ЧР: 3050·0.895 = 2729.75 < Martlock: 3000·0.92 = 2760
-    expect(d.bestSell).toMatchObject({ city: 'Martlock', blackMarket: false });
-    expect(d.netSellPrice).toBeCloseTo(2760, 6);
+    expect(withBm.bestSell).toMatchObject({ city: 'Martlock', price: 3000, blackMarket: false });     // ЧР дороже (3300), но не выбран
+    expect(withBm.netSellPrice).toBeCloseTo(3000 * 0.92, 6);
+    expect(withBm.sellPrices).toEqual([
+      { city: 'Martlock', sellMin: null, buyMax: 3000 },
+      { city: 'Black Market', sellMin: null, buyMax: 3300, blackMarket: true, inactive: true },
+    ]);
+    expect(withBm.profitPerUnit).toBeCloseTo(plain.profitPerUnit, 6);
   });
 });
 

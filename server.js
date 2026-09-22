@@ -981,18 +981,18 @@ app.get('/api/craft-calc', async (req, res) => {
       const rec = Object.values(finishedCityData).find((r) => normLocation(r.city) === normLocation(city));
       return { city, sellMin: rec?.sell_price_min || null, buyMax: rec?.buy_price_max || null, inactive: true };
     });
-    const taxRate = getSalesTaxRate(req);
-    // Чёрный Рынок (по галочке): только покупает, налог свой — мгновенная продажа в его Buy Order. Лучшее место выбираем по цене ПОСЛЕ
-    // налога города: у ЧР цена выше, но и налог выше.
+    // Чёрный Рынок (только по галочке «Чёрный Рынок» — иначе его вообще не запрашиваем: краулер его не собирает, это лишний живой запрос к AODP).
+    // Дальше он всегда «вне расчёта», как Caerleon и Brecilien: цена видна, но в лучшую цену и план не входит, пока его не включат галочкой в плане.
     if (blackMarket) {
       const bmRec = Object.values(finishedCityData).find((rec) => normLocation(rec.city) === 'blackmarket');
-      if (bmRec) sellPrices.push({ city: bmRec.city, sellMin: null, buyMax: bmRec.buy_price_max || null, blackMarket: true });
+      if (bmRec) infoSellPrices.push({ city: bmRec.city, sellMin: null, buyMax: bmRec.buy_price_max || null, blackMarket: true, inactive: true });
     }
-    const instantTax = (sp) => (sp.blackMarket ? bmTaxRate : taxRate);
+    const taxRate = getSalesTaxRate(req);
+    // Чёрный Рынок в этот перебор не попадает (он в infoSellPrices, не в sellPrices) — мгновенная продажа его не выбирает автоматически.
     let bestSell = null;
     for (const sp of sellPrices) {
-      if (sp.buyMax && (!bestSell || sp.buyMax * (1 - instantTax(sp)) > bestSell.price * (1 - bestSell.taxRate))) {
-        bestSell = { city: sp.city, price: sp.buyMax, blackMarket: !!sp.blackMarket, taxRate: instantTax(sp) };
+      if (sp.buyMax && (!bestSell || sp.buyMax * (1 - taxRate) > bestSell.price * (1 - bestSell.taxRate))) {
+        bestSell = { city: sp.city, price: sp.buyMax, blackMarket: false, taxRate };
       }
     }
     const netSellPrice = bestSell ? bestSell.price * (1 - bestSell.taxRate) : null;
@@ -1008,7 +1008,8 @@ app.get('/api/craft-calc', async (req, res) => {
       // Один запрос истории по всем 5 качествам: качество сильно влияет на ликвидность (Отличное может продаваться
       // в 100+ раз быстрее Обычного), а себестоимость от качества не зависит — поэтому сравнение бесплатное.
       const history = await marketHistory(source, [finishedQueryId], days * 24, ALL_QUALITIES.join(','), blackMarket ? [...locations, ...infoLocations, BM_QUERY_LOCATION] : [...locations, ...infoLocations]);
-      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare, blackMarketTaxRate: blackMarket ? bmTaxRate : null });
+      // Чёрный Рынок сюда не входит: он вне расчёта по умолчанию (как города «только для информации» ниже), у него другой налог и он не Sell Order.
+      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare });
       patientSell = forQuality(quality);
       if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity, marketShare);
       // План продажи по умолчанию: ВСЕ прибыльные города (у каждого свой налог: у ЧР — свой), партия по индексу профита (maxProfitCityAllocation).
@@ -1040,6 +1041,12 @@ app.get('/api/craft-calc', async (req, res) => {
             const row = infoRows.find((r) => normLocation(r.city) === normLocation(city));
             patientSell.byCity.push(row ? { ...row, inactive: true } : { city, avgSellPrice: null, avgDailyVolume: 0, netPrice: null, taxRate: taxRate + SETUP_FEE_RATE, blackMarket: false, profitPerUnit: null, profitIndex: 0, noData: true, inactive: true });
           }
+        }
+        // Чёрный Рынок — той же строкой: своя ставка налога (blackMarketTaxRate), вне плана и вне «лучшего города», пока не включат галочкой.
+        if (blackMarket) {
+          const bm = computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities: ['Black Market'], quality, marketShare, blackMarketTaxRate: bmTaxRate });
+          const row = bm ? bm.byCity.find((r) => normLocation(r.city) === 'blackmarket') : null;
+          patientSell.byCity.push(row ? { ...row, inactive: true } : { city: 'Black Market', avgSellPrice: null, avgDailyVolume: 0, netPrice: null, taxRate: bmTaxRate, blackMarket: true, profitPerUnit: null, profitIndex: 0, noData: true, inactive: true });
         }
       }
       qualityComparison = ALL_QUALITIES.map((q) => {

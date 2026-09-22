@@ -1,5 +1,6 @@
 // Вкладка «Продажа»: мгновенно в Buy Order (со своей ценой) и терпеливо через Sell Order — план по городам с включением городов, своим количеством,
-// своей ценой города и стратегией распределения; порог продажи, потолок себестоимости и полоса цены, сравнение по качеству. И «Сравнение по тирам».
+// своей ценой города и стратегией распределения; порог продажи, потолок себестоимости и полоса цены. Внизу — свёрнутый блок «Ещё сравнения»
+// (по качеству и по тирам, с переключением тира кликом по строке): смотрят их редко, поэтому вместе и по умолчанию свёрнуто, а не отдельной вкладкой.
 import { html, useStore, fmt, signed, tone, fmtDays, QN } from './lib.js';
 import { calcStore, emptyManual, setSellPrice, calcPlanActions, planOfStore } from './calc-store.js';
 import { CityPlanTable, cityPlanTitle } from './cityplan.js';
@@ -19,7 +20,7 @@ function BuyOrderCard({ c, d }) {
     <div><strong>Итого на ${fmt(d.quantity)} шт</strong><b class=${tone(d.totalProfit)}>${d.totalProfit !== null ? signed(Math.round(d.totalProfit)) : '—'}</b></div></div>
     <details style="margin-top:10px"><summary class="muted" style="cursor:pointer;font-size:13px">Цены готового предмета по городам</summary>
       <div class="tw"><table id="craft-sell-table"><thead><tr><th>Город</th><th>Купить</th><th>Продать</th></tr></thead>
-        <tbody>${d.sellPrices.map((sp) => html`<tr key=${sp.city} class=${`${bs && sp.city === bs.city ? 'sel' : ''} ${sp.inactive ? 'below-threshold' : ''}`}><td><${CityPill} name=${sp.city} />${sp.inactive ? html` <small class="cp-off" title="Город вне расчёта: цены для справки, в выбор лучшей цены не входят">вне расчёта</small>` : null}</td><td>${sp.sellMin ?? '—'}</td><td>${sp.buyMax ?? '—'}</td></tr>`)}</tbody></table></div></details></div>`;
+        <tbody>${d.sellPrices.map((sp) => html`<tr key=${sp.city} class=${`${bs && sp.city === bs.city ? 'sel' : ''} ${sp.inactive ? 'below-threshold' : ''}`}><td><${CityPill} name=${sp.city} />${sp.blackMarket ? ' ⚫' : ''}${sp.inactive ? html` <small class="cp-off" title="${sp.blackMarket ? 'Чёрный Рынок' : 'Город'} вне расчёта: цены для справки, в выбор лучшей цены не входят">вне расчёта</small>` : null}</td><td>${sp.sellMin ?? '—'}</td><td>${sp.buyMax ?? '—'}</td></tr>`)}</tbody></table></div></details></div>`;
 }
 
 function SellPlanBand({ d }) {
@@ -76,32 +77,40 @@ function SellOrderCard({ c, d, p, st }) {
     <${Threshold} p=${ps} /></div></div>`;
 }
 
-function QualityCard({ c, d }) {
+function QualityTable({ d }) {
   const q = d.qualityComparison;
   if (!q || q.length < 2) return null;
   const best = q.reduce((a, b) => ((b.daysToSellBatch ?? Infinity) < (a.daysToSellBatch ?? Infinity) ? b : a));
-  return html`<div class="card tw" style="margin-top:14px"><table id="quality-table"><thead><tr><th>Качество</th><th>Средняя цена</th><th>Сделок в день</th><th>Дней на распродажу</th><th>Профит / шт</th></tr></thead>
+  return html`<div class="tw"><span class="pl">По качеству</span><table id="quality-table"><thead><tr><th>Качество</th><th>Средняя цена</th><th>Сделок в день</th><th>Дней на распродажу</th><th>Профит / шт</th></tr></thead>
     <tbody>${q.map((x) => { const slow = x.daysToSellBatch !== null && x.daysToSellBatch > 30; return html`<tr key=${x.quality} class=${x.quality === d.quality ? 'sel' : ''}><td><span class=${`tag q${x.quality}`}>${QN[x.quality]}</span>${x.quality === best.quality ? ' ⚡' : ''}</td><td>${fmt(x.avgSellPrice)}</td><td>${fmt(x.avgDailyVolume, 1)}</td><td class=${slow ? 'scan-stale' : ''}>${fmtDays(x.daysToSellBatch)}${slow ? ' ⚠' : ''}</td><td class=${tone(x.profitPerUnit)}>${signed(x.profitPerUnit)}</td></tr>`; })}</tbody></table>
-    <div class="statusline">⚡ — самая быстрая распродажа; выбранное качество выделено. Ликвидность разных качеств отличается на порядки.</div></div>`;
+    <p class="note">⚡ — самая быстрая распродажа; выбранное качество выделено. Ликвидность разных качеств отличается на порядки.</p></div>`;
 }
 
-export function SellTab({ c, d, p, st }) {
-  return html`<div id="sub-sell">
-    <div class="two"><${BuyOrderCard} c=${c} d=${d} /><${SellOrderCard} c=${c} d=${d} p=${p} st=${st} /></div>
-    ${st ? html`<${CityPlan} c=${c} d=${d} p=${p} st=${st} />` : null}
-    <${QualityCard} c=${c} d=${d} /></div>`;
-}
-
-export function TiersTab({ c, d }) {
+function TierTable({ d }) {
   const rows = d.tierComparison || [];
-  if (!rows.length) return html`<div class="card empty">Сравнение по тирам для этого предмета недоступно.</div>`;
-  return html`<div id="sub-tiers"><div class="card tw"><table><thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать (Buy Order)</th><th>Профит / шт (Buy Order)</th><th>Профит / шт (Sell Order, по истории)</th></tr></thead>
+  if (!rows.length) return null;
+  return html`<div class="tw"><span class="pl">По тирам</span><table id="tier-table"><thead><tr><th>Тир</th><th>Себестоимость / шт</th><th>Лучшее качество</th><th>Продать (Buy Order)</th><th>Профит / шт (Buy Order)</th><th>Профит / шт (Sell Order, по истории)</th></tr></thead>
     <tbody>${rows.map((t) => html`<tr key=${t.itemId} class=${t.isCurrent ? 'sel' : 'click'} title=${`Переключить на T${t.tier}`} onClick=${() => { if (!t.isCurrent) calcStore.set({ itemId: t.itemId, data: null, sig: '', ...emptyManual() }); }}>
       <td><span class=${`tag t${t.tier}`}>T${t.tier}</span>${t.enchant ? html` <span class="tag e">.${t.enchant}</span>` : null}${t.enchantCapped && t.tier < 4 ? html` <span class="scan-stale" title="Зачарование доступно только с T4">без чарки</span>` : null}</td>
       <td class="neg">${t.cost !== null ? fmt(t.cost) : 'нет цен на материалы'}</td>
       <td>${t.bestQuality ? html`<span class=${`tag q${t.bestQuality}`}>${QN[t.bestQuality]}</span>` : '—'}</td>
       <td>${t.bestSell ? html`<${CityPill} name=${t.bestSell.city} /> ${fmt(t.bestSell.price)}` : html`<span class="muted">нет предложений</span>`}</td>
       <td class=${tone(t.profitPerUnit)}>${t.profitPerUnit !== null ? `${signed(t.profitPerUnit)} (${fmt(t.profitPct, 1)}%)` : '—'}</td>
-      <td class=${tone(t.patient && t.patient.profitPerUnit)}>${t.patient ? `${signed(t.patient.profitPerUnit)} (${fmt(t.patient.profitPct, 1)}%), ${QN[t.patient.quality]}, ${fmt(t.patient.avgDailyVolume, 1)}/день` : '—'}</td></tr>`)}</tbody></table></div>
+      <td class=${tone(t.patient && t.patient.profitPerUnit)}>${t.patient ? `${signed(t.patient.profitPerUnit)} (${fmt(t.patient.profitPct, 1)}%), ${QN[t.patient.quality]}, ${fmt(t.patient.avgDailyVolume, 1)}/день` : '—'}</td></tr>`)}</tbody></table>
     <p class="note">Клик по строке переключает тир: зачарование, качество и количество сохраняются. Buy Order — мгновенная продажа в чужой ордер, Sell Order — свой ордер по средней цене истории.</p></div>`;
+}
+
+// Обе таблицы сравнения — по качеству и по тирам — были раньше в двух разных местах (карточка под продажей и отдельная третья вкладка).
+// Смотрят их редко, а место на экране занимали всегда; теперь это один свёрнутый по умолчанию блок.
+function MoreComparisons({ c, d }) {
+  if ((!d.qualityComparison || d.qualityComparison.length < 2) && !(d.tierComparison || []).length) return null;
+  return html`<details class="card more" id="more-comparisons"><summary>Ещё сравнения</summary>
+    <div class="in"><${QualityTable} d=${d} /><${TierTable} d=${d} /></div></details>`;
+}
+
+export function SellTab({ c, d, p, st }) {
+  return html`<div id="sub-sell">
+    <div class="two"><${BuyOrderCard} c=${c} d=${d} /><${SellOrderCard} c=${c} d=${d} p=${p} st=${st} /></div>
+    ${st ? html`<${CityPlan} c=${c} d=${d} p=${p} st=${st} />` : null}
+    <${MoreComparisons} c=${c} d=${d} /></div>`;
 }

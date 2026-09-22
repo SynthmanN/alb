@@ -1,4 +1,4 @@
-// Калькулятор крафта одного предмета: вердикт сверху (профит, ROI, доходы и расходы), ниже вкладки «Закупка», «Продажа», «Сравнение по тирам».
+// Калькулятор крафта одного предмета: вердикт сверху (профит, ROI, доходы и расходы), ниже вкладки «Закупка» и «Продажа» (в ней — свёрнутое «Ещё сравнения»: по качеству и по тирам).
 // Свои цены, лог закупок и план продажи пересчитывают результат на месте (calc-store.js + logic/manual.js).
 import { html, useStore, useState, useEffect, useMemo, Fragment, allItems, itemsReady, groupsReady, getWeaponGroups, findItem, itemLabel, itemTier, fmt, signed, tone, apiGet, fmtAge, fmtDays, QN } from './lib.js';
 import { commonParams, settings } from './settings.js';
@@ -12,7 +12,7 @@ import { ItemPicker, GEAR, familyOf } from './picker.js';
 import { StackView, StackFocusBar } from './calc-stack.js';
 import { stack } from './list.js';
 import { BuyTab } from './calc-buy.js';
-import { SellTab, TiersTab } from './calc-sell.js';
+import { SellTab } from './calc-sell.js';
 
 export { calcStore };
 const maxEnchant = (id) => (itemTier(id) >= 4 ? 4 : 0);
@@ -116,7 +116,7 @@ function SingleCalc() {
   const { d, st, p, override, lists } = useMemo(() => derive(c, s, pr), [c.data, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
-  const subs = [['buy', 'Закупка'], ['sell', 'Продажа'], ['tiers', 'Сравнение по тирам']];
+  const subs = [['buy', 'Закупка'], ['sell', 'Продажа']];   // «Сравнение по тирам» и по качеству — свёрнутым блоком «Ещё сравнения» внутри «Продажа» (calc-sell.js)
   const invalidate = () => set({ sig: '' });
   return html`<section class="panel" id="panel-calc">
     ${c.stackMode && c.stackFocus ? html`<${StackFocusBar} />` : null}
@@ -135,6 +135,6 @@ function SingleCalc() {
       <div class="statusnote" style="margin:0 2px 10px;text-align:left" id="calc-source">${d.dataSource === 'aodp' ? 'Данные: AODP напрямую' : `Данные: краулер${d.jug && d.jug.lastPricePass ? ` · цены обновлены ${fmtAge((Date.now() - d.jug.lastPricePass) / 60000)}` : ''}`}${d.blackMarket ? ' · Чёрный Рынок — живым запросом (краулер его не собирает)' : ''}${c.loading ? ' · пересчитываю…' : ''}</div>
       <${Verdict} c=${c} d=${d} p=${p} st=${st} />
       <div class="subtabs" role="tablist">${subs.map(([id, t]) => html`<button type="button" role="tab" key=${id} aria-selected=${String(c.sub === id)} onClick=${() => set({ sub: id })}>${t}</button>`)}</div>
-      ${c.sub === 'buy' ? html`<${BuyTab} c=${c} d=${d} lists=${lists} override=${override} invalidate=${invalidate} />` : c.sub === 'sell' ? html`<${SellTab} c=${c} d=${d} p=${p} st=${st} />` : html`<${TiersTab} c=${c} d=${d} />`}</div>` : null}
+      ${c.sub === 'buy' ? html`<${BuyTab} c=${c} d=${d} lists=${lists} override=${override} invalidate=${invalidate} />` : html`<${SellTab} c=${c} d=${d} p=${p} st=${st} />`}</div>` : null}
   </section>`;
 }

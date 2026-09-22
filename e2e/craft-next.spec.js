@@ -17,10 +17,14 @@ const calc = (q) => ({
   acquire: { byResource: [], days: 0.4 }, enchantAfterCraft: null, bestSell: { city: 'Martlock', price: 1500, taxRate: 0.08 }, netSellPrice: 1380, profitPerUnit: -480, totalProfit: -4800, sellPrices: [{ city: 'Martlock', sellMin: 1600, buyMax: 1500 }],
   patientSell: { days: 3, avgSellPrice: 2500, netSellPrice: 2240, marketDailyVolume: 8, avgDailyVolume: 8, marketShare: 0.25, daysToSellBatch: 3, profitPerUnit: 380, bestCity: { city: 'Lymhurst', avgPrice: 2500 },
     ...(q.get('sellThreshold') ? { threshold: { value: Number(q.get('sellThreshold')), cities: [{ city: 'Lymhurst', avgPrice: 2500, avgDailyVolume: 8 }], totalDailyVolume: 8, daysToSellBatch: 5 } } : {}),
-    byCity: [{ city: 'Lymhurst', avgSellPrice: 2500, avgDailyVolume: 8, taxRate: 0.105, netPrice: 2237, profitPerUnit: 377, profitIndex: 20 }, { city: 'Caerleon', avgSellPrice: 3000, avgDailyVolume: 30, taxRate: 0.105, netPrice: 2685, profitPerUnit: 825, profitIndex: 30, inactive: true }, { city: 'Bridgewatch', avgSellPrice: null, avgDailyVolume: 0, taxRate: 0.105, noData: true, profitPerUnit: null }],
+    byCity: [{ city: 'Lymhurst', avgSellPrice: 2500, avgDailyVolume: 8, taxRate: 0.105, netPrice: 2237, profitPerUnit: 377, profitIndex: 20 }, { city: 'Caerleon', avgSellPrice: 3000, avgDailyVolume: 30, taxRate: 0.105, netPrice: 2685, profitPerUnit: 825, profitIndex: 30, inactive: true }, { city: 'Bridgewatch', avgSellPrice: null, avgDailyVolume: 0, taxRate: 0.105, noData: true, profitPerUnit: null }].concat(q.get('blackMarket') === 'true' ? [{ city: 'Black Market', avgSellPrice: 1900, avgDailyVolume: 5, taxRate: 0.105, netPrice: 1700.5, profitPerUnit: -159.5, profitIndex: 0, blackMarket: true, inactive: true }] : []),
     plan: { cities: [{ city: 'Lymhurst', qty: Number(q.get('quantity')), days: 3 }], excluded: [], totalDays: 3, profitPerUnit: 380 } },
   ...(q.get('ceiling') ? { sellPlan: { ceiling: Number(q.get('ceiling')), withinCeiling: false, sellLow: 2000, sellHigh: 2600, profitLow: 100, profitHigh: 700, totalLow: 1000, totalHigh: 7000 } } : {}),
   ...(q.get('teleport') ? { teleport: { homeCity: 'Fort Sterling', materialLegs: [{ resource: 'T4_CLOTH', resourceName: 'Ткань', fromCity: 'Martlock', needed: 20, distance: 2, cost: 400 }], legsCost: 400, costPerUnit: 2260, instant: { city: 'Martlock', distance: 2, cost: 100, profitPerUnit: -300 }, patient: null, unweighted: [] } } : {}),
+  ...(q.get('blackMarket') === 'true' ? {
+    blackMarket: true, bmTaxRate: 0.105,
+    sellPrices: [{ city: 'Martlock', sellMin: 1600, buyMax: 1500 }, { city: 'Black Market', sellMin: null, buyMax: 1900, blackMarket: true, inactive: true }],
+  } : {}),
   qualityComparison: [], tierComparison: [{ itemId: 'T4_2H_BOW', tier: 4, enchant: 0, hasPrice: true, cost: 1000, bestQuality: 4, bestSell: { city: 'Martlock', price: 1500 }, profitPerUnit: 380, profitPct: 38, patient: { quality: 4, profitPerUnit: 1240, profitPct: 124, avgDailyVolume: 8 }, isCurrent: true }],
 });
 
@@ -98,8 +102,8 @@ test('калькулятор: правильные названия матери
   await page.getByRole('tab', { name: 'Продажа' }).click();
   await expect(page.locator('#city-table')).toContainText('Lymhurst');
   await expect(page.locator('#city-table')).toContainText('нет данных');
-  await page.getByRole('tab', { name: 'Сравнение по тирам' }).click();
-  await expect(page.locator('#sub-tiers')).toContainText('T4');
+  await page.locator('#more-comparisons summary').click();
+  await expect(page.locator('#tier-table')).toContainText('T4');
   const before = log.calc.length;
   await page.getByRole('button', { name: 'AODP' }).click();                                    // тумблер источника — пересчёт без «Посчитать»
   await expect.poll(() => log.calc.length).toBeGreaterThan(before);
@@ -721,4 +725,25 @@ test('закупка материалов: у материала значок и
   const shop = page.locator('#shopping .shop', { hasText: 'Изысканная ткань' });
   await expect(shop.locator('.glyph')).toBeVisible();
   await expect(shop.locator('.tag.t4')).toHaveText('T4');
+});
+
+test('Чёрный Рынок: без галочки не запрашивается и не виден; с галочкой виден в обеих таблицах, но вне расчёта, пока не включишь галочкой в плане', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  expect(log.calc[log.calc.length - 1].get('blackMarket')).toBe('false');
+  await page.getByRole('tab', { name: 'Продажа' }).click();
+  await page.getByText('Цены готового предмета по городам').click();
+  await expect(page.locator('#craft-sell-table')).not.toContainText('Black Market');
+  await page.getByRole('button', { name: 'Ещё' }).click();
+  await page.getByText('Показывать Чёрный Рынок').click();
+  await expect.poll(() => log.calc[log.calc.length - 1].get('blackMarket')).toBe('true');
+  await expect(page.locator('#craft-sell-table')).toContainText('Black Market');
+  await expect(page.locator('#craft-sell-table tr', { hasText: 'Black Market' })).toContainText('вне расчёта');
+  await expect(page.locator('#sell-instant b').first()).not.toContainText('Black Market');     // мгновенная продажа его всё равно не выбирает
+  const row = page.locator('#city-table tr[data-city="Black Market"]');
+  await expect(row).toContainText('вне расчёта');
+  await expect(row.locator('.plan-toggle')).not.toBeChecked();
+  await expect(row.locator('.plan-qty')).toHaveValue('0');
+  await row.locator('.plan-toggle').check();
+  await expect(row.locator('.plan-qty')).not.toHaveValue('0');
 });

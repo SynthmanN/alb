@@ -69,7 +69,7 @@ export function ParamsBar() {
       ${MAIN_CITIES.map((c) => html`<${CityToggle} key=${c} name=${c} fixed=${true} on=${true} />`)}
       ${OPTIONAL_CITIES.map((c) => html`<${CityToggle} key=${c} name=${c} fixed=${false} on=${s.optional.includes(c)} />`)}</span></div>
     ${more ? html`<div class="adv" id="adv">
-      <${Switch} checked=${s.blackMarket} onChange=${(v) => settings.set({ blackMarket: v })} title="Добавить Чёрный Рынок в план продажи (налог свой: налог + Setup Fee всегда). Краулер его не собирает — он идёт живым запросом">Учитывать Чёрный Рынок</${Switch}>
+      <${Switch} checked=${s.blackMarket} onChange=${(v) => settings.set({ blackMarket: v })} title="Показать цену Чёрного Рынка (свой налог: налог + Setup Fee всегда) в таблицах — вне расчёта, пока не включишь галочкой отдельно. Краулер его не собирает — он идёт живым запросом">Показывать Чёрный Рынок</${Switch}>
       <${Switch} checked=${s.teleport} onChange=${(v) => settings.set({ teleport: v })} title="Материалы покупаются в разных городах и едут в город сборки, готовый предмет — в город продажи: логистика по весу и дистанции">Учитывать телепорт</${Switch}>
       <${Switch} checked=${s.purchaseLog} onChange=${(v) => settings.set({ purchaseLog: v })} title="Купил сырьё стаками — впиши каждый стак (количество и цену за штуку): калькулятор посчитает среднюю цену и покажет, сколько ещё докупить">Лог закупок по лотам</${Switch}>
       <label class="f" title="Ценовой допуск плана закупки по городам, %">Допуск цены закупки, %<input id="tolerance" type="number" min="0" max="50" step="1" value=${s.tolerance} onInput=${(e) => settings.set({ tolerance: parseFloat(e.target.value) || 0 })} /></label>
