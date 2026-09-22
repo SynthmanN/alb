@@ -237,9 +237,10 @@ test('уведомление «в крафт-лист»: карточка у д�
   const log = { scan: [], calc: [] };
   await openCalc(page, log);
   await expect(page.locator('.dock-notice')).toHaveCount(0);
+  // док не улетает за пределы экрана и стоит рядом с контентом (точное выравнивание на широком экране — отдельный тест ниже)
   const dockBox = await page.locator('.dock').boundingBox();
-  const viewport = page.viewportSize();
-  expect(dockBox.x + dockBox.width).toBeGreaterThan(viewport.width - 40);            // док прижат к правому краю
+  const cardBox = await page.locator('.card').first().boundingBox();
+  expect(Math.abs(dockBox.x + dockBox.width - (cardBox.x + cardBox.width))).toBeLessThan(10);
   await page.locator('#calc-add').click();
   const notice = page.locator('.dock-notice');
   await expect(notice).toBeVisible();
@@ -247,6 +248,17 @@ test('уведомление «в крафт-лист»: карточка у д�
   await expect(notice.locator('.glyph')).toBeVisible();
   await expect(page.locator('.toast')).toHaveCount(0);                               // старый общий тост для этого действия больше не дублирует
   await expect(notice).toBeHidden({ timeout: 4000 });
+});
+
+test('док крафт-листа на широком экране стоит у края контента, а не улетает в пустой отступ окна', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  // на 1920px раньше между последней карточкой и доком было ~386px пустоты — кнопка была не «под рукой»
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await openCalc(page, log);
+  const dockBox = await page.locator('.dock').boundingBox();
+  const cardBox = await page.locator('.card').first().boundingBox();
+  expect(Math.abs(dockBox.x + dockBox.width - (cardBox.x + cardBox.width))).toBeLessThan(2);
+  expect(dockBox.x + dockBox.width).toBeLessThan(1920 - 300);                        // заметно левее голого края окна
 });
 
 

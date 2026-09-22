@@ -188,8 +188,12 @@ input[type=checkbox].ck:checked::after { content: ""; width: 4px; height: 8px; b
 .empty { padding: 36px; text-align: center; color: var(--muted); }
 
 /* док крафт-листа и панели */
-/* док крафт-листа: справа снизу — заметная кнопка-CTA, рядом бегущие итоги */
-.dock { position: fixed; right: 18px; bottom: 18px; z-index: 30; display: flex; align-items: center; gap: 16px; padding: 12px 14px 12px 22px; border-radius: 99px; background: var(--surface); box-shadow: 0 10px 30px rgba(0, 0, 0, .18), inset 0 0 0 1px var(--line); max-width: calc(100vw - 24px); }
+/* док крафт-листа: справа снизу — заметная кнопка-CTA, рядом бегущие итоги.
+   right — не голый отступ от края экрана: на широком мониторе контент (.layout, max-width 1160px) стоит по центру, и кнопка
+   у самого края окна улетала бы в пустой отступ (на 1920px — на 386px правее последней карточки, на 2560px — на 706px).
+   50vw − 556px держит правый край дока вровень с правым краем контента (556 = половина 1160 минус его отступ 24px);
+   на узких экранах, где контент и так во всю ширину, работает нижняя граница max() — прежний отступ 18px от края. */
+.dock { position: fixed; right: max(18px, calc(50vw - 556px)); bottom: 18px; z-index: 30; display: flex; align-items: center; gap: 16px; padding: 12px 14px 12px 22px; border-radius: 99px; background: var(--surface); box-shadow: 0 10px 30px rgba(0, 0, 0, .18), inset 0 0 0 1px var(--line); max-width: calc(100vw - 24px); }
 .dock-info { display: flex; align-items: center; gap: 18px; }
 .dock .d span { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.2; }
 .dock .d b { font-size: 15.5px; font-weight: 600; }
@@ -198,7 +202,7 @@ input[type=checkbox].ck:checked::after { content: ""; width: 4px; height: 8px; b
 @media (max-width: 460px) { .dock { right: 10px; bottom: 10px; padding: 10px 10px 10px 16px; gap: 10px; } .dock-open { padding: 11px 16px; } }
 
 /* уведомление «добавлено в крафт-лист»: карточка у дока, тихо въезжает и один раз мягко подсвечивается акцентом */
-.dock-notice { position: fixed; right: 18px; bottom: 84px; z-index: 31; display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 12px; border-radius: 16px; background: var(--surface); box-shadow: 0 10px 26px rgba(0, 0, 0, .16), inset 0 0 0 1px var(--line); max-width: min(320px, calc(100vw - 24px)); animation: dn-in .32s cubic-bezier(.2, .8, .2, 1), dn-out .32s ease-in 2.48s forwards; }
+.dock-notice { position: fixed; right: max(18px, calc(50vw - 556px)); bottom: 84px; z-index: 31; display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 12px; border-radius: 16px; background: var(--surface); box-shadow: 0 10px 26px rgba(0, 0, 0, .16), inset 0 0 0 1px var(--line); max-width: min(320px, calc(100vw - 24px)); animation: dn-in .32s cubic-bezier(.2, .8, .2, 1), dn-out .32s ease-in 2.48s forwards; }
 .dock-notice .glyph { flex: none; }
 .dn-icon-plain { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--accent) 16%, var(--surface-2)); color: var(--accent); }
 .dn-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
