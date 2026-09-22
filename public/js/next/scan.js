@@ -3,7 +3,7 @@
 import { html, createStore, useStore, useState, fmt, signed, apiGet, findItem, itemLabel, itemTier, fmtAge } from './lib.js';
 import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
-import { Glyph, Tags, CityPill, CityPills, Seg, Switch, Icon, ICONS, Spinner, toast } from './ui.js';
+import { Glyph, Tags, CityPill, CityPills, Seg, Switch, Icon, ICONS, Spinner } from './ui.js';
 import { addToList } from './list.js';
 import { nav } from './nav.js';
 
@@ -39,7 +39,7 @@ function Detail({ r, data }) {
   const [qty, setQty] = useState(10);
   const net = r.cost + r.profitPerUnit;
   const stale = r.freshMinutes !== null && r.freshMinutes !== undefined && r.freshMinutes > 180;
-  const add = () => { addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: qty, cost: r.cost, profit: r.profitPerUnit, after: isAfter(r, data) }); toast(`В крафт-листе: ${itemLabel(r.itemId)} × ${qty}`); };
+  const add = () => addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: qty, cost: r.cost, profit: r.profitPerUnit, after: isAfter(r, data) });
   const open = () => nav.openCalc({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: qty, after: isAfter(r, data) });
   return html`<div class="detail">
     <div class="k"><span>Себестоимость</span><b class="neg">${fmt(r.cost)}</b></div>
@@ -93,7 +93,7 @@ export function ScanTab() {
             <div class="cell r hide-n"><span class="neg">${fmt(r.cost)}</span> <span class="muted">→</span> ${fmt(r.cost + r.profitPerUnit)}<small>расходы → доход</small></div>
             <div class="cell r"><b class="pos">${signed(r.profitPerUnit)}</b><small>${fmt(r.profitPct, 0)}% к вложениям</small></div>
             <div class="cell r hide-n"><b>${fmt(r.marketProfitPerDay)}</b><small>${fmt(r.dailyVolume, 0)} шт/день</small></div>
-            <div><button class="btn sm" type="button" title="В крафт-лист" aria-label="В крафт-лист" onClick=${(e) => { e.stopPropagation(); addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: 1, cost: r.cost, profit: r.profitPerUnit, after: isAfter(r, data) }); toast(`В крафт-листе: ${itemLabel(r.itemId)}`); }}>+</button></div>
+            <div><button class="btn sm" type="button" title="В крафт-лист" aria-label="В крафт-лист" onClick=${(e) => { e.stopPropagation(); addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: 1, cost: r.cost, profit: r.profitPerUnit, after: isAfter(r, data) }); }}>+</button></div>
           </div>
           ${isOpen ? html`<${Detail} r=${r} data=${data} />` : null}</div>`;
       })}</div>` : null}

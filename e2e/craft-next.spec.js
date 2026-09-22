@@ -175,6 +175,8 @@ test('крафт-лист из плана: позиции с количеств�
   await page.getByRole('button', { name: 'Всё за очки' }).click();
   await expect(page.locator('#plan-table tbody tr.on-plan')).toHaveCount(2);
   await page.locator('#f-send').click();
+  await expect(page.locator('.dock-notice')).toContainText('2 позиции');
+  await expect(page.locator('.dock-notice')).toContainText('из плана фракции');
   const cards = page.locator('#drawer-list .li-card');
   await expect(cards).toHaveCount(2);
   const t6 = cards.filter({ hasText: 'T6' });
@@ -227,6 +229,24 @@ test('ленивый крафтер: бюджет и стратегия уход
   await expect(page.locator('#l-profit')).toContainText('+500 000');
   await page.locator('#lazy-add-all').click();
   await expect(page.locator('#dock-count')).toHaveText('2');
+  await expect(page.locator('.dock-notice')).toContainText('2 позиции');
+  await expect(page.locator('.dock-notice')).toContainText('из ленивого плана');
+});
+
+test('уведомление «в крафт-лист»: карточка у дока (не общий тост в центре), с иконкой и количеством, сама пропадает', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  await expect(page.locator('.dock-notice')).toHaveCount(0);
+  const dockBox = await page.locator('.dock').boundingBox();
+  const viewport = page.viewportSize();
+  expect(dockBox.x + dockBox.width).toBeGreaterThan(viewport.width - 40);            // док прижат к правому краю
+  await page.locator('#calc-add').click();
+  const notice = page.locator('.dock-notice');
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText('× 10');
+  await expect(notice.locator('.glyph')).toBeVisible();
+  await expect(page.locator('.toast')).toHaveCount(0);                               // старый общий тост для этого действия больше не дублирует
+  await expect(notice).toBeHidden({ timeout: 4000 });
 });
 
 

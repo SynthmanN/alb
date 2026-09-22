@@ -8,7 +8,7 @@ import { ScanTab } from './scan.js';
 import { CalcTab } from './calc.js';
 import { FactionTab } from './faction.js';
 import { LazyTab } from './lazy.js';
-import { Dock, ListDrawer, drawerStore } from './dock.js';
+import { Dock, DockNotice, ListDrawer, drawerStore } from './dock.js';
 
 const TABS = [['scan', 'Скан', ICONS.search], ['calc', 'Калькулятор', ICONS.calc], ['faction', 'Фракционный план', ICONS.shield], ['lazy', 'Ленивый', ICONS.couch]];
 const PAGES = [['index.html', 'Цены'], ['scanners.html', 'Флиппинг'], ['craft.html', 'Крафт', true], ['refine.html', 'Рефайн'], ['fitting-room.html', 'Примерочная'], ['masteries.html', 'Мастерки']];
@@ -37,6 +37,6 @@ export function App() {
       <div class="tabs"><div class="seg" role="tablist">${TABS.map(([id, label, icon]) => html`<button type="button" role="tab" key=${id} data-tab=${id} aria-selected=${String(tab === id)} onClick=${() => nav.tab(id)}><${Icon} d=${icon} />${label}</button>`)}</div></div>
       ${tab === 'scan' ? html`<${ScanTab} />` : tab === 'calc' ? html`<${CalcTab} />` : tab === 'faction' ? html`<${FactionTab} />` : html`<${LazyTab} />`}
     </div></div>
-    <${Dock} /><${ListDrawer} /><${Toast} />
+    <${Dock} /><${DockNotice} /><${ListDrawer} /><${Toast} />
   </div>`;
 }

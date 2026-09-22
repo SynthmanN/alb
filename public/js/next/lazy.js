@@ -2,8 +2,8 @@
 import { html, createStore, useStore, fmt, signed, tone, apiGet, itemLabel, itemTier, fmtDays } from './lib.js';
 import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
-import { Glyph, Tags, CityPill, Icon, ICONS, Spinner, toast } from './ui.js';
-import { addToList } from './list.js';
+import { Glyph, Tags, CityPill, Icon, ICONS, Spinner } from './ui.js';
+import { addToList, list, notifyListAdd } from './list.js';
 import { nav } from './nav.js';
 
 export const lazyStore = createStore({ budget: 5000000, strategy: 'balanced', sellDays: 1, data: null, loading: false, error: '', sort: { k: 'profitEarned', dir: -1 } }, { key: 'albion_next_lazy', pick: (s) => ({ budget: s.budget, strategy: s.strategy, sellDays: s.sellDays }) });
@@ -34,7 +34,11 @@ export function LazyTab() {
     return (typeof x === 'string' ? x.localeCompare(y, 'ru') : x - y) * st.sort.dir;
   }) : [];
   const setSort = (k) => set({ sort: { k, dir: st.sort.k === k ? -st.sort.dir : (k === 'name' ? 1 : -1) } });
-  const addAll = () => { items.forEach((it) => addToList({ itemId: it.itemId, enchant: 0, quality: 1, quantity: it.qty, cost: it.costPerUnit, profit: it.profitPerUnit })); toast(`В крафт-листе: ${items.length} позиций`); };
+  // Массовое добавление — одно уведомление на весь план, а не по одному на позицию (list.add напрямую, addToList — только для одиночных)
+  const addAll = () => {
+    items.forEach((it) => list.add({ itemId: it.itemId, enchant: 0, quality: 1, quantity: it.qty, cost: it.costPerUnit, profit: it.profitPerUnit }));
+    notifyListAdd({ kind: 'batch', count: items.length, label: 'из ленивого плана' });
+  };
   return html`<section class="panel" id="panel-lazy">
     <div class="card filterbox">
       <label class="f">Бюджет, серебро<input id="l-budget" type="text" inputmode="numeric" value=${fmt(st.budget)} onInput=${(e) => set({ budget: parseInt(e.target.value.replace(/\D/g, ''), 10) || 0 })} /></label>
@@ -58,6 +62,6 @@ export function LazyTab() {
           <td>${fmt(it.qty)}</td><td class="neg">${fmt(it.costPerUnit)}</td><td class="pos">${signed(it.profitPerUnit)}</td><td class="neg">${fmt(it.costUsed)}</td><td class="pos">${signed(it.profitEarned)}</td>
           <td>${fmtDays(it.daysToAcquireBatch)} + ${fmtDays(it.daysToSellBatch)}${it.bottleneckResource ? html`<div class="muted" style="font-size:12px">узкое место: ${itemLabel(it.bottleneckResource)}</div>` : null}</td>
           <td><${CityPill} name=${it.bestSellCity.city} /> ${fmt(it.bestSellCity.avgPrice)}</td>
-          <td><button class="btn sm" type="button" title="В крафт-лист" aria-label="В крафт-лист" onClick=${() => { addToList({ itemId: it.itemId, enchant: 0, quality: 1, quantity: it.qty, cost: it.costPerUnit, profit: it.profitPerUnit }); toast(`В крафт-листе: ${itemLabel(it.itemId)} × ${it.qty}`); }}>+</button></td></tr>`)}</tbody></table></div></div>` : null}
+          <td><button class="btn sm" type="button" title="В крафт-лист" aria-label="В крафт-лист" onClick=${() => addToList({ itemId: it.itemId, enchant: 0, quality: 1, quantity: it.qty, cost: it.costPerUnit, profit: it.profitPerUnit })}>+</button></td></tr>`)}</tbody></table></div></div>` : null}
   </section>`;
 }

@@ -27,3 +27,4 @@ describe('afterCraftWins', () => {
     expect(afterCraftWins(-1000, -920)).toBe(true);
   });
 });
+

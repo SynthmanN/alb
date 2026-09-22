@@ -39,7 +39,15 @@ export function createStack(key) {
 
 export const list = createStack('albion_next_list');
 export const craftList = list.store;
-export const addToList = list.add;
+// Уведомление «добавлено в крафт-лист»: отдельным событием (id растёт с каждым добавлением), а не диффом списка — так его видно из
+// любого места сайта (скан, ленивый крафтер, фракционный план, калькулятор), не путая с правкой количества «+/−» в самом листе.
+// note: { kind: 'item', item } — одна позиция; { kind: 'batch', count, label } — массовое добавление (план целиком), одно уведомление на всё.
+export const listNotify = createStore({ id: 0, note: null });
+export const notifyListAdd = (note) => listNotify.set((s) => ({ id: s.id + 1, note }));
+export function addToList(item) {
+  list.add(item);
+  notifyListAdd({ kind: 'item', item });
+}
 export const clearList = list.clear;
 export const replaceFactionItems = list.replaceFaction;
 

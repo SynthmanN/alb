@@ -46,6 +46,15 @@ export function useStore(store, select = (s) => s) {
 export const fmt = (n, d = 0) => (n === null || n === undefined || Number.isNaN(n) ? '—' : Number(n).toLocaleString('ru-RU', { maximumFractionDigits: d, minimumFractionDigits: d }));
 export const signed = (n, d = 0) => (n === null || n === undefined || Number.isNaN(n) ? '—' : `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmt(Math.abs(n), d)}`);
 export const tone = (n) => (n > 0 ? 'pos' : n < 0 ? 'neg' : '');
+// Русское склонение по числу: ruPlural(2, 'позиция', 'позиции', 'позиций') → «позиции» (1 → one, 2–4 → few, 0/5–20 → many, включая 11–14)
+export function ruPlural(n, one, few, many) {
+  const mod10 = Math.abs(n) % 10;
+  const mod100 = Math.abs(n) % 100;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
 export const QN = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
 export function fmtAge(minutes) {
   if (minutes === null || minutes === undefined) return '—';

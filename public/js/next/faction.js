@@ -4,7 +4,7 @@ import { html, Fragment, createStore, useStore, useState, useEffect, fmt, signed
 import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
 import { Glyph, Tags, Seg, Icon, ICONS, Spinner, toast } from './ui.js';
-import { replaceFactionItems } from './list.js';
+import { replaceFactionItems, notifyListAdd } from './list.js';
 import { drawerStore } from './nav.js';
 import { openStackInCalculator } from './stack-open.js';
 import { computeRow, buildPlan, sortPlanRows, planToListItems, rowKey } from './logic/factionPlan.js';
@@ -119,6 +119,7 @@ export function FactionTab() {
     const items = planToListItems(model.plan.rows);
     if (!items.length) return;
     replaceFactionItems(items, { id: st.faction, name: (FACTIONS.find(([id]) => id === st.faction) || [, st.faction])[1], points: st.points });
+    notifyListAdd({ kind: 'batch', count: items.length, label: 'из плана фракции' });
     drawerStore.set({ open: true });
   };
   const sendCalc = () => {

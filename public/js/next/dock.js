@@ -1,12 +1,12 @@
 // Крафт-лист: плавающий «док» с итогами и выдвижная панель — позиции (включить/выключить, количество, детали за серебро, цена продажи), итоги, сводная закупка.
 // «Открыть активные в калькуляторе» копирует включённые позиции в стек калькулятора.
-import { html, useStore, Fragment, itemLabel, fmt, signed, tone, copyText, auctionName } from './lib.js';
-import { craftList, list, clearList } from './list.js';
+import { html, useStore, useEffect, useState, Fragment, itemLabel, itemTier, fmt, signed, tone, ruPlural, copyText, auctionName } from './lib.js';
+import { craftList, list, clearList, listNotify } from './list.js';
 import { listDef } from './listcalc.js';
 import { drawerStore, nav } from './nav.js';
 import { StackCards, StackTotals, useStackData } from './stack-ui.js';
 import { StackShopping } from './stack-shopping.js';
-import { Switch, Icon, ICONS, toast } from './ui.js';
+import { Switch, Icon, ICONS, Glyph, Tags, toast } from './ui.js';
 import { afterPossible } from './logic/stack.js';
 import { openListInCalculator } from './stack-open.js';
 
@@ -16,10 +16,32 @@ export function Dock() {
   const data = useStackData(listDef);
   const { items, totals: t } = data;
   return html`<div class="dock" id="dock" role="region" aria-label="Крафт-лист">
-    <div class="d"><span>Крафт-лист</span><b><span class="cnt" id="dock-count">${items.length}</span></b></div>
-    <div class="d hide-s"><span>Вложения</span><b id="dock-inv">${items.length ? fmt(t.cost) : '—'}</b></div>
-    <div class="d"><span>Профит</span><b class=${tone(t.profit)} id="dock-pr">${items.length ? signed(t.profit) : '—'}</b></div>
-    <button class="btn primary sm" type="button" id="open-list" onClick=${() => drawerStore.set({ open: true })}>Открыть</button></div>`;
+    <div class="dock-info">
+      <div class="d"><span>Крафт-лист</span><b><span class="cnt" id="dock-count">${items.length}</span></b></div>
+      <div class="d hide-s"><span>Вложения</span><b id="dock-inv">${items.length ? fmt(t.cost) : '—'}</b></div>
+      <div class="d"><span>Профит</span><b class=${tone(t.profit)} id="dock-pr">${items.length ? signed(t.profit) : '—'}</b></div>
+    </div>
+    <button class="btn primary dock-open" type="button" id="open-list" onClick=${() => drawerStore.set({ open: true })}><${Icon} d=${ICONS.list} />Открыть</button></div>`;
+}
+
+const NOTICE_MS = 2800;
+// Всплывающая карточка «добавлено в крафт-лист» у дока: одна позиция — значок и название, массовое добавление (план целиком) —
+// одна карточка на всё вместо вспышки из N. Тихая анимация (въезжает и мягко «мерцает» акцентом один раз) — не должна мозолить глаза.
+export function DockNotice() {
+  const { id, note } = useStore(listNotify);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!note) return undefined;
+    setVisible(true);
+    const t = setTimeout(() => setVisible(false), NOTICE_MS);
+    return () => clearTimeout(t);
+  }, [id]);
+  if (!note || !visible) return null;
+  return html`<div class="dock-notice" role="status" key=${id}>
+    ${note.kind === 'batch'
+      ? html`<span class="dn-icon dn-icon-plain"><${Icon} d=${ICONS.list} /></span><div class="dn-body"><b>${fmt(note.count)} ${ruPlural(note.count, 'позиция', 'позиции', 'позиций')}</b><span>в крафт-листе${note.label ? ` — ${note.label}` : ''}</span></div>`
+      : html`<${Glyph} id=${note.item.itemId} tier=${itemTier(note.item.itemId)} enchant=${note.item.enchant} quality=${note.item.quality} size=${40} /><div class="dn-body"><b>${itemLabel(note.item.itemId)}</b><span><${Tags} tier=${itemTier(note.item.itemId)} enchant=${note.item.enchant} quality=${note.item.quality} /> × ${fmt(note.item.quantity)}</span></div>`}
+  </div>`;
 }
 
 export function ListDrawer() {

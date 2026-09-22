@@ -3,7 +3,7 @@
 import { html, useStore, useState, useEffect, useMemo, Fragment, allItems, itemsReady, groupsReady, getWeaponGroups, findItem, itemLabel, itemTier, fmt, signed, tone, apiGet, fmtAge, fmtDays, QN } from './lib.js';
 import { commonParams, settings } from './settings.js';
 import { meta } from './params.js';
-import { Glyph, Tags, CityPill, Switch, Icon, ICONS, Spinner, toast } from './ui.js';
+import { Glyph, Tags, CityPill, Switch, Icon, ICONS, Spinner } from './ui.js';
 import { addToList, craftList } from './list.js';
 import { navStore, nav } from './nav.js';
 import { calcStore, emptyManual, derive, planOfStore } from './calc-store.js';
@@ -66,7 +66,7 @@ function Verdict({ c, d, p, st }) {
   const ok = p && p.unit !== null && p.unit > 0;
   const it = findItem(c.itemId);
   const bonus = gearBonusCity(it);
-  const add = () => { addToList({ itemId: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, cost: d.effectiveCostPerUnit, profit: p ? p.unit : 0, after: c.after && c.enchant > 0 }); toast(`В крафт-листе: ${itemLabel(c.itemId)} × ${c.qty}`); };
+  const add = () => addToList({ itemId: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, cost: d.effectiveCostPerUnit, profit: p ? p.unit : 0, after: c.after && c.enchant > 0 });
   return html`<div class="card verdict" id="verdict">
     <div>
       <div class="v-head"><${Glyph} id=${c.itemId} tier=${itemTier(c.itemId)} enchant=${c.enchant} quality=${c.quality} size=${96} />
