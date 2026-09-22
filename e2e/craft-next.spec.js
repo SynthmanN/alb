@@ -375,6 +375,9 @@ test('/craft.html загружается без ошибок JS и с общей
   await expect(page.locator('.nav a')).toHaveCount(6);
   await page.waitForLoadState('networkidle');
   expect(errors).toEqual([]);
+  // статическая заглушка «Загрузка…» из craft.html не должна оставаться в DOM рядом с приложением
+  expect(await page.locator('#app').innerHTML()).not.toContain('Загрузка');
+  expect(await page.evaluate(() => document.getElementById('app').children.length)).toBe(1);
 });
 
 // ---------- цены материала по городам ----------
