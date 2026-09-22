@@ -65,7 +65,6 @@ export function fmtDays(d) {
 export const CITY_CLS = { Lymhurst: 'lym', Martlock: 'mar', Thetford: 'the', Bridgewatch: 'bri', 'Fort Sterling': 'fst', Caerleon: 'cae', Brecilien: 'bre' };
 export const MAIN_CITIES = ['Lymhurst', 'Martlock', 'Thetford', 'Bridgewatch', 'Fort Sterling'];
 export const OPTIONAL_CITIES = ['Caerleon', 'Brecilien'];
-export const cityName = (c) => String(c || '').replace(/^(Fort)(Sterling)$/, '$1 $2');
 
 // ---------- предметы ----------
 let itemsById = new Map();

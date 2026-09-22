@@ -92,9 +92,6 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
 
 export const listEngine = createStackEngine(list);
 export const stackEngine = createStackEngine(stack, { enabled: () => calcStore.get().stackMode, watch: [calcStore] });
-export const listCalc = listEngine.store;
-export const invalidateItem = listEngine.invalidate;
-export const redecide = listEngine.redecide;
-// определения стеков для общих компонентов: хранилище позиций + расчёт
+// определения стеков для общих компонентов: хранилище позиций + расчёт (def.engine.invalidate/redecide — доступ через них, не отдельными экспортами)
 export const listDef = { ops: list, engine: listEngine };
 export const stackDef = { ops: stack, engine: stackEngine };

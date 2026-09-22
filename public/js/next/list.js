@@ -40,12 +40,7 @@ export function createStack(key) {
 export const list = createStack('albion_next_list');
 export const craftList = list.store;
 export const addToList = list.add;
-export const setQuantity = list.setQuantity;
-export const removeFromList = list.remove;
 export const clearList = list.clear;
-export const patchItem = list.patch;
-export const setAutoAfter = list.setAutoAfter;
 export const replaceFactionItems = list.replaceFaction;
 
 export const stack = createStack('albion_next_calc_stack');
-export const calcStack = stack.store;
