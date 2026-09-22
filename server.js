@@ -4,7 +4,7 @@ const rateLimit = require('express-rate-limit');
 const { AodpBudget } = require('./lib/aodpBudget');
 const { GEAR_RRR_PRESETS, resolveGearRrrRate } = require('./data/gear-rrr');
 const { FACTIONS, HEART_POINTS, CREST_POINTS, pointsPerCape, crestIdOf } = require('./data/faction');
-const { openJug, jugStats, pruneToCatalog, HISTORY_WINDOW_HOURS, MANUAL_PRICE_TTL_MS, setManualPrice, getManualPrices } = require('./lib/jugStore');
+const { openJug, jugStats, pruneToCatalog, HISTORY_WINDOW_HOURS, MANUAL_PRICE_TTL_MS, setManualPrice, getManualPrices, upsertPriceSnapshots, upsertHistoryBatch } = require('./lib/jugStore');
 const { readPrices, readHistory, jugFreshness } = require('./lib/jugQuery');
 const { startJugCrawler, CYCLE_MS } = require('./lib/jugCrawler');
 const path = require('path');
@@ -2753,6 +2753,65 @@ function addManualPriceRecords(records, ids, cities, quality = 1, now = Date.now
   }
   return out;
 }
+
+// --- Свежесть данных: для позиций в крафт-листе/стеке калькулятора — что устарело или совсем без цены, и кнопка «обновить сейчас» ---
+// Идея: AODP знает не про всё (авантюрный гир, гербы фракций, редко торгуемые полуфабрикаты), а то, что знает — иногда устарело.
+// Вместо того чтобы гадать по цене, вписанной вручную, можно пойти в игру, открыть эти предметы на рынке (клиент AODP их считает)
+// и вернуться сюда за настоящими свежими данными — краулер их не соберёт сам раньше своего часа. Возраст = самый свежий из двух
+// сигналов (цена ИЛИ сделка) — если он не найден или старше FRESHNESS_STALE_DAYS, позиция считается устаревшей.
+const FRESHNESS_STALE_DAYS = 3;
+const FRESHNESS_HISTORY_HOURS = 72;                // окно «Обновить»: свежие сделки, а не вся 10-дневная история заново
+function freshnessOf(id, { cities, now }) {
+  const prices = readPrices(jugDb, [id], { cities });
+  let priceAgeMinutes = null;
+  for (const r of prices) for (const d of [r.sell_price_min_date, r.buy_price_max_date]) {
+    const age = quoteAgeMinutes(d, now);
+    if (age !== null && (priceAgeMinutes === null || age < priceAgeMinutes)) priceAgeMinutes = age;
+  }
+  const locations = cities.map((c) => c.replace(/\s+/g, ''));
+  const history = readHistory(jugDb, [id], HISTORY_WINDOW_HOURS, { locations, now });
+  let historyAgeDays = null;
+  for (const s of history) for (const p of s.data) {
+    if (p.item_count <= 0) continue;
+    const age = quoteAgeMinutes(`${p.timestamp}`, now) / 1440;
+    if (historyAgeDays === null || age < historyAgeDays) historyAgeDays = age;
+  }
+  const bestAgeDays = Math.min(priceAgeMinutes === null ? Infinity : priceAgeMinutes / 1440, historyAgeDays === null ? Infinity : historyAgeDays);
+  return { id, priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !(bestAgeDays <= FRESHNESS_STALE_DAYS) };
+}
+app.get('/api/freshness', (req, res) => {
+  try {
+    const ids = [...new Set(String(req.query.ids || '').split(',').map((s) => s.trim()).filter(Boolean))].slice(0, 300);
+    if (!ids.length) return res.status(400).json({ error: 'ids не указаны' });
+    const cities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
+    const now = Date.now();
+    res.json({ staleDays: FRESHNESS_STALE_DAYS, items: ids.map((id) => freshnessOf(id, { cities, now })) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'не удалось проверить свежесть данных', details: err.message });
+  }
+});
+app.post('/api/freshness/refresh', async (req, res) => {
+  try {
+    if (!manualCatalogSet) manualCatalogSet = new Set(buildJugCatalog());
+    const ids = [...new Set((Array.isArray(req.body?.ids) ? req.body.ids : []).filter((id) => typeof id === 'string'))].slice(0, 60);
+    const known = ids.filter((id) => manualCatalogSet.has(id));
+    if (!known.length) return res.status(400).json({ error: 'нет ни одного известного id' });
+    const cities = Array.isArray(req.body?.cities) && req.body.cities.length ? req.body.cities : Object.values(CITY_DISPLAY);
+    const locations = cities.map((c) => c.replace(/\s+/g, ''));
+    const now = Date.now();
+    const [priceRows, historySeries] = await Promise.all([
+      marketPrices('aodp', known, ALL_QUALITIES),
+      marketHistory('aodp', known, FRESHNESS_HISTORY_HOURS, ALL_QUALITIES.join(','), locations),
+    ]);
+    upsertPriceSnapshots(jugDb, priceRows, now);
+    upsertHistoryBatch(jugDb, historySeries, now);
+    res.json({ staleDays: FRESHNESS_STALE_DAYS, items: known.map((id) => freshnessOf(id, { cities, now: Date.now() })) });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: 'не удалось обновить данные с AODP', details: err.message });
+  }
+});
 
 // --- План трат фракционных очков: позиции фракционных плащей (T4–T8), цены, себестоимость и продажа; расчёт плана — на клиенте (реактивно) ---
 // В списке — комбинации (тир × зачарование × качество), по которым есть данные продаж, плюс добавленные пользователем (extra=тир:чарка:качество,…).

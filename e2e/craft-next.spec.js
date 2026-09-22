@@ -262,6 +262,60 @@ test('док крафт-листа на широком экране стоит �
 });
 
 
+// ---------- свежесть данных ----------
+async function mockFreshness(page, { staleIds = [], freshIds = [] } = {}) {
+  const state = new Map();
+  for (const id of staleIds) state.set(id, { id, priceAgeMinutes: 6 * 1440, historyAgeDays: null, stale: true });
+  for (const id of freshIds) state.set(id, { id, priceAgeMinutes: 20, historyAgeDays: 0.1, stale: false });
+  const log = { get: [], refresh: [] };
+  await page.route('**/api/freshness?*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    log.get.push(q);
+    const ids = q.get('ids').split(',');
+    route.fulfill({ json: { staleDays: 3, items: ids.map((id) => state.get(id) || { id, priceAgeMinutes: null, historyAgeDays: null, stale: true }) } });
+  });
+  await page.route('**/api/freshness/refresh', (route) => {
+    const body = route.request().postDataJSON();
+    log.refresh.push(body.ids);
+    const items = body.ids.map((id) => { const fresh = { id, priceAgeMinutes: 5, historyAgeDays: 0.05, stale: false }; state.set(id, fresh); return fresh; });
+    route.fulfill({ json: { staleDays: 3, items } });
+  });
+  return log;
+}
+
+test('свежесть данных: кнопка в крафт-листе открывает окно, показывает только устаревшее/без данных, «Обновить» и «Обновить всё» чинят позиции', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  const fresh = await mockFreshness(page, { staleIds: ['T4_CLOTH', 'T4_RUNE', 'T4_2H_BOW'], freshIds: ['T4_CAPE'] });
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('#freshness-dialog')).toBeVisible();
+  expect(fresh.get[0].get('ids').split(',').sort()).toEqual(['T4_2H_BOW', 'T4_CAPE', 'T4_CLOTH', 'T4_RUNE'].sort());
+  const rows = page.locator('.fresh-row');
+  await expect(rows).toHaveCount(3);                                                  // только устаревшие/без данных — не все 4
+  await expect(page.locator('#freshness-dialog')).toContainText('Изысканная ткань');   // названия — из d.names, не голый id
+  await expect(page.locator('#freshness-refresh-all')).toContainText('Обновить всё (3)');
+  await rows.filter({ hasText: 'Изысканная ткань' }).getByRole('button', { name: 'Обновить' }).click();
+  await expect(rows).toHaveCount(2);
+  expect(fresh.refresh[0]).toEqual(['T4_CLOTH']);
+  await expect(page.locator('#freshness-refresh-all')).toContainText('Обновить всё (2)');
+  await page.locator('#freshness-refresh-all').click();
+  await expect(page.locator('#freshness-dialog')).toContainText('Всё свежее — обновлять нечего.');
+  await page.locator('#freshness-dialog').getByRole('button', { name: 'Закрыть' }).click();
+  await expect(page.locator('#freshness-dialog')).toHaveCount(0);
+});
+
+test('свежесть данных: кнопка есть и в стеке калькулятора; клик по подложке закрывает окно', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
+  await mockFreshness(page, { staleIds: ['T4_CLOTH'] });
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('#freshness-dialog')).toBeVisible();
+  await page.locator('.modal-scrim').click({ position: { x: 5, y: 5 } });
+  await expect(page.locator('#freshness-dialog')).toHaveCount(0);
+});
+
 // ---------- перенесённое из старой страницы: свои цены, лог закупок, план продажи, потолок/полоса/порог, телепорт, «Своё…», выбор по категориям ----------
 async function openCalc(page, log) {
   await mock(page, log);

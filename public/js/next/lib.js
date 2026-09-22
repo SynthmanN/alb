@@ -149,7 +149,7 @@ export async function apiGet(path, params, { ttl = 0 } = {}) {
 export async function apiPost(path, body) {
   await takeSlot();
   const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (path.includes('manual-price')) clearApiCache();                    // вписанная цена меняет расчёты — кэш недействителен
+  if (path.includes('manual-price') || path.includes('freshness/refresh')) clearApiCache();   // цена изменилась — кэш расчётов недействителен
   return res.json().catch(() => ({}));
 }
 

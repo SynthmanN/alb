@@ -62,6 +62,7 @@ export const ICONS = {
   chevron: '<path d="M9 6l6 6-6 6"/>',
   arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   list: '<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16m0 5v-5h5"/>',
 };
 export const Spinner = () => html`<span class="spin" aria-hidden="true"></span>`;
 
