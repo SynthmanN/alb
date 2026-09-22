@@ -1,5 +1,6 @@
 // Общие компоненты: метки предмета (тир, зачарование, качество), значок предмета, города, переключатели, уведомления.
 import { html, createStore, useStore, useState, QN, CITY_CLS, iconUrl, fmt, fmtDays } from './lib.js';
+import { splitMaterialId, materialTitle } from './logic/material.js';
 
 export const toastStore = createStore({ msg: '', id: 0 });
 let toastTimer = null;
@@ -28,6 +29,14 @@ export function Glyph({ id, tier, enchant = 0, quality = 1, size = 64 }) {
   return html`<span class=${`glyph t${tier || 4} ${broken ? '' : 'hasimg'}`}>
     ${broken ? `T${tier}` : html`<img src=${iconUrl(id, size, enchant, quality)} alt="" loading="lazy" onError=${() => setBroken(true)} />`}
   </span>`;
+}
+
+// Материал закупки: значок из игры, название (клик копирует его для поиска на аукционе) и цветные метки тира и зачарования
+export function MaterialName({ id, name, onCopy }) {
+  const { base, tier, enchant } = splitMaterialId(id, name);
+  return html`<div class="item mat"><${Glyph} id=${base} tier=${tier} enchant=${enchant} size=${48} />
+    <div><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${onCopy}>${materialTitle(name)}</button>
+      <div style="margin-top:3px"><${Tags} tier=${tier} enchant=${enchant} /></div></div></div>`;
 }
 
 export function CityPill({ name }) {

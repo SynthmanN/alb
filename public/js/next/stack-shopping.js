@@ -6,7 +6,7 @@ import { drawerStore } from './nav.js';
 import { prices, setCityOwn } from './prices.js';
 import { CityPriceList } from './citylist.js';
 import { OwnPrice } from './calc-buy.js';
-import { CityPill, toast } from './ui.js';
+import { CityPill, MaterialName, toast } from './ui.js';
 import { acquisitionRows, mergeRows, withOverride } from './logic/acquire.js';
 import { makeOverride } from './logic/adjust.js';
 import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
@@ -30,7 +30,7 @@ export function StackShopping({ data }) {
       const unit = base.needed > 0 && base.sum ? base.sum / base.needed : null;                    // рыночная цена за штуку — серая подсказка в поле своей цены
       return html`<div class=${`shop ${checks[r.id] ? 'done' : ''}`} key=${r.id} data-res=${r.key}>
         <div class="shop-l"><input type="checkbox" class="ck" checked=${!!checks[r.id]} onChange=${(e) => drawerStore.set({ checks: { ...checks, [r.id]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
-          <div class="shop-body"><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copy(r)}>${r.name}</button>${r.manual ? html` <small class="is-manual-note">своя цена</small>` : null}
+          <div class="shop-body"><${MaterialName} id=${r.id} name=${r.name} onCopy=${() => copy(r)} />${r.manual ? html` <small class="is-manual-note">своя цена</small>` : null}
             <span class="shop-c">${r.cities.length ? r.cities.map((c) => html`<span key=${c.city}><${CityPill} name=${c.city} /> <small class="muted">${fmt(c.qty)} шт по ${fmt(c.price, c.price < 100 ? 1 : 0)}</small></span>`) : html`<span class="pill w">нет цены на рынке — впиши свою</span>`}${r.missing && r.cities.length ? html`<span class="pill w" title="У части позиций нет цены на рынке — впиши свою, и она закроет все позиции">у части позиций нет цены</span>` : null}</span>
             <div class="shop-own"><span class="muted">Своя цена за шт</span> <${OwnPrice} resKey=${r.key} market=${unit} needed=${r.needed} scope="stack" /></div>
             <${CityPriceList} resKey=${r.key} list=${lists[r.key] || []} own=${pr.cityOwn[r.key]} fee=${fee} onSet=${(city, v) => setCityOwn(r.key, city, v)} />

@@ -5,7 +5,7 @@ import { settings } from './settings.js';
 import { calcStore, resetOwn } from './calc-store.js';
 import { prices, setOwn, setCityOwn, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
 import { CityPriceList } from './citylist.js';
-import { CityPill, Tags, toast } from './ui.js';
+import { CityPill, Tags, MaterialName, toast } from './ui.js';
 import { acquisitionRows, withOverride } from './logic/acquire.js';
 import { lotsAverage } from './logic/manual.js';
 
@@ -84,8 +84,8 @@ function RecipeTable({ d, lists, invalidate }) {
       const missing = r.cheapestPrice === null;
       const days = acquireDaysFor(d, r);
       return html`<tr key=${r.resource + (r.enchStep || '')}>
-        <td><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copyName(nameOf(d, id))}>${nameOf(d, id)}</button>
-          ${r.enchanted ? html` <span class="tag e">зачар. ${d.enchant}</span>` : null}${r.enchStep ? html` <span class="tag e">.${r.enchStep - 1} → .${r.enchStep}</span>` : null}
+        <td><${MaterialName} id=${id} name=${nameOf(d, id)} onCopy=${() => copyName(nameOf(d, id))} />
+          ${r.enchStep ? html` <span class="tag e">.${r.enchStep - 1} → .${r.enchStep}</span>` : null}
           ${r.returnable === false && !r.enchStep ? html` <span class="no-return" title="Этот материал при крафте не возвращается — возврат на него не действует">без возврата</span>` : null}</td>
         <td>${fmt(r.needed)}${r.byRecipe !== undefined && r.byRecipe !== r.needed ? html`<br /><small>по рецепту ${fmt(r.byRecipe)}</small>` : null}</td>
         <td>${missing ? html`<span class="pill w">нет цены</span> <${MissingServerPrice} id=${id} label=${nameOf(d, id)} onSaved=${invalidate} />`
@@ -107,8 +107,8 @@ function PlanTable({ d, c, override }) {
   return html`<div class="card" style="margin-top:14px"><div class="tw"><table id="buy-table">
     <thead><tr><th>Что покупаем</th><th>Нужно</th><th>Где и по чём</th><th>Цена / шт</th><th>Своя цена</th><th>Сумма</th><th>Дней</th></tr></thead>
     <tbody>${view.map(({ r, own }) => html`<tr key=${r.key + r.why} class=${c.checks[r.key] ? 'done' : ''}>
-      <td><input type="checkbox" class="ck" checked=${!!c.checks[r.key]} onChange=${(e) => calcStore.set({ checks: { ...c.checks, [r.key]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
-        <button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${() => copyName(r.name)}>${r.name}</button>
+      <td><div class="matrow"><input type="checkbox" class="ck" checked=${!!c.checks[r.key]} onChange=${(e) => calcStore.set({ checks: { ...c.checks, [r.key]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
+        <${MaterialName} id=${r.id} name=${r.name} onCopy=${() => copyName(r.name)} /></div>
         ${r.why ? html`<div class="muted" style="font-size:12.5px;margin-left:28px">${r.why}</div>` : null}</td>
       <td>${fmt(r.needed)}</td>
       <td class="plan-cities">${r.cities.length ? r.cities.map((x) => html`<div key=${x.city}><${CityPill} name=${x.city} /> <span class="muted">${fmt(x.qty)} шт по ${fmt(x.price, x.price < 100 ? 1 : 0)}</span></div>`) : html`<span class="pill w">нет данных</span>`}</td>

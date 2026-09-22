@@ -705,3 +705,20 @@ test('города вне расчёта (Caerleon и Brecilien по умолч�
   await row.locator('.plan-toggle').check();
   await expect(row.locator('.plan-qty')).not.toHaveValue('0');
 });
+
+test('закупка материалов: у материала значок и цветные метки тира — в таблице рецепта, плане закупки и сводной закупке стека', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  const recipe = page.locator('#craft-recipe-table tr', { hasText: 'Изысканная ткань' });
+  await expect(recipe.locator('.glyph')).toBeVisible();
+  await expect(recipe.locator('.tag.t4')).toHaveText('T4');
+  await expect(recipe.locator('.namebtn')).toHaveText('Изысканная ткань');                                    // тир — меткой, а не текстом названия
+  const plan = page.locator('#buy-table tr', { hasText: 'Изысканная ткань' });
+  await expect(plan.locator('.glyph')).toBeVisible();
+  await expect(plan.locator('.tag.t4')).toHaveText('T4');
+  await page.locator('#calc-add').click();
+  await page.locator('#open-list').click();
+  const shop = page.locator('#shopping .shop', { hasText: 'Изысканная ткань' });
+  await expect(shop.locator('.glyph')).toBeVisible();
+  await expect(shop.locator('.tag.t4')).toHaveText('T4');
+});

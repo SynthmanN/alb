@@ -3,7 +3,7 @@
   --bg: #f3f1ec; --surface: #ffffff; --surface-2: #f7f5f0; --line: #ddd8cc; --line-2: #ece8dd;
   --text: #1d232b; --muted: #667281; --accent: #a86f0c; --accent-ink: #ffffff;
   --good: #2f7d5b; --bad: #b5544a; --warn: #8a6a12;
-  --t2: #6b7677; --t3: #5f7d8a; --t4: #2f6fa8; --t5: #b24a3c; --t6: #b56a1e; --t7: #8f7a12; --t8: #566070;
+  --t1: #7d8586; --t2: #6b7677; --t3: #5f7d8a; --t4: #2f6fa8; --t5: #b24a3c; --t6: #b56a1e; --t7: #8f7a12; --t8: #566070;
   --e1: #2c8a4e; --e2: #2b6fb5; --e3: #7c48b8; --e4: #98720f;
   --q1: #6b7677; --q2: #2c8a4e; --q3: #2b6fb5; --q4: #7c48b8; --q5: #98720f;
   --shadow: 0 14px 44px rgba(20, 24, 30, .16);
@@ -14,7 +14,7 @@
     --bg: #0e1216; --surface: #151a20; --surface-2: #1a2027; --line: #29313b; --line-2: #202730;
     --text: #e6eaef; --muted: #8e9aa8; --accent: #e0ad4c; --accent-ink: #1a1305;
     --good: #86cfa8; --bad: #e4958b; --warn: #d9bd5c;
-    --t2: #a4aeb0; --t3: #93b3c4; --t4: #7fb2e0; --t5: #e58e80; --t6: #e7a55f; --t7: #dfca66; --t8: #d7dde8;
+    --t1: #8f999b; --t2: #a4aeb0; --t3: #93b3c4; --t4: #7fb2e0; --t5: #e58e80; --t6: #e7a55f; --t7: #dfca66; --t8: #d7dde8;
     --e1: #7fcf9a; --e2: #7fb2e8; --e3: #b98be8; --e4: #e3bd5c;
     --q1: #a4aeb0; --q2: #82cf9c; --q3: #7fb2e8; --q4: #b98be8; --q5: #e3bd5c;
     --shadow: 0 14px 44px rgba(0, 0, 0, .55);
@@ -24,7 +24,7 @@
   --bg: #0e1216; --surface: #151a20; --surface-2: #1a2027; --line: #29313b; --line-2: #202730;
   --text: #e6eaef; --muted: #8e9aa8; --accent: #e0ad4c; --accent-ink: #1a1305;
   --good: #86cfa8; --bad: #e4958b; --warn: #d9bd5c;
-  --t2: #a4aeb0; --t3: #93b3c4; --t4: #7fb2e0; --t5: #e58e80; --t6: #e7a55f; --t7: #dfca66; --t8: #d7dde8;
+  --t1: #8f999b; --t2: #a4aeb0; --t3: #93b3c4; --t4: #7fb2e0; --t5: #e58e80; --t6: #e7a55f; --t7: #dfca66; --t8: #d7dde8;
   --e1: #7fcf9a; --e2: #7fb2e8; --e3: #b98be8; --e4: #e3bd5c;
   --q1: #a4aeb0; --q2: #82cf9c; --q3: #7fb2e8; --q4: #b98be8; --q5: #e3bd5c;
   --shadow: 0 14px 44px rgba(0, 0, 0, .55);
@@ -42,13 +42,13 @@ svg.i { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-widt
 
 /* атрибуты предмета: тир, зачарование, качество — всегда цветные и читаемые */
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 7px; font-size: 12.5px; font-weight: 600; line-height: 1.55; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); white-space: nowrap; }
-.tag.t2 { --c: var(--t2); } .tag.t3 { --c: var(--t3); } .tag.t4 { --c: var(--t4); } .tag.t5 { --c: var(--t5); } .tag.t6 { --c: var(--t6); } .tag.t7 { --c: var(--t7); } .tag.t8 { --c: var(--t8); }
+.tag.t1 { --c: var(--t1); } .tag.t2 { --c: var(--t2); } .tag.t3 { --c: var(--t3); } .tag.t4 { --c: var(--t4); } .tag.t5 { --c: var(--t5); } .tag.t6 { --c: var(--t6); } .tag.t7 { --c: var(--t7); } .tag.t8 { --c: var(--t8); }
 .tag.e1 { --c: var(--e1); } .tag.e2 { --c: var(--e2); } .tag.e3 { --c: var(--e3); } .tag.e4 { --c: var(--e4); }
 .tag.q1 { --c: var(--q1); } .tag.q2 { --c: var(--q2); } .tag.q3 { --c: var(--q3); } .tag.q4 { --c: var(--q4); } .tag.q5 { --c: var(--q5); }
 .tag.e::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
 .tags { display: inline-flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .glyph { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface-2)); border: 1.5px solid color-mix(in srgb, var(--c) 45%, transparent); flex: none; }
-.glyph.t4 { --c: var(--t4); } .glyph.t5 { --c: var(--t5); } .glyph.t6 { --c: var(--t6); } .glyph.t7 { --c: var(--t7); } .glyph.t8 { --c: var(--t8); }
+.glyph.t1 { --c: var(--t1); } .glyph.t2 { --c: var(--t2); } .glyph.t3 { --c: var(--t3); } .glyph.t4 { --c: var(--t4); } .glyph.t5 { --c: var(--t5); } .glyph.t6 { --c: var(--t6); } .glyph.t7 { --c: var(--t7); } .glyph.t8 { --c: var(--t8); }
 
 /* верх */
 .top { display: flex; align-items: center; gap: 18px; padding: 12px 24px; flex-wrap: wrap; }
@@ -490,3 +490,10 @@ details.cityprices > summary:hover { color: var(--text); }
 /* города вне расчёта: данные видны, но приглушены и в выбор не входят */
 .cp-off { display: inline-block; margin-left: 6px; font-size: 11px; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
 .cp-row.is-inactive .cp-price { opacity: .6; }
+
+/* материалы закупки: значок и метки тира и зачарования */
+.item.mat { gap: 9px; }
+.item.mat .glyph { width: 36px; height: 36px; border-radius: 10px; flex: none; }
+.item.mat .namebtn { text-align: left; }
+.matrow { display: flex; align-items: center; gap: 10px; }
+.shop-body > .item.mat { margin-bottom: 6px; }
