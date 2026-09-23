@@ -158,7 +158,7 @@ export function FreshnessDialog() {
   if (!s.open) return null;
   const anyStale = s.items.filter((x) => x.stale);
   const groups = s.loading || s.error ? [] : byCityGroups(s);
-  return html`<div class="scrim modal-scrim" onClick=${closeFreshness}>
+  return html`<div class="scrim modal-scrim fresh-scrim" onClick=${closeFreshness}>
     <aside class="modal modal-wide" id="freshness-dialog" role="dialog" aria-label="Свежесть данных" onClick=${(e) => e.stopPropagation()}>
       <header><h3>Свежесть данных</h3><button class="btn sm" type="button" onClick=${closeFreshness}>Закрыть</button></header>
       <div class="fresh-toggles">${ALL_CITIES.map((city) => html`<button key=${city} type="button" class=${`city ${CITY_CLS[city] || ''} ${s.enabledCities.includes(city) ? '' : 'off'}`} aria-pressed=${String(s.enabledCities.includes(city))} title=${s.enabledCities.includes(city) ? 'Проверять этот город' : 'Не проверять этот город'} onClick=${() => toggleCity(city)}>${city}</button>`)}</div>
