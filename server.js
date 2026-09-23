@@ -2761,74 +2761,68 @@ function addManualPriceRecords(records, ids, cities, quality = 1, now = Date.now
   return out;
 }
 
-// --- Свежесть данных: для позиций в крафт-листе/стеке калькулятора — что устарело или совсем без цены, и кнопка «обновить сейчас» ---
-// Идея: AODP знает не про всё (авантюрный гир, гербы фракций, редко торгуемые полуфабрикаты), а то, что знает — иногда устарело.
-// Вместо того чтобы гадать по цене, вписанной вручную, можно пойти в игру, открыть эти предметы на рынке (клиент AODP их считает)
-// и вернуться сюда за настоящими свежими данными — краулер их не соберёт сам раньше своего часа. Возраст = самый свежий из трёх
-// сигналов (цена, сделка ИЛИ вписанная вручную цена) — если он не найден или старше порога (по умолчанию 3 дня, можно вписать
-// своё — от часа до 30 дней, как «История гира»/«История сырья» в панели параметров), позиция считается устаревшей.
-const FRESHNESS_STALE_DAYS_DEFAULT = 3;
+// --- Свежесть данных: для позиций в крафт-листе/стеке калькулятора — где у калькулятора совсем нет данных, и кнопка «обновить
+// сейчас» ---
+// Идея: AODP знает не про всё (авантюрный гир, гербы фракций, редко торгуемые полуфабрикаты) — вместо того чтобы гадать по
+// цене, вписанной вручную, можно пойти в игру, открыть эти предметы на рынке (клиент AODP их считает) и вернуться сюда за
+// настоящими данными — краулер их не соберёт сам раньше своего часа. Порога «устарело» нет: сканированием чинится только
+// ОТСУТСТВИЕ данных, а не их возраст (сделку задним числом не создать) — поэтому список показывает буквально то, для чего
+// калькулятору нечем считать: те же материалы и того же предмета, теми же окнами «История сырья»/«История гира», что сейчас
+// стоят в панели параметров.
 const FRESHNESS_HISTORY_HOURS = 72;                // окно «Обновить»: свежие сделки, а не вся 10-дневная история заново
-function parseFreshnessStaleDays(req) {
-  const v = parseFloat(req.query.staleDays ?? req.body?.staleDays);
-  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1 / 24), 30) : FRESHNESS_STALE_DAYS_DEFAULT;
+function parseFreshnessMaterialHours(req) {
+  const v = parseFloat(req.query.materialHours ?? req.body?.materialHours);
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), HISTORY_WINDOW_HOURS) : MATERIAL_HOURS_DEFAULT;
+}
+function parseFreshnessDays(req) {
+  const v = parseFloat(req.query.days ?? req.body?.days);
+  return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1 / 24), 30) : 7;
 }
 const parseQuality = (v) => { const q = parseInt(v, 10); return Number.isInteger(q) && q >= 1 && q <= 5 ? q : 1; };
-// Возраст по городам отдельно (не «лучший из всех») — чтобы окно могло сказать «в Мартлоке устарело, в Лаймхерсте свежо»:
-// пользователь идёт в игру именно в тот город, где реально нужно открыть рынок, а не гадает. Качество — то самое, что выбрано
-// у предмета в крафт-листе/плане (материалы — всегда 1, как и everywhere в проекте): без этого фильтра, например, свежая цена
-// Обычного качества маскировала бы то, что по нужному Отличному в этом городе давно нет данных.
-function freshnessOf(id, { cities, now, staleDays, quality = 1 }) {
-  const prices = readPrices(jugDb, [id], { cities, qualities: [quality] });
-  const priceAgeByCity = new Map();
-  for (const r of prices) for (const d of [r.sell_price_min_date, r.buy_price_max_date]) {
-    const age = quoteAgeMinutes(d, now);
-    if (age === null) continue;
-    const prev = priceAgeByCity.get(r.city);
-    if (prev === undefined || age < prev) priceAgeByCity.set(r.city, age);
-  }
+// Города, где у материала (сырьё, полуфабрикат, компонент переработки/крафта, герб, сердце, руна) есть хоть что-то, чем
+// калькулятор мог бы посчитать себестоимость — ровно то же правило, что materialPriceQuotes: сделка за «Историю сырья»
+// ИЛИ любая котировка когда-либо (снапшот не протухает сам по себе — калькулятор возьмёт даже старый, лишь бы был).
+function materialCitiesWithData(id, { cities, materialHours, now }) {
   const locations = cities.map((c) => c.replace(/\s+/g, ''));
-  const history = readHistory(jugDb, [id], HISTORY_WINDOW_HOURS, { locations, qualities: [quality], now });
-  const historyAgeByLoc = new Map();
-  for (const s of history) for (const p of s.data) {
-    if (p.item_count <= 0) continue;
-    const age = quoteAgeMinutes(`${p.timestamp}`, now) / 1440;
-    const prev = historyAgeByLoc.get(s.location);
-    if (prev === undefined || age < prev) historyAgeByLoc.set(s.location, age);
-  }
-  // Вписанная вручную цена (для игры с телефона, без клиента AODP) — общая на все города, как и везде в проекте
-  // (addManualPriceRecords): считается таким же полноценным сигналом свежести, пока не протухла сама (10 дней).
+  const history = readHistory(jugDb, [id], materialHours, { locations, qualities: [1], now });
+  const snapshot = readPrices(jugDb, [id], { cities, qualities: [1] }).filter((r) => r.sell_price_min).map((r) => ({ city: r.city, price: r.sell_price_min }));
+  return new Set(materialPriceQuotes(history, id, materialHours, cities, snapshot).map((q) => normLocation(q.city)));
+}
+// Города, где у самого предмета есть сделка за «Историю гира» этого качества — то самое, что решает «нет данных» в
+// patientSell.byCity (План продажи калькулятора): без сделки в окне терпеливая продажа там взять нечего, ценник (для
+// мгновенной продажи) тут не считается — задача окна свежести не спутать «есть ценник» с «есть чем продать терпеливо».
+function selfCitiesWithData(id, { cities, days, quality, now }) {
+  const locations = cities.map((c) => c.replace(/\s+/g, ''));
+  const history = readHistory(jugDb, [id], days * 24, { locations, qualities: [quality], now });
+  return new Set(Object.keys(cityStats(history, id, days, quality)).map(normLocation));
+}
+// kind: 'self' — сам предмет (окно «История гира»), 'material' — всё остальное (окно «История сырья»). Вписанная вручную
+// цена — третий, самый простой способ дать калькулятору данные: она общая на все города разом (как и везде в проекте).
+function freshnessOf(id, { cities, now, quality = 1, kind, materialHours, days }) {
+  const withData = kind === 'self' ? selfCitiesWithData(id, { cities, days, quality, now }) : materialCitiesWithData(id, { cities, materialHours, now });
   const manualRow = getManualPrices(jugDb, [id], now)[`${id}|${quality}`];
-  const manualAgeDays = manualRow ? (now - manualRow.enteredAt) / 86400000 : null;
-  // Цена и сделка — РАЗНЫЕ данные для расчёта (мгновенная продажа/покупка берёт цену, терпеливая продажа и себестоимость
-  // материалов — среднюю по сделкам), поэтому свежей должна быть КАЖДАЯ из них по отдельности, а не любая одна из двух:
-  // свежая цена не должна маскировать то, что сделок для честной средней давно не было (и наоборот). Раньше бралась лучшая —
-  // окно молчало про город, где висел свежий ценник, хотя терпеливая продажа там честно показывала «нет данных» (сделок не было).
-  // Вписанная вручную цена — исключение: раз пользователь сам подтвердил цифру, этого достаточно само по себе.
   const byCity = {};
-  for (const city of cities) {
-    const priceAgeMinutes = priceAgeByCity.has(city) ? priceAgeByCity.get(city) : null;
-    const historyAgeDays = historyAgeByLoc.has(city.replace(/\s+/g, '')) ? historyAgeByLoc.get(city.replace(/\s+/g, '')) : null;
-    const priceOk = priceAgeMinutes !== null && priceAgeMinutes / 1440 <= staleDays;
-    const historyOk = historyAgeDays !== null && historyAgeDays <= staleDays;
-    const manualOk = manualAgeDays !== null && manualAgeDays <= staleDays;
-    byCity[city] = { priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !manualOk && !(priceOk && historyOk) };
-  }
-  const manual = manualRow ? { price: manualRow.price, ageDays: Math.round(manualAgeDays * 10) / 10 } : null;
-  return { id, quality, stale: Object.values(byCity).some((c) => c.stale), byCity, manual };
+  for (const city of cities) byCity[city] = { stale: !manualRow && !withData.has(normLocation(city)) };
+  return { id, quality, stale: Object.values(byCity).some((c) => c.stale), byCity, manual: manualRow ? { price: manualRow.price } : null };
 }
 app.get('/api/freshness', (req, res) => {
   try {
     const rawIds = String(req.query.ids || '').split(',').map((s) => s.trim()).filter(Boolean);
     const rawQualities = String(req.query.qualities || '').split(',');
+    const rawKinds = String(req.query.kinds || '').split(',');
     if (!rawIds.length) return res.status(400).json({ error: 'ids не указаны' });
     const qualityOf = new Map();
-    rawIds.forEach((id, i) => { if (!qualityOf.has(id)) qualityOf.set(id, parseQuality(rawQualities[i])); });
+    const kindOf = new Map();
+    rawIds.forEach((id, i) => {
+      if (!qualityOf.has(id)) qualityOf.set(id, parseQuality(rawQualities[i]));
+      if (!kindOf.has(id)) kindOf.set(id, rawKinds[i] === 'self' ? 'self' : 'material');
+    });
     const ids = [...new Set(rawIds)].slice(0, 300);
     const cities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
-    const staleDays = parseFreshnessStaleDays(req);
+    const materialHours = parseFreshnessMaterialHours(req);
+    const days = parseFreshnessDays(req);
     const now = Date.now();
-    res.json({ staleDays, cities, items: ids.map((id) => freshnessOf(id, { cities, now, staleDays, quality: qualityOf.get(id) })) });
+    res.json({ cities, items: ids.map((id) => freshnessOf(id, { cities, now, quality: qualityOf.get(id), kind: kindOf.get(id), materialHours, days })) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'не удалось проверить свежесть данных', details: err.message });
@@ -2841,9 +2835,11 @@ app.post('/api/freshness/refresh', async (req, res) => {
     const known = ids.filter((id) => manualCatalogSet.has(id));
     if (!known.length) return res.status(400).json({ error: 'нет ни одного известного id' });
     const qualities = req.body?.qualities && typeof req.body.qualities === 'object' ? req.body.qualities : {};
+    const kinds = req.body?.kinds && typeof req.body.kinds === 'object' ? req.body.kinds : {};
     const cities = Array.isArray(req.body?.cities) && req.body.cities.length ? req.body.cities : Object.values(CITY_DISPLAY);
     const locations = cities.map((c) => c.replace(/\s+/g, ''));
-    const staleDays = parseFreshnessStaleDays(req);
+    const materialHours = parseFreshnessMaterialHours(req);
+    const days = parseFreshnessDays(req);
     const now = Date.now();
     const [priceRows, historySeries] = await Promise.all([
       marketPrices('aodp', known, ALL_QUALITIES),
@@ -2851,7 +2847,7 @@ app.post('/api/freshness/refresh', async (req, res) => {
     ]);
     upsertPriceSnapshots(jugDb, priceRows, now);
     upsertHistoryBatch(jugDb, historySeries, now);
-    res.json({ staleDays, cities, items: known.map((id) => freshnessOf(id, { cities, now: Date.now(), staleDays, quality: parseQuality(qualities[id]) })) });
+    res.json({ cities, items: known.map((id) => freshnessOf(id, { cities, now: Date.now(), quality: parseQuality(qualities[id]), kind: kinds[id] === 'self' ? 'self' : 'material', materialHours, days })) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось обновить данные с AODP', details: err.message });

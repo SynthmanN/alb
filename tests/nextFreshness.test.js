@@ -55,19 +55,19 @@ describe('collectIds', () => {
     expect([...collectIds({ error: 'oops' }).keys()]).toEqual([]);
   });
 
-  it('название берётся из d.names, иначе — из resourceName, иначе id остаётся как название; материалы — качество 1', () => {
+  it('название берётся из d.names, иначе — из resourceName, иначе id остаётся как название; материалы — качество 1, kind material', () => {
     const d = { itemId: 'T4_RUNE', finishedQueryId: 'T4_RUNE', names: { T4_RUNE: 'Руна (знаток)' }, recipe: [{ resource: 'T4_CLOTH', queryId: 'T4_CLOTH', materialSource: 'buy', resourceName: 'Ткань' }, { resource: 'T4_X', queryId: 'T4_X', materialSource: 'buy' }] };
     const m = collectIds(d);
-    expect(m.get('T4_RUNE')).toEqual({ name: 'Руна (знаток)', quality: 1 });
-    expect(m.get('T4_CLOTH')).toEqual({ name: 'Ткань', quality: 1 });
-    expect(m.get('T4_X')).toEqual({ name: 'T4_X', quality: 1 });
+    expect(m.get('T4_RUNE')).toEqual({ name: 'Руна (знаток)', quality: 1, kind: 'self' });   // T4_RUNE тут — сам предмет расчёта (finishedQueryId)
+    expect(m.get('T4_CLOTH')).toEqual({ name: 'Ткань', quality: 1, kind: 'material' });
+    expect(m.get('T4_X')).toEqual({ name: 'T4_X', quality: 1, kind: 'material' });
   });
 
-  it('качество самого предмета берётся из d.quality (материалы этого не касается)', () => {
+  it('качество и kind самого предмета — из d.quality/self, материалы — quality 1/material', () => {
     const d = { itemId: 'T4_HEAD_LEATHER_SET3', finishedQueryId: 'T4_HEAD_LEATHER_SET3@3', quality: 4, recipe: [{ resource: 'T4_LEATHER', queryId: 'T4_LEATHER', materialSource: 'buy' }] };
     const m = collectIds(d);
-    expect(m.get('T4_HEAD_LEATHER_SET3@3').quality).toBe(4);
-    expect(m.get('T4_LEATHER').quality).toBe(1);
+    expect(m.get('T4_HEAD_LEATHER_SET3@3')).toMatchObject({ quality: 4, kind: 'self' });
+    expect(m.get('T4_LEATHER')).toMatchObject({ quality: 1, kind: 'material' });
   });
 
   it('без d.names сам предмет остаётся под голым id (нечем подписать) — selfLabel(d) даёт имя по d.itemId', () => {
@@ -113,11 +113,11 @@ describe('collectFactionIds', () => {
     expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP').name).toBe('Герб города Lymhurst (мастер)');
   });
 
-  it('без finishedLabel сам плащ остаётся под голым id (нечем подписать) — с finishedLabel(r) берёт имя и качество по r.itemId/r.quality', () => {
+  it('без finishedLabel сам плащ остаётся под голым id (нечем подписать) — с finishedLabel(r) берёт имя и качество по r.itemId/r.quality; kind — self', () => {
     const noLabel = collectFactionIds(planned(row(), 'direct'));
-    expect(noLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toEqual({ name: 'T6_CAPEITEM_FW_LYMHURST@3', quality: 1 });
+    expect(noLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toEqual({ name: 'T6_CAPEITEM_FW_LYMHURST@3', quality: 1, kind: 'self' });
     const withLabel = collectFactionIds(planned(row({ quality: 4 }), 'direct'), undefined, (r) => `Накидка ${r.itemId} для ${r.tier}`);
-    expect(withLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toEqual({ name: 'Накидка T6_CAPEITEM_FW_LYMHURST для 6', quality: 4 });
+    expect(withLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toEqual({ name: 'Накидка T6_CAPEITEM_FW_LYMHURST для 6', quality: 4, kind: 'self' });
   });
 
   it('путь «после крафта»: плащ .0 и все руны — прямой материал не нужен', () => {
@@ -129,7 +129,7 @@ describe('collectFactionIds', () => {
   it('герб или сердце без единой цены (crest/heart null) — id всё равно попадает в список, чтобы его можно было обновить', () => {
     const ids = collectFactionIds(planned(row({ crest: null, heart: null }), 'direct'));
     expect(ids.has('T6_CAPEITEM_FW_LYMHURST_BP')).toBe(true);
-    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP').name).toBe('T6_CAPEITEM_FW_LYMHURST_BP');   // название неизвестно — остаётся id
+    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP')).toMatchObject({ name: 'T6_CAPEITEM_FW_LYMHURST_BP', kind: 'material' });   // название неизвестно — остаётся id
   });
 
   it('несколько позиций плана объединяются без повторов', () => {

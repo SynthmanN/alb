@@ -231,27 +231,32 @@ input[type=checkbox].ck:checked::after { content: ""; width: 4px; height: 8px; b
 .modal .empty { padding: 24px 0; text-align: center; color: var(--muted); }
 .modal-foot { padding: 14px 22px 20px; border-top: 1px solid var(--line-2); }
 .modal-foot .btn { width: 100%; justify-content: center; }
-/* Окно «Свежесть данных»: город → что в нём устарело/без данных — своя карточка на город (сразу все видны, без клика по
-   каждой), в ряд на широком экране; у карточки свой скролл (а не у всего окна), если список длинный — соседние карточки не
-   растягиваются следом и остальные города не уезжают за нижний край. Городов в игре всегда ровно семь — окно достаточно
-   широкое (до 1300px, колонки от 250px), чтобы даже все семь уместились в 1-2 ряда без скролла самого окна на обычном экране.
-   Карточка всё равно узкая (несколько в ряд), поэтому строка позиции в два ряда: имя+теги — своя цена, возраст — «Обновить». */
-.fresh-cities { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-items: start; }
+/* Окно «Свежесть данных»: переключатели городов сверху (какие вообще проверять), город → что в нём совсем нет данных — своя
+   карточка на город (сразу все видны, без клика по каждой), в ряд на широком экране; у карточки свой скролл (а не у всего
+   окна), если список длинный — соседние карточки не растягиваются следом и остальные города не уезжают за нижний край.
+   Городов в игре всегда ровно семь — окно достаточно широкое (до 1300px, колонки от 250px), чтобы даже все семь уместились
+   в 1-2 ряда без скролла самого окна на обычном экране. */
+.fresh-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 22px 0; }
+/* auto-fit, не auto-fill: при малом числе городов auto-fill оставлял бы пустые дорожки грида, а карточки стояли бы на
+   минимальных 250px (в такой узкой карточке кнопка с именем материала вылезает за свою колонку и перекрывает соседнюю —
+   баг, пойманный e2e-тестом с двумя городами) — auto-fit схлопывает пустые дорожки и отдаёт их ширину реальным карточкам. */
+.fresh-cities { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; align-items: start; }
 .fresh-city { border-radius: 14px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2); padding: 10px 12px; }
 .fresh-city-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; padding-bottom: 8px; }
 .fresh-city .fresh-list { max-height: 280px; overflow-y: auto; padding-right: 2px; }
 .fresh-list { display: grid; gap: 2px; }
-/* Второй столбец — фиксированные 92px (не auto): auto считался бы по собственной ширине поля цены, а у input[type=number]
-   она по общему правилу width:100% (next.css:125) — без фиксации тянула бы колонку на себя, сжимая имя до переноса
-   по буквам и вылезая поверх него (сама «своя цена» при этом получает те же 92px через ту же прав set width:100%). */
-.fresh-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px; grid-template-rows: auto auto; gap: 4px 8px; padding: 10px 0; border-top: 1px solid var(--line-2); }
+/* Карточка на город узкая (несколько в ряд) — имя+цена+кнопка в один ряд туда не помещаются (реальные названия
+   длиннее моковых из e2e), поэтому строка в два яруса: имя на всю ширину сверху, цена+кнопка снизу справа. */
+.fresh-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line-2); }
 .fresh-city .fresh-row:first-child { border-top: 1px solid var(--line-2); }
-.fresh-row > .item.mat { grid-column: 1; grid-row: 1; min-width: 0; }
-.fresh-row > .fresh-age { grid-column: 1; grid-row: 2; }
-.fresh-row > .fresh-manual-input { grid-column: 2; grid-row: 1; }
-.fresh-row > .btn { grid-column: 2; grid-row: 2; }
-.fresh-age { font-size: 12.5px; white-space: nowrap; }
-.fresh-manual-input { padding: 4px 8px; border-radius: 9px; font-size: 12.5px; }
+.fresh-row > .item.mat { min-width: 0; }
+/* .item.mat сам по себе flex; без min-width:0 на его текстовом ребёнке (имя+теги) тот при нехватке места не
+   сжимается, а вылезает за пределы узкой карточки — виден только на реальных данных с длинным названием, не в моках e2e. */
+.fresh-row .item.mat > div { min-width: 0; }
+.fresh-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+/* .fresh-manual-input сама по себе (0,1,0) проигрывает специфичности глобального input[type=number] { width:100% }
+   (0,1,1, next.css:125) — второй класс в селекторе поднимает специфичность и фиксирует узкое поле. */
+.fresh-actions .fresh-manual-input { width: 92px; flex: none; padding: 4px 8px; border-radius: 9px; font-size: 12.5px; }
 .fresh-manual-input.is-manual { box-shadow: inset 0 0 0 1.5px var(--accent); }
 @media (max-width: 460px) { .modal-scrim { padding: 10px; align-items: flex-end; } .modal { border-radius: 18px 18px 0 0; max-height: min(80vh, 100%); } .modal.modal-wide { width: 100%; max-height: min(84vh, 100%); } .fresh-cities { grid-template-columns: 1fr; } }
 .totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }

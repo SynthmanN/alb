@@ -187,7 +187,7 @@ test('фракционный план: «Свежесть данных» — т�
   await expect(page.locator('.fresh-row')).toHaveCount(2);
   const plansBefore = log.plan.length;
   await page.locator('#freshness-refresh-all').click();
-  await expect(page.locator('#freshness-dialog')).toContainText('Всё свежее');
+  await expect(page.locator('#freshness-dialog')).toContainText('Данные есть везде');
   await expect.poll(() => log.plan.length).toBeGreaterThan(plansBefore);              // план перезапрошен — старые цифры не повисли
 });
 
@@ -288,57 +288,56 @@ test('док крафт-листа на широком экране стоит �
 
 
 // ---------- свежесть данных ----------
-// ages: id → возраст в днях (одинаковый во всех городах мока) ИЛИ id → { Город: возраст } — свой возраст на город (для теста группировки).
-// По умолчанию мок — один город (Martlock): большинство тестов не про группировку, им незачем городить лишнее.
-async function mockFreshness(page, { staleIds = [], freshIds = [], ages = {}, cities = ['Martlock'] } = {}) {
-  const ageDays = new Map(Object.entries(ages));
-  for (const id of staleIds) ageDays.set(id, 6);
-  for (const id of freshIds) ageDays.set(id, 20 / 1440);
-  const manualPrices = new Map();                                  // id -> { price, ageDays } — как manual_prices на сервере, без города
-  const ageFor = (id, city) => {
-    if (!ageDays.has(id)) return Infinity;
-    const a = ageDays.get(id);
-    return typeof a === 'object' ? (city in a ? a[city] : Infinity) : a;
+// staleIds/freshIds — id, у которых во ВСЕХ проверяемых городах нет/есть данных. byCity — тонкая настройка на конкретный
+// город: { id: { Город: true|false } } (для теста группировки), перекрывает staleIds/freshIds для указанных городов.
+// Id без явной настройки по умолчанию считается «нет данных» — как и раньше. cities — список городов в ответе мока; по
+// умолчанию мок ИГНОРИРУЕТ реально запрошенные городами клиент (тому не нужно городить лишнее для тестов не про группировку
+// и переключатели) — respectRequestedCities: true включает честное поведение (нужно только тесту про сами переключатели).
+async function mockFreshness(page, { staleIds = [], freshIds = [], byCity = {}, cities = ['Martlock'], respectRequestedCities = false } = {}) {
+  const manualPrices = new Map();                                  // id -> { price } — как manual_prices на сервере, без города
+  const staleFor = (id, city) => {
+    if (byCity[id] && city in byCity[id]) return byCity[id][city];
+    if (freshIds.includes(id)) return false;
+    return true;                                                   // staleIds и всё неуказанное — «нет данных»
   };
-  const cityEntry = (age, manualAge, staleDays) => ({ priceAgeMinutes: Number.isFinite(age) ? Math.round(age * 1440) : null, historyAgeDays: null, stale: !(Math.min(age, manualAge) <= staleDays) });
-  const itemFor = (id, staleDays) => {
-    const m = manualPrices.get(id) || null;
-    const manualAge = m ? m.ageDays : Infinity;
-    const byCity = Object.fromEntries(cities.map((city) => [city, cityEntry(ageFor(id, city), manualAge, staleDays)]));
-    return { id, stale: Object.values(byCity).some((c) => c.stale), byCity, manual: m ? { price: m.price, ageDays: m.ageDays } : null };
+  const itemFor = (id, forCities) => {
+    const manual = manualPrices.get(id) || null;
+    const byC = Object.fromEntries(forCities.map((city) => [city, { stale: manual ? false : staleFor(id, city) }]));
+    return { id, stale: Object.values(byC).some((c) => c.stale), byCity: byC, manual };
   };
   const log = { get: [], refresh: [], manual: [] };
   await page.route('**/api/freshness?*', (route) => {
     const q = new URL(route.request().url()).searchParams;
     log.get.push(q);
-    const staleDays = Number(q.get('staleDays')) || 3;
-    route.fulfill({ json: { staleDays, cities, items: q.get('ids').split(',').map((id) => itemFor(id, staleDays)) } });
+    const forCities = respectRequestedCities && q.get('cities') ? q.get('cities').split(',') : cities;
+    route.fulfill({ json: { cities: forCities, items: q.get('ids').split(',').map((id) => itemFor(id, forCities)) } });
   });
   await page.route('**/api/freshness/refresh', (route) => {
     const body = route.request().postDataJSON();
     log.refresh.push(body.ids);
-    for (const id of body.ids) ageDays.set(id, 20 / 1440);          // «обновили» — стало почти только что, во всех городах мока
-    const staleDays = body.staleDays || 3;
-    route.fulfill({ json: { staleDays, cities, items: body.ids.map((id) => itemFor(id, staleDays)) } });
+    const forCities = respectRequestedCities && Array.isArray(body.cities) && body.cities.length ? body.cities : cities;
+    for (const id of body.ids) { byCity[id] = Object.fromEntries(forCities.map((city) => [city, false])); }   // «обновили» — данные появились везде
+    route.fulfill({ json: { cities: forCities, items: body.ids.map((id) => itemFor(id, forCities)) } });
   });
   await page.route('**/api/manual-price', (route) => {
     const body = route.request().postDataJSON();
     log.manual.push(body);
-    if (body.price > 0) manualPrices.set(body.id, { price: body.price, ageDays: 0 }); else manualPrices.delete(body.id);
+    if (body.price > 0) manualPrices.set(body.id, { price: body.price }); else manualPrices.delete(body.id);
     route.fulfill({ json: { ok: true, id: body.id, quality: body.quality, price: body.price } });
   });
   return log;
 }
 
-test('свежесть данных: кнопка в крафт-листе открывает окно, показывает только устаревшее/без данных, «Обновить» и «Обновить всё» чинят позиции', async ({ page }) => {
+test('свежесть данных: кнопка в крафт-листе открывает окно, показывает только то, где нет данных, «Обновить» и «Обновить всё» чинят позиции', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await twoItemsInList(page, log);
   const fresh = await mockFreshness(page, { staleIds: ['T4_CLOTH', 'T4_RUNE', 'T4_2H_BOW'], freshIds: ['T4_CAPE'] });
   await page.locator('#freshness-open').click();
   await expect(page.locator('#freshness-dialog')).toBeVisible();
   expect(fresh.get[0].get('ids').split(',').sort()).toEqual(['T4_2H_BOW', 'T4_CAPE', 'T4_CLOTH', 'T4_RUNE'].sort());
+  expect(fresh.get[0].get('materialHours')).toBe('24');                                // «История сырья» из параметров, по умолчанию
   const rows = page.locator('.fresh-row');
-  await expect(rows).toHaveCount(3);                                                  // только устаревшие/без данных — не все 4
+  await expect(rows).toHaveCount(3);                                                  // только там, где нет данных — не все 4
   await expect(page.locator('#freshness-dialog')).toContainText('Изысканная ткань');   // названия — из d.names, не голый id
   await expect(page.locator('#freshness-refresh-all')).toContainText('Обновить всё (3)');
   await rows.filter({ hasText: 'Изысканная ткань' }).getByRole('button', { name: 'Обновить' }).click();
@@ -346,7 +345,7 @@ test('свежесть данных: кнопка в крафт-листе от�
   expect(fresh.refresh[0]).toEqual(['T4_CLOTH']);
   await expect(page.locator('#freshness-refresh-all')).toContainText('Обновить всё (2)');
   await page.locator('#freshness-refresh-all').click();
-  await expect(page.locator('#freshness-dialog')).toContainText('Всё свежее — обновлять нечего.');
+  await expect(page.locator('#freshness-dialog')).toContainText('Данные есть везде — обновлять нечего.');
   await page.locator('#freshness-dialog').getByRole('button', { name: 'Закрыть' }).click();
   await expect(page.locator('#freshness-dialog')).toHaveCount(0);
 });
@@ -363,40 +362,37 @@ test('свежесть данных: кнопка есть и в стеке ка
   await expect(page.locator('#freshness-dialog')).toHaveCount(0);
 });
 
-test('свежесть данных: порог — пресет и «Своё…» (12ч/2д), меняется сразу без перезагрузки окна, помнит выбор при повторном открытии', async ({ page }) => {
+test('свежесть данных: переключатели городов — выключенный город не запрашивается и не показывается, выбор запоминается', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await twoItemsInList(page, log);
-  // T4_CLOTH — 2 дня назад: по умолчанию (3 дня) свежо, при более коротком пороге — устарело
-  const fresh = await mockFreshness(page, { ages: { T4_CLOTH: 2, T4_RUNE: 20 / 1440, T4_2H_BOW: 20 / 1440, T4_CAPE: 20 / 1440 } });
+  const ALL = ['Fort Sterling', 'Bridgewatch', 'Lymhurst', 'Martlock', 'Thetford', 'Caerleon', 'Brecilien'];
+  const fresh = await mockFreshness(page, { staleIds: ['T4_CLOTH', 'T4_RUNE', 'T4_2H_BOW', 'T4_CAPE'], cities: ALL, respectRequestedCities: true });
   await page.locator('#freshness-open').click();
   await expect(page.locator('#freshness-dialog')).toBeVisible();
-  expect(fresh.get[0].get('staleDays')).toBe('3');
-  await expect(page.locator('.fresh-row')).toHaveCount(0);                                    // 2 дня < 3 — свежо
-  await page.locator('#freshness-stale').selectOption('1');
-  await expect.poll(() => fresh.get[fresh.get.length - 1].get('staleDays')).toBe('1');
-  await expect(page.locator('.fresh-row')).toHaveCount(1);                                     // 2 дня > 1 день — устарело
-  await expect(page.locator('#freshness-dialog')).toContainText('свежее 1.0 дн.');
-  await page.locator('#freshness-stale').selectOption('__custom__');
-  await page.locator('#freshness-stale-custom').fill('12ч');
-  await expect.poll(() => Number(fresh.get[fresh.get.length - 1].get('staleDays'))).toBeCloseTo(0.5, 6);
-  await expect(page.locator('.fresh-row')).toHaveCount(1);                                     // 2 дня > 12ч — по-прежнему устарело
+  expect(fresh.get[fresh.get.length - 1].get('cities').split(',').sort()).toEqual([...ALL].sort());          // изначально включены все семь
+  await expect(page.locator('.fresh-toggles .city', { hasText: 'Thetford' })).not.toHaveClass(/off/);
+  await page.locator('.fresh-toggles .city', { hasText: 'Thetford' }).click();
+  await expect.poll(() => fresh.get[fresh.get.length - 1].get('cities').split(',').sort()).toEqual(ALL.filter((c) => c !== 'Thetford').sort());
+  await expect(page.locator('.fresh-toggles .city', { hasText: 'Thetford' })).toHaveClass(/off/);
+  await expect(page.locator('.fresh-city', { hasText: 'Thetford' })).toHaveCount(0);                          // выключенный город не показывается
+  // помнит выбор при повторном открытии (localStorage)
   await page.locator('#freshness-dialog').getByRole('button', { name: 'Закрыть' }).click();
   await page.locator('#freshness-open').click();
-  await expect(page.locator('#freshness-stale')).toHaveValue('__custom__');                     // выбор порога запомнился
-  await expect(page.locator('#freshness-stale-custom')).toHaveValue('12ч');
+  await expect.poll(() => fresh.get[fresh.get.length - 1].get('cities').split(',').sort()).toEqual(ALL.filter((c) => c !== 'Thetford').sort());
+  await expect(page.locator('.fresh-toggles .city', { hasText: 'Thetford' })).toHaveClass(/off/);
 });
 
 test('свежесть данных: список по городам — что открыть в каждом; значок/метки как в остальном сайте; копирование по клику', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await twoItemsInList(page, log);
-  // T4_CLOTH устарела только в Лаймхерсте, T4_RUNE — только в Мартлоке, T4_2H_BOW — в обоих, T4_CAPE свежа везде
+  // T4_CLOTH — нет данных только в Лаймхерсте, T4_RUNE — только в Мартлоке, T4_2H_BOW — в обоих, T4_CAPE — данные есть везде
   const fresh = await mockFreshness(page, {
     cities: ['Lymhurst', 'Martlock'],
-    ages: {
-      T4_CLOTH: { Lymhurst: 6, Martlock: 20 / 1440 },
-      T4_RUNE: { Lymhurst: 20 / 1440, Martlock: 6 },
-      T4_2H_BOW: { Lymhurst: 6, Martlock: 6 },
-      T4_CAPE: { Lymhurst: 20 / 1440, Martlock: 20 / 1440 },
+    byCity: {
+      T4_CLOTH: { Lymhurst: true, Martlock: false },
+      T4_RUNE: { Lymhurst: false, Martlock: true },
+      T4_2H_BOW: { Lymhurst: true, Martlock: true },
+      T4_CAPE: { Lymhurst: false, Martlock: false },
     },
   });
   await page.locator('#freshness-open').click();
@@ -408,7 +404,7 @@ test('свежесть данных: список по городам — что
   await expect(lym.locator('.fresh-row')).toHaveCount(2);                                       // T4_CLOTH, T4_2H_BOW
   await expect(mar.locator('.fresh-row')).toHaveCount(2);                                        // T4_RUNE, T4_2H_BOW
   await expect(lym).toContainText('Изысканная ткань');
-  await expect(mar).not.toContainText('Изысканная ткань');                                       // в Мартлоке эта ткань свежа — её тут нет
+  await expect(mar).not.toContainText('Изысканная ткань');                                       // в Мартлоке эта ткань есть — её тут нет
   await expect(page.locator('.fresh-row')).toHaveCount(4);                                       // T4_2H_BOW считан дважды — по разу на город
   await expect(page.locator('#freshness-refresh-all')).toContainText('Обновить всё (3)');         // уникальных предметов — 3, не 4
   // как на странице крафта: значок предмета и цветная метка тира
@@ -425,7 +421,7 @@ test('свежесть данных: список по городам — что
   await expect(mar.locator('.fresh-row')).toHaveCount(1);
 });
 
-test('свежесть данных: своя цена (для игры без клиента AODP) снимает «устарело» без похода в игру', async ({ page }) => {
+test('свежесть данных: своя цена (для игры без клиента AODP) сразу даёт калькулятору данные, без похода в игру', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await twoItemsInList(page, log);
   const fresh = await mockFreshness(page, { staleIds: ['T4_CLOTH', 'T4_RUNE'], freshIds: ['T4_2H_BOW', 'T4_CAPE'] });
@@ -435,7 +431,7 @@ test('свежесть данных: своя цена (для игры без �
   await clothInput.fill('12345');
   await expect.poll(() => fresh.manual.length).toBeGreaterThan(0);
   expect(fresh.manual[fresh.manual.length - 1]).toMatchObject({ id: 'T4_CLOTH', quality: 1, price: 12345 });
-  await expect(page.locator('.fresh-row')).toHaveCount(1);                                     // T4_CLOTH пофиксили своей ценой — пропала из «устаревших»
+  await expect(page.locator('.fresh-row')).toHaveCount(1);                                     // T4_CLOTH получила данные — пропала из списка
   await expect(page.locator('.fresh-row[data-id="T4_RUNE"]')).toBeVisible();                    // вторая позиция без своей цены осталась
 });
 
@@ -449,6 +445,7 @@ test('свежесть данных: кнопка есть и в одиночн�
   const ids = fresh.get[0].get('ids').split(',');
   expect(ids.some((id) => id.endsWith('_2H_BOW'))).toBe(true);           // сам предмет расчёта, не только материалы
   expect(ids).toContain('T4_CLOTH');
+  expect(fresh.get[0].get('days')).toBe('3');                            // «История гира» из параметров — для kind=self
   await expect(page.locator('#freshness-dialog')).toContainText('Лук');  // название предмета — из справочника клиента, не голый id
   const before = log.calc.length;
   await page.locator('#freshness-refresh-all').click();

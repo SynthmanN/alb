@@ -12,7 +12,7 @@ const MHISTS = [[12, '12 ч'], [24, '24 ч'], [72, '3 дня'], [168, '7 дне�
 
 // Время вписывается С ЕДИНИЦЕЙ: «12ч» или «2д» — голое число не говорит, час это или день
 const TIME_HINT = 'Укажи единицу: ч — часы, д — дни (например, 12ч или 2д)';
-export function parseTimeToHours(text) {
+function parseTimeToHours(text) {
   const m = String(text || '').trim().toLowerCase().replace(',', '.').match(/^(\d+(?:\.\d+)?)\s*(ч|час|часа|часов|h|д|дн|дня|дней|день|d)$/);
   if (!m) return null;
   return parseFloat(m[1]) * (/^(ч|h)/.test(m[2]) ? 1 : 24);
@@ -23,8 +23,8 @@ const CUSTOM = {
   days: { hint: TIME_HINT, parse: (t) => { const h = parseTimeToHours(t); return h === null ? null : Math.min(Math.max(h / 24, 1 / 24), 30); }, show: (v) => (v >= 1 ? `${Math.round(v * 100) / 100}д` : `${Math.round(v * 24)}ч`), placeholder: '12ч или 2д' },
   hours: { hint: TIME_HINT, parse: (t) => { const h = parseTimeToHours(t); return h === null ? null : Math.min(Math.max(h, 1), 240); }, show: (v) => (v >= 24 && v % 24 === 0 ? `${v / 24}д` : `${Math.round(v * 10) / 10}ч`), placeholder: '36ч или 2д' },
 };
-// Пресет + «Своё…» (текст с единицей: 12ч/2д — parseTimeToHours) — используется и в окне «Свежесть данных» (freshness.js), не только тут
-export function Select({ id, label, value, options, onChange, kind }) {
+// Пресет + «Своё…» (текст с единицей: 12ч/2д — parseTimeToHours)
+function Select({ id, label, value, options, onChange, kind }) {
   const isPreset = options.some(([v]) => String(v) === String(value));
   const [forced, setForced] = useState(false);
   const custom = forced || !isPreset;
