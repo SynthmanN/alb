@@ -2800,16 +2800,19 @@ function freshnessOf(id, { cities, now, staleDays, quality = 1 }) {
   // (addManualPriceRecords): считается таким же полноценным сигналом свежести, пока не протухла сама (10 дней).
   const manualRow = getManualPrices(jugDb, [id], now)[`${id}|${quality}`];
   const manualAgeDays = manualRow ? (now - manualRow.enteredAt) / 86400000 : null;
+  // Цена и сделка — РАЗНЫЕ данные для расчёта (мгновенная продажа/покупка берёт цену, терпеливая продажа и себестоимость
+  // материалов — среднюю по сделкам), поэтому свежей должна быть КАЖДАЯ из них по отдельности, а не любая одна из двух:
+  // свежая цена не должна маскировать то, что сделок для честной средней давно не было (и наоборот). Раньше бралась лучшая —
+  // окно молчало про город, где висел свежий ценник, хотя терпеливая продажа там честно показывала «нет данных» (сделок не было).
+  // Вписанная вручную цена — исключение: раз пользователь сам подтвердил цифру, этого достаточно само по себе.
   const byCity = {};
   for (const city of cities) {
     const priceAgeMinutes = priceAgeByCity.has(city) ? priceAgeByCity.get(city) : null;
     const historyAgeDays = historyAgeByLoc.has(city.replace(/\s+/g, '')) ? historyAgeByLoc.get(city.replace(/\s+/g, '')) : null;
-    const bestAgeDays = Math.min(
-      priceAgeMinutes === null ? Infinity : priceAgeMinutes / 1440,
-      historyAgeDays === null ? Infinity : historyAgeDays,
-      manualAgeDays === null ? Infinity : manualAgeDays,
-    );
-    byCity[city] = { priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !(bestAgeDays <= staleDays) };
+    const priceOk = priceAgeMinutes !== null && priceAgeMinutes / 1440 <= staleDays;
+    const historyOk = historyAgeDays !== null && historyAgeDays <= staleDays;
+    const manualOk = manualAgeDays !== null && manualAgeDays <= staleDays;
+    byCity[city] = { priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !manualOk && !(priceOk && historyOk) };
   }
   const manual = manualRow ? { price: manualRow.price, ageDays: Math.round(manualAgeDays * 10) / 10 } : null;
   return { id, quality, stale: Object.values(byCity).some((c) => c.stale), byCity, manual };
