@@ -55,12 +55,26 @@ describe('collectIds', () => {
     expect([...collectIds({ error: 'oops' }).keys()]).toEqual([]);
   });
 
-  it('название берётся из d.names, иначе — из resourceName, иначе id остаётся как название', () => {
+  it('название берётся из d.names, иначе — из resourceName, иначе id остаётся как название; материалы — качество 1', () => {
     const d = { itemId: 'T4_RUNE', finishedQueryId: 'T4_RUNE', names: { T4_RUNE: 'Руна (знаток)' }, recipe: [{ resource: 'T4_CLOTH', queryId: 'T4_CLOTH', materialSource: 'buy', resourceName: 'Ткань' }, { resource: 'T4_X', queryId: 'T4_X', materialSource: 'buy' }] };
     const m = collectIds(d);
-    expect(m.get('T4_RUNE')).toBe('Руна (знаток)');
-    expect(m.get('T4_CLOTH')).toBe('Ткань');
-    expect(m.get('T4_X')).toBe('T4_X');
+    expect(m.get('T4_RUNE')).toEqual({ name: 'Руна (знаток)', quality: 1 });
+    expect(m.get('T4_CLOTH')).toEqual({ name: 'Ткань', quality: 1 });
+    expect(m.get('T4_X')).toEqual({ name: 'T4_X', quality: 1 });
+  });
+
+  it('качество самого предмета берётся из d.quality (материалы этого не касается)', () => {
+    const d = { itemId: 'T4_HEAD_LEATHER_SET3', finishedQueryId: 'T4_HEAD_LEATHER_SET3@3', quality: 4, recipe: [{ resource: 'T4_LEATHER', queryId: 'T4_LEATHER', materialSource: 'buy' }] };
+    const m = collectIds(d);
+    expect(m.get('T4_HEAD_LEATHER_SET3@3').quality).toBe(4);
+    expect(m.get('T4_LEATHER').quality).toBe(1);
+  });
+
+  it('без d.names сам предмет остаётся под голым id (нечем подписать) — selfLabel(d) даёт имя по d.itemId', () => {
+    const d = { itemId: 'T4_HEAD_LEATHER_SET3', finishedQueryId: 'T4_HEAD_LEATHER_SET3@3', quality: 4, recipe: [] };
+    expect(collectIds(d).get('T4_HEAD_LEATHER_SET3@3').name).toBe('T4_HEAD_LEATHER_SET3@3');
+    const withLabel = collectIds(d, undefined, (dd) => `Капюшон ${dd.itemId}`);
+    expect(withLabel.get('T4_HEAD_LEATHER_SET3@3').name).toBe('Капюшон T4_HEAD_LEATHER_SET3');
   });
 });
 
@@ -73,6 +87,12 @@ describe('collectAllIds', () => {
     ]);
     const ids = [...collectAllIds(results).keys()];
     expect(ids.sort()).toEqual(['T4_A', 'T4_B', 'T4_CLOTH']);
+  });
+
+  it('selfLabel прокидывается в каждую позицию', () => {
+    const results = new Map([['a', { itemId: 'T4_A', finishedQueryId: 'T4_A', recipe: [] }]]);
+    const ids = collectAllIds(results, (d) => `Имя ${d.itemId}`);
+    expect(ids.get('T4_A').name).toBe('Имя T4_A');
   });
 });
 
@@ -89,27 +109,27 @@ describe('collectFactionIds', () => {
   it('путь «прямой»: сам плащ, прямой материал, герб и сердце — руны не нужны', () => {
     const ids = collectFactionIds(planned(row(), 'direct'));
     expect([...ids.keys()]).toEqual(['T6_CAPEITEM_FW_LYMHURST@3', 'T6_CAPE@3', 'T6_CAPEITEM_FW_LYMHURST_BP', 'T1_FACTION_FOREST_TOKEN_1']);
-    expect(ids.get('T6_CAPE@3')).toBe('Накидка (мастер) .3');
-    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP')).toBe('Герб города Lymhurst (мастер)');
+    expect(ids.get('T6_CAPE@3').name).toBe('Накидка (мастер) .3');
+    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP').name).toBe('Герб города Lymhurst (мастер)');
   });
 
-  it('без finishedLabel сам плащ остаётся под голым id (нечем подписать) — с finishedLabel(r) берёт имя по r.itemId', () => {
+  it('без finishedLabel сам плащ остаётся под голым id (нечем подписать) — с finishedLabel(r) берёт имя и качество по r.itemId/r.quality', () => {
     const noLabel = collectFactionIds(planned(row(), 'direct'));
-    expect(noLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toBe('T6_CAPEITEM_FW_LYMHURST@3');
-    const withLabel = collectFactionIds(planned(row(), 'direct'), undefined, (r) => `Накидка ${r.itemId} для ${r.tier}`);
-    expect(withLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toBe('Накидка T6_CAPEITEM_FW_LYMHURST для 6');
+    expect(noLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toEqual({ name: 'T6_CAPEITEM_FW_LYMHURST@3', quality: 1 });
+    const withLabel = collectFactionIds(planned(row({ quality: 4 }), 'direct'), undefined, (r) => `Накидка ${r.itemId} для ${r.tier}`);
+    expect(withLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toEqual({ name: 'Накидка T6_CAPEITEM_FW_LYMHURST для 6', quality: 4 });
   });
 
   it('путь «после крафта»: плащ .0 и все руны — прямой материал не нужен', () => {
     const ids = collectFactionIds(planned(row(), 'after'));
     expect([...ids.keys()]).toEqual(['T6_CAPEITEM_FW_LYMHURST@3', 'T6_CAPE', 'T6_RUNE', 'T6_SOUL', 'T6_RELIC', 'T6_CAPEITEM_FW_LYMHURST_BP', 'T1_FACTION_FOREST_TOKEN_1']);
-    expect(ids.get('T6_RUNE')).toBe('Руна (мастер)');
+    expect(ids.get('T6_RUNE').name).toBe('Руна (мастер)');
   });
 
   it('герб или сердце без единой цены (crest/heart null) — id всё равно попадает в список, чтобы его можно было обновить', () => {
     const ids = collectFactionIds(planned(row({ crest: null, heart: null }), 'direct'));
     expect(ids.has('T6_CAPEITEM_FW_LYMHURST_BP')).toBe(true);
-    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP')).toBe('T6_CAPEITEM_FW_LYMHURST_BP');   // название неизвестно — остаётся id
+    expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP').name).toBe('T6_CAPEITEM_FW_LYMHURST_BP');   // название неизвестно — остаётся id
   });
 
   it('несколько позиций плана объединяются без повторов', () => {

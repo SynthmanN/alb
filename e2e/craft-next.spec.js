@@ -294,17 +294,20 @@ async function mockFreshness(page, { staleIds = [], freshIds = [], ages = {}, ci
   const ageDays = new Map(Object.entries(ages));
   for (const id of staleIds) ageDays.set(id, 6);
   for (const id of freshIds) ageDays.set(id, 20 / 1440);
+  const manualPrices = new Map();                                  // id -> { price, ageDays } — как manual_prices на сервере, без города
   const ageFor = (id, city) => {
     if (!ageDays.has(id)) return Infinity;
     const a = ageDays.get(id);
     return typeof a === 'object' ? (city in a ? a[city] : Infinity) : a;
   };
-  const cityEntry = (age, staleDays) => ({ priceAgeMinutes: Number.isFinite(age) ? Math.round(age * 1440) : null, historyAgeDays: null, stale: !(age <= staleDays) });
+  const cityEntry = (age, manualAge, staleDays) => ({ priceAgeMinutes: Number.isFinite(age) ? Math.round(age * 1440) : null, historyAgeDays: null, stale: !(Math.min(age, manualAge) <= staleDays) });
   const itemFor = (id, staleDays) => {
-    const byCity = Object.fromEntries(cities.map((city) => [city, cityEntry(ageFor(id, city), staleDays)]));
-    return { id, stale: Object.values(byCity).some((c) => c.stale), byCity };
+    const m = manualPrices.get(id) || null;
+    const manualAge = m ? m.ageDays : Infinity;
+    const byCity = Object.fromEntries(cities.map((city) => [city, cityEntry(ageFor(id, city), manualAge, staleDays)]));
+    return { id, stale: Object.values(byCity).some((c) => c.stale), byCity, manual: m ? { price: m.price, ageDays: m.ageDays } : null };
   };
-  const log = { get: [], refresh: [] };
+  const log = { get: [], refresh: [], manual: [] };
   await page.route('**/api/freshness?*', (route) => {
     const q = new URL(route.request().url()).searchParams;
     log.get.push(q);
@@ -317,6 +320,12 @@ async function mockFreshness(page, { staleIds = [], freshIds = [], ages = {}, ci
     for (const id of body.ids) ageDays.set(id, 20 / 1440);          // «обновили» — стало почти только что, во всех городах мока
     const staleDays = body.staleDays || 3;
     route.fulfill({ json: { staleDays, cities, items: body.ids.map((id) => itemFor(id, staleDays)) } });
+  });
+  await page.route('**/api/manual-price', (route) => {
+    const body = route.request().postDataJSON();
+    log.manual.push(body);
+    if (body.price > 0) manualPrices.set(body.id, { price: body.price, ageDays: 0 }); else manualPrices.delete(body.id);
+    route.fulfill({ json: { ok: true, id: body.id, quality: body.quality, price: body.price } });
   });
   return log;
 }
@@ -414,6 +423,20 @@ test('свежесть данных: список по городам — что
   await expect(cityGroups).toHaveCount(2);
   await expect(lym.locator('.fresh-row')).toHaveCount(1);
   await expect(mar.locator('.fresh-row')).toHaveCount(1);
+});
+
+test('свежесть данных: своя цена (для игры без клиента AODP) снимает «устарело» без похода в игру', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  const fresh = await mockFreshness(page, { staleIds: ['T4_CLOTH', 'T4_RUNE'], freshIds: ['T4_2H_BOW', 'T4_CAPE'] });
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('.fresh-row')).toHaveCount(2);
+  const clothInput = page.locator('.fresh-row[data-id="T4_CLOTH"] .fresh-manual-input');
+  await clothInput.fill('12345');
+  await expect.poll(() => fresh.manual.length).toBeGreaterThan(0);
+  expect(fresh.manual[fresh.manual.length - 1]).toMatchObject({ id: 'T4_CLOTH', quality: 1, price: 12345 });
+  await expect(page.locator('.fresh-row')).toHaveCount(1);                                     // T4_CLOTH пофиксили своей ценой — пропала из «устаревших»
+  await expect(page.locator('.fresh-row[data-id="T4_RUNE"]')).toBeVisible();                    // вторая позиция без своей цены осталась
 });
 
 // ---------- перенесённое из старой страницы: свои цены, лог закупок, план продажи, потолок/полоса/порог, телепорт, «Своё…», выбор по категориям ----------

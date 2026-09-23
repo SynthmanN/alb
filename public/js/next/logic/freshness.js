@@ -1,10 +1,14 @@
 // Свежесть данных для позиции: собирает id всех материалов (сырьё, полуфабрикаты, руны/души/реликты, герб и сердце — если не за
 // очки) и самого предмета (для его цены продажи) из уже посчитанного ответа /api/craft-calc — той же логики резолва рецепта,
 // которой уже считает крафт-лист и стек. Дальше список уходит в /api/freshness (сервер сам смотрит в кувшин, ничего не пересчитывая).
-export function collectIds(d, out = new Map()) {
+// Map: id → { name, quality } — качество важно для самого предмета (гир): свежая цена НЕобычного качества не должна маскировать
+// то, что по выбранному качеству (Отличное, Шедевр…) данных давно нет — материалы всегда quality 1, как и everywhere в проекте.
+// selfLabel(d) — имя самого предмета: d.names не всегда его знает (каталог названий гира — только у клиента), вызывающая
+// сторона может передать резолвер (например, itemLabel(d.itemId)); без него имя остаётся голым id.
+export function collectIds(d, out = new Map(), selfLabel) {
   if (!d || d.error) return out;
-  const add = (id, label) => { if (id && !out.has(id)) out.set(id, label || id); };
-  add(d.finishedQueryId || d.itemId, (d.names && d.names[d.finishedQueryId]) || undefined);
+  const add = (id, name, quality = 1) => { if (id && !out.has(id)) out.set(id, { name: name || id, quality }); };
+  add(d.finishedQueryId || d.itemId, (d.names && d.names[d.finishedQueryId]) || (selfLabel && selfLabel(d)), d.quality || 1);
   for (const r of d.recipe || []) {
     if (r.materialSource === 'points') continue;                                    // за очки — цены не бывает, обновлять нечего
     const id = r.queryId || r.resource;
@@ -20,22 +24,23 @@ export function collectIds(d, out = new Map()) {
   return out;
 }
 
-// Собирает id по всем позициям стека/листа сразу (Map: id → название) — то, что реально показывается в окне «Свежесть данных»
-export function collectAllIds(results) {
+// Собирает id по всем позициям стека/листа сразу (Map: id → {name, quality}) — то, что реально показывается в окне «Свежесть данных»
+export function collectAllIds(results, selfLabel) {
   const out = new Map();
-  for (const d of results.values()) collectIds(d, out);
+  for (const d of results.values()) collectIds(d, out, selfLabel);
   return out;
 }
 
 // Фракционный план: id для позиций, которые реально вошли в план (qty > 0, x.c — результат computeRow из logic/factionPlan.js) —
 // путь, который сейчас выбран (прямой или «после крафта», не оба сразу — второй для плана всё равно не нужен), герб и сердце
 // (нужны всегда — их цена участвует в сравнении «всё за очки» с «деталь за серебро», даже если сейчас выбрано «всё за очки»)
-// и сам плащ (id для цены продажи; каталог названий предметов — только у клиента, поэтому имя берёт finishedLabel(r), если дали).
+// и сам плащ (id для цены продажи; каталог названий предметов — только у клиента, поэтому имя берёт finishedLabel(r), если дали;
+// качество плаща — r.quality, у гербов/сердец/материалов качества нет — всегда 1).
 export function collectFactionIds(planned, out = new Map(), finishedLabel) {
-  const add = (id, label) => { if (id && !out.has(id)) out.set(id, label || id); };
+  const add = (id, name, quality = 1) => { if (id && !out.has(id)) out.set(id, { name: name || id, quality }); };
   for (const x of planned) {
     const r = x.c.r;
-    add(r.finishedId, finishedLabel && finishedLabel(r));
+    add(r.finishedId, finishedLabel && finishedLabel(r), r.quality || 1);
     if (x.c.path === 'after') {
       add(r.cape0.id, r.cape0.label);
       for (const rune of r.runes) add(rune.id, rune.label);

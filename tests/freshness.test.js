@@ -27,6 +27,7 @@ function seedHistory(id, city, ageMs) {
 beforeEach(() => {
   jugDb.exec('DELETE FROM prices');
   jugDb.exec('DELETE FROM history');
+  jugDb.exec('DELETE FROM manual_prices');
   resetCaches();
 });
 
@@ -77,7 +78,9 @@ describe('GET /api/freshness', () => {
     const res = await request(app).get('/api/freshness?ids=T8_GHOST_ITEM&cities=Martlock,Lymhurst');
     expect(res.body.items[0]).toEqual({
       id: 'T8_GHOST_ITEM',
+      quality: 1,
       stale: true,
+      manual: null,
       byCity: {
         Martlock: { priceAgeMinutes: null, historyAgeDays: null, stale: true },
         Lymhurst: { priceAgeMinutes: null, historyAgeDays: null, stale: true },
@@ -95,6 +98,46 @@ describe('GET /api/freshness', () => {
     seedPrice('T4_CLOTH', 'Martlock', 100, 3600 * 1000);
     const res = await request(app).get('/api/freshness?ids=T4_CLOTH,T5_LEATHER,T4_CLOTH');
     expect(res.body.items.map((x) => x.id)).toEqual(['T4_CLOTH', 'T5_LEATHER']);
+  });
+});
+
+describe('качество: только нужное (материалы — 1 по умолчанию, гир — своё)', () => {
+  it('свежая цена другого качества не маскирует устаревание нужного', async () => {
+    seedPrice('T4_HEAD_LEATHER_SET3@3', 'Lymhurst', 100, 3600 * 1000);                   // качество 1 — час назад, свежо
+    upsertPriceSnapshots(jugDb, [{ item_id: 'T4_HEAD_LEATHER_SET3@3', city: 'Lymhurst', quality: 4, sell_price_min: 200, sell_price_min_date: iso(NOW - 10 * DAY), buy_price_max: 0, buy_price_max_date: '0001-01-01T00:00:00' }], NOW);
+    const asQ1 = await request(app).get('/api/freshness?ids=T4_HEAD_LEATHER_SET3@3&cities=Lymhurst&qualities=1');
+    expect(asQ1.body.items[0].stale).toBe(false);                                        // качество 1 действительно свежо
+    const asQ4 = await request(app).get('/api/freshness?ids=T4_HEAD_LEATHER_SET3@3&cities=Lymhurst&qualities=4');
+    expect(asQ4.body.items[0].quality).toBe(4);
+    expect(asQ4.body.items[0].stale).toBe(true);                                         // а нужное качество 4 — устарело, и это видно
+  });
+
+  it('без qualities или с мусором в значении — по умолчанию качество 1', async () => {
+    seedPrice('T4_CLOTH', 'Martlock', 100, 3600 * 1000);
+    const res = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&qualities=nope');
+    expect(res.body.items[0].quality).toBe(1);
+    expect(res.body.items[0].stale).toBe(false);
+  });
+});
+
+describe('вписанная цена (для игры без клиента AODP — с телефона)', () => {
+  it('вписанная цена — такой же сигнал свежести, как и рыночная: снимает статус «устарело» во всех городах разом', async () => {
+    const res1 = await request(app).get('/api/freshness?ids=T4_HEAD_LEATHER_SET3@3&cities=Martlock,Caerleon&qualities=4');
+    expect(res1.body.items[0].stale).toBe(true);
+    expect(res1.body.items[0].manual).toBeNull();
+    await request(app).post('/api/manual-price').send({ id: 'T4_HEAD_LEATHER_SET3@3', quality: 4, price: 88000 });
+    const res2 = await request(app).get('/api/freshness?ids=T4_HEAD_LEATHER_SET3@3&cities=Martlock,Caerleon&qualities=4');
+    expect(res2.body.items[0].stale).toBe(false);
+    expect(res2.body.items[0].byCity.Martlock.stale).toBe(false);
+    expect(res2.body.items[0].byCity.Caerleon.stale).toBe(false);                        // своя цена не привязана к городу — действует на все разом
+    expect(res2.body.items[0].manual).toMatchObject({ price: 88000, ageDays: 0 });
+  });
+
+  it('своя цена сохраняется под своим качеством — на другое качество того же предмета не действует', async () => {
+    await request(app).post('/api/manual-price').send({ id: 'T4_HEAD_LEATHER_SET3@3', quality: 4, price: 88000 });
+    const otherQuality = await request(app).get('/api/freshness?ids=T4_HEAD_LEATHER_SET3@3&cities=Martlock&qualities=3');
+    expect(otherQuality.body.items[0].stale).toBe(true);
+    expect(otherQuality.body.items[0].manual).toBeNull();
   });
 });
 
@@ -139,6 +182,18 @@ describe('POST /api/freshness/refresh', () => {
     install();
     const res = await request(app).post('/api/freshness/refresh').send({});
     expect(res.status).toBe(400);
+  });
+
+  it('qualities в теле запроса — проверяет свежесть именно этого качества после обновления', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/history/')) return { ok: true, status: 200, json: async () => [] };
+      // AODP отдал только качество 1 (протухшего качества 4 по-прежнему нет)
+      return { ok: true, status: 200, json: async () => [{ item_id: 'T4_HEAD_LEATHER_SET3@3', city: 'Martlock', quality: 1, sell_price_min: 555, sell_price_min_date: iso(NOW), buy_price_max: 0, buy_price_max_date: '0001-01-01T00:00:00' }] };
+    });
+    const res = await request(app).post('/api/freshness/refresh').send({ ids: ['T4_HEAD_LEATHER_SET3@3'], cities: ['Martlock'], qualities: { 'T4_HEAD_LEATHER_SET3@3': 4 } });
+    expect(res.body.items[0].quality).toBe(4);
+    expect(res.body.items[0].stale).toBe(true);                                          // качества 1 это не касается — 4-е всё ещё без данных
   });
 });
 

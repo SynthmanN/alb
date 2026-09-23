@@ -71,7 +71,7 @@ export function StackView() {
     <div class="stackhead">
       <div><div class="grouphead">Стек калькулятора <span class="muted" style="text-transform:none;letter-spacing:0">· ${items.filter((i) => i.on !== false).length} из ${items.length} в расчёте${faction ? ` · ${faction.name}` : ''}</span></div>
         <p class="note" style="margin:4px 0 0">Клик по позиции включает и выключает её; серые не входят в расчёт. Это копия листа: правки здесь лист не меняют.</p></div>
-      <div class="stackactions"><button class="btn" type="button" id="stack-add" onClick=${() => setAdding(!adding)}><${Icon} d=${ICONS.plus} />Добавить позицию</button><${FreshnessButton} ids=${collectAllIds(data.results)} onRefreshed=${() => invalidateDef(stackDef)} /><button class="btn ghost" type="button" id="stack-exit" onClick=${leaveStack}>Выйти из стека</button></div>
+      <div class="stackactions"><button class="btn" type="button" id="stack-add" onClick=${() => setAdding(!adding)}><${Icon} d=${ICONS.plus} />Добавить позицию</button><${FreshnessButton} ids=${collectAllIds(data.results, (d) => itemLabel(d.itemId))} onRefreshed=${() => invalidateDef(stackDef)} /><button class="btn ghost" type="button" id="stack-exit" onClick=${leaveStack}>Выйти из стека</button></div>
     </div>
     ${adding ? html`<div class="card" style="padding:14px 18px;margin-bottom:16px"><${ItemPicker} value=${null} onPick=${add} /></div>` : null}
     ${items.length === 0 ? html`<div class="card empty">Стек пуст. Добавь позицию или открой активные позиции из крафт-листа.</div>` : html`
