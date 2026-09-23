@@ -31,12 +31,14 @@ export function Glyph({ id, tier, enchant = 0, quality = 1, size = 64 }) {
   </span>`;
 }
 
-// Материал закупки: значок из игры, название (клик копирует его для поиска на аукционе) и цветные метки тира и зачарования
-export function MaterialName({ id, name, onCopy }) {
+// Материал закупки: значок из игры, название (клик копирует его для поиска на аукционе) и цветные метки тира и зачарования.
+// quality — необязательно: у материалов её нет (сайт всегда торгует ими по Обычному, метка не несла бы смысла), у самого
+// предмета (окно «Свежесть данных», kind: 'self') — есть, и без неё через это окно неотличимы разные качества одного гира.
+export function MaterialName({ id, name, onCopy, quality = 0 }) {
   const { base, tier, enchant } = splitMaterialId(id, name);
-  return html`<div class="item mat"><${Glyph} id=${base} tier=${tier} enchant=${enchant} size=${48} />
+  return html`<div class="item mat"><${Glyph} id=${base} tier=${tier} enchant=${enchant} quality=${quality || 1} size=${48} />
     <div><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${onCopy}>${materialTitle(name)}</button>
-      <div style="margin-top:3px"><${Tags} tier=${tier} enchant=${enchant} /></div></div></div>`;
+      <div style="margin-top:3px"><${Tags} tier=${tier} enchant=${enchant} quality=${quality} /></div></div></div>`;
 }
 
 export function CityPill({ name }) {

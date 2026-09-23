@@ -125,7 +125,13 @@ function byCityGroups(s) {
     const rows = [];
     for (const it of s.items) {
       const c = it.byCity[city];
-      if (c && c.stale) rows.push({ id: it.id, name: (s.names.get(it.id) || {}).name || it.id, manual: it.manual });
+      if (c && c.stale) {
+        const named = s.names.get(it.id) || {};
+        // качество показываем только у самого предмета — у материалов оно всегда 1 (сайт торгует ими по Обычному),
+        // тег «Обычное» на каждой строке материала был бы только шумом, не информацией.
+        const quality = named.kind === 'self' ? it.quality : 0;
+        rows.push({ id: it.id, name: named.name || it.id, quality, manual: it.manual });
+      }
     }
     if (rows.length) groups.push({ city, rows });
   }
@@ -165,7 +171,7 @@ export function FreshnessDialog() {
           : html`<div class="fresh-cities">${groups.map((g) => html`<div class="fresh-city" key=${g.city} data-city=${g.city}>
               <div class="fresh-city-head"><${CityPill} name=${g.city} /><span class="cp-count">${g.rows.length}</span></div>
               <div class="fresh-list">${g.rows.map((r) => html`<div class="fresh-row" key=${r.id} data-id=${r.id}>
-                  <${MaterialName} id=${r.id} name=${r.name} onCopy=${() => copyItemName(r.name)} />
+                  <${MaterialName} id=${r.id} name=${r.name} quality=${r.quality} onCopy=${() => copyItemName(r.name)} />
                   <div class="fresh-actions">
                     <${ManualPriceInput} id=${r.id} manual=${r.manual} disabled=${s.refreshingId === r.id || s.refreshingAll} />
                     <button class="btn sm" type="button" disabled=${s.refreshingId === r.id || s.refreshingAll} onClick=${() => refreshOne(r.id)}>${s.refreshingId === r.id ? html`<${Spinner} />` : 'Обновить'}</button>

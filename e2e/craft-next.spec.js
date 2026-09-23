@@ -293,7 +293,7 @@ test('док крафт-листа на широком экране стоит �
 // Id без явной настройки по умолчанию считается «нет данных» — как и раньше. cities — список городов в ответе мока; по
 // умолчанию мок ИГНОРИРУЕТ реально запрошенные городами клиент (тому не нужно городить лишнее для тестов не про группировку
 // и переключатели) — respectRequestedCities: true включает честное поведение (нужно только тесту про сами переключатели).
-async function mockFreshness(page, { staleIds = [], freshIds = [], byCity = {}, cities = ['Martlock'], respectRequestedCities = false } = {}) {
+async function mockFreshness(page, { staleIds = [], freshIds = [], byCity = {}, cities = ['Martlock'], respectRequestedCities = false, qualities = {} } = {}) {
   const manualPrices = new Map();                                  // id -> { price } — как manual_prices на сервере, без города
   const staleFor = (id, city) => {
     if (byCity[id] && city in byCity[id]) return byCity[id][city];
@@ -303,7 +303,7 @@ async function mockFreshness(page, { staleIds = [], freshIds = [], byCity = {}, 
   const itemFor = (id, forCities) => {
     const manual = manualPrices.get(id) || null;
     const byC = Object.fromEntries(forCities.map((city) => [city, { stale: manual ? false : staleFor(id, city) }]));
-    return { id, stale: Object.values(byC).some((c) => c.stale), byCity: byC, manual };
+    return { id, quality: qualities[id] || 1, stale: Object.values(byC).some((c) => c.stale), byCity: byC, manual };
   };
   const log = { get: [], refresh: [], manual: [] };
   await page.route('**/api/freshness?*', (route) => {
@@ -394,6 +394,7 @@ test('свежесть данных: список по городам — что
       T4_2H_BOW: { Lymhurst: true, Martlock: true },
       T4_CAPE: { Lymhurst: false, Martlock: false },
     },
+    qualities: { T4_2H_BOW: 4 },                                                                 // T4_2H_BOW — сам предмет (kind: 'self'), у него есть настоящее качество
   });
   await page.locator('#freshness-open').click();
   await expect(page.locator('#freshness-dialog')).toBeVisible();
@@ -410,6 +411,9 @@ test('свежесть данных: список по городам — что
   // как на странице крафта: значок предмета и цветная метка тира
   await expect(lym.locator('.fresh-row').first().locator('.glyph')).toBeVisible();
   await expect(lym.locator('.fresh-row').first().locator('.tags .tag').first()).toBeVisible();
+  // у самого предмета (T4_2H_BOW, kind: 'self') видно и качество — материалы (T4_CLOTH) его не несут, метка была бы шумом
+  await expect(lym.locator('.fresh-row[data-id="T4_2H_BOW"] .tags .tag.q4')).toContainText('Отличное');
+  await expect(lym.locator('.fresh-row[data-id="T4_CLOTH"] .tags')).not.toContainText('Обычное');
   // клик по названию копирует его для поиска на аукционе
   await lym.locator('.fresh-row', { hasText: 'Изысканная ткань' }).locator('.namebtn').click();
   await expect(page.locator('.toast')).toContainText('Скопировано: Изысканная ткань');
