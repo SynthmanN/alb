@@ -85,14 +85,15 @@ describe('GET /api/faction-plan', () => {
     const t7 = d.rows.find((r) => r.tier === 7);
     expect(t7).toMatchObject({ enchant: 2, quality: 4, pointsPerCape: 3000 + 7500, sale: null });
     expect(t7.capeDirect.price).toBeNull();                                        // нет цены — клиент попросит вписать
-    expect(t7.crest).toBeNull();
+    expect(t7.crest.price).toBeNull();
+    expect(t7.crest.label).toBeTruthy();                                            // название есть даже без цены — «Свежесть данных» им подписывает герб
   });
 });
 
 describe('вписанные цены (POST /api/manual-price)', () => {
   it('герб без данных: вписанная цена подставляется как цена рынка с пометкой manual; кувшин остаётся при обновлении AODP, пока данных нет', async () => {
     const before = (await plan({ extra: '7:0:1' })).rows.find((r) => r.tier === 7);
-    expect(before.crest).toBeNull();
+    expect(before.crest.price).toBeNull();
     const res = await request(app).post('/api/manual-price').send({ id: 'T7_CAPEITEM_FW_MARTLOCK_BP', quality: 1, price: 30000 });
     expect(res.body).toMatchObject({ ok: true, price: 30000 });
     resetCaches();

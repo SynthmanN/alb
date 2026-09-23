@@ -30,12 +30,12 @@ export function collectAllIds(results) {
 // Фракционный план: id для позиций, которые реально вошли в план (qty > 0, x.c — результат computeRow из logic/factionPlan.js) —
 // путь, который сейчас выбран (прямой или «после крафта», не оба сразу — второй для плана всё равно не нужен), герб и сердце
 // (нужны всегда — их цена участвует в сравнении «всё за очки» с «деталь за серебро», даже если сейчас выбрано «всё за очки»)
-// и сам плащ (id для цены продажи; название плаща знает только клиент — вызывающая сторона может переопределить label).
-export function collectFactionIds(planned, out = new Map()) {
+// и сам плащ (id для цены продажи; каталог названий предметов — только у клиента, поэтому имя берёт finishedLabel(r), если дали).
+export function collectFactionIds(planned, out = new Map(), finishedLabel) {
   const add = (id, label) => { if (id && !out.has(id)) out.set(id, label || id); };
   for (const x of planned) {
     const r = x.c.r;
-    add(r.finishedId);
+    add(r.finishedId, finishedLabel && finishedLabel(r));
     if (x.c.path === 'after') {
       add(r.cape0.id, r.cape0.label);
       for (const rune of r.runes) add(rune.id, rune.label);

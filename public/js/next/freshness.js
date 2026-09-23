@@ -102,7 +102,7 @@ export function FreshnessDialog() {
   const anyStale = s.items.filter((x) => x.stale);
   const groups = s.loading || s.error ? [] : byCityGroups(s);
   return html`<div class="scrim modal-scrim" onClick=${closeFreshness}>
-    <aside class="modal" id="freshness-dialog" role="dialog" aria-label="Свежесть данных" onClick=${(e) => e.stopPropagation()}>
+    <aside class="modal modal-wide" id="freshness-dialog" role="dialog" aria-label="Свежесть данных" onClick=${(e) => e.stopPropagation()}>
       <header><h3>Свежесть данных</h3><button class="btn sm" type="button" onClick=${closeFreshness}>Закрыть</button></header>
       <div style="padding:2px 22px 0"><${Select} id="freshness-stale" label="Считать устаревшим, если старше" value=${s.staleDays} options=${STALE_PRESETS} onChange=${setStaleDays} kind="days" /></div>
       <p class="note" style="margin:10px 22px 14px">По городам — что открыть на рынке в игре: нет цены или сделки свежее ${fmtDays(s.staleDays)}. Клик по названию — скопировать для поиска на аукционе.</p>
@@ -111,14 +111,14 @@ export function FreshnessDialog() {
           : s.error ? html`<div class="card err" role="alert">Ошибка: ${s.error}</div>`
           : !s.items.length ? html`<div class="empty">Нечего проверять — список пуст.</div>`
           : !groups.length ? html`<div class="empty">Всё свежее — обновлять нечего.</div>`
-          : html`<div class="fresh-cities">${groups.map((g) => html`<details class="fresh-city" key=${g.city} data-city=${g.city} open>
-              <summary><${CityPill} name=${g.city} /><span class="cp-count">${g.rows.length}</span></summary>
+          : html`<div class="fresh-cities">${groups.map((g) => html`<div class="fresh-city" key=${g.city} data-city=${g.city}>
+              <div class="fresh-city-head"><${CityPill} name=${g.city} /><span class="cp-count">${g.rows.length}</span></div>
               <div class="fresh-list">${g.rows.map((r) => html`<div class="fresh-row" key=${r.id} data-id=${r.id}>
                   <${MaterialName} id=${r.id} name=${r.name} onCopy=${() => copyItemName(r.name)} />
                   <div class="fresh-age muted">${ageLabel(r.c)}</div>
                   <button class="btn sm" type="button" disabled=${s.refreshingId === r.id || s.refreshingAll} onClick=${() => refreshOne(r.id)}>${s.refreshingId === r.id ? html`<${Spinner} />` : 'Обновить'}</button>
                 </div>`)}</div>
-            </details>`)}</div>`}
+            </div>`)}</div>`}
       </div>
       ${anyStale.length > 1 ? html`<div class="modal-foot"><button class="btn primary" type="button" id="freshness-refresh-all" disabled=${s.refreshingAll || !!s.refreshingId} onClick=${refreshAllStale}>${s.refreshingAll ? html`<${Spinner} />Обновляю…` : `Обновить всё (${anyStale.length})`}</button></div>` : null}
     </aside></div>`;

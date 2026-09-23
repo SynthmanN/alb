@@ -78,7 +78,7 @@ describe('collectAllIds', () => {
 
 describe('collectFactionIds', () => {
   const row = (o = {}) => ({
-    finishedId: 'T6_CAPEITEM_FW_LYMHURST@3', tier: 6, enchant: 3, crestId: 'T6_CAPEITEM_FW_LYMHURST_BP', heartId: 'T1_FACTION_FOREST_TOKEN_1',
+    itemId: 'T6_CAPEITEM_FW_LYMHURST', finishedId: 'T6_CAPEITEM_FW_LYMHURST@3', tier: 6, enchant: 3, crestId: 'T6_CAPEITEM_FW_LYMHURST_BP', heartId: 'T1_FACTION_FOREST_TOKEN_1',
     capeDirect: { id: 'T6_CAPE@3', label: 'Накидка (мастер) .3' }, cape0: { id: 'T6_CAPE', label: 'Накидка (мастер)' },
     runes: [{ id: 'T6_RUNE', label: 'Руна (мастер)' }, { id: 'T6_SOUL', label: 'Душа (мастер)' }, { id: 'T6_RELIC', label: 'Реликт (мастер)' }],
     crest: { label: 'Герб города Lymhurst (мастер)' }, heart: { label: 'Сердце древа' },
@@ -91,6 +91,13 @@ describe('collectFactionIds', () => {
     expect([...ids.keys()]).toEqual(['T6_CAPEITEM_FW_LYMHURST@3', 'T6_CAPE@3', 'T6_CAPEITEM_FW_LYMHURST_BP', 'T1_FACTION_FOREST_TOKEN_1']);
     expect(ids.get('T6_CAPE@3')).toBe('Накидка (мастер) .3');
     expect(ids.get('T6_CAPEITEM_FW_LYMHURST_BP')).toBe('Герб города Lymhurst (мастер)');
+  });
+
+  it('без finishedLabel сам плащ остаётся под голым id (нечем подписать) — с finishedLabel(r) берёт имя по r.itemId', () => {
+    const noLabel = collectFactionIds(planned(row(), 'direct'));
+    expect(noLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toBe('T6_CAPEITEM_FW_LYMHURST@3');
+    const withLabel = collectFactionIds(planned(row(), 'direct'), undefined, (r) => `Накидка ${r.itemId} для ${r.tier}`);
+    expect(withLabel.get('T6_CAPEITEM_FW_LYMHURST@3')).toBe('Накидка T6_CAPEITEM_FW_LYMHURST для 6');
   });
 
   it('путь «после крафта»: плащ .0 и все руны — прямой материал не нужен', () => {

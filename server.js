@@ -2880,12 +2880,15 @@ app.get('/api/faction-plan', (req, res) => {
       if (!q) return null;
       return { id, label: resolveItemNameWithEnchant(id), price: q.price, ageMinutes: quoteAgeMinutes(q.date, now), manual: manualIds.has(id) };
     };
-    // цена продажи (для деталей — как продавцу, без комиссии покупки)
+    // цена продажи (для деталей — как продавцу, без комиссии покупки). Название не зависит от наличия цены — отдаём его и когда
+    // цены совсем нет (частый случай для гербов/сердец: именно поэтому их и нужно обновлять), иначе «Свежесть данных» видела бы
+    // только голый id вместо «Герб города Lymhurst (мастер)». has(r.crest)/has(r.heart) на цену это не меняет — там смотрят price.
     const partQuote = (id) => {
       const q = cheapestOf(materialQuotes[id]);
-      if (!q) return null;
+      const label = resolveItemName(id);
+      if (!q) return { id, label, price: null, ageMinutes: null, manual: manualIds.has(id) };
       const list = materialQuotes[id].map((x) => x.price / (1 + SETUP_FEE_RATE));
-      return { id, label: resolveItemName(id), price: Math.max(...list), ageMinutes: quoteAgeMinutes(q.date, now), manual: manualIds.has(id) };
+      return { id, label, price: Math.max(...list), ageMinutes: quoteAgeMinutes(q.date, now), manual: manualIds.has(id) };
     };
     const subOpts = { ...rrrOpts, subcraft: { priceOf: (id) => cheapestOf(materialQuotes[id]) } };
 
