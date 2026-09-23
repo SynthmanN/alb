@@ -19,7 +19,11 @@ export function collectIds(d, out = new Map(), selfLabel) {
   }
   const eac = d.enchantAfterCraft;
   if (eac) {
-    if (eac.baseBuy) add(d.itemId, (d.names && d.names[d.itemId]));                  // готовая база .0, если её покупают, а не крафтят
+    // готовая база .0, если её покупают, а не крафтят: d.itemId — это тот же гир, что и главный «self»-предмет строки (просто
+    // без зачарования), каталог названий гира — только у клиента, поэтому имя нужно тем же резолвером, что и выше (d.names
+    // его не знает — сервер отдаёт названия только для материалов, не для гира); без этого падения на selfLabel строка
+    // «Свежести данных» показывала голый id (T5_HEAD_LEATHER_SET3) вместо «Капюшон убийцы».
+    if (eac.baseBuy) add(d.itemId, (d.names && d.names[d.itemId]) || (selfLabel && selfLabel(d)));
     for (const st of eac.steps || []) add(st.materialId, st.materialName);
   }
   return out;

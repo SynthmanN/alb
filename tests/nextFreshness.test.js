@@ -32,6 +32,15 @@ describe('collectIds', () => {
     expect([...collectIds(d).keys()]).toEqual(['T6_CAPE', 'T6_PLANKS', 'T6_WOOD', 'T5_PLANKS', 'T6_CAPE_INGREDIENT', 'T6_CLOTH', 'T6_LEATHER']);
   });
 
+  it('чары после крафта: база .0 (если её покупают) резолвится через selfLabel(d), не остаётся голым id — тот же d.itemId, что и у самого предмета, каталог названий гира только у клиента, а d.names несёт только материалы', () => {
+    const d = {
+      itemId: 'T5_HEAD_LEATHER_SET3', finishedQueryId: 'T5_HEAD_LEATHER_SET3@3', names: { T5_LEATHER: 'T5 Выделанная кожа' }, recipe: [],
+      enchantAfterCraft: { baseBuy: { city: 'Fort Sterling', price: 14977 }, steps: [{ materialId: 'T5_RUNE', materialName: 'Руна (эксперт)' }] },
+    };
+    const m = collectIds(d, undefined, (dd) => `Капюшон убийцы (эксперт) [${dd.itemId}]`);
+    expect(m.get('T5_HEAD_LEATHER_SET3').name).toBe('Капюшон убийцы (эксперт) [T5_HEAD_LEATHER_SET3]');   // не 'T5_HEAD_LEATHER_SET3' голым id
+  });
+
   it('чары после крафта: база .0 (если покупают) и руны/души — тоже материалы', () => {
     const d = {
       itemId: 'T6_2H_BOW', finishedQueryId: 'T6_2H_BOW@2', recipe: [],
