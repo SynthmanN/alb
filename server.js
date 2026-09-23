@@ -2393,19 +2393,22 @@ function parseMaterialHours(req) {
   const v = parseFloat(req.query.materialHours);
   return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1), HISTORY_WINDOW_HOURS) : MATERIAL_HOURS_DEFAULT   // кувшин хранит историю 10 дней;
 }
-// Возвращает [{ city, price, date, source }] по одному материалу. snapshotQuotes — [{ city, price, date }] текущих котировок.
+// Возвращает [{ city, price, date, source }] по одному материалу: средняя по сделкам за своё окно (materialHours) — честнее
+// разовой котировки, но только для городов, где сделки в этом окне реально были; город без них — на СВОЮ котировку, а не
+// пустое место (раньше при переключении на «сделки» для ОДНОГО города в списке терялись котировки ВСЕХ остальных городов,
+// даже вполне свежих — «Свежесть данных» помечала их как есть, калькулятор при этом показывал «нет данных»). snapshotQuotes — [{ city, price, date }] текущих котировок.
 function materialPriceQuotes(seriesOfItem, itemId, hours, cities, snapshotQuotes) {
   const allowed = new Set(cities.map(normLocation));
   const stats = Object.entries(cityStats(seriesOfItem || [], itemId, hours / 24, 1)).filter(([city]) => allowed.has(normLocation(city)));
-  if (stats.length > 0) {
-    const lastTrade = (city) => {
-      let last = null;
-      for (const s of seriesOfItem) if (normLocation(s.location) === normLocation(city)) for (const p of s.data) if (p.item_count > 0 && (!last || p.timestamp > last)) last = p.timestamp;
-      return last;
-    };
-    return stats.map(([city, st]) => ({ city, price: st.avgPrice, date: lastTrade(city), source: 'history' }));
-  }
-  return (snapshotQuotes || []).map((q) => ({ ...q, source: 'quote' }));
+  const lastTrade = (city) => {
+    let last = null;
+    for (const s of seriesOfItem || []) if (normLocation(s.location) === normLocation(city)) for (const p of s.data) if (p.item_count > 0 && (!last || p.timestamp > last)) last = p.timestamp;
+    return last;
+  };
+  const fromHistory = stats.map(([city, st]) => ({ city, price: st.avgPrice, date: lastTrade(city), source: 'history' }));
+  const historyCities = new Set(fromHistory.map((q) => normLocation(q.city)));
+  const fromSnapshot = (snapshotQuotes || []).filter((q) => !historyCities.has(normLocation(q.city))).map((q) => ({ ...q, source: 'quote' }));
+  return [...fromHistory, ...fromSnapshot];
 }
 const cheapestOf = (quotes) => (quotes && quotes.length ? quotes.reduce((a, b) => (b.price < a.price ? b : a)) : null);
 

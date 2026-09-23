@@ -372,6 +372,26 @@ describe('калькулятор крафта: охотничий плащ — �
     expect(prices.length).toBeGreaterThan(1);
     expect(prices).toEqual([...prices].sort((a, b) => a - b));
   });
+
+  it('город без сделок за materialHours не теряет свою котировку, если сделки были в ДРУГОМ городе — раньше терялись все города разом', async () => {
+    // T4_METALBAR: своя цена (430) уже есть во всех 5 городах (seedJugWorld). Добавляем сделки только в Martlock и Lymhurst —
+    // при старой логике «есть хоть где-то свежие сделки → используем ТОЛЬКО города со сделками» Bridgewatch/Thetford/Fort Sterling
+    // пропадали бы из выдачи целиком, хотя их собственная котировка вполне живая.
+    const hour = new Date(Date.now() - 3600000).toISOString().slice(0, 19);
+    upsertHistoryBatch(jugDb, [
+      { item_id: 'T4_METALBAR', location: 'Martlock', quality: 1, data: [{ item_count: 50, avg_price: 500, timestamp: hour }] },
+      { item_id: 'T4_METALBAR', location: 'Lymhurst', quality: 1, data: [{ item_count: 50, avg_price: 510, timestamp: hour }] },
+    ]);
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&materialHours=24')).body;
+    const metalbar = d.recipe.find((r) => r.resource === 'T4_METALBAR');
+    const byCity = Object.fromEntries(metalbar.cityPrices.map((c) => [c.city, c.price]));
+    expect(Object.keys(byCity).sort()).toEqual(['Bridgewatch', 'Fort Sterling', 'Lymhurst', 'Martlock', 'Thetford']);
+    expect(byCity.Martlock).toBeCloseTo(500, 6);       // из сделок — средняя цена
+    expect(byCity.Lymhurst).toBeCloseTo(510, 6);
+    expect(byCity.Bridgewatch).toBeCloseTo(430, 6);    // сделок не было — своя котировка, а не «нет данных»
+    expect(byCity['Fort Sterling']).toBeCloseTo(430, 6);
+    expect(byCity.Thetford).toBeCloseTo(430, 6);
+  });
 });
 
 describe('калькулятор крафта: потолок и полоса цены (бывший «План крупной партии»)', () => {
