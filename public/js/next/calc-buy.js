@@ -47,6 +47,18 @@ function MissingServerPrice({ id, label, onSaved }) {
   return html`<span class="mp"><input type="number" min="0" placeholder="общая цена" title="Нет цены на рынке: впиши — она сохранится как общая «недостоверная» на 10 дней" onBlur=${save} onKeyDown=${(e) => { if (e.key === 'Enter') save(e); }} aria-label=${`Цена: ${label}`} /></span>`;
 }
 
+// Компоненты переработки/крафта самому (сырьё, кожа, ткань предыдущего тира): своя цена и панель «Все города» — как у обычного
+// материала, а не просто имя в тексте сравнения. Раньше их вообще нельзя было раскрыть по городам, хотя своя цена на них уже
+// умела пересчитывать себестоимость (logic/manual.js) — просто нечем было её вписать.
+function ComponentPrices({ d, components, lists }) {
+  const pr = useStore(prices);
+  return html`<div class="comp-list">${components.map((cp) => html`<div class="comp-row" key=${cp.id}>
+    <${MaterialName} id=${cp.id} name=${nameOf(d, cp.id)} onCopy=${() => copyName(nameOf(d, cp.id))} />
+    <${OwnPrice} resKey=${cp.id} market=${cp.price} needed=${cp.count * d.quantity} scope="component" />
+    ${lists[cp.id] && lists[cp.id].length ? html`<${CityPriceList} resKey=${cp.id} list=${lists[cp.id]} own=${pr.cityOwn[cp.id]} fee=${d.setupFeeRate} label="Все города" onSet=${(city, v) => setCityOwn(cp.id, city, v)} />` : null}
+  </div>`)}</div>`;
+}
+
 const sourceLine = (r, nameFn) => {
   const parts = (o) => o.components.map((cp) => `${cp.count}× ${nameFn(cp.id)}`).join(' + ');
   if (r.materialSource === 'refine' && r.refineOption && !r.manualPrice) {
@@ -90,7 +102,7 @@ function RecipeTable({ d, lists, invalidate }) {
         <td>${fmt(r.needed)}${r.byRecipe !== undefined && r.byRecipe !== r.needed ? html`<br /><small>по рецепту ${fmt(r.byRecipe)}</small>` : null}</td>
         <td>${missing ? html`<span class="pill w">нет цены</span> <${MissingServerPrice} id=${id} label=${nameOf(d, id)} onSaved=${invalidate} />`
           : r.materialSource === 'points' ? html`<span class="pill n" title="Получено у интенданта за фракционные очки — в серебре 0">за очки: ${fmt(r.points)} на шт · ${fmt(r.points * d.quantity)} на ${fmt(d.quantity)} шт</span>`
-          : html`${sourceLine(r, (x) => nameOf(d, x))}${r.priceSource === 'quote' ? html`<br /><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>` : null}${r.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}<br /><${OwnPrice} resKey=${r.resource} market=${r.marketPrice ?? r.cheapestPrice} needed=${r.needed} scope="recipe" />${lists[r.resource] ? html`<br /><${CityPriceList} resKey=${r.resource} list=${lists[r.resource]} own=${pr.cityOwn[r.resource]} fee=${d.setupFeeRate} label=${r.materialSource === 'buy' ? 'Все города' : 'Готовый — все города'} onSet=${(city, v) => setCityOwn(r.resource, city, v)} />` : null}`}</td>
+          : html`${sourceLine(r, (x) => nameOf(d, x))}${r.priceSource === 'quote' ? html`<br /><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>` : null}${r.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}<br /><${OwnPrice} resKey=${r.resource} market=${r.marketPrice ?? r.cheapestPrice} needed=${r.needed} scope="recipe" />${lists[r.resource] ? html`<br /><${CityPriceList} resKey=${r.resource} list=${lists[r.resource]} own=${pr.cityOwn[r.resource]} fee=${d.setupFeeRate} label=${r.materialSource === 'buy' ? 'Все города' : 'Готовый — все города'} onSet=${(city, v) => setCityOwn(r.resource, city, v)} />` : null}${r.materialSource === 'refine' && r.refineOption ? html`<${ComponentPrices} d=${d} components=${r.refineOption.components} lists=${lists} />` : r.materialSource === 'craft' && r.craftOption ? html`<${ComponentPrices} d=${d} components=${r.craftOption.components} lists=${lists} />` : null}`}</td>
         <td class=${missing ? 'neg' : ''}>${missing ? '—' : fmt(r.cheapestPrice * r.needed)}</td>
         <td>${days !== null ? fmtDays(days) : '—'}${bottleneck === r.resource ? ' 🐢' : ''}</td>
         <td>${r.materialSource === 'craft' && r.craftOption ? html`<span title="Плащ-ингредиент не возвращается, но при крафте плаща самому ткань и кожа возвращаются">${fmt((d.rrrOptions ? d.rrrOptions.gearRate : 0) * 100, 1)}% на ткань и кожу</span>`

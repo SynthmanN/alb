@@ -13,6 +13,8 @@ import { StackView, StackFocusBar } from './calc-stack.js';
 import { stack } from './list.js';
 import { BuyTab } from './calc-buy.js';
 import { SellTab } from './calc-sell.js';
+import { FreshnessButton } from './freshness.js';
+import { collectIds } from './logic/freshness.js';
 
 export { calcStore };
 const maxEnchant = (id) => (itemTier(id) >= 4 ? 4 : 0);
@@ -62,7 +64,7 @@ export function gearBonusCity(item) {
 }
 
 // ---------- вердикт ----------
-function Verdict({ c, d, p, st }) {
+function Verdict({ c, d, p, st, invalidate }) {
   const ok = p && p.unit !== null && p.unit > 0;
   const it = findItem(c.itemId);
   const bonus = gearBonusCity(it);
@@ -79,7 +81,7 @@ function Verdict({ c, d, p, st }) {
         ${p && !p.complete ? html`<span class="pill w">нет цены части материалов</span>` : null}
       </div>
       <div class="pair"><div class="soft-good"><span>Доходы (после налога)</span><b class="pos">${p ? fmt(p.income) : '—'}</b></div><div class="soft-bad"><span>Расходы</span><b class="neg">${fmt(d.totalCost)}</b></div></div>
-      <div class="v-actions"><button class="btn primary" type="button" id="calc-add" onClick=${add}><${Icon} d=${ICONS.plus} />В крафт-лист</button><button class="btn ghost" type="button" onClick=${() => nav.tab('scan')}>← К скану</button></div>
+      <div class="v-actions"><button class="btn primary" type="button" id="calc-add" onClick=${add}><${Icon} d=${ICONS.plus} />В крафт-лист</button><${FreshnessButton} ids=${collectIds(d, undefined, (dd) => itemLabel(dd.itemId))} onRefreshed=${invalidate} /><button class="btn ghost" type="button" onClick=${() => nav.tab('scan')}>← К скану</button></div>
     </div>
     <div class="stats">
       <div class=${`stat lead ${ok ? '' : 'bad'}`}><span>Профит с одной штуки</span><b class=${tone(p && p.unit)}>${p ? signed(p.unit) : '—'}</b></div>
@@ -117,7 +119,10 @@ function SingleCalc() {
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
   const subs = [['buy', 'Закупка'], ['sell', 'Продажа']];   // «Сравнение по тирам» и по качеству — свёрнутым блоком «Ещё сравнения» внутри «Продажа» (calc-sell.js)
-  const invalidate = () => set({ sig: '' });
+  // Пересчёт на месте после «Свежесть данных»/вписанной цены недостающего материала: сброс c.sig сам по себе не сработал бы —
+  // эффект выше следит за ВЫЧИСЛЕННОЙ sig (параметры расчёта), а не за c.sig, и не видит разницы, если ни один из входов не менялся
+  // (тот же баг, что чинили для фракционного плана — reloadFactionPlan в faction.js).
+  const invalidate = () => runCalc(sig);
   return html`<section class="panel" id="panel-calc">
     ${c.stackMode && c.stackFocus ? html`<${StackFocusBar} />` : null}
     <div class="filters">
@@ -133,7 +138,7 @@ function SingleCalc() {
     ${c.itemId && !d && c.loading ? html`<div class="card empty"><${Spinner} />Считаю…</div>` : null}
     ${d ? html`<div class=${c.loading ? 'is-loading' : ''}>
       <div class="statusnote" style="margin:0 2px 10px;text-align:left" id="calc-source">${d.dataSource === 'aodp' ? 'Данные: AODP напрямую' : `Данные: краулер${d.jug && d.jug.lastPricePass ? ` · цены обновлены ${fmtAge((Date.now() - d.jug.lastPricePass) / 60000)}` : ''}`}${d.blackMarket ? ' · Чёрный Рынок — живым запросом (краулер его не собирает)' : ''}${c.loading ? ' · пересчитываю…' : ''}</div>
-      <${Verdict} c=${c} d=${d} p=${p} st=${st} />
+      <${Verdict} c=${c} d=${d} p=${p} st=${st} invalidate=${invalidate} />
       <div class="subtabs" role="tablist">${subs.map(([id, t]) => html`<button type="button" role="tab" key=${id} aria-selected=${String(c.sub === id)} onClick=${() => set({ sub: id })}>${t}</button>`)}</div>
       ${c.sub === 'buy' ? html`<${BuyTab} c=${c} d=${d} lists=${lists} override=${override} invalidate=${invalidate} />` : html`<${SellTab} c=${c} d=${d} p=${p} st=${st} />`}</div>` : null}
   </section>`;

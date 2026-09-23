@@ -51,6 +51,12 @@ describe('priceLists и закупка по своим ценам городов
     expect(lists.T4_CLOTH).toEqual(list);
     expect(lists.T4_WOOD).toEqual([]);
   });
+  it('компонент переработки/крафта самому с cityPrices (сервер знает разбивку по городам) — список не сводится к одному выбранному городу', () => {
+    const d = data();
+    d.recipe[1].refineOption.components[0].cityPrices = [{ city: 'Martlock', price: 55 }, { city: 'Thetford', price: 60 }];
+    const lists = priceLists(d);
+    expect(lists.T4_WOOD).toEqual([{ city: 'Martlock', price: 55 }, { city: 'Thetford', price: 60 }]);
+  });
   it('своя цена города: город и цена закупки меняются, себестоимость сдвигается на разницу × количество × (1 − возврат)', () => {
     const d = applyManualPrices(data(), { hasOwn: true, ownPrice: () => undefined, buyPrice: (res) => (res === 'T4_CLOTH' ? { price: 80, city: 'Thetford' } : undefined) });
     expect(d.recipe[0]).toMatchObject({ cheapestPrice: 80, cheapestCity: 'Thetford' });

@@ -523,3 +523,11 @@ details.cityprices > summary:hover { color: var(--text); }
 .item.mat .namebtn { text-align: left; }
 .matrow { display: flex; align-items: center; gap: 10px; }
 .shop-body > .item.mat { margin-bottom: 6px; }
+
+/* компоненты переработки/крафта самому (сырьё, кожа предыдущего тира) в таблице рецепта: своя цена и «Все города» —
+   как у обычного материала, отступ слева показывает, что это часть родительской строки, а не отдельный материал */
+.comp-list { margin: 8px 0 2px 14px; padding-left: 12px; border-left: 2px solid var(--line-2); display: grid; gap: 8px; }
+.comp-row { display: grid; gap: 4px; }
+.comp-row .item.mat { font-size: 13px; }
+.comp-row .item.mat .glyph { width: 28px; height: 28px; }
+.comp-row .manual-price { width: 110px; }

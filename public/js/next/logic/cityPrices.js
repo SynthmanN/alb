@@ -16,8 +16,9 @@ export function priceLists(data) {
   for (const st of (data.enchantAfterCraft && data.enchantAfterCraft.steps) || []) {
     lists[st.materialId] = (st.cityPrices || []).map(cityEntry);
   }
-  // компоненты крафта и переработки (ткань, кожа, сырьё): сервер отдаёт только выбранный город — он и попадает в список (цена без комиссии)
-  const seed = (cp) => { if (!lists[cp.id]) lists[cp.id] = cp.city && cp.price ? [{ city: cp.city, price: cp.price / (1 + fee) }] : []; };
+  // компоненты крафта и переработки (ткань, кожа, сырьё): у каждого своя разбивка по городам (cityPrices), как и у материала верхнего
+  // уровня — иначе панель «Все города» видела бы только один (выбранный сейчас как самый дешёвый) город вместо полной картины
+  const seed = (cp) => { if (!lists[cp.id]) lists[cp.id] = cp.cityPrices ? cp.cityPrices.map(cityEntry) : (cp.city && cp.price ? [{ city: cp.city, price: cp.price / (1 + fee) }] : []); };
   for (const r of data.recipe || []) {
     if (r.materialSource === 'craft' && r.craftOption) r.craftOption.components.forEach(seed);
     if (r.materialSource === 'refine' && r.refineOption) r.refineOption.components.forEach(seed);

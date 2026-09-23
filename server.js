@@ -898,8 +898,12 @@ app.get('/api/craft-calc', async (req, res) => {
       const quotes = buyPlan ? [{ city: buyPlan.city, price: buyPlan.price, date: buyPlan.date }] : [];
       const cheapest = bestMaterialQuote(quotes, { ...r, queryId, units: unitsNeeded }, { ...rrrOpts, refine: { priceOf: unitPlan, rate: refineParams.rate }, subcraft: { priceOf: unitPlan } });
       const factor = cheapest ? cheapest.factor : returnFactor(r, 0);
-      const refineOption = cheapest ? cheapest.refineOption || null : null;
-      const craftOption = cheapest ? cheapest.craftOption || null : null;
+      // Компоненты переработки/крафта самому (сырьё, кожа, ткань предыдущего тира) — своя разбивка по городам у каждого, а не только
+      // город из выбора «дешевле всего сейчас»: без неё в закупке для них не было ни своей цены, ни панели «Все города» (баг, найденный
+      // пользователем — «Средняя шкура»/«Толстая кожа» в разборе рецепта не разворачивались по городам).
+      const withCityPrices = (opt) => (opt ? { ...opt, components: opt.components.map((cp) => ({ ...cp, cityPrices: [...cityPriceList(materialByCity[cp.id] || {}, queryCities), ...(materialInfo[cp.id] || [])] })) } : null);
+      const refineOption = cheapest ? withCityPrices(cheapest.refineOption) : null;
+      const craftOption = cheapest ? withCityPrices(cheapest.craftOption) : null;
       const materialSource = cheapest && cheapest.source === 'refine' ? 'refine' : cheapest && cheapest.source === 'craft' ? 'craft' : 'buy';
       if (!cheapest) hasAllPrices = false;
       else {

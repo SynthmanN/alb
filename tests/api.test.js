@@ -724,6 +724,16 @@ describe('калькулятор крафта: купить готовый ма�
     expect(bar(d).refineOption.components.map((c) => c.id)).toEqual(['T4_ORE', 'T3_METALBAR']);
     expect(d.baseChoice.baseCraftCostPerUnit).toBeCloseTo((16 * 300 * (1 - 0.367) + 8 * 100) * FEE, 0);
   });
+  it('у компонентов переработки (руда, слиток предыдущего тира) есть своя разбивка по городам — не только выбранный сейчас', async () => {
+    install(400);
+    setJug({ T4_ORE: 90 }, { cities: ['Bridgewatch'] });      // руда дешевле в другом городе — компонент должен это видеть
+    const d = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&cities=Martlock,Bridgewatch&gearRrr=none')).body;
+    const ore = bar(d).refineOption.components.find((c) => c.id === 'T4_ORE');
+    const cities = ore.cityPrices.map((x) => x.city);
+    expect(cities).toContain('Martlock');
+    expect(cities).toContain('Bridgewatch');
+    expect(ore.cityPrices).toEqual([...ore.cityPrices].sort((a, b) => a.price - b.price));
+  });
   it('слиток дешёвый (150) — покупаем готовый, но вариант переработки отдаётся для пересчёта в интерфейсе', async () => {
     install(150);
     const d = (await get()).body;

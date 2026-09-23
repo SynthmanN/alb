@@ -439,6 +439,22 @@ test('свежесть данных: своя цена (для игры без �
   await expect(page.locator('.fresh-row[data-id="T4_RUNE"]')).toBeVisible();                    // вторая позиция без своей цены осталась
 });
 
+test('свежесть данных: кнопка есть и в одиночном калькуляторе (раньше открыть окно можно было только из крафт-листа)', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  const fresh = await mockFreshness(page, { staleIds: ['T4_CLOTH'], freshIds: ['T4_RUNE'] });
+  await expect(page.locator('#freshness-open')).toBeVisible();
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('#freshness-dialog')).toBeVisible();
+  const ids = fresh.get[0].get('ids').split(',');
+  expect(ids.some((id) => id.endsWith('_2H_BOW'))).toBe(true);           // сам предмет расчёта, не только материалы
+  expect(ids).toContain('T4_CLOTH');
+  await expect(page.locator('#freshness-dialog')).toContainText('Лук');  // название предмета — из справочника клиента, не голый id
+  const before = log.calc.length;
+  await page.locator('#freshness-refresh-all').click();
+  await expect.poll(() => log.calc.length).toBeGreaterThan(before);      // «Обновить» пересчитывает калькулятор на месте
+});
+
 // ---------- перенесённое из старой страницы: свои цены, лог закупок, план продажи, потолок/полоса/порог, телепорт, «Своё…», выбор по категориям ----------
 async function openCalc(page, log) {
   await mock(page, log);
