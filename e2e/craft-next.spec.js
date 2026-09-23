@@ -288,27 +288,35 @@ test('док крафт-листа на широком экране стоит �
 
 
 // ---------- свежесть данных ----------
-async function mockFreshness(page, { staleIds = [], freshIds = [], ages = {} } = {}) {
-  const ageDays = new Map(Object.entries(ages));                     // возраст в днях — «устарело» решается относительно запрошенного порога
+// ages: id → возраст в днях (одинаковый во всех городах мока) ИЛИ id → { Город: возраст } — свой возраст на город (для теста группировки).
+// По умолчанию мок — один город (Martlock): большинство тестов не про группировку, им незачем городить лишнее.
+async function mockFreshness(page, { staleIds = [], freshIds = [], ages = {}, cities = ['Martlock'] } = {}) {
+  const ageDays = new Map(Object.entries(ages));
   for (const id of staleIds) ageDays.set(id, 6);
   for (const id of freshIds) ageDays.set(id, 20 / 1440);
+  const ageFor = (id, city) => {
+    if (!ageDays.has(id)) return Infinity;
+    const a = ageDays.get(id);
+    return typeof a === 'object' ? (city in a ? a[city] : Infinity) : a;
+  };
+  const cityEntry = (age, staleDays) => ({ priceAgeMinutes: Number.isFinite(age) ? Math.round(age * 1440) : null, historyAgeDays: null, stale: !(age <= staleDays) });
   const itemFor = (id, staleDays) => {
-    const age = ageDays.has(id) ? ageDays.get(id) : Infinity;
-    return { id, priceAgeMinutes: Number.isFinite(age) ? Math.round(age * 1440) : null, historyAgeDays: null, stale: !(age <= staleDays) };
+    const byCity = Object.fromEntries(cities.map((city) => [city, cityEntry(ageFor(id, city), staleDays)]));
+    return { id, stale: Object.values(byCity).some((c) => c.stale), byCity };
   };
   const log = { get: [], refresh: [] };
   await page.route('**/api/freshness?*', (route) => {
     const q = new URL(route.request().url()).searchParams;
     log.get.push(q);
     const staleDays = Number(q.get('staleDays')) || 3;
-    route.fulfill({ json: { staleDays, items: q.get('ids').split(',').map((id) => itemFor(id, staleDays)) } });
+    route.fulfill({ json: { staleDays, cities, items: q.get('ids').split(',').map((id) => itemFor(id, staleDays)) } });
   });
   await page.route('**/api/freshness/refresh', (route) => {
     const body = route.request().postDataJSON();
     log.refresh.push(body.ids);
-    for (const id of body.ids) ageDays.set(id, 20 / 1440);          // «обновили» — стало почти только что
+    for (const id of body.ids) ageDays.set(id, 20 / 1440);          // «обновили» — стало почти только что, во всех городах мока
     const staleDays = body.staleDays || 3;
-    route.fulfill({ json: { staleDays, items: body.ids.map((id) => itemFor(id, staleDays)) } });
+    route.fulfill({ json: { staleDays, cities, items: body.ids.map((id) => itemFor(id, staleDays)) } });
   });
   return log;
 }
@@ -367,6 +375,45 @@ test('свежесть данных: порог — пресет и «Своё�
   await page.locator('#freshness-open').click();
   await expect(page.locator('#freshness-stale')).toHaveValue('__custom__');                     // выбор порога запомнился
   await expect(page.locator('#freshness-stale-custom')).toHaveValue('12ч');
+});
+
+test('свежесть данных: список по городам — что открыть в каждом; значок/метки как в остальном сайте; копирование по клику', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  // T4_CLOTH устарела только в Лаймхерсте, T4_RUNE — только в Мартлоке, T4_2H_BOW — в обоих, T4_CAPE свежа везде
+  const fresh = await mockFreshness(page, {
+    cities: ['Lymhurst', 'Martlock'],
+    ages: {
+      T4_CLOTH: { Lymhurst: 6, Martlock: 20 / 1440 },
+      T4_RUNE: { Lymhurst: 20 / 1440, Martlock: 6 },
+      T4_2H_BOW: { Lymhurst: 6, Martlock: 6 },
+      T4_CAPE: { Lymhurst: 20 / 1440, Martlock: 20 / 1440 },
+    },
+  });
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('#freshness-dialog')).toBeVisible();
+  const cityGroups = page.locator('.fresh-city');
+  await expect(cityGroups).toHaveCount(2);                                                     // только города, где реально есть что обновить
+  const lym = cityGroups.filter({ has: page.locator('.city.lym') });
+  const mar = cityGroups.filter({ has: page.locator('.city.mar') });
+  await expect(lym.locator('.fresh-row')).toHaveCount(2);                                       // T4_CLOTH, T4_2H_BOW
+  await expect(mar.locator('.fresh-row')).toHaveCount(2);                                        // T4_RUNE, T4_2H_BOW
+  await expect(lym).toContainText('Изысканная ткань');
+  await expect(mar).not.toContainText('Изысканная ткань');                                       // в Мартлоке эта ткань свежа — её тут нет
+  await expect(page.locator('.fresh-row')).toHaveCount(4);                                       // T4_2H_BOW считан дважды — по разу на город
+  await expect(page.locator('#freshness-refresh-all')).toContainText('Обновить всё (3)');         // уникальных предметов — 3, не 4
+  // как на странице крафта: значок предмета и цветная метка тира
+  await expect(lym.locator('.fresh-row').first().locator('.glyph')).toBeVisible();
+  await expect(lym.locator('.fresh-row').first().locator('.tags .tag').first()).toBeVisible();
+  // клик по названию копирует его для поиска на аукционе
+  await lym.locator('.fresh-row', { hasText: 'Изысканная ткань' }).locator('.namebtn').click();
+  await expect(page.locator('.toast')).toContainText('Скопировано: Изысканная ткань');
+  // обновление позиции из одного города убирает её и из другого — данные общие, а не городские копии
+  await lym.locator('.fresh-row[data-id="T4_2H_BOW"]').getByRole('button', { name: 'Обновить' }).click();
+  await expect(page.locator('.fresh-row')).toHaveCount(2);
+  await expect(cityGroups).toHaveCount(2);
+  await expect(lym.locator('.fresh-row')).toHaveCount(1);
+  await expect(mar.locator('.fresh-row')).toHaveCount(1);
 });
 
 // ---------- перенесённое из старой страницы: свои цены, лог закупок, план продажи, потолок/полоса/порог, телепорт, «Своё…», выбор по категориям ----------

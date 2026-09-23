@@ -36,33 +36,59 @@ describe('GET /api/freshness', () => {
     expect(res.status).toBe(400);
   });
 
-  it('свежая цена (моложе 3 дней) — не устарело, возраст в минутах', async () => {
+  it('свежая цена (моложе 3 дней) — не устарело, возраст в минутах, разбивка по городу', async () => {
     seedPrice('T4_CLOTH', 'Martlock', 100, 3 * 3600 * 1000);           // 3 часа назад
     const res = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock');
     expect(res.body.staleDays).toBe(3);
-    expect(res.body.items[0]).toMatchObject({ id: 'T4_CLOTH', stale: false });
-    expect(res.body.items[0].priceAgeMinutes).toBeCloseTo(180, 0);
-    expect(res.body.items[0].historyAgeDays).toBeNull();
+    expect(res.body.cities).toEqual(['Martlock']);
+    expect(res.body.items[0].stale).toBe(false);
+    expect(res.body.items[0].byCity.Martlock.stale).toBe(false);
+    expect(res.body.items[0].byCity.Martlock.priceAgeMinutes).toBeCloseTo(180, 0);
+    expect(res.body.items[0].byCity.Martlock.historyAgeDays).toBeNull();
   });
 
-  it('цена старше 3 дней и истории нет вообще — устарело', async () => {
+  it('цена старше 3 дней и истории нет вообще — устарело в этом городе', async () => {
     seedPrice('T5_LEATHER', 'Lymhurst', 50, 4 * DAY);
     const res = await request(app).get('/api/freshness?ids=T5_LEATHER&cities=Lymhurst');
-    expect(res.body.items[0]).toMatchObject({ stale: true });
-    expect(res.body.items[0].priceAgeMinutes).toBeCloseTo(4 * 1440, 0);
+    expect(res.body.items[0].stale).toBe(true);
+    expect(res.body.items[0].byCity.Lymhurst.stale).toBe(true);
+    expect(res.body.items[0].byCity.Lymhurst.priceAgeMinutes).toBeCloseTo(4 * 1440, 0);
   });
 
   it('цена устарела, но сделка была вчера — не устарело (берётся самый свежий из двух сигналов)', async () => {
     seedPrice('T6_RUNE', 'Thetford', 200, 10 * DAY);
     seedHistory('T6_RUNE', 'Thetford', DAY);
     const res = await request(app).get('/api/freshness?ids=T6_RUNE&cities=Thetford');
-    expect(res.body.items[0]).toMatchObject({ stale: false });
-    expect(res.body.items[0].historyAgeDays).toBeCloseTo(1, 0);
+    expect(res.body.items[0].stale).toBe(false);
+    expect(res.body.items[0].byCity.Thetford.stale).toBe(false);
+    expect(res.body.items[0].byCity.Thetford.historyAgeDays).toBeCloseTo(1, 0);
   });
 
-  it('совсем без данных — устарело, возраст null', async () => {
+  it('свежо в одном городе, но устарело в другом — видно по каждому городу отдельно', async () => {
+    seedPrice('T4_CLOTH', 'Martlock', 100, 3600 * 1000);               // час назад
+    seedPrice('T4_CLOTH', 'Lymhurst', 100, 10 * DAY);                  // 10 дней назад
+    const res = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock,Lymhurst');
+    expect(res.body.items[0].stale).toBe(true);                       // хоть один город устарел — есть что обновить
+    expect(res.body.items[0].byCity.Martlock.stale).toBe(false);
+    expect(res.body.items[0].byCity.Lymhurst.stale).toBe(true);
+  });
+
+  it('совсем без данных — устарело во всех запрошенных городах, возраст null', async () => {
+    const res = await request(app).get('/api/freshness?ids=T8_GHOST_ITEM&cities=Martlock,Lymhurst');
+    expect(res.body.items[0]).toEqual({
+      id: 'T8_GHOST_ITEM',
+      stale: true,
+      byCity: {
+        Martlock: { priceAgeMinutes: null, historyAgeDays: null, stale: true },
+        Lymhurst: { priceAgeMinutes: null, historyAgeDays: null, stale: true },
+      },
+    });
+  });
+
+  it('без cities — все семь городов по умолчанию', async () => {
     const res = await request(app).get('/api/freshness?ids=T8_GHOST_ITEM');
-    expect(res.body.items[0]).toEqual({ id: 'T8_GHOST_ITEM', priceAgeMinutes: null, historyAgeDays: null, stale: true });
+    expect(res.body.cities).toHaveLength(7);
+    expect(Object.keys(res.body.items[0].byCity)).toEqual(res.body.cities);
   });
 
   it('несколько id и дубликаты — по одной строке на уникальный id, порядок как во входе', async () => {
@@ -89,8 +115,8 @@ describe('POST /api/freshness/refresh', () => {
     const res = await request(app).post('/api/freshness/refresh').send({ ids: ['T4_CLOTH'], cities: ['Martlock'] });
     expect(res.status).toBe(200);
     expect(res.body.items[0]).toMatchObject({ id: 'T4_CLOTH', stale: false });
-    expect(res.body.items[0].priceAgeMinutes).toBeLessThan(2);
-    expect(res.body.items[0].historyAgeDays).toBeLessThan(1);
+    expect(res.body.items[0].byCity.Martlock.priceAgeMinutes).toBeLessThan(2);
+    expect(res.body.items[0].byCity.Martlock.historyAgeDays).toBeLessThan(1);
     // и в самой базе — тоже свежее (следующий обычный запрос увидит то же самое)
     const after = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock');
     expect(after.body.items[0].stale).toBe(false);
@@ -162,7 +188,7 @@ describe('порог «устарело»: свой staleDays (пресет ил
       const ids = decodeURIComponent(u.split('/prices/')[1].split('?')[0]).split(',');
       return { ok: true, status: 200, json: async () => ids.map((id) => ({ item_id: id, city: 'Martlock', quality: 1, sell_price_min: 555, sell_price_min_date: iso(NOW - 2 * DAY), buy_price_max: 0, buy_price_max_date: '0001-01-01T00:00:00' })) };
     });
-    const res = await request(app).post('/api/freshness/refresh').send({ ids: ['T4_CLOTH'], staleDays: 1 });
+    const res = await request(app).post('/api/freshness/refresh').send({ ids: ['T4_CLOTH'], cities: ['Martlock'], staleDays: 1 });
     expect(res.body.staleDays).toBe(1);
     expect(res.body.items[0].stale).toBe(true);                        // AODP отдал цену 2-дневной давности, порог — 1 день
   });

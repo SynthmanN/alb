@@ -2766,23 +2766,34 @@ function parseFreshnessStaleDays(req) {
   const v = parseFloat(req.query.staleDays ?? req.body?.staleDays);
   return Number.isFinite(v) && v > 0 ? Math.min(Math.max(v, 1 / 24), 30) : FRESHNESS_STALE_DAYS_DEFAULT;
 }
+// Возраст по городам отдельно (не «лучший из всех») — чтобы окно могло сказать «в Мартлоке устарело, в Лаймхерсте свежо»:
+// пользователь идёт в игру именно в тот город, где реально нужно открыть рынок, а не гадает.
 function freshnessOf(id, { cities, now, staleDays }) {
   const prices = readPrices(jugDb, [id], { cities });
-  let priceAgeMinutes = null;
+  const priceAgeByCity = new Map();
   for (const r of prices) for (const d of [r.sell_price_min_date, r.buy_price_max_date]) {
     const age = quoteAgeMinutes(d, now);
-    if (age !== null && (priceAgeMinutes === null || age < priceAgeMinutes)) priceAgeMinutes = age;
+    if (age === null) continue;
+    const prev = priceAgeByCity.get(r.city);
+    if (prev === undefined || age < prev) priceAgeByCity.set(r.city, age);
   }
   const locations = cities.map((c) => c.replace(/\s+/g, ''));
   const history = readHistory(jugDb, [id], HISTORY_WINDOW_HOURS, { locations, now });
-  let historyAgeDays = null;
+  const historyAgeByLoc = new Map();
   for (const s of history) for (const p of s.data) {
     if (p.item_count <= 0) continue;
     const age = quoteAgeMinutes(`${p.timestamp}`, now) / 1440;
-    if (historyAgeDays === null || age < historyAgeDays) historyAgeDays = age;
+    const prev = historyAgeByLoc.get(s.location);
+    if (prev === undefined || age < prev) historyAgeByLoc.set(s.location, age);
   }
-  const bestAgeDays = Math.min(priceAgeMinutes === null ? Infinity : priceAgeMinutes / 1440, historyAgeDays === null ? Infinity : historyAgeDays);
-  return { id, priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !(bestAgeDays <= staleDays) };
+  const byCity = {};
+  for (const city of cities) {
+    const priceAgeMinutes = priceAgeByCity.has(city) ? priceAgeByCity.get(city) : null;
+    const historyAgeDays = historyAgeByLoc.has(city.replace(/\s+/g, '')) ? historyAgeByLoc.get(city.replace(/\s+/g, '')) : null;
+    const bestAgeDays = Math.min(priceAgeMinutes === null ? Infinity : priceAgeMinutes / 1440, historyAgeDays === null ? Infinity : historyAgeDays);
+    byCity[city] = { priceAgeMinutes: priceAgeMinutes === null ? null : Math.round(priceAgeMinutes), historyAgeDays: historyAgeDays === null ? null : Math.round(historyAgeDays * 10) / 10, stale: !(bestAgeDays <= staleDays) };
+  }
+  return { id, stale: Object.values(byCity).some((c) => c.stale), byCity };
 }
 app.get('/api/freshness', (req, res) => {
   try {
@@ -2791,7 +2802,7 @@ app.get('/api/freshness', (req, res) => {
     const cities = req.query.cities ? String(req.query.cities).split(',').map((s) => s.trim()).filter(Boolean) : Object.values(CITY_DISPLAY);
     const staleDays = parseFreshnessStaleDays(req);
     const now = Date.now();
-    res.json({ staleDays, items: ids.map((id) => freshnessOf(id, { cities, now, staleDays })) });
+    res.json({ staleDays, cities, items: ids.map((id) => freshnessOf(id, { cities, now, staleDays })) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'не удалось проверить свежесть данных', details: err.message });
@@ -2813,7 +2824,7 @@ app.post('/api/freshness/refresh', async (req, res) => {
     ]);
     upsertPriceSnapshots(jugDb, priceRows, now);
     upsertHistoryBatch(jugDb, historySeries, now);
-    res.json({ staleDays, items: known.map((id) => freshnessOf(id, { cities, now: Date.now(), staleDays })) });
+    res.json({ staleDays, cities, items: known.map((id) => freshnessOf(id, { cities, now: Date.now(), staleDays })) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось обновить данные с AODP', details: err.message });
