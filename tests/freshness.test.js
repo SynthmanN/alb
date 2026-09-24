@@ -213,4 +213,17 @@ describe('POST /api/freshness/refresh', () => {
     const res = await request(app).post('/api/freshness/refresh').send({});
     expect(res.status).toBe(400);
   });
+
+  // Баг: «Обновить» — это явная просьба «спроси AODP прямо сейчас», а не рутинный запрос калькулятора с общим 5-минутным
+  // кэшем (тот же предмет+качество мог недавно спросить кто угодно другой на сайте) — второй клик по «Обновить» подряд
+  // должен снова дойти до AODP, а не молча вернуть тот же ответ, что и первый (resetCaches() в beforeEach тут не при делах —
+  // он чистит кэш МЕЖДУ тестами, а не между двумя вызовами внутри одного).
+  it('«Обновить» не берёт свой же 5-минутный кэш калькулятора — второй клик подряд снова бьёт в AODP', async () => {
+    const fetchSpy = install();
+    await request(app).post('/api/freshness/refresh').send({ ids: ['T4_CLOTH'], cities: ['Martlock'] });
+    const callsAfterFirst = fetchSpy.mock.calls.length;
+    expect(callsAfterFirst).toBeGreaterThan(0);
+    await request(app).post('/api/freshness/refresh').send({ ids: ['T4_CLOTH'], cities: ['Martlock'] });
+    expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterFirst);   // не из кэша — сходил в AODP заново
+  });
 });

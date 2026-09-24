@@ -515,7 +515,7 @@ function fmtDate(d) {
   return `${d.getMonth() + 1}-${d.getDate()}-${d.getFullYear()}`;
 }
 
-async function fetchHistoryBatched(itemIds, hours, quality, locations) {
+async function fetchHistoryBatched(itemIds, hours, quality, locations, { bypassCache = false } = {}) {
   const CHUNK = 25;
   const now = new Date();
   const start = new Date(now.getTime() - hours * 3600 * 1000);
@@ -529,7 +529,7 @@ async function fetchHistoryBatched(itemIds, hours, quality, locations) {
     AODP_CONCURRENCY,
     async (chunk) => {
       const key = `batch:${quality}:${locKey}:${hours}:${chunk.slice().sort().join(',')}`;
-      const cached = historyCache.get(key);
+      const cached = bypassCache ? null : historyCache.get(key);
       if (cached && Date.now() - cached.ts < HISTORY_CACHE_TTL_MS) return cached.data;
       const url = `${AODP_HISTORY_BASE}/${encodeURIComponent(chunk.join(','))}?date=${fmtDate(start)}&end_date=${fmtDate(now)}&locations=${locKey}&qualities=${quality}&time-scale=1`;
       const response = await aodpFetch(url);
@@ -2841,9 +2841,12 @@ app.post('/api/freshness/refresh', async (req, res) => {
     const materialHours = parseFreshnessMaterialHours(req);
     const days = parseFreshnessDays(req);
     const now = Date.now();
+    // bypassCache: «Обновить» — это явная просьба «прямо сейчас», не обычный поход в AODP (тот же предмет мог недавно
+    // спросить кто угодно другой на сайте — калькулятор, скан — и 5-минутный общий кэш тогда подложил бы старый ответ,
+    // как будто живого обновления и не было; ровно это и было багом — «Обновить» не обновляло 5 минут после любого чужого запроса).
     const [priceRows, historySeries] = await Promise.all([
-      marketPrices('aodp', known, ALL_QUALITIES),
-      marketHistory('aodp', known, FRESHNESS_HISTORY_HOURS, ALL_QUALITIES.join(','), locations),
+      marketPrices('aodp', known, ALL_QUALITIES, { bypassCache: true }),
+      marketHistory('aodp', known, FRESHNESS_HISTORY_HOURS, ALL_QUALITIES.join(','), locations, { bypassCache: true }),
     ]);
     upsertPriceSnapshots(jugDb, priceRows, now);
     upsertHistoryBatch(jugDb, historySeries, now);
@@ -3220,19 +3223,21 @@ const SLOT_ACCEPTS = {
 };
 
 // Цены гира сразу по нескольким качествам одним запросом (AODP принимает qualities=1,2,3,4,5).
-async function fetchGearPrices(queryIds, qualities) {
+// bypassCache — для «Обновить» в окне свежести: это именно просьба «спроси AODP прямо сейчас», не 5-минутный кэш калькулятора
+// (тот же item+качество мог недавно спросить кто угодно ещё — калькулятор, скан — и подложить старый ответ вместо живого).
+async function fetchGearPrices(queryIds, qualities, { bypassCache = false } = {}) {
   const CHUNK = 50;
   const chunks = [];
   for (let i = 0; i < queryIds.length; i += CHUNK) chunks.push(queryIds.slice(i, i + CHUNK));
   const results = await mapLimit(chunks, AODP_CONCURRENCY, async (chunk) => {
     const key = `gear:${qualities.join('')}:${chunk.slice().sort().join(',')}`;
-    const cached = cache.get(key);
+    const cached = bypassCache ? null : cache.get(key);
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data;
     const url = `${AODP_BASE}/${encodeURIComponent(chunk.join(','))}?locations=${CITIES.join(',')}&qualities=${qualities.join(',')}`;
     const response = await aodpFetch(url);
     if (!response.ok) throw new Error(`AODP responded ${response.status}`);
     const data = await response.json();
-    cache.set(key, { ts: Date.now(), data });
+    cache.set(key, { ts: Date.now(), data });   // всё равно кладём в кэш — следующий обычный запрос (не «Обновить») получит уже свежее
     return data;
   });
   return results.flat();
@@ -3247,18 +3252,18 @@ function parseSource(req) {
   return s === 'aodp' || s === 'jug' ? s : DEFAULT_DATA_SOURCE;
 }
 // Цены (те же записи, что отдаёт AODP: item_id, city, quality, sell_price_min…, buy_price_max…)
-async function marketPrices(source, ids, qualities, { blackMarket = false } = {}) {
+async function marketPrices(source, ids, qualities, { blackMarket = false, bypassCache = false } = {}) {
   const qs = (Array.isArray(qualities) ? qualities : [qualities || 1]).map(Number);
   if (source === 'aodp') {
     if (blackMarket) return fetchPricesAt(ids, qs.join(','), [...CITIES, BM_QUERY_LOCATION]);
-    return qs.length > 1 ? fetchGearPrices(ids, qs) : fetchPricesBatched(ids, qs[0]);
+    return qs.length > 1 ? fetchGearPrices(ids, qs, { bypassCache }) : fetchPricesBatched(ids, qs[0]);
   }
   const rows = readPrices(jugDb, ids, { qualities: qs });
   return blackMarket ? [...rows, ...(await fetchPricesAt(ids, qs.join(','), [BM_QUERY_LOCATION]))] : rows;
 }
 // История сделок (те же ряды, что у AODP: location, item_id, quality, data[{item_count, avg_price, timestamp}]); кувшин хранит 10 дней
-async function marketHistory(source, ids, hours, qualities, locations) {
-  if (source === 'aodp') return fetchHistoryBatched(ids, hours, qualities, locations);
+async function marketHistory(source, ids, hours, qualities, locations, { bypassCache = false } = {}) {
+  if (source === 'aodp') return fetchHistoryBatched(ids, hours, qualities, locations, { bypassCache });
   const qs = String(qualities).split(',').map(Number);
   const towns = locations.filter((l) => l !== BM_QUERY_LOCATION);
   const rows = readHistory(jugDb, ids, hours, { locations: towns, qualities: qs });
