@@ -48,14 +48,14 @@ describe('priceLists и закупка по своим ценам городов
     d.enchantAfterCraft = { steps: [{ materialId: 'T4_RUNE', cityPrices: [{ city: 'Brecilien', price: 5 }] }], baseSource: 'craft', stepsCostPerUnit: 0 };
     const lists = priceLists(d);
     expect(Object.keys(lists).sort()).toEqual(['T4_CLOTH', 'T4_PLANKS', 'T4_RUNE', 'T4_WOOD']);     // T4_WOOD — компонент переработки: списка городов нет, но своя цена вписывается
-    expect(lists.T4_CLOTH).toEqual(list);
+    expect(lists.T4_CLOTH).toEqual(list.map((x) => ({ ...x, date: null })));    // date: null — входные данные теста без даты AODP
     expect(lists.T4_WOOD).toEqual([]);
   });
   it('компонент переработки/крафта самому с cityPrices (сервер знает разбивку по городам) — список не сводится к одному выбранному городу', () => {
     const d = data();
     d.recipe[1].refineOption.components[0].cityPrices = [{ city: 'Martlock', price: 55 }, { city: 'Thetford', price: 60 }];
     const lists = priceLists(d);
-    expect(lists.T4_WOOD).toEqual([{ city: 'Martlock', price: 55 }, { city: 'Thetford', price: 60 }]);
+    expect(lists.T4_WOOD).toEqual([{ city: 'Martlock', price: 55, date: null }, { city: 'Thetford', price: 60, date: null }]);
   });
   it('своя цена города: город и цена закупки меняются, себестоимость сдвигается на разницу × количество × (1 − возврат)', () => {
     const d = applyManualPrices(data(), { hasOwn: true, ownPrice: () => undefined, buyPrice: (res) => (res === 'T4_CLOTH' ? { price: 80, city: 'Thetford' } : undefined) });

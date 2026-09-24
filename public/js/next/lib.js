@@ -63,6 +63,21 @@ export function fmtAge(minutes) {
   if (minutes < 2880) return `${(minutes / 60).toFixed(minutes < 600 ? 1 : 0)} ч назад`;
   return `${(minutes / 1440).toFixed(1)} дн. назад`;
 }
+// Компактный возраст — без «назад», для узких мест рядом с ценой (таблицы городов): «3ч», «2д», «сейчас».
+export function fmtAgeShort(minutes) {
+  if (minutes === null || minutes === undefined) return '';
+  if (minutes < 1) return 'сейчас';
+  if (minutes < 60) return `${Math.round(minutes)}м`;
+  if (minutes < 2880) return `${(minutes / 60).toFixed(minutes < 600 ? 1 : 0)}ч`;
+  return `${(minutes / 1440).toFixed(1)}д`;
+}
+// Возраст цены по её ISO-дате от AODP (сделка или дата ценника — настоящее время AODP, не опрос нашего краулера); null, если
+// даты нет (AODP отдаёт 0001-01-01 для «нет данных», как и наш кувшин). Считается на клиенте от текущего момента — не
+// замирает на времени запроса, при повторном рендере (например, открыл вкладку заново) возраст будет точным, а не старым.
+export function priceAgeMinutes(dateStr) {
+  if (!dateStr || dateStr === '0001-01-01T00:00:00') return null;
+  return (Date.now() - new Date(`${dateStr}Z`).getTime()) / 60000;
+}
 export function fmtDays(d) {
   if (d === null || d === undefined) return '—';
   if (d < 1 / 24) return 'меньше часа';

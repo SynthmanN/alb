@@ -977,26 +977,27 @@ app.get('/api/craft-calc', async (req, res) => {
       };
     }
     const finishedCityData = finishedByCity[finishedQueryId] || {};
+    // sellMinDate/buyMaxDate — настоящее время AODP (когда был выставлен этот конкретный ордер), не опрос краулера.
     const sellPrices = queryCities.map((city) => {
       const rec = finishedCityData[city];
-      return { city, sellMin: rec?.sell_price_min || null, buyMax: rec?.buy_price_max || null };
+      return { city, sellMin: rec?.sell_price_min || null, sellMinDate: rec?.sell_price_min_date || null, buyMax: rec?.buy_price_max || null, buyMaxDate: rec?.buy_price_max_date || null };
     });
     const infoSellPrices = infoCities.map((city) => {
       const rec = Object.values(finishedCityData).find((r) => normLocation(r.city) === normLocation(city));
-      return { city, sellMin: rec?.sell_price_min || null, buyMax: rec?.buy_price_max || null, inactive: true };
+      return { city, sellMin: rec?.sell_price_min || null, sellMinDate: rec?.sell_price_min_date || null, buyMax: rec?.buy_price_max || null, buyMaxDate: rec?.buy_price_max_date || null, inactive: true };
     });
     // Чёрный Рынок (только по галочке «Чёрный Рынок» — иначе его вообще не запрашиваем: краулер его не собирает, это лишний живой запрос к AODP).
     // Дальше он всегда «вне расчёта», как Caerleon и Brecilien: цена видна, но в лучшую цену и план не входит, пока его не включат галочкой в плане.
     if (blackMarket) {
       const bmRec = Object.values(finishedCityData).find((rec) => normLocation(rec.city) === 'blackmarket');
-      if (bmRec) infoSellPrices.push({ city: bmRec.city, sellMin: null, buyMax: bmRec.buy_price_max || null, blackMarket: true, inactive: true });
+      if (bmRec) infoSellPrices.push({ city: bmRec.city, sellMin: null, buyMax: bmRec.buy_price_max || null, buyMaxDate: bmRec.buy_price_max_date || null, blackMarket: true, inactive: true });
     }
     const taxRate = getSalesTaxRate(req);
     // Чёрный Рынок в этот перебор не попадает (он в infoSellPrices, не в sellPrices) — мгновенная продажа его не выбирает автоматически.
     let bestSell = null;
     for (const sp of sellPrices) {
       if (sp.buyMax && (!bestSell || sp.buyMax * (1 - taxRate) > bestSell.price * (1 - bestSell.taxRate))) {
-        bestSell = { city: sp.city, price: sp.buyMax, blackMarket: false, taxRate };
+        bestSell = { city: sp.city, price: sp.buyMax, date: sp.buyMaxDate, blackMarket: false, taxRate };
       }
     }
     const netSellPrice = bestSell ? bestSell.price * (1 - bestSell.taxRate) : null;
@@ -1651,7 +1652,8 @@ function cityPriceList(cityRecords, queryCities) {
   const out = [];
   for (const city of queryCities) {
     const rec = cityRecords[city];
-    if (rec && rec.sell_price_min) out.push({ city, price: rec.sell_price_min });
+    // date — настоящее время AODP (сделка или дата ценника, см. materialPriceQuotes), не время нашего опроса краулером.
+    if (rec && rec.sell_price_min) out.push({ city, price: rec.sell_price_min, date: rec.sell_price_min_date || null });
   }
   return out.sort((a, b) => a.price - b.price);
 }
@@ -2748,15 +2750,22 @@ app.post('/api/manual-price', (req, res) => {
     res.status(500).json({ error: 'не удалось сохранить цену', details: err.message });
   }
 });
-// Подстановка вписанных цен вместо отсутствующих цен AODP: как будто пришли от AODP (по всем запрошенным городам), но с пометкой manual
+// Подстановка вписанных цен вместо отсутствующих цен AODP: как будто пришли от AODP, но с пометкой manual — по каждому
+// ГОРОДУ отдельно, не по предмету целиком. Раньше проверялось «есть ли у предмета цена хоть в одном городе» — если да,
+// своя цена не подставлялась вообще ни в один город, даже в те, где данных как раз и не было (ради чего её и вписывали
+// в окне свежести — там подсказка про нехватку данных уже идёт по городам). Из-за этого «своя цена» молча не действовала,
+// пока в игре или у кого-то ещё не появлялась настоящая цена — и тогда казалось, что помогло именно «Обновить».
 function addManualPriceRecords(records, ids, cities, quality = 1, now = Date.now()) {
-  const have = new Set(records.filter((r) => r.sell_price_min && r.quality === quality).map((r) => r.item_id));
-  const manual = getManualPrices(jugDb, ids.filter((id) => !have.has(id)), now);
+  const haveInCity = new Set(records.filter((r) => r.sell_price_min && r.quality === quality).map((r) => `${r.item_id}|${normLocation(r.city)}`));
+  const manual = getManualPrices(jugDb, ids, now);
   const out = [...records];
   for (const id of ids) {
     const m = manual[`${id}|${quality}`];
-    if (have.has(id) || !m) continue;
-    for (const city of cities) out.push({ item_id: id, city, quality, sell_price_min: m.price, sell_price_min_date: new Date(m.enteredAt).toISOString().slice(0, 19), buy_price_max: 0, manual: true });
+    if (!m) continue;
+    for (const city of cities) {
+      if (haveInCity.has(`${id}|${normLocation(city)}`)) continue;
+      out.push({ item_id: id, city, quality, sell_price_min: m.price, sell_price_min_date: new Date(m.enteredAt).toISOString().slice(0, 19), buy_price_max: 0, manual: true });
+    }
   }
   return out;
 }

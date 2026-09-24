@@ -635,8 +635,8 @@ describe('калькулятор крафта: мгновенная продаж
     expect(withBm.bestSell).toMatchObject({ city: 'Martlock', price: 3000, blackMarket: false });     // ЧР дороже (3300), но не выбран
     expect(withBm.netSellPrice).toBeCloseTo(3000 * 0.92, 6);
     expect(withBm.sellPrices).toEqual([
-      { city: 'Martlock', sellMin: null, buyMax: 3000 },
-      { city: 'Black Market', sellMin: null, buyMax: 3300, blackMarket: true, inactive: true },
+      { city: 'Martlock', sellMin: null, sellMinDate: NOW(), buyMax: 3000, buyMaxDate: NOW() },
+      { city: 'Black Market', sellMin: null, buyMax: 3300, buyMaxDate: NOW(), blackMarket: true, inactive: true },
     ]);
     expect(withBm.profitPerUnit).toBeCloseTo(plain.profitPerUnit, 6);
   });
@@ -920,5 +920,25 @@ describe('калькулятор: фракционный режим (тольк�
   it('чужая фракция или не плащ — режим игнорируется', async () => {
     expect((await request(app).get(url('&faction=LYMHURST'))).body.faction).toBeNull();
     expect((await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&faction=MARTLOCK')).body.faction).toBeNull();
+  });
+});
+
+describe('своя цена материала — по каждому городу отдельно, не по предмету целиком', () => {
+  // Баг: раньше подстановка своей цены проверяла «есть ли у предмета цена хоть в одном городе» — если да, своя цена не
+  // подставлялась вообще ни в один город, даже в те, где данных как раз и не было (ради чего её и вписывали в окне
+  // свежести). Пользователь сообщил: вписал цену — ничего не изменилось, пока не появилась настоящая цена от AODP.
+  it('город без цены получает свою; город с реальной ценой AODP остаётся при своей, не подменяется', async () => {
+    jugDb.exec("DELETE FROM prices WHERE query_id='T4_METALBAR' AND city='Lymhurst'");   // Martlock — реальная цена (seedJugWorld), Lymhurst — нет вообще
+    const before = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&cities=Martlock,Lymhurst')).body;
+    const metalbarBefore = before.recipe.find((r) => r.resource === 'T4_METALBAR');
+    expect(metalbarBefore.cityPrices.find((c) => c.city === 'Lymhurst')).toBeUndefined();       // до своей цены — города в списке нет вообще
+    const martlockReal = metalbarBefore.cityPrices.find((c) => c.city === 'Martlock').price;
+    await request(app).post('/api/manual-price').send({ id: 'T4_METALBAR', quality: 1, price: 999 });
+    resetCaches();
+    const after = (await request(app).get('/api/craft-calc?item=T4_MAIN_SWORD&quantity=1&cities=Martlock,Lymhurst')).body;
+    const metalbarAfter = after.recipe.find((r) => r.resource === 'T4_METALBAR');
+    expect(metalbarAfter.cityPrices.find((c) => c.city === 'Lymhurst')).toMatchObject({ price: 999 });   // город без данных — подставилась своя
+    expect(metalbarAfter.cityPrices.find((c) => c.city === 'Martlock').price).toBe(martlockReal);        // город с реальной ценой — не тронут
+    jugDb.exec('DELETE FROM manual_prices');
   });
 });

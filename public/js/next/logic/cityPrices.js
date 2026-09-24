@@ -2,9 +2,10 @@
 export const SETUP_FEE = 0.025;                 // комиссия 2.5% за свой Buy Order: рыночные цены сравниваются с ней, своя цена — как есть (реально заплаченная)
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
-// Рыночные цены по городам для каждого материала ответа калькулятора: { ключ материала: [{ city, price }] } (цены без комиссии)
+// Рыночные цены по городам для каждого материала ответа калькулятора: { ключ материала: [{ city, price, date }] } (цены без
+// комиссии; date — настоящее время AODP: сделка или дата ценника, не опрос краулера, см. materialPriceQuotes на сервере)
 // строка списка городов; inactive — город вне расчёта (только для справки)
-const cityEntry = ({ city, price, inactive }) => (inactive ? { city, price, inactive: true } : { city, price });
+const cityEntry = ({ city, price, date, inactive }) => (inactive ? { city, price, date: date || null, inactive: true } : { city, price, date: date || null });
 export function priceLists(data) {
   const lists = {};
   const fee = data.setupFeeRate ?? SETUP_FEE;
@@ -36,7 +37,7 @@ export function cityRows(list, own, cities, fee = SETUP_FEE, all = []) {
     const e = entries.get(city);
     const mine = has(own, city) ? own[city] : undefined;
     const inactive = mine === undefined && (e ? !!e.inactive : !cities.includes(city));            // своя цена включает город в расчёт: это явное решение пользователя
-    return { city, market: e ? e.price : null, own: mine, inactive };
+    return { city, market: e ? e.price : null, date: e ? e.date || null : null, own: mine, inactive };
   });
   const eff = (r) => (r.own !== undefined ? r.own : r.market !== null ? r.market * (1 + fee) : Infinity);
   rows.sort((a, b) => a.inactive - b.inactive || eff(a) - eff(b) || a.city.localeCompare(b.city));

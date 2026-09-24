@@ -18,3 +18,17 @@ describe('ruPlural', async () => {
     expect(w(20)).toBe('позиций');
   });
 });
+
+describe('priceAgeMinutes', async () => {
+  const { priceAgeMinutes } = await import('../public/js/next/lib.js');
+  it('без даты или заглушка «нет данных» (0001-01-01) — null', () => {
+    expect(priceAgeMinutes(null)).toBeNull();
+    expect(priceAgeMinutes('')).toBeNull();
+    expect(priceAgeMinutes('0001-01-01T00:00:00')).toBeNull();
+  });
+  it('настоящая дата — минуты от текущего момента (дата AODP без «Z» — считается как UTC)', () => {
+    const iso = new Date(Date.now() - 90 * 60000).toISOString().slice(0, 19);   // 90 минут назад, без миллисекунд/Z — как хранит кувшин
+    expect(priceAgeMinutes(iso)).toBeGreaterThan(89);
+    expect(priceAgeMinutes(iso)).toBeLessThan(91);
+  });
+});

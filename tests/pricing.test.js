@@ -437,7 +437,11 @@ describe('охотничьи и фракционные плащи: оба пут
 describe('цены материала по городам', () => {
   it('города по возрастанию цены; без цены и не из выбранных — пропускаются', () => {
     const records = { Martlock: { sell_price_min: 300 }, Lymhurst: { sell_price_min: 100 }, Thetford: { sell_price_min: 0 }, Caerleon: { sell_price_min: 50 } };
-    expect(cityPriceList(records, ['Martlock', 'Lymhurst', 'Thetford'])).toEqual([{ city: 'Lymhurst', price: 100 }, { city: 'Martlock', price: 300 }]);
+    expect(cityPriceList(records, ['Martlock', 'Lymhurst', 'Thetford'])).toEqual([{ city: 'Lymhurst', price: 100, date: null }, { city: 'Martlock', price: 300, date: null }]);
+  });
+  it('несёт дату AODP (sell_price_min_date) — настоящее время сделки/ценника, не опрос краулера', () => {
+    const records = { Martlock: { sell_price_min: 300, sell_price_min_date: '2026-09-20T12:00:00' } };
+    expect(cityPriceList(records, ['Martlock'])).toEqual([{ city: 'Martlock', price: 300, date: '2026-09-20T12:00:00' }]);
   });
 });
 

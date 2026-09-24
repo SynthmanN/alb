@@ -1,26 +1,28 @@
 // Вкладка «Продажа»: мгновенно в Buy Order (со своей ценой) и терпеливо через Sell Order — план по городам с включением городов, своим количеством,
 // своей ценой города и стратегией распределения; порог продажи, потолок себестоимости и полоса цены. Внизу — свёрнутый блок «Ещё сравнения»
 // (по качеству и по тирам, с переключением тира кликом по строке): смотрят их редко, поэтому вместе и по умолчанию свёрнуто, а не отдельной вкладкой.
-import { html, useStore, fmt, signed, tone, fmtDays, QN } from './lib.js';
+import { html, useStore, fmt, signed, tone, fmtDays, QN, fmtAge, fmtAgeShort, priceAgeMinutes } from './lib.js';
 import { calcStore, emptyManual, setSellPrice, calcPlanActions, planOfStore } from './calc-store.js';
 import { CityPlanTable, cityPlanTitle } from './cityplan.js';
 import { CityPill } from './ui.js';
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
+// Возраст цены рядом с числом — настоящее время AODP (когда был выставлен этот ордер), не опрос нашего краулера.
+const ageBadge = (date) => (date ? html` <small class="cp-age" title=${`AODP видел эту цену: ${fmtAge(priceAgeMinutes(date))} — настоящее время ордера, не опрос нашего краулера`}>${fmtAgeShort(priceAgeMinutes(date))}</small>` : null);
 
 function BuyOrderCard({ c, d }) {
   const bs = d.bestSell;
   const rate = bs && bs.taxRate !== undefined ? bs.taxRate : d.taxRate;
   const tone1 = d.profitPerUnit;
   return html`<div class="card box"><h2 class="sec">Buy Order — мгновенно в чужой ордер</h2><div class="kv" id="sell-instant">
-    <div><span>Лучшая цена покупки</span><b>${bs && !bs.manual ? html`${bs.blackMarket ? '⚫ ' : ''}<${CityPill} name=${bs.city} /> ${fmt(bs.price)}` : bs ? `своя цена: ${fmt(bs.price)}` : 'нет данных'}
+    <div><span>Лучшая цена покупки</span><b>${bs && !bs.manual ? html`${bs.blackMarket ? '⚫ ' : ''}<${CityPill} name=${bs.city} /> ${fmt(bs.price)}${ageBadge(bs.date)}` : bs ? `своя цена: ${fmt(bs.price)}` : 'нет данных'}
       <input id="manual-sell-price" class=${`manual-price ${c.sellPrice !== null ? 'is-manual' : ''}`} type="number" min="0" step="1" placeholder="своя цена" value=${c.sellPrice ?? ''} onInput=${(e) => setSellPrice(e.target.value)} title="Видишь в игре другую цену — впиши: расчёт обновится сразу" aria-label="Своя цена продажи" /></b></div>
     <div><span>После налога с продажи (${fmt(rate * 100, bs && bs.blackMarket ? 1 : 0)}%${bs && bs.blackMarket ? ', Чёрный Рынок' : ''})</span><b>${d.netSellPrice !== null && d.netSellPrice !== undefined ? fmt(Math.round(d.netSellPrice)) : '—'}</b></div>
     <div><span>Профит / шт</span><b class=${tone(tone1)}>${d.profitPerUnit !== null ? signed(Math.round(d.profitPerUnit)) : '—'}</b></div>
     <div><strong>Итого на ${fmt(d.quantity)} шт</strong><b class=${tone(d.totalProfit)}>${d.totalProfit !== null ? signed(Math.round(d.totalProfit)) : '—'}</b></div></div>
     <details style="margin-top:10px"><summary class="muted" style="cursor:pointer;font-size:13px">Цены готового предмета по городам</summary>
       <div class="tw"><table id="craft-sell-table"><thead><tr><th>Город</th><th>Купить</th><th>Продать</th></tr></thead>
-        <tbody>${d.sellPrices.map((sp) => html`<tr key=${sp.city} class=${`${bs && sp.city === bs.city ? 'sel' : ''} ${sp.inactive ? 'below-threshold' : ''}`}><td><${CityPill} name=${sp.city} />${sp.blackMarket ? ' ⚫' : ''}${sp.inactive ? html` <small class="cp-off" title="${sp.blackMarket ? 'Чёрный Рынок' : 'Город'} вне расчёта: цены для справки, в выбор лучшей цены не входят">вне расчёта</small>` : null}</td><td>${sp.sellMin ?? '—'}</td><td>${sp.buyMax ?? '—'}</td></tr>`)}</tbody></table></div></details></div>`;
+        <tbody>${d.sellPrices.map((sp) => html`<tr key=${sp.city} class=${`${bs && sp.city === bs.city ? 'sel' : ''} ${sp.inactive ? 'below-threshold' : ''}`}><td><${CityPill} name=${sp.city} />${sp.blackMarket ? ' ⚫' : ''}${sp.inactive ? html` <small class="cp-off" title="${sp.blackMarket ? 'Чёрный Рынок' : 'Город'} вне расчёта: цены для справки, в выбор лучшей цены не входят">вне расчёта</small>` : null}</td><td>${sp.sellMin ?? '—'}${sp.sellMin ? ageBadge(sp.sellMinDate) : null}</td><td>${sp.buyMax ?? '—'}${sp.buyMax ? ageBadge(sp.buyMaxDate) : null}</td></tr>`)}</tbody></table></div></details></div>`;
 }
 
 function SellPlanBand({ d }) {

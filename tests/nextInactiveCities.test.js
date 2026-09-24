@@ -32,7 +32,7 @@ describe('закупка: города вне расчёта', () => {
   it('priceLists сохраняет пометку inactive у строк сервера', () => {
     const l = priceLists({ setupFeeRate: 0.025, recipe: [{ resource: 'X', materialSource: 'buy', cityPrices: list }] });
     expect(l.X.find((x) => x.city === 'Caerleon').inactive).toBe(true);
-    expect(l.X.find((x) => x.city === 'Martlock')).toEqual({ city: 'Martlock', price: 100 });
+    expect(l.X.find((x) => x.city === 'Martlock')).toEqual({ city: 'Martlock', price: 100, date: null });
   });
 });
 
