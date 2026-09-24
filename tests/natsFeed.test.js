@@ -15,7 +15,7 @@ const catalog = new Set(['T4_METALBAR', 'T4_RUNE', 'T4_CAPE@2']);
 
 describe('orderToPriceRow', () => {
   it('offer → sell_price_min; request → buy_price_max', () => {
-    expect(orderToPriceRow(order(), catalog)).toMatchObject({ item_id: 'T4_METALBAR', city: 'Fort Sterling', quality: 1, sell_price_min: 300 });
+    expect(orderToPriceRow(order(), catalog)).toMatchObject({ item_id: 'T4_METALBAR', city: 'Thetford', quality: 1, sell_price_min: 300 });
     expect(orderToPriceRow(order({ AuctionType: 'request', UnitPriceSilver: 250 }), catalog)).toMatchObject({ buy_price_max: 250 });
   });
   it('город не сопоставлен (LocationId вне LOCATION_NAMES) — null, ничего не пишем наугад', () => {
@@ -33,8 +33,10 @@ describe('orderToPriceRow', () => {
 });
 
 describe('LOCATION_NAMES', () => {
-  it('подтверждённые сверкой с REST города — Fort Sterling(7), Lymhurst(1002), Bridgewatch(2004), Caerleon(3005), Black Market(3003)', () => {
-    expect(LOCATION_NAMES).toMatchObject({ 7: 'Fort Sterling', 1002: 'Lymhurst', 2004: 'Bridgewatch', 3005: 'Caerleon', 3003: 'Black Market' });
+  it('все семь городов + Чёрный Рынок — с albionfreemarket.com/pricecheck (город за раз, код читается из URL)', () => {
+    expect(LOCATION_NAMES).toEqual({
+      3003: 'Black Market', 5003: 'Brecilien', 2004: 'Bridgewatch', 3005: 'Caerleon', 4002: 'Fort Sterling', 1002: 'Lymhurst', 3008: 'Martlock', 7: 'Thetford',
+    });
   });
 });
 
@@ -42,17 +44,17 @@ describe('applyOrder — пишет в кувшин, только если ор�
   it('город пустой — просто пишет цену', () => {
     const db = openJug();
     expect(applyOrder(db, order({ UnitPriceSilver: 300 }), catalog)).toBe(true);
-    expect(db.prepare('SELECT * FROM prices').get()).toMatchObject({ query_id: 'T4_METALBAR', city: 'Fort Sterling', sell_price_min: 300 });
+    expect(db.prepare('SELECT * FROM prices').get()).toMatchObject({ query_id: 'T4_METALBAR', city: 'Thetford', sell_price_min: 300 });
   });
   it('новый ордер ДОРОЖЕ уже известной sell_price_min — не трогаем (не сигнал о более выгодной цене)', () => {
     const db = openJug();
-    upsertPriceSnapshots(db, [{ item_id: 'T4_METALBAR', city: 'Fort Sterling', quality: 1, sell_price_min: 250, sell_price_min_date: '2026-01-01T10:00:00', buy_price_max: null, buy_price_max_date: null }]);
+    upsertPriceSnapshots(db, [{ item_id: 'T4_METALBAR', city: 'Thetford', quality: 1, sell_price_min: 250, sell_price_min_date: '2026-01-01T10:00:00', buy_price_max: null, buy_price_max_date: null }]);
     expect(applyOrder(db, order({ UnitPriceSilver: 300 }), catalog)).toBe(false);
     expect(db.prepare('SELECT sell_price_min FROM prices').get().sell_price_min).toBe(250);
   });
   it('новый ордер ДЕШЕВЛЕ уже известной sell_price_min — обновляет', () => {
     const db = openJug();
-    upsertPriceSnapshots(db, [{ item_id: 'T4_METALBAR', city: 'Fort Sterling', quality: 1, sell_price_min: 300, sell_price_min_date: '2026-01-01T10:00:00', buy_price_max: 200, buy_price_max_date: '2026-01-01T09:00:00' }]);
+    upsertPriceSnapshots(db, [{ item_id: 'T4_METALBAR', city: 'Thetford', quality: 1, sell_price_min: 300, sell_price_min_date: '2026-01-01T10:00:00', buy_price_max: 200, buy_price_max_date: '2026-01-01T09:00:00' }]);
     expect(applyOrder(db, order({ UnitPriceSilver: 250 }), catalog)).toBe(true);
     const row = db.prepare('SELECT * FROM prices').get();
     expect(row.sell_price_min).toBe(250);
@@ -60,7 +62,7 @@ describe('applyOrder — пишет в кувшин, только если ор�
   });
   it('request дороже уже известной buy_price_max — обновляет; дешевле — не трогает', () => {
     const db = openJug();
-    upsertPriceSnapshots(db, [{ item_id: 'T4_METALBAR', city: 'Fort Sterling', quality: 1, sell_price_min: 300, sell_price_min_date: '2026-01-01T10:00:00', buy_price_max: 200, buy_price_max_date: '2026-01-01T09:00:00' }]);
+    upsertPriceSnapshots(db, [{ item_id: 'T4_METALBAR', city: 'Thetford', quality: 1, sell_price_min: 300, sell_price_min_date: '2026-01-01T10:00:00', buy_price_max: 200, buy_price_max_date: '2026-01-01T09:00:00' }]);
     expect(applyOrder(db, order({ AuctionType: 'request', UnitPriceSilver: 180 }), catalog)).toBe(false);
     expect(applyOrder(db, order({ AuctionType: 'request', UnitPriceSilver: 220 }), catalog)).toBe(true);
     const row = db.prepare('SELECT * FROM prices').get();
