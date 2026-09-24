@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "express-rate-limit": "^8.7.0"
+    "express-rate-limit": "^8.7.0",
+    "nats": "^2.29.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

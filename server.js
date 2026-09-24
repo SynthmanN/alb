@@ -7,6 +7,7 @@ const { FACTIONS, HEART_POINTS, CREST_POINTS, pointsPerCape, crestIdOf } = requi
 const { openJug, jugStats, pruneToCatalog, HISTORY_WINDOW_HOURS, MANUAL_PRICE_TTL_MS, setManualPrice, getManualPrices, upsertPriceSnapshots, upsertHistoryBatch } = require('./lib/jugStore');
 const { readPrices, readHistory, jugFreshness } = require('./lib/jugQuery');
 const { startJugCrawler, CYCLE_MS } = require('./lib/jugCrawler');
+const { startNatsFeed } = require('./lib/natsFeed');
 const path = require('path');
 const fs = require('fs');
 const { ITEMS } = require('./data/items');
@@ -3537,6 +3538,12 @@ if (require.main === module) {
     console.log(`Albion market table запущен на http://localhost:${PORT}`);
   });
   startJug();
+  // Живой поток NATS (см. lib/natsFeed.js) — отдельно от краулера, ничего в его расписании не меняет: просто пишет в
+  // тот же кувшин то, что относится к каталогу сайта, почти сразу, как это увидел AODP. DISABLE_NATS_FEED=true — для
+  // локальной разработки без сетевого доступа к nats.albion-online-data.com.
+  if (process.env.DISABLE_NATS_FEED !== 'true') {
+    startNatsFeed(jugDb, () => (manualCatalogSet || (manualCatalogSet = new Set(buildJugCatalog()))));
+  }
 }
 
 // Тесты подменяют AODP по-разному — кэши ответов между тестами сбрасываем, чтобы не было «отравления» кэша.
