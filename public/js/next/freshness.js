@@ -7,7 +7,7 @@
 // сторона (logic/freshness.js), вместе с качеством и kind ('self' — сам предмет, 'material' — всё остальное).
 // Порога «устарело» нет: сканированием чинится только отсутствие данных, а не их возраст (сделку задним числом не создать) —
 // список идёт от тех же окон «История сырья»/«История гира», что стоят в панели параметров сейчас.
-import { html, useState, createStore, useStore, apiGet, apiPost, copyText, auctionName, CITY_CLS } from './lib.js';
+import { html, useState, createStore, useStore, apiGet, apiPost, CITY_CLS } from './lib.js';
 import { Icon, ICONS, Spinner, toast, MaterialName, CityPill } from './ui.js';
 import { settings, ALL_CITIES } from './settings.js';
 
@@ -115,8 +115,6 @@ export function setManualPrice(id, raw) {
   manualTimers.set(id, setTimeout(() => saveManualPrice(id, price), MANUAL_SAVE_DELAY));
 }
 
-const copyItemName = (name) => copyText(auctionName(name)).then((ok) => toast(ok ? `Скопировано: ${auctionName(name)}` : 'Не удалось скопировать'));
-
 // Разворачивает плоский список позиций в «город → что в нём нет данных» — по порядку городов, как отдал сервер;
 // город без единой такой позиции не показываем (нечего там делать).
 function byCityGroups(s) {
@@ -171,7 +169,7 @@ export function FreshnessDialog() {
           : html`<div class="fresh-cities">${groups.map((g) => html`<div class="fresh-city" key=${g.city} data-city=${g.city}>
               <div class="fresh-city-head"><${CityPill} name=${g.city} /><span class="cp-count">${g.rows.length}</span></div>
               <div class="fresh-list">${g.rows.map((r) => html`<div class="fresh-row" key=${r.id} data-id=${r.id}>
-                  <${MaterialName} id=${r.id} name=${r.name} quality=${r.quality} onCopy=${() => copyItemName(r.name)} />
+                  <${MaterialName} id=${r.id} name=${r.name} quality=${r.quality} />
                   <div class="fresh-actions">
                     <${ManualPriceInput} id=${r.id} manual=${r.manual} disabled=${s.refreshingId === r.id || s.refreshingAll} />
                     <button class="btn sm" type="button" disabled=${s.refreshingId === r.id || s.refreshingAll} onClick=${() => refreshOne(r.id)}>${s.refreshingId === r.id ? html`<${Spinner} />` : 'Обновить'}</button>

@@ -83,8 +83,6 @@ export const allItems = () => [...itemsById.values()];
 export const itemLabel = (id) => { const it = itemsById.get(id); return it ? it.name.replace(/^T\d+\s+/, '') : id; };
 export const itemTier = (id) => { const it = itemsById.get(id); return it ? it.tier : Number((String(id).match(/^T(\d)/) || [])[1]) || 0; };
 export const iconUrl = (id, size = 64, enchant = 0, quality = 1) => `https://render.albiononline.com/v1/item/${encodeURIComponent(enchant > 0 ? `${id}@${enchant}` : id)}.png?quality=${quality}&size=${size}`;
-// Название для поиска на аукционе (тир и «.N» отбрасываются; зачарование в игре — отдельный фильтр)
-export const auctionName = (name) => String(name || '').replace(/^T\d+\s+/, '').replace(/\s\.\d$/, '');
 
 // группы оружия (для выбора предмета по категориям и подсказки «где крафтить»)
 let weaponGroups = [];

@@ -1,6 +1,6 @@
 // Крафт-лист: плавающий «док» с итогами и выдвижная панель — позиции (включить/выключить, количество, детали за серебро, цена продажи), итоги, сводная закупка.
 // «Открыть активные в калькуляторе» копирует включённые позиции в стек калькулятора.
-import { html, useStore, useEffect, useState, Fragment, itemLabel, itemTier, fmt, signed, tone, ruPlural, copyText, auctionName } from './lib.js';
+import { html, useStore, useEffect, useState, Fragment, itemLabel, itemTier, fmt, signed, tone, ruPlural, copyText } from './lib.js';
 import { craftList, list, clearList, listNotify } from './list.js';
 import { listDef } from './listcalc.js';
 import { drawerStore, nav } from './nav.js';
@@ -57,8 +57,11 @@ export function ListDrawer() {
   const active = items.filter((i) => i.on !== false).length;
   const anyEligible = items.some((i) => afterPossible(i));
   const openDetail = (x) => { close(); nav.openCalc({ itemId: x.itemId, enchant: x.enchant, quality: x.quality, quantity: x.quantity, after: !!x.after, faction: x.faction, crestSilver: x.crestSilver, heartSilver: x.heartSilver }); };
+  // [тир.зачарование] в квадратных скобках — как и у MaterialName (auctionSearchText в logic/material.js), чтобы поиск в
+  // игре сам подставлял нужные тир и зачарование; тут своя сборка (не auctionSearchText) — id и зачарование в карточках
+  // листа лежат раздельно (x.itemId без «@N», x.enchant отдельным полем), а не вместе, как у материалов.
   const copyNames = async () => {
-    const text = items.map((x) => `${auctionName(itemLabel(x.itemId))}${x.enchant ? ` .${x.enchant}` : ''} × ${x.quantity}`).join('\n');
+    const text = items.map((x) => `${itemLabel(x.itemId)} [${itemTier(x.itemId)}.${x.enchant || 0}] × ${x.quantity}`).join('\n');
     toast((await copyText(text)) ? 'Список скопирован' : 'Не удалось скопировать');
   };
   return html`<${Fragment}>

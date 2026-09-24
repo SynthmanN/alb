@@ -1,6 +1,6 @@
 // Общие компоненты: метки предмета (тир, зачарование, качество), значок предмета, города, переключатели, уведомления.
-import { html, createStore, useStore, useState, QN, CITY_CLS, iconUrl, fmt, fmtDays } from './lib.js';
-import { splitMaterialId, materialTitle } from './logic/material.js';
+import { html, createStore, useStore, useState, QN, CITY_CLS, iconUrl, fmt, fmtDays, copyText } from './lib.js';
+import { splitMaterialId, materialTitle, auctionSearchText } from './logic/material.js';
 
 export const toastStore = createStore({ msg: '', id: 0 });
 let toastTimer = null;
@@ -31,13 +31,18 @@ export function Glyph({ id, tier, enchant = 0, quality = 1, size = 64 }) {
   </span>`;
 }
 
-// Материал закупки: значок из игры, название (клик копирует его для поиска на аукционе) и цветные метки тира и зачарования.
+// Материал закупки: значок из игры, название (клик копирует его для поиска на аукционе — вместе с [тир.зачарование],
+// см. auctionSearchText, чтобы в игре не пришлось доводить зачарование руками) и цветные метки тира и зачарования.
 // quality — необязательно: у материалов её нет (сайт всегда торгует ими по Обычному, метка не несла бы смысла), у самого
 // предмета (окно «Свежесть данных», kind: 'self') — есть, и без неё через это окно неотличимы разные качества одного гира.
-export function MaterialName({ id, name, onCopy, quality = 0 }) {
+export function MaterialName({ id, name, quality = 0 }) {
   const { base, tier, enchant } = splitMaterialId(id, name);
+  const doCopy = async () => {
+    const text = auctionSearchText(id, name);
+    toast((await copyText(text)) ? `Скопировано: ${text}` : 'Не удалось скопировать');
+  };
   return html`<div class="item mat"><${Glyph} id=${base} tier=${tier} enchant=${enchant} quality=${quality || 1} size=${48} />
-    <div><button type="button" class="namebtn" title="Скопировать название для поиска на аукционе" onClick=${onCopy}>${materialTitle(name)}</button>
+    <div><button type="button" class="namebtn" title="Скопировать для поиска на аукционе — с тиром и зачарованием, доводить руками не придётся" onClick=${doCopy}>${materialTitle(name)}</button>
       <div style="margin-top:3px"><${Tags} tier=${tier} enchant=${enchant} quality=${quality} /></div></div></div>`;
 }
 

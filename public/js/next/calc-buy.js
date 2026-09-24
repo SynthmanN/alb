@@ -1,6 +1,6 @@
 // Вкладка «Закупка»: материалы рецепта (откуда дешевле, переработка/крафт самому), план закупки по городам, свои цены и лог закупок по лотам,
 // база .0, чары после крафта, логистика по телепорту.
-import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, copyText, auctionName, apiPost } from './lib.js';
+import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, apiPost } from './lib.js';
 import { settings } from './settings.js';
 import { calcStore, resetOwn } from './calc-store.js';
 import { prices, setOwn, setCityOwn, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
@@ -11,7 +11,6 @@ import { lotsAverage } from './logic/manual.js';
 
 const unitPlaceholder = (p) => (p === null || p === undefined ? 'своя цена' : String(Math.round(p * (Math.abs(p) < 100 ? 10 : 1)) / (Math.abs(p) < 100 ? 10 : 1)));
 const nameOf = (d, id) => (d.names && d.names[id]) || itemLabel(id);
-const copyName = async (name) => toast((await copyText(auctionName(name))) ? `Скопировано: ${auctionName(name)}` : 'Не удалось скопировать');
 
 // Своя цена материала (или лог лотов, если включён): цена за штуку; серая подсказка — рыночная
 export function OwnPrice({ resKey, market, needed, scope }) {
@@ -53,7 +52,7 @@ function MissingServerPrice({ id, label, onSaved }) {
 function ComponentPrices({ d, components, lists }) {
   const pr = useStore(prices);
   return html`<div class="comp-list">${components.map((cp) => html`<div class="comp-row" key=${cp.id}>
-    <${MaterialName} id=${cp.id} name=${nameOf(d, cp.id)} onCopy=${() => copyName(nameOf(d, cp.id))} />
+    <${MaterialName} id=${cp.id} name=${nameOf(d, cp.id)} />
     <${OwnPrice} resKey=${cp.id} market=${cp.price} needed=${cp.count * d.quantity} scope="component" />
     ${lists[cp.id] && lists[cp.id].length ? html`<${CityPriceList} resKey=${cp.id} list=${lists[cp.id]} own=${pr.cityOwn[cp.id]} fee=${d.setupFeeRate} label="Все города" onSet=${(city, v) => setCityOwn(cp.id, city, v)} />` : null}
   </div>`)}</div>`;
@@ -96,7 +95,7 @@ function RecipeTable({ d, lists, invalidate }) {
       const missing = r.cheapestPrice === null;
       const days = acquireDaysFor(d, r);
       return html`<tr key=${r.resource + (r.enchStep || '')}>
-        <td><${MaterialName} id=${id} name=${nameOf(d, id)} onCopy=${() => copyName(nameOf(d, id))} />
+        <td><${MaterialName} id=${id} name=${nameOf(d, id)} />
           ${r.enchStep ? html` <span class="tag e">.${r.enchStep - 1} → .${r.enchStep}</span>` : null}
           ${r.returnable === false && !r.enchStep ? html` <span class="no-return" title="Этот материал при крафте не возвращается — возврат на него не действует">без возврата</span>` : null}</td>
         <td>${fmt(r.needed)}${r.byRecipe !== undefined && r.byRecipe !== r.needed ? html`<br /><small>по рецепту ${fmt(r.byRecipe)}</small>` : null}</td>
@@ -120,7 +119,7 @@ function PlanTable({ d, c, override }) {
     <thead><tr><th>Что покупаем</th><th>Нужно</th><th>Где и по чём</th><th>Цена / шт</th><th>Своя цена</th><th>Сумма</th><th>Дней</th></tr></thead>
     <tbody>${view.map(({ r, own }) => html`<tr key=${r.key + r.why} class=${c.checks[r.key] ? 'done' : ''}>
       <td><div class="matrow"><input type="checkbox" class="ck" checked=${!!c.checks[r.key]} onChange=${(e) => calcStore.set({ checks: { ...c.checks, [r.key]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
-        <${MaterialName} id=${r.id} name=${r.name} onCopy=${() => copyName(r.name)} /></div>
+        <${MaterialName} id=${r.id} name=${r.name} /></div>
         ${r.why ? html`<div class="muted" style="font-size:12.5px;margin-left:28px">${r.why}</div>` : null}</td>
       <td>${fmt(r.needed)}</td>
       <td class="plan-cities">${r.cities.length ? r.cities.map((x) => html`<div key=${x.city}><${CityPill} name=${x.city} /> <span class="muted">${fmt(x.qty)} шт по ${fmt(x.price, x.price < 100 ? 1 : 0)}</span></div>`) : html`<span class="pill w">нет данных</span>`}</td>
