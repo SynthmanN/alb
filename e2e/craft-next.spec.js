@@ -976,3 +976,76 @@ test('Чёрный Рынок: без галочки не запрашивает
   await row.locator('.plan-toggle').check();
   await expect(row.locator('.plan-qty')).not.toHaveValue('0');
 });
+
+test('профили крафта: сохранить стек, перезагрузить страницу, выбрать профиль — стек заполняется теми же позициями и количествами; переименование и удаление; название по умолчанию — ROI и дата', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  const cards = page.locator('#panel-calc .li-card');
+  await expect(cards).toHaveCount(2);
+  await expect(page.locator('#shopping')).toContainText('Изысканная ткань');                 // позиции посчитаны
+  await cards.first().locator('.qty input').fill('7');
+  await cards.first().locator('.qty input').blur();
+  await expect.poll(() => log.calc.some((q) => q.get('quantity') === '7')).toBe(true);        // количество принято стеком
+  await expect(page.locator('#profile-bar')).toBeVisible();
+  await expect(page.locator('#profile-save')).toBeEnabled();
+  await expect(page.locator('#profile-delete')).toBeDisabled();
+  await page.locator('#profile-save').click();
+  // название по умолчанию: ROI и дата/время сохранения
+  await expect(page.locator('#profile-select option:checked')).toContainText(/ROI .*% · \d\d\.\d\d\.\d{4} \d\d:\d\d · 2 поз\./);
+  // случайная перезагрузка страницы: стек калькулятора не восстанавливается сам, но профиль остался
+  await page.reload();
+  await page.getByRole('tab', { name: 'Калькулятор' }).click();
+  await expect(page.locator('#profile-select option')).toHaveCount(2);                     // «выбрать» + профиль
+  await page.locator('#profile-select').selectOption({ index: 1 });
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first().locator('.qty input')).toHaveValue('7');                     // количество из профиля
+  // переименование
+  await page.locator('#profile-rename').click();
+  await page.locator('#profile-name').fill('Плащи на неделю');
+  await page.locator('#profile-name-ok').click();
+  await expect(page.locator('#profile-select option:checked')).toContainText('Плащи на неделю');
+  // удаление — в два шага (случайный клик не удаляет)
+  await page.locator('#profile-delete').click();
+  await expect(page.locator('#profile-delete')).toContainText('Точно удалить?');
+  await page.locator('#profile-delete').click();
+  await expect(page.locator('#profile-select option')).toHaveCount(1);
+  await expect(page.locator('#profile-delete')).toBeDisabled();
+});
+
+test('смешанные рецепты: калькулятор считает базу .0 и гибрид .1, выбирает дешевле; дропдаун и «только основной рецепт» переключают рецепт; окно свежести знает материалы обоих', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await mock(page, log);
+  // варианты: craftEnchant=1 — база на .1 (сырьё .1, дешевле), иначе — база .0 + вся цепочка
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    log.calc.push(q);
+    const base = calc(q);
+    const lvl = Number(q.get('craftEnchant') || 0);
+    const cost = lvl === 1 ? 5000 : 8000;
+    const steps = [{ level: lvl + 1, materialId: lvl === 1 ? 'T4_SOUL' : 'T4_RUNE', materialName: lvl === 1 ? 'Душа' : 'Руна', count: 96, cheapestPrice: 10, cheapestCity: 'Martlock', cost: 960 }];
+    route.fulfill({ json: { ...base, effectiveCostPerUnit: cost, totalCost: cost * Number(q.get('quantity')), hasAllMaterialPrices: true,
+      recipe: [{ ...base.recipe[0], resource: 'T4_CLOTH', queryId: lvl === 1 ? 'T4_CLOTH_LEVEL1@1' : 'T4_CLOTH' }],
+      enchantAfterCraft: { forced: false, targetLevel: 2, capped: false, baseLevel: lvl, baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: cost - 960, baseCostPerUnit: cost - 960, steps, stepsCostPerUnit: 960,
+        chainEntryLevel: 0, chainEntryId: null, chainEntryLabel: null, chainEntryCity: null, neededSteps: steps, readyItems: [], candidates: [{ entryLevel: 0, cost, entryPrice: cost - 960, entryCity: null, entryLabel: null }] } } });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#scan-run').click();
+  await page.locator('#scan-rows .row').nth(1).click();
+  await page.locator('.detail .btn', { hasText: 'Открыть в калькуляторе' }).click();
+  await expect(page.locator('#verdict')).toBeVisible();
+  // запросы: база .0 и гибрид с craftEnchant=1
+  await expect.poll(() => log.calc.some((q) => q.get('craftEnchant') === '1')).toBe(true);
+  expect(log.calc.some((q) => !q.get('craftEnchant') && q.get('enchantAfterCraft') === 'true')).toBe(true);
+  await expect(page.locator('#cost-summary')).toContainText('5 000');                                   // автовыбор — дешёвый гибрид
+  await expect(page.locator('.enchant-after')).toContainText('база .1');
+  // дропдаун: выбрать базу .0 — себестоимость 8 000
+  await page.locator('#chain-recipe').selectOption('v0');
+  await expect(page.locator('#cost-summary')).toContainText('8 000');
+  await page.locator('#chain-recipe').selectOption('');
+  await expect(page.locator('#cost-summary')).toContainText('5 000');
+  // тумблер «Только основной рецепт» — строго база .0
+  await page.getByText('Только основной рецепт').click();
+  await expect(page.locator('#cost-summary')).toContainText('8 000');
+  await expect(page.locator('#chain-recipe')).toBeDisabled();
+});

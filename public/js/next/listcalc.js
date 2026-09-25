@@ -5,17 +5,18 @@ import { createStore, apiGet } from './lib.js';
 import { list, stack } from './list.js';
 import { calcStore } from './calc-store.js';
 import { commonParams, settings } from './settings.js';
-import { decideAfter, afterPossible, silverParts } from './logic/stack.js';
+import { pickAfter, afterPossible, silverParts } from './logic/stack.js';
 
 const wantsAuto = (item, autoAfter) => autoAfter && afterPossible(item);
 const itemSig = (item, autoAfter, faction, common) => JSON.stringify([
-  item.itemId, item.enchant, item.quality, item.quantity, wantsAuto(item, autoAfter) ? 'auto' : !!item.after, item.crestSilver, item.heartSilver,
-  faction && item.faction ? [faction.id, faction.points] : null, common,
+  item.itemId, item.enchant, item.quality, item.quantity, wantsAuto(item, autoAfter) ? 'auto' : [!!item.after, item.craftEnchant || 0], item.crestSilver, item.heartSilver,
+  faction && item.faction ? [faction.id, faction.points] : null, common, settings.get().mixedRecipes,
 ]);
 
-async function fetchOne(item, after, faction, common) {
+// level — уровень базы смешанного рецепта (craftEnchant): 0 — обычная база .0 и вся цепочка
+async function fetchOne(item, after, faction, common, level = 0) {
   try {
-    const params = { ...common, item: item.itemId, enchant: item.enchant, quality: item.quality, quantity: item.quantity, ...(after && afterPossible(item) ? { enchantAfterCraft: 'true' } : {}) };
+    const params = { ...common, item: item.itemId, enchant: item.enchant, quality: item.quality, quantity: item.quantity, ...(after && afterPossible(item) ? { enchantAfterCraft: 'true', ...(level > 0 ? { craftEnchant: level } : {}) } : {}) };
     if (faction && item.faction) {
       params.faction = faction.id;
       params.factionPoints = faction.points;
@@ -54,13 +55,15 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
       let data;
       let pair = null;
       if (wantsAuto(item, autoAfter)) {
-        const [direct, after] = await Promise.all([fetchOne(item, false, faction, common), fetchOne(item, true, faction, common)]);
-        pair = { direct, after };
-        const useAfter = decideAfter(item, pair);
-        data = useAfter ? after : direct;
-        if (!!item.after !== useAfter) ops.patch(item.uid, { after: useAfter });
+        // смешанные рецепты: база на уровнях 1..enchant-1 (сырьё зачарованное до .L) + докрутка оставшихся шагов
+        const levels = settings.get().mixedRecipes ? Array.from({ length: Math.max(item.enchant - 1, 0) }, (_, i) => i + 1) : [];
+        const [direct, after, ...hy] = await Promise.all([fetchOne(item, false, faction, common), fetchOne(item, true, faction, common), ...levels.map((l) => fetchOne(item, true, faction, common, l))]);
+        pair = { direct, after, hybrids: Object.fromEntries(levels.map((l, i) => [l, hy[i]])) };
+        const pick = pickAfter(item, pair);
+        data = pick.data;
+        if (!!item.after !== pick.use || (item.craftEnchant || 0) !== pick.level) ops.patch(item.uid, { after: pick.use, craftEnchant: pick.level });
       } else {
-        data = await fetchOne(item, item.after, faction, common);
+        data = await fetchOne(item, item.after, faction, common, item.craftEnchant || 0);
       }
       if (my !== token) return;
       cache.set(item.uid, { sig, data, pair });
@@ -82,9 +85,9 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
       const c = cache.get(uid);
       const item = ops.store.get().items.find((i) => i.uid === uid);
       if (!c || !c.pair || !item) return;
-      const useAfter = decideAfter(item, c.pair);
-      c.data = useAfter ? c.pair.after : c.pair.direct;
-      if (!!item.after !== useAfter) ops.patch(uid, { after: useAfter });
+      const pick = pickAfter(item, c.pair);
+      c.data = pick.data;
+      if (!!item.after !== pick.use || (item.craftEnchant || 0) !== pick.level) ops.patch(uid, { after: pick.use, craftEnchant: pick.level });
       publish();
     },
   };

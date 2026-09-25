@@ -1,7 +1,7 @@
 // Расчёт фракционного плана (чистая логика): те же правила, что были в старом плане — пути себестоимости, варианты деталей, жадный план.
 import { describe, it, expect } from 'vitest';
 import { computeRow, buildPlan, sortPlanRows, planToListItems, rowKey } from '../public/js/next/logic/factionPlan.js';
-import { decideAfter, itemProfit, missingPrices, stackTotals } from '../public/js/next/logic/stack.js';
+import { decideAfter, pickAfter, itemProfit, missingPrices, stackTotals } from '../public/js/next/logic/stack.js';
 
 const ctx = (extra = {}) => ({ taxRate: 0.08, setupFeeRate: 0.025, days: 7, own: {}, limits: {}, mode: 'mixed', ...extra });
 const row = (tier, enchant, o = {}) => ({
@@ -123,6 +123,10 @@ describe('стек: профит позиции и автовыбор «посл
   });
   it('после крафта — только если профит выше на 7% и больше', () => {
     const item = { salePrice: 100000 };
+    // смешанный рецепт: «после .0» не дотягивает до порога, а гибрид (база .1) — выигрывает и берётся
+    const pair = { direct: calc(50000), after: calc(49000), hybrids: { 1: calc(40000) } };
+    expect(pickAfter(item, pair)).toMatchObject({ use: true, level: 1 });
+    expect(pickAfter(item, { direct: calc(50000), after: calc(49000), hybrids: { 1: calc(49500) } })).toMatchObject({ use: false, level: 0 });
     expect(decideAfter(item, { direct: calc(50000), after: calc(40000) })).toBe(true);     // 52 000 против 42 000: +23.8%
     expect(decideAfter(item, { direct: calc(50000), after: calc(49000) })).toBe(false);    // 43 000 против 42 000: +2.4%
     expect(decideAfter(item, { direct: { error: 'x' }, after: calc(40000) })).toBe(true);

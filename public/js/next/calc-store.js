@@ -2,7 +2,7 @@
 // план продажи по городам. Своё пересчитывает результат на месте (logic/manual.js) — без запроса к серверу.
 import { createStore } from './lib.js';
 import { applyManualPrices, salePlanState } from './logic/manual.js';
-import { applyChainChoice } from './logic/enchantChain.js';
+import { applyChainChoice, pickVariant } from './logic/enchantChain.js';
 import { emptyPlan, withCityPrice, withToggle, withManualQty, withStrategy, resetPlanState } from './logic/planEdit.js';
 import { profitOf } from './logic/profit.js';
 import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
@@ -13,11 +13,11 @@ import { activeCities } from './settings.js';
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 // своё для одной вещи (цены материалов — общие, в prices.js): цена мгновенной продажи, цены городов продажи, план продажи по городам,
 // ручной выбор пути «после крафта» (дропдаун рецептов + тумблер «только основной рецепт», logic/enchantChain.js applyChainChoice)
-export const emptyManual = () => ({ sellPrice: null, chainChoice: { entryLevel: null, forceMain: false }, ...emptyPlan() });
-export const manualFromPlan = (plan) => ({ sellPrice: null, chainChoice: { entryLevel: null, forceMain: false }, ...emptyPlan(), ...(plan || {}) });
+export const emptyManual = () => ({ sellPrice: null, chainChoice: { baseLevel: null, entryLevel: null, forceMain: false }, ...emptyPlan() });
+export const manualFromPlan = (plan) => ({ sellPrice: null, chainChoice: { baseLevel: null, entryLevel: null, forceMain: false }, ...emptyPlan(), ...(plan || {}) });
 export const calcStore = createStore({
   itemId: null, enchant: 0, quality: 4, qty: 10, after: false, faction: false, crestSilver: false, heartSilver: false, sub: 'buy',
-  data: null, loading: false, error: '', sig: '', checks: {}, ...emptyManual(),
+  data: null, hybrids: {}, loading: false, error: '', sig: '', checks: {}, ...emptyManual(),
   stackMode: false, stackFocus: null,          // режим стека: общий вид активных позиций или одна позиция в фокусе (uid)
 });
 const set = (p) => calcStore.set(p);
@@ -36,19 +36,23 @@ export const calcPlanActions = { setStrategy, setToggle, setManualQty, setCityPr
 export { planOfStore };
 export const resetOwn = () => { resetPrices(); set({ sellPrice: null }); };
 // Дропдаун «Рецепт зачарования» и тумблер «Только основной рецепт» — рядом, в панели «Зачарование после крафта» (calc-buy.js)
-export const setChainEntry = (entryLevel) => set({ chainChoice: { entryLevel, forceMain: false } });
-export const setForceMain = (on) => set({ chainChoice: { entryLevel: null, forceMain: on } });
+// baseLevel — какой смешанный рецепт (база на уровне .L), entryLevel — покупка готового уровня внутри него; null/null — автовыбор
+export const setChainChoice = (baseLevel, entryLevel) => set({ chainChoice: { baseLevel, entryLevel, forceMain: false } });
+export const setForceMain = (on) => set({ chainChoice: { baseLevel: null, entryLevel: null, forceMain: on } });
 
 // Всё производное от ответа сервера и «своего»: пересчитанный результат, живой план продажи, профит
 export function derive(c, settings, prices) {
   if (!c.data) return { d: null, st: null, p: null };
-  const lists = priceLists(c.data);
+  // Смешанные рецепты: выбранный вариант базы (.0 или гибрид .L) — дальше всё считается по нему, как по обычному ответу калькулятора
+  const variant = pickVariant(c.data, c.hybrids, c.chainChoice);
+  const base = variant.data;
+  const lists = priceLists(base);
   const cities = activeCities(settings);
-  const fee = c.data.setupFeeRate ?? SETUP_FEE;
+  const fee = base.setupFeeRate ?? SETUP_FEE;
   const m = makeOverride(lists, prices, { purchaseLog: settings.purchaseLog, cities, fee });
-  const chosen = applyChainChoice(c.data, c.chainChoice);
+  const chosen = applyChainChoice(base, c.chainChoice);
   const d = applyManualPrices(chosen, { ownPrice: m.ownPrice, buyPrice: m.buyPrice, hasOwn: m.hasOwn, sellPrice: c.sellPrice, cityPrices: c.cityPrices });
   const st = d.patientSell ? salePlanState(d.patientSell, d, { toggles: c.toggles, manualQty: c.manualQty, strategy: c.strategy }) : null;
   const p = profitOf(d, st);
-  return { d, st, p, override: m.override, lists };
+  return { d, st, p, override: m.override, lists, variantLevel: variant.level };
 }

@@ -26,15 +26,27 @@ export function collectIds(d, out = new Map(), selfLabel) {
     if (eac.baseBuy) add(d.itemId, (d.names && d.names[d.itemId]) || (selfLabel && selfLabel(d)));
     // Вход в цепочку не с нуля — купленный готовый промежуточный уровень (.1/.2) тоже гир, своё имя не в d.names, тот же резолвер
     if (eac.chainEntryLevel > 0 && eac.chainEntryId) add(eac.chainEntryId, eac.chainEntryLabel);
+    // «Покупка готового уровня»: цены готовых .1/.2 нужны для сравнения, даже если такой вариант сейчас без цены и в candidates не попал
+    for (const it of eac.readyItems || []) add(it.id, it.label);
     for (const st of eac.steps || []) add(st.materialId, st.materialName);
   }
   return out;
 }
 
 // Собирает id по всем позициям стека/листа сразу (Map: id → {name, quality, kind}) — то, что показывается в окне «Свежесть данных»
-export function collectAllIds(results, selfLabel) {
+// pairs (uid → { direct, after, hybrids }) — ВСЕ варианты рецепта позиции, не только победивший: цену любого материала любого варианта
+// нужно уметь освежить, иначе на нехватке данных вариант молча выпадает из сравнения рецептов.
+export function collectAllIds(results, selfLabel, pairs) {
   const out = new Map();
   for (const d of results.values()) collectIds(d, out, selfLabel);
+  for (const pair of (pairs ? pairs.values() : [])) for (const d of [pair.direct, pair.after, ...Object.values(pair.hybrids || {})]) collectIds(d, out, selfLabel);
+  return out;
+}
+
+// Калькулятор одной вещи: расчёт по всем вариантам рецепта (base .0 и смешанные) — тот же смысл, что у pairs выше
+export function collectVariantIds(data, hybrids, selfLabel) {
+  const out = new Map();
+  for (const d of [data, ...Object.values(hybrids || {})]) collectIds(d, out, selfLabel);
   return out;
 }
 
@@ -48,11 +60,12 @@ export function collectFactionIds(planned, out = new Map(), finishedLabel) {
   for (const x of planned) {
     const r = x.c.r;
     add(r.finishedId, finishedLabel && finishedLabel(r), r.quality || 1, 'self');
-    if (x.c.path === 'after') {
-      add(r.cape0.id, r.cape0.label);
+    // Все рецепты, между которыми выбирает план (прямой, база .0 + цепочка, смешанные — плащ на уровне .L): цена любого из них
+    // может закрыть «нет данных» и включить вариант в сравнение, поэтому не только выбранный путь.
+    add(r.capeDirect.id, r.capeDirect.label);
+    if (r.enchant > 0 && r.maxAfter !== false) {
+      if (r.capeByLevel && r.capeByLevel.length) for (const cp of r.capeByLevel) add(cp.id, cp.label); else add(r.cape0.id, r.cape0.label);
       for (const rune of r.runes) add(rune.id, rune.label);
-    } else {
-      add(r.capeDirect.id, r.capeDirect.label);
     }
     add(r.crestId, r.crest && r.crest.label);
     add(r.heartId, r.heart && r.heart.label);

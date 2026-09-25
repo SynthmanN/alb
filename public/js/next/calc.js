@@ -14,7 +14,8 @@ import { stack } from './list.js';
 import { BuyTab } from './calc-buy.js';
 import { SellTab } from './calc-sell.js';
 import { FreshnessButton } from './freshness.js';
-import { collectIds } from './logic/freshness.js';
+import { ProfileBar } from './profiles.js';
+import { collectVariantIds } from './logic/freshness.js';
 
 export { calcStore };
 const maxEnchant = (id) => (itemTier(id) >= 4 ? 4 : 0);
@@ -33,10 +34,13 @@ export async function runCalc(sig) {
       const sp = [c.crestSilver ? 'crest' : null, c.heartSilver ? 'heart' : null].filter(Boolean);
       if (sp.length) params.partsSilver = sp.join(',');
     }
-    const data = await apiGet('/api/craft-calc', params, { ttl: 90000 });
+    // Смешанные рецепты: ещё по одному расчёту на каждый уровень базы .1…(цель-1) — сравнение и выбор в панели «Зачарование после крафта»
+    const levels = c.after && c.enchant >= 2 && settings.get().mixedRecipes ? Array.from({ length: Math.min(c.enchant, 3) - 1 }, (_, i) => i + 1) : [];
+    const [data, ...hy] = await Promise.all([apiGet('/api/craft-calc', params, { ttl: 90000 }), ...levels.map((l) => apiGet('/api/craft-calc', { ...params, craftEnchant: l }, { ttl: 90000 }).catch(() => null))]);
+    const hybrids = Object.fromEntries(levels.map((l, i) => [l, hy[i]]).filter(([, d]) => d));
     if (id !== runId) return;
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
-    calcStore.set({ data, sig, loading: false, checks: {}, toggles: null, manualQty: {} });      // план продажи сбрасывается с новым расчётом; свои цены остаются
+    calcStore.set({ data, hybrids, sig, loading: false, checks: {}, toggles: null, manualQty: {} });      // план продажи сбрасывается с новым расчётом; свои цены остаются
   } catch (err) {
     if (id === runId) calcStore.set({ loading: false, error: err.message, sig });
   }
@@ -81,7 +85,7 @@ function Verdict({ c, d, p, st, invalidate }) {
         ${p && !p.complete ? html`<span class="pill w">нет цены части материалов</span>` : null}
       </div>
       <div class="pair"><div class="soft-good"><span>Доходы (после налога)</span><b class="pos">${p ? fmt(p.income) : '—'}</b></div><div class="soft-bad"><span>Расходы</span><b class="neg">${fmt(d.totalCost)}</b></div></div>
-      <div class="v-actions"><button class="btn primary" type="button" id="calc-add" onClick=${add}><${Icon} d=${ICONS.plus} />В крафт-лист</button><${FreshnessButton} ids=${collectIds(d, undefined, (dd) => itemLabel(dd.itemId))} onRefreshed=${invalidate} /><button class="btn ghost" type="button" onClick=${() => nav.tab('scan')}>← К скану</button></div>
+      <div class="v-actions"><button class="btn primary" type="button" id="calc-add" onClick=${add}><${Icon} d=${ICONS.plus} />В крафт-лист</button><${FreshnessButton} ids=${collectVariantIds(c.data, c.hybrids, (dd) => itemLabel(dd.itemId))} onRefreshed=${invalidate} /><button class="btn ghost" type="button" onClick=${() => nav.tab('scan')}>← К скану</button></div>
     </div>
     <div class="stats">
       <div class=${`stat lead ${ok ? '' : 'bad'}`}><span>Профит с одной штуки</span><b class=${tone(p && p.unit)}>${p ? signed(p.unit) : '—'}</b></div>
@@ -96,7 +100,7 @@ function Verdict({ c, d, p, st, invalidate }) {
 // Вкладка калькулятора: стек активных позиций (общий вид) или одна вещь (обычный расчёт; в режиме стека — позиция в фокусе)
 export function CalcTab() {
   const c = useStore(calcStore);
-  return c.stackMode && !c.stackFocus ? html`<${StackView} />` : html`<${SingleCalc} />`;
+  return html`<${Fragment}>${c.stackMode && c.stackFocus ? null : html`<${ProfileBar} />`}${c.stackMode && !c.stackFocus ? html`<${StackView} />` : html`<${SingleCalc} />`}</${Fragment}>`;
 }
 
 function SingleCalc() {
@@ -105,7 +109,7 @@ function SingleCalc() {
   const pr = useStore(prices);
   const [, force] = useState(0);
   useEffect(() => { Promise.all([itemsReady, groupsReady]).then(() => force((n) => n + 1)); }, []);
-  const sig = JSON.stringify([c.itemId, c.enchant, c.quality, c.qty, c.after, c.faction, c.crestSilver, c.heartSilver, commonParams(s)]);
+  const sig = JSON.stringify([c.itemId, c.enchant, c.quality, c.qty, c.after, c.faction, c.crestSilver, c.heartSilver, commonParams(s), s.mixedRecipes]);
   useEffect(() => {
     if (!c.itemId || sig === c.sig) return undefined;
     const t = setTimeout(() => runCalc(sig), 350);
@@ -115,7 +119,7 @@ function SingleCalc() {
     if (c.stackMode && c.stackFocus && c.itemId) stack.patch(c.stackFocus, { itemId: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, after: c.after, plan: planOfStore(c) });
   }, [c.stackFocus, c.itemId, c.enchant, c.quality, c.qty, c.after, c.toggles, c.manualQty, c.cityPrices, c.strategy]);
   const set = (p) => calcStore.set(p);
-  const { d, st, p, override, lists } = useMemo(() => derive(c, s, pr), [c.data, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
+  const { d, st, p, override, lists } = useMemo(() => derive(c, s, pr), [c.data, c.hybrids, c.chainChoice, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
   const subs = [['buy', 'Закупка'], ['sell', 'Продажа']];   // «Сравнение по тирам» и по качеству — свёрнутым блоком «Ещё сравнения» внутри «Продажа» (calc-sell.js)

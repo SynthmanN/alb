@@ -4,7 +4,7 @@ import { createStore } from './lib.js';
 
 let uid = 0;
 const newUid = () => `l${Date.now().toString(36)}${++uid}`;
-const keyOf = (i) => [i.itemId, i.enchant, i.quality, i.after ? 1 : 0, i.crestSilver ? 1 : 0, i.heartSilver ? 1 : 0].join('|');
+const keyOf = (i) => [i.itemId, i.enchant, i.quality, i.after ? 1 : 0, i.craftEnchant || 0, i.crestSilver ? 1 : 0, i.heartSilver ? 1 : 0].join('|');
 
 // item: { itemId, enchant, quality, quantity, cost?, profit?, points?, after?, salePrice?, crestSilver?, heartSilver?, faction? }
 export function createStack(key) {

@@ -7,13 +7,13 @@ import { Glyph, Tags, CityPill, CityPills, Seg, Switch, Icon, ICONS, Spinner } f
 import { addToList } from './list.js';
 import { nav } from './nav.js';
 
-export const scanStore = createStore({ mode: 'patient', category: 'all', minDaily: 3, after: true, chainEntry: false, data: null, loading: false, error: '', sort: { k: 'marketProfitPerDay', dir: -1 }, open: null });
+export const scanStore = createStore({ mode: 'patient', category: 'all', minDaily: 3, after: true, mixed: true, chainEntry: false, data: null, loading: false, error: '', sort: { k: 'marketProfitPerDay', dir: -1 }, open: null });
 
 export async function runScan() {
   const sc = scanStore.get();
   scanStore.set({ loading: true, error: '' });
   try {
-    const params = { ...commonParams(), mode: sc.mode, category: sc.category, enchantMode: sc.after ? 'auto' : 'direct', liquidity: 'sum', minDaily: sc.minDaily || 0, chainEntry: sc.after && sc.chainEntry ? 'true' : 'false' };
+    const params = { ...commonParams(), mode: sc.mode, category: sc.category, enchantMode: sc.after ? 'auto' : 'direct', liquidity: 'sum', minDaily: sc.minDaily || 0, chainEntry: sc.after && sc.chainEntry ? 'true' : 'false', mixed: sc.after && sc.mixed ? 'true' : 'false' };
     const data = await apiGet('/api/unified-scan', params);
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
     scanStore.set({ data, loading: false, open: null });
@@ -75,7 +75,8 @@ export function ScanTab() {
         ${[['all', 'Всё'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['cape', 'Плащи']].map(([v, t]) => html`<option value=${v} selected=${sc.category === v}>${t}</option>`)}</select></label>
       <label class="f" style="width:130px">Оборот от, шт/день<input id="s-min" type="number" min="0" step="0.5" value=${sc.minDaily} onInput=${(e) => set({ minDaily: e.target.value })} /></label>
       <${Switch} checked=${sc.after} onChange=${(v) => set({ after: v })} title="Чары после крафта («плащ .0 + руны, души, реликты») считаются только там, где они выгоднее прямого крафта не меньше чем на 7% профита; остальной гир — прямым крафтом">Зачарка после крафта</${Switch}>
-      ${sc.after ? html`<${Switch} checked=${sc.chainEntry} onChange=${(v) => set({ chainEntry: v })} title="Вместо крафта .0 и полной цепочки рунами/душами/реликтами — может оказаться дешевле купить уже готовый .1/.2 на рынке и докрутить только оставшимися шагами. Своя цена входа на каждое качество — доп. запросы, поэтому по умолчанию выключено">Вход в цепочку не с нуля</${Switch}>` : null}
+      ${sc.after ? html`<${Switch} checked=${sc.mixed} onChange=${(v) => set({ mixed: v })} title="Кроме «.0 + вся цепочка рунами/душами/реликтами» считать смешанные рецепты: база сразу на уровне .1/.2 из зачарованного сырья, докручиваются только оставшиеся шаги. Берётся самый дешёвый путь">Смешанные рецепты</${Switch}>` : null}
+      ${sc.after ? html`<${Switch} checked=${sc.chainEntry} onChange=${(v) => set({ chainEntry: v })} title="Ещё один вариант зачарки: купить уже готовый .1/.2 на аукционе и докрутить только оставшимися шагами. Цена готового своя на каждое качество — доп. запросы, поэтому по умолчанию выключено">Покупка готового уровня</${Switch}>` : null}
     </div>
     <div class="runbox">
       <button class="btn primary big" id="scan-run" type="button" disabled=${sc.loading} onClick=${runScan}>${sc.loading ? html`<${Spinner} />Считаю…` : html`<${Icon} d=${ICONS.search} />${data ? 'Обновить скан' : 'Сканировать'}`}</button>
@@ -90,7 +91,7 @@ export function ScanTab() {
         const it = findItem(r.itemId);
         return html`<div key=${key}>
           <div class=${`row ${isOpen ? 'open' : ''}`} onClick=${() => set({ open: isOpen ? null : key })} role="button" tabindex="0" onKeyDown=${(e) => { if (e.key === 'Enter') set({ open: isOpen ? null : key }); }}>
-            <div class="it"><${Glyph} id=${r.itemId} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} /><div style="min-width:0"><b>${itemLabel(r.itemId)}</b><${Tags} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} />${isAfter(r, data) ? html` <span class="pill n" title=${r.enchantEntryLevel ? `Куплен готовый .${r.enchantEntryLevel}, докручен оставшимися шагами` : 'Выгоднее прямого крафта: плащ .0 + руны, души, реликты (не меньше чем на 7% профита)'}>чары после крафта${r.enchantEntryLevel ? ` (вход .${r.enchantEntryLevel})` : ''}</span>` : null}</div></div>
+            <div class="it"><${Glyph} id=${r.itemId} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} /><div style="min-width:0"><b>${itemLabel(r.itemId)}</b><${Tags} tier=${r.tier || itemTier(r.itemId)} enchant=${r.enchant} quality=${r.quality} />${isAfter(r, data) ? html` <span class="pill n" title=${r.enchantEntryLevel ? `Куплен готовый .${r.enchantEntryLevel}, докручен оставшимися шагами` : r.enchantBaseLevel ? `Смешанный рецепт: база на .${r.enchantBaseLevel} из зачарованного сырья, дальше руны/души/реликты (не меньше чем на 7% профита выгоднее прямого)` : 'Выгоднее прямого крафта: база .0 + руны, души, реликты (не меньше чем на 7% профита)'}>чары после крафта${r.enchantEntryLevel ? ` (готовый .${r.enchantEntryLevel})` : r.enchantBaseLevel ? ` (база .${r.enchantBaseLevel})` : ''}</span>` : null}</div></div>
             <div class="cell r hide-n"><span class="neg">${fmt(r.cost)}</span> <span class="muted">→</span> ${fmt(r.cost + r.profitPerUnit)}<small>расходы → доход</small></div>
             <div class="cell r"><b class="pos">${signed(r.profitPerUnit)}</b><small>${fmt(r.profitPct, 0)}% к вложениям</small></div>
             <div class="cell r hide-n"><b>${fmt(r.marketProfitPerDay)}</b><small>${fmt(r.dailyVolume, 0)} шт/день</small></div>

@@ -219,7 +219,33 @@ describe('GET /api/unified-scan', () => {
     });
   });
 
-  describe('chainEntry: вход в цепочку зачарования не с нуля — опция, по умолчанию выключена', () => {
+  describe('mixed: смешанные рецепты — база крафтится на уровне .L из зачарованного сырья, докрутка только оставшихся шагов', () => {
+    const sword = async (extra = {}) => (await scan({ mode: 'patient', enchantMode: 'after', ...extra })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    beforeEach(() => {
+      seedMaterial('T4_RUNE', 10); seedMaterial('T4_SOUL', 10);
+      seedMaterial('T4_METALBAR_LEVEL1@1', 100); seedMaterial('T4_LEATHER_LEVEL1@1', 100);       // сырьё .1 — та же цена, что и обычное
+      seedSales('T4_MAIN_SWORD@2', { avg: 90000, perDay: 30 });
+    });
+    it('выключено (по умолчанию) — только база .0 и обе руны/души: 2460 + 2×2952 = 8364', async () => {
+      const row = await sword();
+      expect(row.cost).toBeCloseTo(8364, 2);
+      expect(row.enchantBaseLevel).toBe(0);
+    });
+    it('включено — база на .1 (сырьё .1) и только душа: 2460 + 2952 = 5412, уровень базы виден в строке', async () => {
+      const row = await sword({ mixed: 'true' });
+      expect(row.cost).toBeCloseTo(5412, 2);
+      expect(row.enchantBaseLevel).toBe(1);
+      expect(row.enchantEntryLevel).toBeNull();
+    });
+    it('нет цены на зачарованное сырьё .1 — гибрид не участвует, остаётся база .0 (не ломает строку)', async () => {
+      jugDb.exec("DELETE FROM prices WHERE query_id='T4_METALBAR_LEVEL1@1'"); jugDb.exec("DELETE FROM history WHERE item_id='T4_METALBAR_LEVEL1@1'");
+      const row = await sword({ mixed: 'true' });
+      expect(row.cost).toBeCloseTo(8364, 2);
+      expect(row.enchantBaseLevel).toBe(0);
+    });
+  });
+
+  describe('chainEntry: покупка готового уровня — опция, по умолчанию выключена', () => {
     const sword = async (extra = {}) => (await scan({ mode: 'patient', enchantMode: 'after', ...extra })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
     beforeEach(() => {
       seedMaterial('T4_RUNE', 10); seedMaterial('T4_SOUL', 10);                          // .0→.1→.2 (288 рун/душ на одноручное за уровень)

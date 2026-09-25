@@ -1,7 +1,7 @@
 // «Чары после крафта» на клиенте (план фракции): та же чистая функция, что и у сервера (tests/enchantChain.test.js), — общий
 // алгоритм, две копии (сервер CommonJS, клиент ESM для браузера) не делят модуль напрямую.
 import { describe, it, expect } from 'vitest';
-import { enchantChainCandidates, applyChainChoice } from '../public/js/next/logic/enchantChain.js';
+import { enchantChainCandidates, applyChainChoice, pickVariant } from '../public/js/next/logic/enchantChain.js';
 
 describe('enchantChainCandidates (клиент)', () => {
   it('можно купить .1 на рынке дешевле, чем сделать .0 + руны — этот вход и должен победить', () => {
@@ -51,5 +51,22 @@ describe('applyChainChoice — ручной выбор пути «после к�
   it('нет такого кандидата (или без цены) — данные не трогаются, не падает', () => {
     const d = data();
     expect(applyChainChoice(d, { entryLevel: 3 })).toBe(d);
+  });
+});
+
+describe('pickVariant — смешанные рецепты в калькуляторе', () => {
+  const v = (cost, extra = {}) => ({ effectiveCostPerUnit: cost, hasAllMaterialPrices: true, enchantAfterCraft: {}, ...extra });
+  it('автовыбор — самая дешёвая полная себестоимость среди базы .0 и гибридов', () => {
+    const r = pickVariant(v(8000), { 1: v(5000), 2: v(6000) }, { baseLevel: null, forceMain: false });
+    expect(r.level).toBe(1);
+  });
+  it('вариант без цен на материалы не участвует в автовыборе', () => {
+    const r = pickVariant(v(8000), { 1: v(1000, { hasAllMaterialPrices: false }) }, null);
+    expect(r.level).toBe(0);
+  });
+  it('ручной выбор уровня — берётся он, даже если дороже; «только основной» — всегда база .0', () => {
+    expect(pickVariant(v(8000), { 1: v(5000) }, { baseLevel: 0 }).level).toBe(0);
+    expect(pickVariant(v(8000), { 1: v(5000) }, { forceMain: true }).level).toBe(0);
+    expect(pickVariant(v(8000), { 1: v(5000), 2: v(6000) }, { baseLevel: 2 }).level).toBe(2);
   });
 });

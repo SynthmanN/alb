@@ -45,3 +45,16 @@ export function applyChainChoice(data, choice) {
   };
   return { ...data, enchantAfterCraft: newEac, effectiveCostPerUnit: picked.cost, totalCost: picked.cost * data.quantity };
 }
+
+// Смешанные рецепты в калькуляторе одной вещи: у «после крафта» бывает несколько вариантов базы — .0 (data0, вся цепочка) и по одному
+// на каждый уровень .L (hybrids[L]: база из зачарованного сырья .L, докрутка только L+1..цель). Автовыбор — самая дешёвая полная себестоимость
+// (продажа у всех вариантов одна); choice.baseLevel — ручной выбор из дропдауна, choice.forceMain — только основной (база .0).
+export function pickVariant(data0, hybrids, choice) {
+  const all = { 0: data0, ...(hybrids || {}) };
+  const usable = (d) => d && !d.error && d.enchantAfterCraft && d.hasAllMaterialPrices !== false && d.effectiveCostPerUnit !== null && d.effectiveCostPerUnit !== undefined;
+  const wanted = choice && choice.forceMain ? 0 : choice && choice.baseLevel !== null && choice.baseLevel !== undefined ? choice.baseLevel : null;
+  if (wanted !== null && all[wanted] && !all[wanted].error) return { level: wanted, data: all[wanted] };
+  let best = null;
+  for (const [lvl, d] of Object.entries(all)) if (usable(d) && (!best || d.effectiveCostPerUnit < best.data.effectiveCostPerUnit)) best = { level: Number(lvl), data: d };
+  return best || { level: 0, data: data0 };
+}

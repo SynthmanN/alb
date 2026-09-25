@@ -2,7 +2,7 @@
 // база .0, чары после крафта, логистика по телепорту.
 import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, apiPost } from './lib.js';
 import { settings } from './settings.js';
-import { calcStore, resetOwn, setChainEntry, setForceMain } from './calc-store.js';
+import { calcStore, resetOwn, setChainChoice, setForceMain } from './calc-store.js';
 import { prices, setOwn, setCityOwn, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
 import { CityPriceList } from './citylist.js';
 import { CityPill, Tags, MaterialName, Switch, toast } from './ui.js';
@@ -134,19 +134,29 @@ function PlanTable({ d, c, override }) {
 }
 const raw0 = (rows, key) => { const r = rows.find((x) => x.key === key); return r ? r.unit : null; };
 
-// Дропдаун «какой рецепт/вход считать» — из тех же кандидатов, что уже посчитал сервер (eac.candidates), плюс тумблер
-// «только основной рецепт» рядом (выключает все альтернативные входы, вход строго с нуля). Пересчёт — на месте (logic/enchantChain.js
-// applyChainChoice в calc-store.js derive), без нового запроса. Дропдаун виден только если есть из чего выбирать (>1 кандидата).
-function ChainChoice({ c, eac }) {
-  const forceMain = c.chainChoice.forceMain;
-  const sorted = [...(eac.candidates || [])].sort((a, b) => a.entryLevel - b.entryLevel);
-  const label = (cand) => (cand.entryLevel === 0 ? 'Основной рецепт: с нуля (.0)' : `${cand.entryLabel}: докрутить с этого уровня`);
-  const value = forceMain ? '0' : c.chainChoice.entryLevel !== null ? String(c.chainChoice.entryLevel) : '';
+// Дропдаун «какой рецепт считать» — варианты «после крафта»: база .0 и вся цепочка; смешанные рецепты (база сразу на уровне .L из
+// зачарованного сырья, докрутка только оставшихся шагов); «купить готовый .L» (если включено «Покупка готового уровня» и цена есть).
+// Значения: '' — автовыбор (самый дешёвый), `v<L>` — база на уровне L, `b<L>` — купить готовый .L. Пересчёт на месте (calc-store derive,
+// logic/enchantChain.js pickVariant/applyChainChoice) — без нового запроса. Тумблер «Только основной рецепт» — строго база .0 и вся цепочка.
+function ChainChoice({ c, eac, variantLevel }) {
+  const ch = c.chainChoice;
+  const forceMain = ch.forceMain;
+  const opts = [];
+  const zero = c.data;
+  for (const [lvl, v] of [[0, zero], ...Object.entries(c.hybrids || {}).map(([l, d]) => [Number(l), d])]) {
+    if (!v || v.error || !v.enchantAfterCraft) continue;
+    const e = v.enchantAfterCraft;
+    const ok = v.hasAllMaterialPrices !== false;
+    opts.push({ value: `v${lvl}`, text: `${lvl === 0 ? 'База .0 из обычного сырья + вся цепочка (руны, души, реликты)' : `База .${lvl} из зачарованного сырья + докрутка до .${e.targetLevel}`}${ok ? ` — ${fmt(v.effectiveCostPerUnit)} / шт` : ' — нет цен'}`, ok });
+    if (lvl === 0) for (const cand of e.candidates || []) if (cand.entryLevel > 0) opts.push({ value: `b${cand.entryLevel}`, text: `Купить готовый ${cand.entryLabel} и докрутить — ${fmt(cand.cost)} / шт`, ok: true });
+  }
+  const value = forceMain ? 'v0' : ch.entryLevel ? `b${ch.entryLevel}` : ch.baseLevel !== null && ch.baseLevel !== undefined ? `v${ch.baseLevel}` : '';
+  const pick = (v) => { if (v === '') setChainChoice(null, null); else if (v[0] === 'b') setChainChoice(0, Number(v.slice(1))); else setChainChoice(Number(v.slice(1)), null); };
   return html`<div class="chain-choice" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">
-    ${sorted.length > 1 ? html`<label class="f" style="width:auto"><span class="pl">Рецепт</span><select value=${value} disabled=${forceMain} onChange=${(e) => setChainEntry(e.target.value === '' ? null : Number(e.target.value))}>
-      <option value="">Автовыбор (выгоднее на 7%+)</option>
-      ${sorted.map((cand) => html`<option key=${cand.entryLevel} value=${cand.entryLevel}>${label(cand)} — ${fmt(cand.cost)} / шт</option>`)}</select></label>` : null}
-    <${Switch} checked=${forceMain} onChange=${setForceMain} title="Игнорировать альтернативные входы (купить готовый промежуточный уровень) — считать строго основной рецепт с нуля">Только основной рецепт</${Switch}>
+    ${opts.length > 1 ? html`<label class="f" style="width:auto"><span class="pl">Рецепт</span><select id="chain-recipe" value=${value} disabled=${forceMain} onChange=${(e) => pick(e.target.value)}>
+      <option value="">Автовыбор (дешевле всего)</option>
+      ${opts.map((o) => html`<option key=${o.value} value=${o.value} disabled=${!o.ok}>${o.text}</option>`)}</select></label>` : null}
+    <${Switch} checked=${forceMain} onChange=${setForceMain} title="Игнорировать смешанные рецепты и покупку готового — считать строго базу .0 и всю цепочку рунами/душами/реликтами">Только основной рецепт</${Switch}>
   </div>`;
 }
 
@@ -187,7 +197,7 @@ export function BuyTab({ c, d, lists, override, invalidate }) {
       ${eac.capped ? html`<div><span class="scan-stale">⚠ Зачарование .4 (Awakening) не поддерживается — посчитано до .3</span><b></b></div>` : null}
       <div><span>Вход в цепочку</span><b>${eac.chainEntryLevel > 0
         ? html`куплен готовый ${eac.chainEntryLabel}: <${CityPill} name=${eac.chainEntryCity} /> ${fmt(entryPriceOf(eac))}`
-        : eac.baseSource === 'buy' ? html`база .0 — покупка дешевле крафта: <${CityPill} name=${eac.baseBuy.city} /> ${fmt(eac.baseBuy.price)}` : `база .0 — крафт из материалов: ${fmt(eac.baseCraftCostPerUnit)}`}</b></div>
+        : eac.baseSource === 'buy' ? html`база .${eac.baseLevel || 0} — покупка дешевле крафта: <${CityPill} name=${eac.baseBuy.city} /> ${fmt(eac.baseBuy.price)}` : `база .${eac.baseLevel || 0} — крафт из материалов${eac.baseLevel ? ' (сырьё зачарованное до .' + eac.baseLevel + ')' : ''}: ${fmt(eac.baseCraftCostPerUnit)}`}</b></div>
       ${(eac.neededSteps || eac.steps).map((st) => html`<div key=${st.level}><span>.${st.level - 1} → .${st.level}: ${st.materialName} × ${fmt(st.count * d.quantity)} (${fmt(st.count)} на вещь)</span><b>${st.cost !== null ? `${fmt(st.cost)} / шт` : 'нет цены'}</b></div>`)}
       <div><span>Зачарование / шт (материалы — в таблице выше)</span><b>${fmt(eac.stepsCostPerUnit)}</b></div>
       <div><strong>Итого себестоимость с зачарованием / шт</strong><b>${fmt(d.effectiveCostPerUnit)}</b></div></div></div>` : null}

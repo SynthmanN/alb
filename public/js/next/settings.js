@@ -22,7 +22,7 @@ const legacy = readLegacy();
 export const settings = createStore({
   profile: 'bonus', rrrCraft: 24.8, rrrRefine: 36.7, share: 0.25, hist: 3, mhist: 24,
   premium: legacy.premium, source: legacy.source, optional: legacy.optional,
-  blackMarket: false, teleport: false, purchaseLog: false, ceiling: '', sellLow: '', sellHigh: '', sellThreshold: '', tolerance: 2,
+  blackMarket: false, teleport: false, mixedRecipes: true, buyReady: false, purchaseLog: false, ceiling: '', sellLow: '', sellHigh: '', sellThreshold: '', tolerance: 2,
 }, { key: 'albion_next_settings' });
 
 // общие ключи сайта — города, премиум, источник данных — пишем и туда
@@ -62,7 +62,7 @@ export function commonParams(s = settings.get()) {
     cities: activeCities(s).join(','), ...(inactiveCities(s).length ? { infoCities: inactiveCities(s).join(',') } : {}), premium: String(s.premium), source: s.source,
     gearRrr: 'city_bonus', gearRrrCustom: s.rrrCraft, refineRrr: 'city_bonus', refineRrrCustom: s.rrrRefine,
     marketShare: s.share, days: s.hist, materialHours: s.mhist, priceTolerance: s.tolerance,
-    blackMarket: String(s.blackMarket), ...(s.teleport ? { teleport: 'true' } : {}),
+    blackMarket: String(s.blackMarket), ...(s.teleport ? { teleport: 'true' } : {}), ...(s.buyReady ? { buyReady: 'true' } : {}),
     ...(s.ceiling ? { ceiling: s.ceiling } : {}), ...(s.sellLow ? { sellLow: s.sellLow } : {}), ...(s.sellHigh ? { sellHigh: s.sellHigh } : {}), ...(s.sellThreshold ? { sellThreshold: s.sellThreshold } : {}),
   };
 }
