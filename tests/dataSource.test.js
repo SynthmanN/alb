@@ -98,3 +98,57 @@ describe('источник данных остальных калькулято�
     expect(aodpCalls.length).toBeGreaterThan(0);
   });
 });
+
+describe('запасная цена ордера в терпеливой продаже (города без сделок)', () => {
+  const U = `${URL}&quality=4`;
+  const CITY2 = 'Lymhurst';
+  function seedOrder(city, quality, sell, ageMs = 5 * 60000) {
+    upsertPriceSnapshots(jugDb, [{ item_id: 'T4_CAPE', city, quality, sell_price_min: sell, sell_price_min_date: iso(NOW - ageMs), buy_price_max: 0, buy_price_max_date: iso(NOW - ageMs) }], NOW);
+  }
+  beforeEach(() => { jugDb.exec('DELETE FROM history'); });
+
+  it('сделок нигде нет, но есть свежий ордер — patientSell не null: цена лучшего города, оборот неизвестен (orderOnly), в автоплан не входит', async () => {
+    seedOrder(CITY, 4, 6000);
+    const d = (await request(app).get(U)).body;
+    expect(d.patientSell).not.toBeNull();
+    expect(d.patientSell.orderOnly).toBe(true);
+    expect(d.patientSell.avgSellPrice).toBe(6000);
+    expect(d.patientSell.avgDailyVolume).toBe(0);
+    expect(d.patientSell.daysToSellBatch).toBeNull();
+    expect(d.patientSell.byCity.find((c) => c.city === CITY)).toMatchObject({ orderOnly: true, avgSellPrice: 6000, avgDailyVolume: 0 });
+    expect(d.patientSell.plan.cities).toEqual([]);
+  });
+  it('старый ордер (старше окна «История гира», days=3) не считается — как и раньше «нет данных»', async () => {
+    seedOrder(CITY, 4, 6000, 4 * 86400000);
+    const d = (await request(app).get(U)).body;
+    expect(d.patientSell).toBeNull();
+  });
+  it('ордер другого качества не подставляется', async () => {
+    seedOrder(CITY, 3, 6000);
+    const d = (await request(app).get(U)).body;
+    expect(d.patientSell).toBeNull();
+  });
+  it('есть сделки в одном городе, в другом только ордер — заголовок и план по сделкам, город с ордером виден с ценой и без оборота', async () => {
+    seedSales('T4_CAPE', 4, 5000, 30);
+    seedOrder(CITY2, 4, 9000);
+    const d = (await request(app).get(`${U.replace(`cities=${CITY}`, `cities=${CITY},${CITY2}`)}`)).body;
+    expect(d.patientSell.orderOnly).toBe(false);
+    expect(d.patientSell.avgSellPrice).toBe(5000);                              // заголовок — по сделкам, дорогой ордер его не портит
+    expect(d.patientSell.byCity.find((c) => c.city === CITY2)).toMatchObject({ orderOnly: true, avgSellPrice: 9000, avgDailyVolume: 0 });
+    expect(d.patientSell.plan.cities.map((c) => c.city)).toEqual([CITY]);
+  });
+});
+
+describe('строгие материалы по окну (экспериментально)', () => {
+  it('цена материала старше окна «История сырья» и без сделок: по умолчанию годится, со strictMaterials=true — материал в рецепте «нет цены»', async () => {
+    const recipe = (await request(app).get(URL)).body.recipe;
+    const mat = recipe[0].queryId;
+    upsertPriceSnapshots(jugDb, [{ item_id: mat, city: CITY, quality: 1, sell_price_min: 100, sell_price_min_date: iso(NOW - 3 * 86400000), buy_price_max: 0, buy_price_max_date: iso(NOW - 3 * 86400000) }], NOW);
+    resetCaches();
+    const loose = (await request(app).get(`${URL}&materialHours=24`)).body;
+    expect(loose.recipe[0].cheapestPrice).toBeCloseTo(102.5, 6);
+    resetCaches();
+    const strict = (await request(app).get(`${URL}&materialHours=24&strictMaterials=true`)).body;
+    expect(strict.recipe[0].cheapestPrice).toBeNull();
+  });
+});

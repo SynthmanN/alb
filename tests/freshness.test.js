@@ -67,6 +67,19 @@ describe('GET /api/freshness — материал (kind=material, окно «И�
     expect(wider.body.items[0].stale).toBe(false);
   });
 
+  it('«Строго по окну» (экспериментально): цена ордера старше окна «История сырья» больше не считается данными; свежая и вписанная своя — считаются', async () => {
+    seedPrice('T4_CLOTH', 'Martlock', 100, 2 * DAY);                                                       // ценник двухдневный, сделок нет
+    const loose = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&materialHours=24');
+    expect(loose.body.items[0].stale).toBe(false);                                                         // как раньше — годится любая цена
+    const strict = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&materialHours=24&strictMaterials=true');
+    expect(strict.body.items[0].stale).toBe(true);
+    const wide = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&materialHours=72&strictMaterials=true');
+    expect(wide.body.items[0].stale).toBe(false);                                                          // окно шире возраста цены
+    seedPrice('T4_CLOTH', 'Martlock', 100, 3600 * 1000);                                                   // свежая цена
+    const fresh = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock&materialHours=24&strictMaterials=true');
+    expect(fresh.body.items[0].stale).toBe(false);
+  });
+
   it('свежо в одном городе, нет данных в другом — видно по каждому городу отдельно', async () => {
     seedPrice('T4_CLOTH', 'Martlock', 100, 3600 * 1000);
     const res = await request(app).get('/api/freshness?ids=T4_CLOTH&cities=Martlock,Lymhurst');
@@ -89,10 +102,24 @@ describe('GET /api/freshness — материал (kind=material, окно «И�
 });
 
 describe('GET /api/freshness — сам предмет (kind=self, окно «Истории гира», patientSell.byCity)', () => {
-  it('ценник свежий, но сделок не было ни разу — нет данных (терпеливой продаже ценник не помогает)', async () => {
+  it('свежий ценник ордера, сделок не было — данные есть (запасная цена калькулятора: скан в игре присылает ордера, не сделки)', async () => {
     seedPrice('T6_CAPE@1', 'Martlock', 5000, 2 * 3600 * 1000, 1);        // ценник — 2 часа назад
     const res = await request(app).get('/api/freshness?ids=T6_CAPE@1&cities=Martlock&kinds=self&qualities=1&days=1');
-    expect(res.body.items[0].stale).toBe(true);                         // именно тот кейс, который принёс пользователь
+    expect(res.body.items[0].stale).toBe(false);
+  });
+
+  it('ценник старше окна «Истории гира» и сделок нет — нет данных; окно шире — данные есть', async () => {
+    seedPrice('T6_CAPE@1', 'Martlock', 5000, 2 * DAY, 1);                // ценник — 2 дня назад
+    const narrow = await request(app).get('/api/freshness?ids=T6_CAPE@1&cities=Martlock&kinds=self&qualities=1&days=1');
+    expect(narrow.body.items[0].stale).toBe(true);
+    const wide = await request(app).get('/api/freshness?ids=T6_CAPE@1&cities=Martlock&kinds=self&qualities=1&days=3');
+    expect(wide.body.items[0].stale).toBe(false);
+  });
+
+  it('ценник другого качества не считается: у нужного качества ордеров нет — нет данных', async () => {
+    seedPrice('T6_CAPE@1', 'Martlock', 5000, 3600 * 1000, 3);            // свежий, но качество 3
+    const res = await request(app).get('/api/freshness?ids=T6_CAPE@1&cities=Martlock&kinds=self&qualities=4&days=1');
+    expect(res.body.items[0].stale).toBe(true);
   });
 
   it('сделка в окне «Истории гира» есть — данные есть, ценник не нужен', async () => {

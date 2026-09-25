@@ -851,8 +851,8 @@ app.get('/api/craft-calc', async (req, res) => {
         materialInfo[id] = materialPriceQuotes(materialSeries.get(id), id, materialHours, infoCities, infoSnapshot).map((q) => ({ city: q.city, price: q.price, inactive: true })).sort((a, b) => a.price - b.price);
       }
       const snapshot = Object.values(materialByCity[id] || {}).filter((rec) => rec.sell_price_min && queryCities.some((c) => normLocation(c) === normLocation(rec.city)))
-        .map((rec) => ({ city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date }));
-      const quotes = materialPriceQuotes(materialSeries.get(id), id, materialHours, queryCities, snapshot);
+        .map((rec) => ({ city: rec.city, price: rec.sell_price_min, date: rec.sell_price_min_date, manual: !!rec.manual }));
+      const quotes = materialPriceQuotes(materialSeries.get(id), id, materialHours, queryCities, snapshot, parseStrictMaterials(req) ? jugNow : null);
       materialByCity[id] = Object.fromEntries(quotes.map((q) => [q.city, { city: q.city, sell_price_min: q.price, sell_price_min_date: q.date, priceSource: q.source }]));
     }
     const finishedByCity = {};
@@ -1070,15 +1070,19 @@ app.get('/api/craft-calc', async (req, res) => {
       // в 100+ раз быстрее Обычного), а себестоимость от качества не зависит — поэтому сравнение бесплатное.
       const history = await marketHistory(source, [finishedQueryId], days * 24, ALL_QUALITIES.join(','), blackMarket ? [...locations, ...infoLocations, BM_QUERY_LOCATION] : [...locations, ...infoLocations]);
       // Чёрный Рынок сюда не входит: он вне расчёта по умолчанию (как города «только для информации» ниже), у него другой налог и он не Sell Order.
-      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare });
+      // Города без сделок за окно, но со свежей ценой ордера (не старше окна «История гира») — запасная цена (только для выбранного качества)
+      const orderPrices = freshOrderPrices(finishedData, { itemId: finishedQueryId, quality, cities: queryCities, days, now: jugNow });
+      const forQuality = (q) => computePatientSell({ history, itemId: finishedQueryId, days, quantity, taxRate, costPerUnit: effectiveCostPerUnit, queryCities, quality: q, marketShare, ...(q === quality ? { orderPrices } : {}) });
       patientSell = forQuality(quality);
       if (patientSell && sellThreshold) patientSell.threshold = computeSellThreshold(patientSell.cities, sellThreshold, quantity, marketShare);
       // План продажи по умолчанию: ВСЕ прибыльные города (у каждого свой налог: у ЧР — свой), партия по индексу профита (maxProfitCityAllocation).
       // Допуск цены относится к плану закупки, а не продажи.
       if (patientSell) {
-        const profitableCities = patientSell.byCity.filter((c) => c.profitPerUnit > 0);
+        // В автоплан входят только города с оборотом: город с одной лишь ценой ордера (orderOnly) — только вручную, по своему количеству
+        const tradedCities = patientSell.byCity.filter((c) => !c.orderOnly);
+        const profitableCities = tradedCities.filter((c) => c.profitPerUnit > 0);
         patientSell.plan = maxProfitCityAllocation(
-          (profitableCities.length ? profitableCities : patientSell.byCity).map((c) => ({ city: c.city, avgPrice: c.avgSellPrice, avgDailyVolume: c.avgDailyVolume, profitPerUnit: c.profitPerUnit, profitIndex: c.profitIndex })),
+          (profitableCities.length ? profitableCities : tradedCities).map((c) => ({ city: c.city, avgPrice: c.avgSellPrice, avgDailyVolume: c.avgDailyVolume, profitPerUnit: c.profitPerUnit, profitIndex: c.profitIndex })),
           quantity, { marketShare },
         );
         if (patientSell.plan.cities.length) {
@@ -1550,11 +1554,31 @@ function cityStats(historyData, itemId, days, quality) {
 // свой ордер на продажу и ждём. Цену берём по истории сделок (средневзвешенная по объёму за период),
 // а не по текущему sell_price_min — иначе получится красивая маржа на предмете, который висит неделями
 // («стать инвестором предмета»). Объём/день и дни на распродажу партии показывают, насколько это реально.
-function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities, quality, marketShare = 1, setupFee = SETUP_FEE_RATE, blackMarketTaxRate = null }) {
+// Цены ордеров на продажу как запасной вариант для городов без сделок: { город: { price, date } } — только не старше окна «История гира»
+// (days), нужного качества и без вписанных вручную цен (у них своя ветка). Общая для калькулятора и окна свежести — одно правило «есть данные».
+function freshOrderPrices(records, { itemId, quality, cities, days, now }) {
+  const allowed = new Set(cities.map(normLocation));
+  const out = {};
+  for (const rec of records || []) {
+    if (rec.manual || rec.item_id !== itemId || rec.quality !== quality || !rec.sell_price_min || !allowed.has(normLocation(rec.city))) continue;
+    const t = Date.parse(`${rec.sell_price_min_date}Z`);
+    if (!Number.isFinite(t) || now - t > days * 86400000) continue;
+    if (!out[rec.city] || rec.sell_price_min < out[rec.city].price) out[rec.city] = { price: rec.sell_price_min, date: rec.sell_price_min_date };
+  }
+  return out;
+}
+
+// orderPrices — запасная цена ордера для городов, где сделок за окно нет (см. freshOrderPrices): такой город виден с ценой, но без оборота
+// (orderOnly), в автоплан не входит; заголовок (средняя цена и профит) идёт по сделкам, а если сделок нет нигде — по лучшей цене ордера.
+function computePatientSell({ history, itemId, days, quantity, taxRate, costPerUnit, queryCities, quality, marketShare = 1, setupFee = SETUP_FEE_RATE, blackMarketTaxRate = null, orderPrices = null }) {
   const allowed = new Set(queryCities.map(normLocation));
   if (blackMarketTaxRate !== null) allowed.add('blackmarket');
-  const stats = Object.entries(cityStats(history, itemId, days, quality)).filter(([city]) => allowed.has(normLocation(city)));
-  if (stats.length === 0) return null;
+  const tradeStats = Object.entries(cityStats(history, itemId, days, quality)).filter(([city]) => allowed.has(normLocation(city)));
+  const orderOnly = Object.entries(orderPrices || {}).filter(([city]) => allowed.has(normLocation(city)) && !tradeStats.some(([c]) => normLocation(c) === normLocation(city)))
+    .map(([city, o]) => [city, { avgPrice: o.price, totalVolume: 0, avgDailyVolume: 0, orderOnly: true, date: o.date }]);
+  if (tradeStats.length === 0 && orderOnly.length === 0) return null;
+  const stats = [...tradeStats, ...orderOnly];
+  const headStats = tradeStats.length ? tradeStats : orderOnly;
   // Свой Sell Order: налог с продажи + сбор за размещение (Setup Fee 2.5% от цены ордера, не возвращается).
   const netFactor = 1 - taxRate - setupFee;
   // Чёрный Рынок: своя ставка (налог + Setup Fee уже внутри, второй раз сбор не берём); у обычных городов — налог + сбор.
@@ -1564,7 +1588,7 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
   let bestCity = null;
   let allVolume = 0;
   let allWeighted = 0;
-  for (const [city, st] of stats) {
+  for (const [city, st] of headStats) {
     allVolume += st.totalVolume;
     allWeighted += st.avgPrice * st.totalVolume;
     if (!bestCity || st.avgPrice > bestCity.avgPrice) bestCity = { city, avgPrice: st.avgPrice };
@@ -1573,25 +1597,28 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
   // ЧЕСТНОЕ усреднение: продавать по плану имеет смысл только там, где после налога и сбора выходит прибыль. Наивное среднее по ВСЕМ
   // городам смешивало убыточные рынки с прибыльными (на T4-мече знак профита выходил перевёрнутым: −2427 вместо +459 за штуку).
   // Если прибыльных городов нет — показываем лучший по цене (честный минус), а не выдуманное среднее.
-  const profitable = stats.filter(([city, st]) => st.avgPrice * netFactorOf(city) - costPerUnit > 0);
-  const used = profitable.length ? profitable : stats.filter(([city]) => city === bestCity.city);
+  const profitable = headStats.filter(([city, st]) => st.avgPrice * netFactorOf(city) - costPerUnit > 0);
+  const used = profitable.length ? profitable : headStats.filter(([city]) => city === bestCity.city);
   let usedVolume = 0;
   let usedWeighted = 0;
   let usedNetWeighted = 0;
   for (const [city, st] of used) { usedVolume += st.totalVolume; usedWeighted += st.avgPrice * st.totalVolume; usedNetWeighted += st.avgPrice * netFactorOf(city) * st.totalVolume; }
-  const avgSellPrice = usedWeighted / usedVolume;
+  // Нет сделок нигде (только цены ордеров): оборота нет — цена лучшего города, оборот неизвестен (0), срок продажи не считается
+  const noVolume = usedVolume === 0;
+  const avgSellPrice = noVolume ? bestCity.avgPrice : usedWeighted / usedVolume;
   const avgDailyVolume = usedVolume / days;
-  const netSellPrice = usedNetWeighted / usedVolume;                    // чистая цена — по налогу КАЖДОГО города (ЧР ≠ обычный)
+  const netSellPrice = noVolume ? bestCity.avgPrice * netFactorOf(bestCity.city) : usedNetWeighted / usedVolume;                    // чистая цена — по налогу КАЖДОГО города (ЧР ≠ обычный)
   return {
     days,
     avgSellPrice,                                  // средняя цена ПЛАНА (только прибыльные города)
-    marketAvgPrice: allWeighted / allVolume,       // наивное среднее по всем городам — только для справки
+    orderOnly: noVolume,                           // цена только по ордерам (сделок за окно нет ни в одном городе) — оборот неизвестен
+    marketAvgPrice: noVolume ? bestCity.avgPrice : allWeighted / allVolume,       // наивное среднее по всем городам — только для справки
     marketDailyVolume: allVolume / days,           // оборот всех городов (для справки)
     setupFee,
     planCities: used.map(([city]) => city),
-    skippedCities: profitable.length ? stats.filter(([city]) => !used.some(([c]) => c === city)).map(([city]) => city) : [],
+    skippedCities: profitable.length ? headStats.filter(([city]) => !used.some(([c]) => c === city)).map(([city]) => city) : [],
     bestCity,
-    cities: stats.map(([city, st]) => ({ city, avgPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, netFactor: netFactorOf(city) })),
+    cities: headStats.map(([city, st]) => ({ city, avgPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, netFactor: netFactorOf(city) })),
     // Разбивка по всем активным городам (порог продажи — лишь необязательный фильтр сверху).
     byCity: stats
       .map(([city, st]) => {
@@ -1600,7 +1627,7 @@ function computePatientSell({ history, itemId, days, quantity, taxRate, costPerU
         // Индекс профита города: тот же opportunityScore, что ранжирует сканеры (профит% × log2(2 + оборот)) — город с двумя сделками
         // в неделю не обходит честно ликвидный, но чуть менее маржинальный.
         const profitIndex = profitPerUnit > 0 && costPerUnit > 0 ? opportunityScore((profitPerUnit / costPerUnit) * 100, st.avgDailyVolume) : 0;
-        return { city, avgSellPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, netPrice, taxRate: 1 - netFactorOf(city), blackMarket: isBm(city), profitPerUnit, profitIndex };
+        return { city, avgSellPrice: st.avgPrice, avgDailyVolume: st.avgDailyVolume, netPrice, taxRate: 1 - netFactorOf(city), blackMarket: isBm(city), profitPerUnit, profitIndex, ...(st.orderOnly ? { orderOnly: true, orderDate: st.date } : {}) };
       })
       .sort((a, b) => b.avgSellPrice - a.avgSellPrice),
     avgDailyVolume,
@@ -2485,7 +2512,10 @@ function parseMaterialHours(req) {
 // разовой котировки, но только для городов, где сделки в этом окне реально были; город без них — на СВОЮ котировку, а не
 // пустое место (раньше при переключении на «сделки» для ОДНОГО города в списке терялись котировки ВСЕХ остальных городов,
 // даже вполне свежих — «Свежесть данных» помечала их как есть, калькулятор при этом показывал «нет данных»). snapshotQuotes — [{ city, price, date }] текущих котировок.
-function materialPriceQuotes(seriesOfItem, itemId, hours, cities, snapshotQuotes) {
+// strictNow (экспериментально, тумблер «Строго по окну истории»): число — «сейчас»; тогда и запасная котировка (цена ордера без сделок в окне)
+// должна быть не старше этого же окна (hours), а не «любая когда-либо записанная»; null — как раньше.
+const parseStrictMaterials = (req) => req.query.strictMaterials === 'true' || (req.body && req.body.strictMaterials === true);
+function materialPriceQuotes(seriesOfItem, itemId, hours, cities, snapshotQuotes, strictNow = null) {
   const allowed = new Set(cities.map(normLocation));
   const stats = Object.entries(cityStats(seriesOfItem || [], itemId, hours / 24, 1)).filter(([city]) => allowed.has(normLocation(city)));
   const lastTrade = (city) => {
@@ -2495,7 +2525,8 @@ function materialPriceQuotes(seriesOfItem, itemId, hours, cities, snapshotQuotes
   };
   const fromHistory = stats.map(([city, st]) => ({ city, price: st.avgPrice, date: lastTrade(city), source: 'history' }));
   const historyCities = new Set(fromHistory.map((q) => normLocation(q.city)));
-  const fromSnapshot = (snapshotQuotes || []).filter((q) => !historyCities.has(normLocation(q.city))).map((q) => ({ ...q, source: 'quote' }));
+  const recent = (q) => strictNow === null || q.manual || (Number.isFinite(Date.parse(`${q.date}Z`)) && strictNow - Date.parse(`${q.date}Z`) <= hours * 3600000);
+  const fromSnapshot = (snapshotQuotes || []).filter((q) => !historyCities.has(normLocation(q.city)) && recent(q)).map((q) => ({ ...q, source: 'quote' }));
   return [...fromHistory, ...fromSnapshot];
 }
 const cheapestOf = (quotes) => (quotes && quotes.length ? quotes.reduce((a, b) => (b.price < a.price ? b : a)) : null);
@@ -2581,6 +2612,7 @@ app.get('/api/unified-scan', (req, res) => {
     const chainEntry = req.query.chainEntry === 'true';
     // Смешанные рецепты: «после крафта» может начинаться не с базы .0, а с базы на уровне .L из зачарованного сырья (докрутка только L+1..цель)
     const mixed = req.query.mixed === 'true';
+    const strictMaterials = parseStrictMaterials(req);                     // экспериментально: цена ордера сырья тоже не старше окна «История сырья»
     // Фракционный режим (только плащи выбранной фракции): гербы и сердца получены за очки, поэтому в серебре стоят 0; метрика — профит на очко
     const factionKey = FACTIONS[req.query.faction] ? req.query.faction : null;
     const faction = factionKey ? FACTIONS[factionKey] : null;
@@ -2597,7 +2629,7 @@ app.get('/api/unified-scan', (req, res) => {
 
     const fresh = jugFreshness(jugDb, now);
     const refineParams = parseRefineRate(req);
-    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, chainEntry, mixed, factionKey, factionPoints, factionPlanWanted, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, chainEntry, mixed, strictMaterials, factionKey, factionPoints, factionPlanWanted, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2658,7 +2690,7 @@ app.get('/api/unified-scan', (req, res) => {
     // Материалы покупаются своим Buy Order — комиссия 2.5% (Setup Fee) входит в цену; на руны/души/реликвии тоже. Мультигород здесь не считаем:
     // количество в скане выводится из себестоимости (капитал ÷ цена), а цена от количества — замкнутый круг; берётся самый дешёвый город.
     for (const id of materialIds) {
-      let quotes = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshotQuotes[id]);
+      let quotes = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshotQuotes[id], strictMaterials ? now : null);
       if (materialLiquidity && quotes.length > 1) {
         // Город, где материал почти не торгуется (меньше 2% оборота самого ликвидного города или меньше 1 шт/день), цену не задаёт: она может
         // держаться на одной случайной сделке. Нет истории вообще — судить нечем, котировки остаются.
@@ -2938,24 +2970,28 @@ const parseQuality = (v) => { const q = parseInt(v, 10); return Number.isInteger
 // Города, где у материала (сырьё, полуфабрикат, компонент переработки/крафта, герб, сердце, руна) есть хоть что-то, чем
 // калькулятор мог бы посчитать себестоимость — ровно то же правило, что materialPriceQuotes: сделка за «Историю сырья»
 // ИЛИ любая котировка когда-либо (снапшот не протухает сам по себе — калькулятор возьмёт даже старый, лишь бы был).
-function materialCitiesWithData(id, { cities, materialHours, now }) {
+function materialCitiesWithData(id, { cities, materialHours, now, strict = false }) {
   const locations = cities.map((c) => c.replace(/\s+/g, ''));
   const history = readHistory(jugDb, [id], materialHours, { locations, qualities: [1], now });
-  const snapshot = readPrices(jugDb, [id], { cities, qualities: [1] }).filter((r) => r.sell_price_min).map((r) => ({ city: r.city, price: r.sell_price_min }));
-  return new Set(materialPriceQuotes(history, id, materialHours, cities, snapshot).map((q) => normLocation(q.city)));
+  const snapshot = readPrices(jugDb, [id], { cities, qualities: [1] }).filter((r) => r.sell_price_min).map((r) => ({ city: r.city, price: r.sell_price_min, date: r.sell_price_min_date }));
+  return new Set(materialPriceQuotes(history, id, materialHours, cities, snapshot, strict ? now : null).map((q) => normLocation(q.city)));
 }
-// Города, где у самого предмета есть сделка за «Историю гира» этого качества — то самое, что решает «нет данных» в
-// patientSell.byCity (План продажи калькулятора): без сделки в окне терпеливая продажа там взять нечего, ценник (для
-// мгновенной продажи) тут не считается — задача окна свежести не спутать «есть ценник» с «есть чем продать терпеливо».
+// Города, где у самого предмета есть чем считать продажу — то же, что решает «нет данных» в patientSell.byCity (План продажи калькулятора):
+// сделка за «Историю гира» этого качества ИЛИ (запасной вариант) свежая — не старше того же окна — цена ордера на продажу. Скан в игре
+// присылает именно ордера, не сделки, поэтому одного ценника хватает, чтобы предмет ушёл из окна; оборот при этом неизвестен.
 function selfCitiesWithData(id, { cities, days, quality, now }) {
   const locations = cities.map((c) => c.replace(/\s+/g, ''));
   const history = readHistory(jugDb, [id], days * 24, { locations, qualities: [quality], now });
-  return new Set(Object.keys(cityStats(history, id, days, quality)).map(normLocation));
+  const withData = new Set(Object.keys(cityStats(history, id, days, quality)).map(normLocation));
+  // ...или свежая (не старше окна «История гира») цена ордера этого качества — запасная цена калькулятора (computePatientSell, orderPrices)
+  const orders = freshOrderPrices(readPrices(jugDb, [id], { cities, qualities: [quality] }), { itemId: id, quality, cities, days, now });
+  for (const city of Object.keys(orders)) withData.add(normLocation(city));
+  return withData;
 }
 // kind: 'self' — сам предмет (окно «История гира»), 'material' — всё остальное (окно «История сырья»). Вписанная вручную
 // цена — третий, самый простой способ дать калькулятору данные: она общая на все города разом (как и везде в проекте).
-function freshnessOf(id, { cities, now, quality = 1, kind, materialHours, days }) {
-  const withData = kind === 'self' ? selfCitiesWithData(id, { cities, days, quality, now }) : materialCitiesWithData(id, { cities, materialHours, now });
+function freshnessOf(id, { cities, now, quality = 1, kind, materialHours, days, strict = false }) {
+  const withData = kind === 'self' ? selfCitiesWithData(id, { cities, days, quality, now }) : materialCitiesWithData(id, { cities, materialHours, now, strict });
   const manualRow = getManualPrices(jugDb, [id], now)[`${id}|${quality}`];
   const byCity = {};
   for (const city of cities) byCity[city] = { stale: !manualRow && !withData.has(normLocation(city)) };
@@ -2978,7 +3014,7 @@ app.get('/api/freshness', (req, res) => {
     const materialHours = parseFreshnessMaterialHours(req);
     const days = parseFreshnessDays(req);
     const now = Date.now();
-    res.json({ cities, items: ids.map((id) => freshnessOf(id, { cities, now, quality: qualityOf.get(id), kind: kindOf.get(id), materialHours, days })) });
+    res.json({ cities, items: ids.map((id) => freshnessOf(id, { cities, now, quality: qualityOf.get(id), kind: kindOf.get(id), materialHours, days, strict: parseStrictMaterials(req) })) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'не удалось проверить свежесть данных', details: err.message });
@@ -3006,7 +3042,7 @@ app.post('/api/freshness/refresh', async (req, res) => {
     ]);
     upsertPriceSnapshots(jugDb, priceRows, now);
     upsertHistoryBatch(jugDb, historySeries, now);
-    res.json({ cities, items: known.map((id) => freshnessOf(id, { cities, now: Date.now(), quality: parseQuality(qualities[id]), kind: kinds[id] === 'self' ? 'self' : 'material', materialHours, days })) });
+    res.json({ cities, items: known.map((id) => freshnessOf(id, { cities, now: Date.now(), quality: parseQuality(qualities[id]), kind: kinds[id] === 'self' ? 'self' : 'material', materialHours, days, strict: parseStrictMaterials(req) })) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'не удалось обновить данные с AODP', details: err.message });
@@ -3055,7 +3091,7 @@ app.get('/api/faction-plan', (req, res) => {
     const manualInfo = getManualPrices(jugDb, materialIds, now);
     const materialQuotes = {};
     for (const id of materialIds) {
-      materialQuotes[id] = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshot[id]).map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
+      materialQuotes[id] = materialPriceQuotes(priceHistory.get(id), id, materialHours, queryCities, snapshot[id], parseStrictMaterials(req) ? now : null).map((q) => ({ ...q, price: q.price * (1 + SETUP_FEE_RATE) }));
     }
     const quoteOf = (id) => {
       const q = cheapestOf(materialQuotes[id]);
@@ -3080,6 +3116,8 @@ app.get('/api/faction-plan', (req, res) => {
     const cleaned = dropPriceOutliers(readHistory(jugDb, finishedIds, HISTORY_WINDOW_HOURS, { locations, qualities: ALL_QUALITIES, now }));
     const finishedHistory = indexByItem(windowWithGapFill(cleaned.series, days, now));
     const manualSale = getManualPrices(jugDb, finishedIds, now);
+    // Запасная цена продажи, когда сделок нет: свежий (не старше окна «История гира») ордер на продажу — как в калькуляторе (freshOrderPrices)
+    const finishedOrders = readPrices(jugDb, finishedIds, { cities: queryCities, qualities: ALL_QUALITIES });
 
     const combos = new Map();
     const addCombo = (t, e, q, source) => { const key = `${t}|${e}|${q}`; if (!combos.has(key)) combos.set(key, { t, e, q, source }); };
@@ -3128,6 +3166,12 @@ app.get('/api/faction-plan', (req, res) => {
       } else if (manualSale[`${finishedId}|${q}`]) {
         const m = manualSale[`${finishedId}|${q}`];
         sale = { avgPrice: m.price, netSell: m.price * (1 - taxRate - SETUP_FEE_RATE), dailyVolume: null, ageDays: (now - m.enteredAt) / 86400000, filled: false, manual: true };
+      } else {
+        const orders = Object.values(freshOrderPrices(finishedOrders, { itemId: finishedId, quality: q, cities: queryCities, days, now }));
+        if (orders.length) {
+          const best = orders.reduce((a, b) => (b.price > a.price ? b : a));    // дороже всего продаётся там, где самый высокий ордер
+          sale = { avgPrice: best.price, netSell: best.price * (1 - taxRate - SETUP_FEE_RATE), dailyVolume: null, ageDays: (now - Date.parse(`${best.date}Z`)) / 86400000, filled: false, manual: false, orderOnly: true };
+        }
       }
       return {
         itemId: gearId, finishedId, tier: t, enchant: e, quality: q, source, pointsPerCape: pointsPerCape(t), crestId: crestIdOf(gearId), heartId: faction.heartId,

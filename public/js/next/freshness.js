@@ -22,28 +22,53 @@ export const freshnessStore = createStore({ open: false, onRefreshed: null, item
 const qualityOf = (id) => { const it = freshnessStore.get().names.get(id); return (it && it.quality) || 1; };
 const kindOf = (id) => { const it = freshnessStore.get().names.get(id); return (it && it.kind) === 'self' ? 'self' : 'material'; };
 
-async function load() {
+const fetchFreshness = () => {
   const s0 = freshnessStore.get();
   const ids = [...s0.names.keys()];
   const st = settings.get();
+  return apiGet('/api/freshness', {
+    ids: ids.join(','), qualities: ids.map(qualityOf).join(','), kinds: ids.map(kindOf).join(','),
+    cities: s0.enabledCities.join(','), materialHours: st.mhist, days: st.hist, ...(st.strictMaterials ? { strictMaterials: 'true' } : {}),
+  });
+};
+async function load() {
   try {
-    const data = await apiGet('/api/freshness', {
-      ids: ids.join(','), qualities: ids.map(qualityOf).join(','), kinds: ids.map(kindOf).join(','),
-      cities: s0.enabledCities.join(','), materialHours: st.mhist, days: st.hist,
-    });
+    const data = await fetchFreshness();
     if (!freshnessStore.get().open) return;                 // окно закрыли, пока грузилось — ответ не нужен
     freshnessStore.set({ items: data.items, cities: data.cities, loading: false });
   } catch (err) {
     freshnessStore.set({ loading: false, error: err.message });
   }
 }
+
+// Автообновление: пока окно открыто и вкладка на виду, раз в POLL_MS тихо перепроверяем список — отсканировал предмет в игре, данные пришли
+// по NATS в кувшин, и через несколько секунд он сам уходит из окна, без «Обновить». Без постоянного соединения (SSE): запрос — обычный
+// /api/freshness, ~15 в минуту при бюджете 40. Ошибки и занятое состояние (идёт «Обновить») молча пропускаем — следующий тик повторит.
+export const POLL_MS = 4000;
+const staleCells = (items) => items.reduce((n, it) => n + Object.values(it.byCity || {}).filter((c) => c.stale).length, 0);
+let pollTimer = null;
+async function poll() {
+  const s = freshnessStore.get();
+  if (!s.open || !s.names.size || s.loading || s.refreshingAll || s.refreshingId || (typeof document !== 'undefined' && document.visibilityState !== 'visible')) return;
+  try {
+    const data = await fetchFreshness();
+    const now = freshnessStore.get();
+    if (!now.open || now.refreshingAll || now.refreshingId) return;
+    const dropped = staleCells(now.items) - staleCells(data.items);
+    freshnessStore.set({ items: data.items, cities: data.cities });
+    if (dropped > 0) afterRefresh();                        // что-то обновилось само — пересчитать позиции, как после «Обновить»
+  } catch (e) { /* следующий тик */ }
+}
+const stopPolling = () => { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } };
+const startPolling = () => { stopPolling(); pollTimer = setInterval(poll, POLL_MS); };
 // named — Map(id → {name, quality, kind}): logic/freshness.js (collectAllIds — крафт-лист/стек, collectFactionIds — фракционный план).
 // onRefreshed — что сделать после обновления, чтобы список/план перестал показывать старые цифры (см. invalidateDef ниже).
 export function openFreshness(named, onRefreshed) {
   freshnessStore.set({ open: true, onRefreshed: onRefreshed || null, names: named, items: [], cities: [], loading: true, error: '' });
   load();
+  startPolling();
 }
-export const closeFreshness = () => freshnessStore.set({ open: false });
+export const closeFreshness = () => { stopPolling(); freshnessStore.set({ open: false }); };
 // Включить/выключить город прямо в окне — свой список, не общие «активные города» сайта. Хотя бы один город должен остаться
 // включённым (пустой список городов сервер принял бы за «умолчание — все семь», а не за «ни одного»).
 export function toggleCity(city) {
@@ -70,7 +95,7 @@ async function applyRefresh(ids) {
   const st = settings.get();
   const qualities = Object.fromEntries(ids.map((id) => [id, qualityOf(id)]));
   const kinds = Object.fromEntries(ids.map((id) => [id, kindOf(id)]));
-  const data = await apiPost('/api/freshness/refresh', { ids, qualities, kinds, cities: s.enabledCities, materialHours: st.mhist, days: st.hist });
+  const data = await apiPost('/api/freshness/refresh', { ids, qualities, kinds, cities: s.enabledCities, materialHours: st.mhist, days: st.hist, ...(st.strictMaterials ? { strictMaterials: true } : {}) });
   mergeItems(data.items);
 }
 export async function refreshOne(id) {
@@ -101,7 +126,7 @@ async function saveManualPrice(id, price) {
     await apiPost('/api/manual-price', { id, quality, price });
     const s = freshnessStore.get();
     const st = settings.get();
-    const data = await apiGet('/api/freshness', { ids: id, qualities: quality, kinds: kindOf(id), cities: s.enabledCities.join(','), materialHours: st.mhist, days: st.hist });
+    const data = await apiGet('/api/freshness', { ids: id, qualities: quality, kinds: kindOf(id), cities: s.enabledCities.join(','), materialHours: st.mhist, days: st.hist, ...(st.strictMaterials ? { strictMaterials: 'true' } : {}) });
     mergeItems(data.items);
     afterRefresh();
   } catch (err) {

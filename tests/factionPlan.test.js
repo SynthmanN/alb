@@ -89,6 +89,13 @@ describe('GET /api/faction-plan', () => {
     expect(withExtra.rows.find((r) => r.enchant === 4).sale).not.toBeNull();       // данные продаж у добавленной позиции подтянулись
   });
 
+  it('добавленная позиция без сделок, но со свежим ордером на продажу — цена продажи по ордеру (orderOnly), оборот неизвестен', async () => {
+    upsertPriceSnapshots(jugDb, [{ item_id: 'T7_CAPEITEM_FW_MARTLOCK@2', city: CITY, quality: 4, sell_price_min: 80000, sell_price_min_date: iso(NOW - 3600000), buy_price_max: 0, buy_price_max_date: iso(NOW - 3600000) }], NOW);
+    const t7 = (await plan({ extra: '7:2:4' })).rows.find((r) => r.tier === 7);
+    expect(t7.sale).toMatchObject({ avgPrice: 80000, dailyVolume: null, orderOnly: true, manual: false });
+    expect(t7.sale.netSell).toBeCloseTo(80000 * (1 - 0.08 - 0.025), 6);
+  });
+
   it('добавленная пользователем позиция без данных попадает в список (extra=тир:чарка:качество), продажи в ней нет', async () => {
     const d = await plan({ extra: '7:2:4' });
     const t7 = d.rows.find((r) => r.tier === 7);

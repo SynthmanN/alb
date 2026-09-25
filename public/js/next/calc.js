@@ -92,7 +92,7 @@ function Verdict({ c, d, p, st, invalidate }) {
       <div class="stat"><span>ROI</span><b>${p && p.roi !== null ? `${fmt(p.roi, 0)}%` : '—'}</b></div>
       <div class="stat"><span>Профит всего</span><b class=${tone(p && p.total)}>${p ? signed(p.total) : '—'}</b></div>
       <div class="stat"><span>Вложения на штуку</span><b class="neg">${fmt(d.effectiveCostPerUnit)}</b></div>
-      <div class="stat"><span>Оборот в день</span><b>${d.patientSell ? fmt(d.patientSell.marketDailyVolume, 1) : '—'}</b></div>
+      <div class="stat"><span>Оборот в день</span><b>${d.patientSell && !d.patientSell.orderOnly ? fmt(d.patientSell.marketDailyVolume, 1) : '—'}</b></div>
       <div class="stat"><span>Мгновенно (Buy Order)</span><b class=${tone(d.profitPerUnit)}>${signed(d.profitPerUnit)}</b></div>
     </div></div>`;
 }

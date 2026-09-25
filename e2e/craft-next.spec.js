@@ -1049,3 +1049,19 @@ test('смешанные рецепты: калькулятор считает �
   await expect(page.locator('#cost-summary')).toContainText('8 000');
   await expect(page.locator('#chain-recipe')).toBeDisabled();
 });
+
+test('свежесть данных: окно само перепроверяет список — отсканированный в игре предмет уходит без «Обновить»; после закрытия опрос прекращается', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  const byCity = { T4_CLOTH: { Martlock: true }, T4_RUNE: { Martlock: true }, T4_2H_BOW: { Martlock: false }, T4_CAPE: { Martlock: false } };
+  const fresh = await mockFreshness(page, { cities: ['Martlock'], byCity });
+  await page.locator('#freshness-open').click();
+  await expect(page.locator('.fresh-row')).toHaveCount(2);                                    // ткань и руны — «нет данных» в Мартлоке
+  byCity.T4_CLOTH.Martlock = false;                                                           // «отсканировали в игре»: данные пришли по NATS в кувшин
+  await expect(page.locator('.fresh-row')).toHaveCount(1, { timeout: 12000 });                // без нажатия «Обновить»
+  await expect(page.locator('.fresh-row')).toContainText('Руна');
+  await page.locator('#freshness-dialog').getByRole('button', { name: 'Закрыть' }).click();
+  const n = fresh.get.length;
+  await page.waitForTimeout(9000);
+  expect(fresh.get.length).toBe(n);                                                           // окно закрыто — запросов больше нет
+});
