@@ -60,6 +60,15 @@ describe('GET /api/faction-plan', () => {
     expect(r.runes[0].price).toBeCloseTo(10 * FEE, 6);
   });
 
+  it('вход в цепочку зачарования не с нуля: capeByLevel несёт цену плаща-ингредиента на каждом уровне 0..enchant-1 (не только .0)', async () => {
+    seedPrice('T4_CAPE@1', 1500);
+    const r = (await plan()).rows[0];
+    expect(r.capeByLevel).toEqual([
+      { level: 0, id: 'T4_CAPE', label: r.cape0.label, price: r.cape0.price, source: r.cape0.source, ageMinutes: r.cape0.ageMinutes, manual: r.cape0.manual },
+      { level: 1, id: 'T4_CAPE@1', label: expect.any(String), price: expect.closeTo(1500 * FEE, 6), source: expect.any(String), ageMinutes: expect.any(Number), manual: false },
+    ]);
+  });
+
   it('продажа: средняя цена, чистая после налога и Setup Fee, оборот, возраст сделок; герб и сердце — рыночные цены для сравнения', async () => {
     const r = (await plan()).rows[0];
     expect(r.sale.avgPrice).toBeCloseTo(60000, 6);

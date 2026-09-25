@@ -75,22 +75,40 @@ export function applyManualPrices(data, ctx) {
   if (d.recipe.some((r) => r.filledByOwn) && d.hasAllMaterialPrices === false && d.recipe.every((r) => r.materialSource === 'points' || r.cheapestPrice !== null)) d.hasAllMaterialPrices = true;
   const baseFlow = data.enchantAfterCraft || data.baseChoice;
   let stepsDelta = 0;
+  const chainEntryLevel = data.enchantAfterCraft ? (data.enchantAfterCraft.chainEntryLevel ?? 0) : 0;
   if (data.enchantAfterCraft) {
-    d.enchantAfterCraft = { ...data.enchantAfterCraft, steps: data.enchantAfterCraft.steps.map((st) => ({ ...st })) };
-    for (const st of d.enchantAfterCraft.steps) {
+    const steps = data.enchantAfterCraft.steps.map((st) => ({ ...st }));
+    for (const st of steps) {
       const sb = cityBuy(st.materialId);
       const p = own(st.materialId) !== undefined ? own(st.materialId) : sb !== undefined ? sb.price : undefined;
       if (p === undefined) continue;
       if (sb !== undefined && own(st.materialId) === undefined) st.cheapestCity = sb.city;
-      stepsDelta += (p - (st.cheapestPrice === null ? 0 : st.cheapestPrice)) * st.count;      // цены на рынке нет — своя цена закрывает шаг
+      // В себестоимость выбранного пути идут только шаги ПОСЛЕ входа в цепочку (chainEntryLevel) — остальные лишь информационные
+      if (st.level > chainEntryLevel) stepsDelta += (p - (st.cheapestPrice === null ? 0 : st.cheapestPrice)) * st.count;
       st.cheapestPrice = p;
       st.cost = p * st.count;
       st.manualPrice = true;
     }
+    // neededSteps клонируем из того же массива steps (не из исходного data.*), иначе своя цена не попадёт в шаги, реально идущие в закупку
+    const neededSteps = steps.filter((st) => st.level > chainEntryLevel);
+    d.enchantAfterCraft = { ...data.enchantAfterCraft, steps, neededSteps };
     d.enchantAfterCraft.stepsCostPerUnit = data.enchantAfterCraft.stepsCostPerUnit + stepsDelta;
   }
   let effective;
-  if (baseFlow) {
+  if (baseFlow && chainEntryLevel > 0) {
+    // Вход в цепочку не с нуля — куплен готовый промежуточный уровень (.1/.2) на рынке; база .0 тут вообще ни при чём
+    const entryId = data.enchantAfterCraft.chainEntryId;
+    const entryCandidate = (data.enchantAfterCraft.candidates || []).find((c) => c.entryLevel === chainEntryLevel);
+    let entryPrice = entryCandidate ? entryCandidate.entryPrice : null;
+    let entryCity = data.enchantAfterCraft.chainEntryCity;
+    const oe = own(entryId);
+    const cbe = cityBuy(entryId);
+    if (oe !== undefined) entryPrice = oe;
+    else if (cbe !== undefined) { entryPrice = cbe.price; entryCity = cbe.city; }
+    const candidates = (data.enchantAfterCraft.candidates || []).map((c) => (c.entryLevel === chainEntryLevel ? { ...c, entryPrice } : c));
+    d.enchantAfterCraft = { ...d.enchantAfterCraft, chainEntryCity: entryCity, candidates };
+    effective = entryPrice + d.enchantAfterCraft.stepsCostPerUnit;
+  } else if (baseFlow) {
     // База .0: снова выбираем «купить или скрафтить» — с учётом своих цен на материалы
     const craft = baseFlow.baseCraftCostPerUnit === null ? null : baseFlow.baseCraftCostPerUnit + materialDelta;
     // готовая база .0 по своей цене (единая или города): ключ — id самой вещи

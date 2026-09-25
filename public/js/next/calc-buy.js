@@ -2,15 +2,17 @@
 // база .0, чары после крафта, логистика по телепорту.
 import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, apiPost } from './lib.js';
 import { settings } from './settings.js';
-import { calcStore, resetOwn } from './calc-store.js';
+import { calcStore, resetOwn, setChainEntry, setForceMain } from './calc-store.js';
 import { prices, setOwn, setCityOwn, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
 import { CityPriceList } from './citylist.js';
-import { CityPill, Tags, MaterialName, toast } from './ui.js';
+import { CityPill, Tags, MaterialName, Switch, toast } from './ui.js';
 import { acquisitionRows, withOverride } from './logic/acquire.js';
 import { lotsAverage } from './logic/manual.js';
 
 const unitPlaceholder = (p) => (p === null || p === undefined ? 'своя цена' : String(Math.round(p * (Math.abs(p) < 100 ? 10 : 1)) / (Math.abs(p) < 100 ? 10 : 1)));
 const nameOf = (d, id) => (d.names && d.names[id]) || itemLabel(id);
+// Цена покупки выбранного входа в цепочку зачарования (готовый .1/.2/.3 с рынка) — из eac.candidates по chainEntryLevel
+const entryPriceOf = (eac) => { const c = (eac.candidates || []).find((x) => x.entryLevel === eac.chainEntryLevel); return c ? c.entryPrice : null; };
 
 // Своя цена материала (или лог лотов, если включён): цена за штуку; серая подсказка — рыночная
 export function OwnPrice({ resKey, market, needed, scope }) {
@@ -132,6 +134,22 @@ function PlanTable({ d, c, override }) {
 }
 const raw0 = (rows, key) => { const r = rows.find((x) => x.key === key); return r ? r.unit : null; };
 
+// Дропдаун «какой рецепт/вход считать» — из тех же кандидатов, что уже посчитал сервер (eac.candidates), плюс тумблер
+// «только основной рецепт» рядом (выключает все альтернативные входы, вход строго с нуля). Пересчёт — на месте (logic/enchantChain.js
+// applyChainChoice в calc-store.js derive), без нового запроса. Дропдаун виден только если есть из чего выбирать (>1 кандидата).
+function ChainChoice({ c, eac }) {
+  const forceMain = c.chainChoice.forceMain;
+  const sorted = [...(eac.candidates || [])].sort((a, b) => a.entryLevel - b.entryLevel);
+  const label = (cand) => (cand.entryLevel === 0 ? 'Основной рецепт: с нуля (.0)' : `${cand.entryLabel}: докрутить с этого уровня`);
+  const value = forceMain ? '0' : c.chainChoice.entryLevel !== null ? String(c.chainChoice.entryLevel) : '';
+  return html`<div class="chain-choice" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">
+    ${sorted.length > 1 ? html`<label class="f" style="width:auto"><span class="pl">Рецепт</span><select value=${value} disabled=${forceMain} onChange=${(e) => setChainEntry(e.target.value === '' ? null : Number(e.target.value))}>
+      <option value="">Автовыбор (выгоднее на 7%+)</option>
+      ${sorted.map((cand) => html`<option key=${cand.entryLevel} value=${cand.entryLevel}>${label(cand)} — ${fmt(cand.cost)} / шт</option>`)}</select></label>` : null}
+    <${Switch} checked=${forceMain} onChange=${setForceMain} title="Игнорировать альтернативные входы (купить готовый промежуточный уровень) — считать строго основной рецепт с нуля">Только основной рецепт</${Switch}>
+  </div>`;
+}
+
 function Teleport({ d }) {
   const t = d.teleport;
   const wrap = (body) => html`<div class="card box teleport-plan" style="margin-top:14px">${body}</div>`;
@@ -162,11 +180,15 @@ export function BuyTab({ c, d, lists, override, invalidate }) {
       <div><strong>Базовый предмет (.0): выгоднее ${b.baseSource === 'buy' ? 'купить готовый' : 'скрафтить'}</strong><b>${fmt(b.baseCostPerUnit)} / шт</b></div>
       <div><span>Себестоимость крафта / шт</span><b>${b.baseCraftCostPerUnit !== null ? fmt(b.baseCraftCostPerUnit) : 'нет цен на материалы'}</b></div>
       <div><span>Цена покупки готового (Sell Order)</span><b>${b.baseBuy ? html`<${CityPill} name=${b.baseBuy.city} /> ${fmt(b.baseBuy.price)}` : 'нет предложений'}</b></div></div></div>` : null}
-    ${eac ? html`<div class="card box enchant-after" style="margin-top:14px"><h2 class="sec">Зачарование после крафта: до .${eac.targetLevel}</h2><div class="kv">
+    ${eac ? html`<div class="card box enchant-after" style="margin-top:14px"><h2 class="sec">Зачарование после крафта: до .${eac.targetLevel}</h2>
+      <${ChainChoice} c=${c} eac=${eac} />
+      <div class="kv">
       ${eac.forced ? html`<div><span>Этот плащ в зачарованном виде не крафтится: сначала делается обычный, затем зачаровывается рунами и душами.</span><b></b></div>` : null}
       ${eac.capped ? html`<div><span class="scan-stale">⚠ Зачарование .4 (Awakening) не поддерживается — посчитано до .3</span><b></b></div>` : null}
-      <div><span>База .0 / шт</span><b>${eac.baseSource === 'buy' ? html`покупка дешевле крафта: <${CityPill} name=${eac.baseBuy.city} /> ${fmt(eac.baseBuy.price)}` : `крафт из материалов: ${fmt(eac.baseCraftCostPerUnit)}`}</b></div>
-      ${eac.steps.map((st) => html`<div key=${st.level}><span>.${st.level - 1} → .${st.level}: ${st.materialName} × ${fmt(st.count * d.quantity)} (${fmt(st.count)} на вещь)</span><b>${st.cost !== null ? `${fmt(st.cost)} / шт` : 'нет цены'}</b></div>`)}
+      <div><span>Вход в цепочку</span><b>${eac.chainEntryLevel > 0
+        ? html`куплен готовый ${eac.chainEntryLabel}: <${CityPill} name=${eac.chainEntryCity} /> ${fmt(entryPriceOf(eac))}`
+        : eac.baseSource === 'buy' ? html`база .0 — покупка дешевле крафта: <${CityPill} name=${eac.baseBuy.city} /> ${fmt(eac.baseBuy.price)}` : `база .0 — крафт из материалов: ${fmt(eac.baseCraftCostPerUnit)}`}</b></div>
+      ${(eac.neededSteps || eac.steps).map((st) => html`<div key=${st.level}><span>.${st.level - 1} → .${st.level}: ${st.materialName} × ${fmt(st.count * d.quantity)} (${fmt(st.count)} на вещь)</span><b>${st.cost !== null ? `${fmt(st.cost)} / шт` : 'нет цены'}</b></div>`)}
       <div><span>Зачарование / шт (материалы — в таблице выше)</span><b>${fmt(eac.stepsCostPerUnit)}</b></div>
       <div><strong>Итого себестоимость с зачарованием / шт</strong><b>${fmt(d.effectiveCostPerUnit)}</b></div></div></div>` : null}
     ${s.teleport ? html`<${Teleport} d=${d} />` : null}

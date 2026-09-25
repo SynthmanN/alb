@@ -7,10 +7,15 @@ export function missingPrices(d) {
   const out = [];
   const label = (id, fb) => (d.names && d.names[id]) || fb || id;
   const eac = d.enchantAfterCraft;
-  if (!(eac && eac.baseSource === 'buy')) {
+  // Базовый рецепт (сырьё .0) нужен, только если путь реально идёт через него — либо нет «после крафта» вообще, либо есть,
+  // но выбранный вход в цепочку — с нуля (chainEntryLevel 0) и база не куплена готовой. Купленный отдельно уровень .1/.2
+  // (chainEntryLevel > 0) рецепт .0 вообще не использует — его материалы тут ни при чём.
+  const usesBaseRecipe = !eac || (eac.chainEntryLevel === 0 && eac.baseSource !== 'buy');
+  if (usesBaseRecipe) {
     for (const r of d.recipe || []) if (r.materialSource !== 'points' && r.cheapestPrice === null) out.push({ id: r.queryId || r.resource, label: label(r.queryId || r.resource, r.resourceName) });
   }
-  for (const st of (eac && eac.steps) || []) if (st.cheapestPrice === null) out.push({ id: st.materialId, label: st.materialName });
+  // neededSteps — только шаги ПОСЛЕ выбранного входа (steps несёт полную цепочку с нуля для описания, даже когда вход не с неё)
+  for (const st of (eac && eac.neededSteps) || eac?.steps || []) if (st.cheapestPrice === null) out.push({ id: st.materialId, label: st.materialName });
   return out;
 }
 

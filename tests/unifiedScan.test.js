@@ -219,6 +219,31 @@ describe('GET /api/unified-scan', () => {
     });
   });
 
+  describe('chainEntry: вход в цепочку зачарования не с нуля — опция, по умолчанию выключена', () => {
+    const sword = async (extra = {}) => (await scan({ mode: 'patient', enchantMode: 'after', ...extra })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');
+    beforeEach(() => {
+      seedMaterial('T4_RUNE', 10); seedMaterial('T4_SOUL', 10);                          // .0→.1→.2 (288 рун/душ на одноручное за уровень)
+      seedSales('T4_MAIN_SWORD@2', { avg: 90000, perDay: 30 });                          // продажи только на .2 — единственная выжившая строка предмета
+      // цена готового .1 на рынке (не через seedMaterial — оборот-как-у-сырья тут не нужен, только сама цена покупки)
+      upsertPriceSnapshots(jugDb, [{ item_id: 'T4_MAIN_SWORD@1', city: CITY, quality: 1, sell_price_min: 3000, sell_price_min_date: iso(NOW - 5 * 60000), buy_price_max: 0, buy_price_max_date: iso(NOW - 5 * 60000) }], NOW);
+    });
+    // вход 0: 2460 (база .0) + 288×10×1.025 (руны) + 288×10×1.025 (души) = 8364
+    // вход 1 (куплен готовый .1 за 3000): 3000×1.025 + 288×10×1.025 (только души) = 6027 — дешевле
+    it('опция выключена (по умолчанию) — себестоимость считается полной цепочкой с нуля, как раньше', async () => {
+      const row = await sword();
+      expect(row).toMatchObject({ enchant: 2, after: true });
+      expect(row.cost).toBeCloseTo(8364, 2);
+      expect(row.enchantEntryLevel).toBeNull();
+    });
+    it('опция включена (chainEntry=true) — выбирается более дешёвый вход (куплен готовый .1), себестоимость ниже', async () => {
+      const row = await sword({ chainEntry: 'true' });
+      expect(row.cost).toBeCloseTo(6027, 2);
+      expect(row.enchantEntryLevel).toBe(1);
+      const off = await sword({ chainEntry: 'false' });
+      expect(off.cost).toBeCloseTo(8364, 2);                                             // явное выключение — тоже полная цепочка
+    });
+  });
+
   it('индекс доверия: 6 часов торговли — 23%, а не «уверенные» 100%; в ответе есть tradeHours', async () => {
     seedSales('T4_MAIN_SWORD', { avg: 4000, perDay: 40 });          // seedSales кладёт по одной точке в день, 6 дней
     const row = (await scan({ mode: 'patient' })).results.find((r) => r.itemId === 'T4_MAIN_SWORD');

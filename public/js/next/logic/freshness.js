@@ -24,6 +24,8 @@ export function collectIds(d, out = new Map(), selfLabel) {
     // его не знает — сервер отдаёт названия только для материалов, не для гира); без этого падения на selfLabel строка
     // «Свежести данных» показывала голый id (T5_HEAD_LEATHER_SET3) вместо «Капюшон убийцы».
     if (eac.baseBuy) add(d.itemId, (d.names && d.names[d.itemId]) || (selfLabel && selfLabel(d)));
+    // Вход в цепочку не с нуля — купленный готовый промежуточный уровень (.1/.2) тоже гир, своё имя не в d.names, тот же резолвер
+    if (eac.chainEntryLevel > 0 && eac.chainEntryId) add(eac.chainEntryId, eac.chainEntryLabel);
     for (const st of eac.steps || []) add(st.materialId, st.materialName);
   }
   return out;

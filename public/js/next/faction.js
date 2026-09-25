@@ -81,7 +81,7 @@ function Editor({ c, st }) {
     <div class="editgrid">
       ${f(`sale:${c.key}`, 'Цена продажи плаща', r.sale ? r.sale.avgPrice : null, 'Средняя цена сделок; своя — для позиций без истории')}
       ${f(`mat:${r.capeDirect.id}`, `Плащ ${r.enchant ? `.${r.enchant}` : ''}`, r.capeDirect.price, 'Обычный плащ нужного зачарования (рыночная цена)')}
-      ${r.enchant > 0 ? f(`mat:${r.cape0.id}`, 'Плащ .0', r.cape0.price, 'Для пути «после крафта»') : null}
+      ${r.enchant > 0 ? (r.capeByLevel || []).map((x) => f(`mat:${x.id}`, `Плащ .${x.level}`, x.price, x.level === 0 ? 'Для пути «после крафта»' : 'Вход в цепочку не с нуля — куплен готовым, докручивается оставшимися шагами')) : null}
       ${r.runes.map((x) => f(`mat:${x.id}`, x.label, x.price, `${x.count} шт на плащ`))}
       ${f(`part:${r.crestId}`, `Герб T${r.tier}`, r.crest ? r.crest.price : null, 'Рыночная цена (за серебро)')}
       ${f(`part:${r.heartId}`, 'Сердце', r.heart ? r.heart.price : null, 'Рыночная цена (за серебро)')}
@@ -170,7 +170,7 @@ export function FactionTab() {
           const on = x.qty > 0;
           const isEdit = st.edit === c.key;
           return html`<${Fragment} key=${c.key}><tr class=${on ? 'on-plan' : 'off'} data-row=${c.key}>
-            <td><div class="item"><${Glyph} id=${r.itemId} tier=${r.tier} enchant=${r.enchant} quality=${r.quality} /><div><b>${itemLabel(r.itemId)}</b><div style="margin-top:3px"><${Tags} tier=${r.tier} enchant=${r.enchant} quality=${r.quality} />${c.path === 'after' ? html` <span class="pill n">чары после крафта</span>` : null}${r.source === 'extra' ? html` <span class="pill n">добавлено</span>` : null}</div></div></div></td>
+            <td><div class="item"><${Glyph} id=${r.itemId} tier=${r.tier} enchant=${r.enchant} quality=${r.quality} /><div><b>${itemLabel(r.itemId)}</b><div style="margin-top:3px"><${Tags} tier=${r.tier} enchant=${r.enchant} quality=${r.quality} />${c.path === 'after' ? html` <span class="pill n" title=${c.entryLevel ? `Куплен готовый плащ .${c.entryLevel}, докручен оставшимися шагами` : 'Плащ .0 и вся цепочка зачарования с нуля'}>чары после крафта${c.entryLevel ? ` (вход .${c.entryLevel})` : ''}</span>` : null}${r.source === 'extra' ? html` <span class="pill n">добавлено</span>` : null}</div></div></div></td>
             <td>${fmt(c.grossSale)}${r.sale && r.sale.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}</td>
             <td>${c.vol === null ? html`<span class="muted" title="Нет сделок за окно истории">—</span>` : html`${fmt(c.vol, 1)}${c.capMarket !== null ? html`<br /><small class="muted" title="Сколько штук рынок берёт за окно истории — потолок плана">потолок ${fmt(c.capMarket)}</small>` : null}`}</td>
             <td>${c.cost === null ? html`<button type="button" class="pill w" onClick=${() => set({ edit: isEdit ? null : c.key })}>нужна цена ✎</button>` : html`<span class="neg">${fmt(c.cost)}</span>`}</td>

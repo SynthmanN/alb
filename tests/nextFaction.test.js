@@ -55,6 +55,24 @@ describe('computeRow', () => {
     expect(c1.net).toBeCloseTo(50000 * 0.895, 6);
     expect(c1.missing).toEqual([]);
   });
+  it('вход в цепочку не с нуля: куплен готовый плащ .1 дешевле, чем .0 + все руны и души — выигрывает он, а не полная цепочка', () => {
+    // capeDirect дорогой (10000), чтобы «после» выигрывало профитом с запасом 7%+ — сравнение веду отдельно от выбора входа внутри цепочки
+    const r = row(4, 2, { capeDirect: { id: 'X', label: 'Плащ', price: 10000 }, capeByLevel: [{ level: 0, id: 'T4_CAPE', label: 'Плащ .0', price: 1000 }, { level: 1, id: 'T4_CAPE@1', label: 'Плащ .1', price: 1500 }] });
+    // вход 0: 1000 + 96×10 + 96×10 = 2920; вход 1: 1500 + 96×10 (только души) = 2460 — дешевле, значит и выиграет как «после»
+    const c = computeRow(r, ctx());
+    expect(c.path).toBe('after');
+    expect(c.cost).toBe(2460);
+    expect(c.entryLevel).toBe(1);
+  });
+  it('вписанная цена входа .1 отменяет серверную и участвует в выборе кандидата (комиссия 2.5%)', () => {
+    const r = row(4, 2, { capeDirect: { id: 'X', label: 'Плащ', price: 10000 }, capeByLevel: [{ level: 0, id: 'T4_CAPE', label: 'Плащ .0', price: 1000 }, { level: 1, id: 'T4_CAPE@1', label: 'Плащ .1', price: 3000 }] });
+    // без своей цены вход 1 дороже входа 0 (3000+960=3960 > 2920) — побеждает 0
+    expect(computeRow(r, ctx()).entryLevel).toBe(0);
+    // своя цена делает вход 1 дешевле: 1000×1.025+960=1985
+    const c = computeRow(r, ctx({ own: { 'mat:T4_CAPE@1': 1000 } }));
+    expect(c.entryLevel).toBe(1);
+    expect(c.cost).toBeCloseTo(1000 * 1.025 + 960, 6);
+  });
   it('потолок штук: оборот × окно (не меньше 1), свой лимит важнее, нет истории — неизвестен', () => {
     expect(computeRow(row(4, 0), ctx()).cap).toBe(35);
     expect(computeRow(row(4, 0), ctx({ limits: { [rowKey(row(4, 0))]: 3 } })).cap).toBe(3);

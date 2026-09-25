@@ -94,3 +94,26 @@ describe('сводка закупки: мусорные города', () => {
     expect(merged[0].sum).toBe(100);
   });
 });
+
+describe('missingPrices — вход в цепочку зачарования не с нуля (chainEntryLevel > 0)', () => {
+  const eac = (over) => ({
+    forced: false, targetLevel: 2, capped: false, baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 1000, baseCostPerUnit: 1000,
+    steps: [{ level: 1, materialId: 'T4_RUNE', materialName: 'Руна', count: 96, cheapestPrice: null, cost: null }, { level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 96, cheapestPrice: 10, cost: 960 }],
+    chainEntryLevel: 1, neededSteps: [{ level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 96, cheapestPrice: 10, cost: 960 }], candidates: [{ entryLevel: 1, cost: 6960, entryPrice: 6000 }],
+    ...over,
+  });
+  it('вход куплен с .1 — базовый рецепт .0 не при чём, его недостающая цена не считается (материал не нужен для этого пути)', () => {
+    const d = base([row({ cheapestPrice: null })], { enchantAfterCraft: eac() });   // рецепт .0 без цены материала
+    expect(missingPrices(d)).toHaveLength(0);   // руна (шаг 1) тоже не нужна — вход уже с .1; душа (шаг 2, neededSteps) — с ценой
+  });
+  it('вход куплен с .1, но и у нужного шага (душа) нет цены — вот это уже настоящая недостающая цена', () => {
+    const d = base([row({ cheapestPrice: null })], {
+      enchantAfterCraft: eac({ steps: [{ level: 1, materialId: 'T4_RUNE', materialName: 'Руна', count: 96, cheapestPrice: null, cost: null }, { level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 96, cheapestPrice: null, cost: null }], neededSteps: [{ level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 96, cheapestPrice: null, cost: null }] }),
+    });
+    expect(missingPrices(d)).toEqual([{ id: 'T4_SOUL', label: 'Душа' }]);   // рецепт .0 по-прежнему не в счёт — только реально нужный шаг
+  });
+  it('вход с нуля (chainEntryLevel 0) — рецепт .0 снова в счёт, как раньше', () => {
+    const d = base([row({ cheapestPrice: null })], { enchantAfterCraft: eac({ chainEntryLevel: 0, neededSteps: eac().steps }) });
+    expect(missingPrices(d)).toHaveLength(2);   // рецепт .0 (без цены) + руна (шаг 1, без цены) — душа с ценой, не в счёт
+  });
+});

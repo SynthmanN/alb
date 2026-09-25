@@ -59,6 +59,18 @@ describe('collectIds', () => {
     expect(ids).toContain('T6_RUNE');
   });
 
+  it('вход в цепочку не с нуля (chainEntryLevel > 0) — купленный готовый промежуточный уровень тоже в список, с именем через chainEntryLabel', () => {
+    const d = {
+      itemId: 'T6_2H_BOW', finishedQueryId: 'T6_2H_BOW@2', recipe: [],
+      enchantAfterCraft: {
+        baseBuy: null, chainEntryLevel: 1, chainEntryId: 'T6_2H_BOW@1', chainEntryLabel: 'Лук (знаток) .1',
+        steps: [{ materialId: 'T6_RUNE', materialName: 'Руна' }, { materialId: 'T6_SOUL', materialName: 'Душа' }],
+      },
+    };
+    const m = collectIds(d);
+    expect(m.get('T6_2H_BOW@1')).toEqual({ name: 'Лук (знаток) .1', quality: 1, kind: 'material' });
+  });
+
   it('ошибка расчёта или пустой ответ — пустой список, не падает', () => {
     expect([...collectIds(null).keys()]).toEqual([]);
     expect([...collectIds({ error: 'oops' }).keys()]).toEqual([]);

@@ -821,6 +821,12 @@ app.get('/api/craft-calc', async (req, res) => {
     // (галочка «после крафта» на предмете без зачарования не должна менять расчёт).
     const baseChoiceWanted = enchantAfterRequested || enchant === 0;
     const baseData = baseChoiceWanted ? addManualPriceRecords(await marketPrices(source, [itemId], quality), [itemId], queryCities, quality, jugNow) : [];
+    // Промежуточные уровни зачарования (.1, .2 при цели .3) — их тоже продают на рынке отдельно: можно купить уже
+    // зачарованный до этого уровня предмет и докрутить только оставшимися шагами (см. enchantChainCandidates).
+    const intermediateLevels = targetEnchant >= 2 ? Array.from({ length: targetEnchant - 1 }, (_, i) => i + 1) : [];
+    const intermediateIds = intermediateLevels.map((lvl) => `${itemId}@${lvl}`);
+    const intermediateData = intermediateIds.length
+      ? addManualPriceRecords(await marketPrices(source, intermediateIds, quality), intermediateIds, queryCities, quality, jugNow) : [];
 
     const materialByCity = {};
     for (const rec of materialData) {
@@ -954,12 +960,10 @@ app.get('/api/craft-calc', async (req, res) => {
       const baseSource = baseBuy && (craftCostPerUnit === null || baseBuy.price < craftCostPerUnit) ? 'buy' : 'craft';
       const baseCostPerUnit = baseSource === 'buy' ? baseBuy.price : craftCostPerUnit;
       const perUnitCount = ENCHANT_MATERIAL_COUNT[itemSlot];
-      let stepsAllPriced = enchantStepIds.length === 0 || perUnitCount !== undefined;
       const steps = enchantStepIds.map((materialId, i) => {
         // Руны/души/реликвии: цена за нужное количество партии — многогородовой план с комиссией (возврат на них не действует)
         const up = perUnitCount !== undefined ? unitPlan(materialId, perUnitCount * quantity) : null;
         const cheapest = up ? { city: up.city, price: up.price } : null;
-        if (!cheapest) stepsAllPriced = false;
         return {
           level: i + 1, materialId, materialName: resolveItemName(materialId), count: perUnitCount,
           cheapestCity: cheapest ? cheapest.city : null, cheapestPrice: cheapest ? cheapest.price : null,
@@ -967,14 +971,54 @@ app.get('/api/craft-calc', async (req, res) => {
           cost: cheapest ? cheapest.price * perUnitCount : null,
         };
       });
-      const stepsCostPerUnit = steps.reduce((sum, st) => sum + (st.cost || 0), 0);
-      hasAllPrices = baseCostPerUnit !== null && stepsAllPriced;
-      effectiveCostPerUnit = (baseCostPerUnit || 0) + stepsCostPerUnit;
+      // Точки входа в цепочку: 0 (уже решённое «купить или сделать») и купленные готовыми промежуточные уровни (.1, .2) —
+      // каждый со своей ценой на рынке. Лучший вход выбирает enchantChainCandidates (server.js) — тот же вопрос, что и раньше
+      // («сделать .0 и пройти рунами/душами/реликтами» против «скрафтить сразу нужный уровень»), просто с бо́льшим числом
+      // вариантов: не только «с нуля» или «целиком готовое», но и «купить уже наполовину зачарованное и докрутить остаток».
+      const entryBuyByLevel = { 0: baseCostPerUnit };
+      const entryCityByLevel = { 0: baseSource === 'buy' ? baseBuy.city : null };
+      for (const lvl of intermediateLevels) {
+        let best = null;
+        for (const rec of intermediateData) {
+          if (rec.item_id !== `${itemId}@${lvl}` || !queryCities.includes(rec.city) || !rec.sell_price_min) continue;
+          if (!best || rec.sell_price_min < best.price) best = { city: rec.city, price: rec.sell_price_min };
+        }
+        entryBuyByLevel[lvl] = best ? best.price : null;
+        entryCityByLevel[lvl] = best ? best.city : null;
+        if (best) baseBuyByCity[`${itemId}@${lvl}`] = best.price;   // не используется дальше отдельно, оставлено для возможной панели по городам
+      }
+      const stepCostByLevel = Object.fromEntries(steps.map((st) => [st.level, st.cost]));
+      // target=0 — это не «после крафта» вообще, а обычный выбор «купить или сделать .0» (baseChoiceWanted срабатывает и на
+      // предмете без зачарования): цепочки нет и не нужна, enchantChainCandidates для неё намеренно не считает кандидатов
+      // (entry строго меньше target, а меньше 0 не бывает) — здесь просто берём цену входа как есть, без всякого DP.
+      const candidates = targetEnchant > 0 ? enchantChainCandidates(entryBuyByLevel, stepCostByLevel, targetEnchant) : [];
+      // Есть ли у ПОБЕДИВШЕГО пути все цены — не «есть ли цены у всех трёх материалов зачарования вообще»: если вход выбран
+      // с .1, руны этому пути не нужны вообще, и их отсутствие не должно превращать честный расчёт в «нет цены».
+      // enchantChainCandidates уже сама отбрасывает пути с неполным набором цен на нужные им шаги.
+      hasAllPrices = targetEnchant > 0 ? candidates.length > 0 : baseCostPerUnit !== null;
+      const winner = candidates[0] || { entryLevel: 0, cost: baseCostPerUnit || 0 };
+      const stepsCostPerUnit = winner.cost - (entryBuyByLevel[winner.entryLevel] || 0);
+      effectiveCostPerUnit = winner.cost;
       // Для .0-предмета без «зачарования после крафта» это лишь выбор «купить или скрафтить» — отдельным полем baseChoice.
       enchantAfterCraft = {
         forced: enchantAfterForced,
         targetLevel: targetEnchant, capped: enchantCapped, baseSource, baseBuy, baseCraftCostPerUnit: craftCostPerUnit,
         baseCostPerUnit, steps, stepsCostPerUnit,
+        chainEntryLevel: winner.entryLevel,                              // с какого уровня начат путь, который сейчас используется в расчёте
+        // Куплен ли сам вход (а не с нуля через рецепт) — только для entryLevel > 0: там «вход» это цена готового
+        // предмета этого уровня на рынке (id — «T4_HEAD_...@1» и т.п.), а не выбор «купить/сделать» (тот есть только
+        // у уровня 0, baseSource/baseBuy).
+        chainEntryId: winner.entryLevel > 0 ? `${itemId}@${winner.entryLevel}` : null,
+        chainEntryLabel: winner.entryLevel > 0 ? resolveItemNameWithEnchant(`${itemId}@${winner.entryLevel}`) : null,
+        chainEntryCity: winner.entryLevel > 0 ? entryCityByLevel[winner.entryLevel] : null,
+        neededSteps: steps.filter((st) => st.level > winner.entryLevel), // только то, что реально нужно докупить для этого пути
+        // Все точки входа — цена, город и название (для entryLevel 0 город/название не при чём, там baseBuy/baseSource
+        // и название самого предмета уже известно клиенту) — для будущего выбора рецепта (дропдаун).
+        candidates: candidates.map((c) => ({
+          ...c, entryPrice: entryBuyByLevel[c.entryLevel] ?? null,
+          entryCity: c.entryLevel > 0 ? entryCityByLevel[c.entryLevel] : null,
+          entryLabel: c.entryLevel > 0 ? resolveItemNameWithEnchant(`${itemId}@${c.entryLevel}`) : null,
+        })),
       };
     }
     const finishedCityData = finishedByCity[finishedQueryId] || {};
@@ -2128,6 +2172,32 @@ function enchantMaterialId(tier, level) {
   return `T${tier}_${ENCHANT_MATERIAL_BY_LEVEL[level]}`;
 }
 
+// «Чары после крафта» — точки входа в цепочку зачарования и себестоимость до целевого уровня. Раньше был только один путь:
+// сделать/купить .0 и пройти ВСЮ цепочку рунами→душами→реликтами. На деле каждый промежуточный уровень (.1, .2) тоже продаётся
+// на рынке отдельно — можно купить уже зачарованный до .1 предмет и докрутить только душами и реликтами, пропустив руны. Каждая
+// точка входа E (0..target-1) даёт свою итоговую себестоимость: цена входа на уровне E (для E=0 — уже решённое «купить или
+// сделать» дешевле, entryCosts[0]) плюс все ОСТАВШИЕСЯ шаги E+1..target. Возврата ресурсов на рунах/душах/реликтах нет
+// (подтверждено пользователем), поэтому шаг — просто количество × цена, суммируется без усложнений.
+// entryCosts: { 0: number|null, 1: number|null, ... } — себестоимость входа на уровне (для >0 — цена покупки предмета этого
+// уровня на рынке); stepCosts: { 1: number|null, 2: ..., 3: ... } — цена ОДНОГО шага level-1→level (руны/души/реликты).
+// Возвращает кандидатов по возрастанию себестоимости; пустой массив — нет ни одной цены входа с полным набором шагов до target.
+function enchantChainCandidates(entryCosts, stepCosts, target) {
+  const out = [];
+  for (let entry = 0; entry < target; entry++) {
+    const entryCost = entryCosts[entry];
+    if (entryCost === null || entryCost === undefined) continue;
+    let total = entryCost;
+    let ok = true;
+    for (let lvl = entry + 1; lvl <= target; lvl++) {
+      const stepCost = stepCosts[lvl];
+      if (stepCost === null || stepCost === undefined) { ok = false; break; }
+      total += stepCost;
+    }
+    if (ok) out.push({ entryLevel: entry, cost: total });
+  }
+  return out.sort((a, b) => a.cost - b.cost);
+}
+
 let enchantScanCache = null;
 
 app.get('/api/enchant-opportunities', async (req, res) => {
@@ -2494,6 +2564,10 @@ app.get('/api/unified-scan', (req, res) => {
     // Находки аудита скана теперь — штатное поведение (ход 244–246; отключаются только явным =false, для сравнения «было/стало»):
     const materialLiquidity = req.query.materialLiquidity !== 'false';     // материал с почти нулевым оборотом не задаёт цену
     const confidenceMaterials = req.query.confidenceMaterials !== 'false'; // «Доверие» — слабое звено: минимум по предмету и по его материалам
+    // Вход в цепочку зачарования не с нуля (купить готовый .1/.2 и докрутить оставшимися шагами, см. enchantChainCandidates) —
+    // опция, выключена по умолчанию: в отличие от калькулятора одной вещи и плана фракции, тут цена входа своя для КАЖДОГО
+    // качества (1–5) на КАЖДОМ уровне, а не одна общая — это доп. локальные запросы и код на весь перебор каталога.
+    const chainEntry = req.query.chainEntry === 'true';
     // Фракционный режим (только плащи выбранной фракции): гербы и сердца получены за очки, поэтому в серебре стоят 0; метрика — профит на очко
     const factionKey = FACTIONS[req.query.faction] ? req.query.faction : null;
     const faction = factionKey ? FACTIONS[factionKey] : null;
@@ -2510,7 +2584,7 @@ app.get('/api/unified-scan', (req, res) => {
 
     const fresh = jugFreshness(jugDb, now);
     const refineParams = parseRefineRate(req);
-    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, factionKey, factionPoints, factionPlanWanted, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, chainEntry, factionKey, factionPoints, factionPlanWanted, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2547,6 +2621,21 @@ app.get('/api/unified-scan', (req, res) => {
     addRefineComponentIds(materialIds, [...materialIds]);   // сырьё и предыдущий тир — для сравнения «купить готовый vs переработать самому»
     addSubcraftComponentIds(materialIds, [...materialIds]); // ткань и кожа плаща-ингредиента — «купить плащ или скрафтить самому»
     const finishedIds = [...new Set(combos.map((c) => gearEnchantId(c.itemId, c.enchant)))];
+
+    // Цена покупки готового промежуточного уровня (.1/.2) для входа в цепочку не с нуля — своя на каждое качество, только если включено
+    const entryPriceOf = new Map();  // `${itemId}|${level}|${quality}` -> цена с комиссией
+    if (chainEntry) {
+      const entryFinishedIds = [...new Set(combos.filter((c) => c.after && c.enchant >= 2).flatMap((c) => Array.from({ length: c.enchant - 1 }, (_, i) => gearEnchantId(c.itemId, i + 1))))];
+      if (entryFinishedIds.length) {
+        const entryAllowed = new Set(queryCities.map(normLocation));
+        for (const rec of readPrices(jugDb, entryFinishedIds, { cities: blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, qualities: ALL_QUALITIES })) {
+          if (!rec.sell_price_min || !entryAllowed.has(normLocation(rec.city))) continue;
+          const key = `${rec.item_id}|${rec.quality}`;
+          const price = rec.sell_price_min * (1 + SETUP_FEE_RATE);
+          if (!entryPriceOf.has(key) || price < entryPriceOf.get(key)) entryPriceOf.set(key, price);
+        }
+      }
+    }
 
     const snapshotQuotes = quotesById(readPrices(jugDb, [...materialIds], { cities: queryCities, qualities: [1] }));
     // Цена сырья — средняя по сделкам за окно materialHours (а не цена одного дешёвого лота); нет сделок — текущая котировка.
@@ -2676,20 +2765,36 @@ app.get('/api/unified-scan', (req, res) => {
         quoteDates.push(q.date);
       }
       if (!complete) continue;
+      const base0Cost = cost;                          // себестоимость .0 до применения рун/душ/реликтов — точка входа 0 для enchantChainCandidates
+      const stepCostByLevel = {};
       if (c.after) {
         for (let lvl = 1; lvl <= c.enchant && complete; lvl++) {
           const id = enchantMaterialId(c.item.tier, lvl);
           const q = cheapestOf(materialQuotes[id]);                         // на руны/души/реликвии возврат не действует
           if (!q) { complete = false; break; }
-          cost += q.price * ENCHANT_MATERIAL_COUNT[c.item.slot];
+          const stepCost = q.price * ENCHANT_MATERIAL_COUNT[c.item.slot];
+          cost += stepCost;
+          stepCostByLevel[lvl] = stepCost;
           needs.push({ id, perUnit: ENCHANT_MATERIAL_COUNT[c.item.slot] });
           quoteDates.push(q.date);
         }
         if (!complete) continue;
       }
       const finishedId = gearEnchantId(c.itemId, c.enchant);
+      // Вход в цепочку не с нуля (опция chainEntry): цена покупки готового .1/.2 своя на каждое качество — поэтому кандидатов
+      // считаем здесь, внутри перебора качеств, а не один раз на всю комбинацию, как остальную (quality-независимую) cost.
+      const useChainEntry = chainEntry && c.after && c.enchant >= 2;
       for (const quality of ALL_QUALITIES) {
-        const row = buildRow({ kind: 'gear', itemId: c.itemId, finishedId, enchant: c.enchant, quality, tier: c.item.tier, after: c.after, cost, quoteDates, needs, refined, points, partsNet });
+        let rowCost = cost;
+        let entryLevel = null;
+        if (useChainEntry) {
+          const entryCosts = { 0: base0Cost };
+          for (let lvl = 1; lvl < c.enchant; lvl++) entryCosts[lvl] = entryPriceOf.get(`${gearEnchantId(c.itemId, lvl)}|${quality}`) ?? null;
+          const candidates = enchantChainCandidates(entryCosts, stepCostByLevel, c.enchant);
+          if (candidates.length && candidates[0].cost < rowCost) { rowCost = candidates[0].cost; entryLevel = candidates[0].entryLevel; }
+        }
+        const row = buildRow({ kind: 'gear', itemId: c.itemId, finishedId, enchant: c.enchant, quality, tier: c.item.tier, after: c.after, cost: rowCost, quoteDates, needs, refined, points, partsNet });
+        if (row) row.enchantEntryLevel = entryLevel;
         if (row && faction) allCandidates.push(row);
         if (row) { if (!byItem.has(c.itemId)) byItem.set(c.itemId, []); byItem.get(c.itemId).push(row); }
       }
@@ -2958,12 +3063,17 @@ app.get('/api/faction-plan', (req, res) => {
       const capeDirect = quoteFor(e);
       const cape0 = e > 0 ? quoteFor(0) : capeDirect;
       const runes = [];
+      // Вход в цепочку зачарования не с нуля: цена плаща-ингредиента на каждом уровне 0..e-1 — можно купить уже зачарованный до
+      // .1/.2 ингредиент и докрутить только оставшимися рунами/душами/реликтами (клиент выбирает лучший вход сам, см.
+      // logic/enchantChain.js — тот же выбор, что у калькулятора одной вещи). Цены всех уровней уже есть в materialQuotes.
+      const capeByLevel = [];
       if (e > 0 && e <= 3 && ENCHANT_MATERIAL_COUNT[slot]) {
         for (let lvl = 1; lvl <= e; lvl++) {
           const id = enchantMaterialId(t, lvl);
           const qt = quoteOf(id);
           runes.push({ id, label: resolveItemName(id), count: ENCHANT_MATERIAL_COUNT[slot], price: qt ? qt.price : null, ageMinutes: qt ? qt.ageMinutes : null });
         }
+        for (let lvl = 0; lvl < e; lvl++) capeByLevel.push({ level: lvl, ...(lvl === 0 ? cape0 : quoteFor(lvl)) });
       }
       const series = finishedHistory.get(finishedId) || [];
       const stats = cityStats(series, finishedId, days, q);
@@ -2980,7 +3090,7 @@ app.get('/api/faction-plan', (req, res) => {
       }
       return {
         itemId: gearId, finishedId, tier: t, enchant: e, quality: q, source, pointsPerCape: pointsPerCape(t), crestId: crestIdOf(gearId), heartId: faction.heartId,
-        capeDirect, cape0, runes, maxAfter: e <= 3, crest: partQuote(crestIdOf(gearId)), heart: partQuote(faction.heartId), sale,
+        capeDirect, cape0, capeByLevel, runes, maxAfter: e <= 3, crest: partQuote(crestIdOf(gearId)), heart: partQuote(faction.heartId), sale,
         manualSaleKey: { id: finishedId, quality: q },
       };
     });
@@ -3560,6 +3670,7 @@ function resetCaches() {
 module.exports = {
   app,
   resetCaches,
+  enchantChainCandidates,
   refineComponents,
   subcraftAlternative,
   refineAlternative,

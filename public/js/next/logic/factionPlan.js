@@ -5,6 +5,7 @@ export const CREST_POINTS = { 4: 400, 5: 2250, 6: 3000, 7: 7500, 8: 15000 };
 export const MAX_PLAN_STEPS = 20000;                     // защита от зависания: опечатка в очках (лишние нули) без потолка оборота не должна крутить план бесконечно
 import { marketCap } from './turnover.js';
 import { afterCraftWins } from './afterCraft.js';
+import { enchantChainCandidates } from './enchantChain.js';
 export const rowKey = (r) => `${r.tier}|${r.enchant}|${r.quality}`;
 const has = (v) => v !== null && v !== undefined;
 
@@ -15,10 +16,18 @@ export function computeRow(r, ctx) {
   const fee = ctx.setupFeeRate;
   const mat = (id, serverPrice) => (has(own[`mat:${id}`]) ? own[`mat:${id}`] * (1 + fee) : serverPrice);
   const capeDirect = mat(r.capeDirect.id, r.capeDirect.price);
-  const cape0 = mat(r.cape0.id, r.cape0.price);
   const runes = r.runes.map((x) => ({ ...x, price: mat(x.id, x.price) }));
-  const runesOk = runes.length > 0 && runes.every((x) => has(x.price));
-  const after = r.enchant > 0 && r.maxAfter && runesOk && has(cape0) ? cape0 + runes.reduce((s, x) => s + x.count * x.price, 0) : null;
+  // Вход в цепочку зачарования не с нуля: помимо .0 + вся цепочка рунами/душами/реликтами, можно купить уже зачарованный
+  // до .1/.2 плащ-ингредиент на рынке и докрутить только оставшимися шагами (logic/enchantChain.js) — тот же выбор, что и
+  // у калькулятора одной вещи (server.js enchantChainCandidates); старые фикстуры без capeByLevel — один вход, как раньше.
+  const capeByLevel = (r.capeByLevel && r.capeByLevel.length ? r.capeByLevel : [{ level: 0, id: r.cape0.id, price: r.cape0.price }]).map((x) => ({ ...x, price: mat(x.id, x.price) }));
+  const entryCosts = {};
+  for (const x of capeByLevel) entryCosts[x.level] = has(x.price) ? x.price : null;
+  const stepCosts = {};
+  runes.forEach((x, i) => { stepCosts[i + 1] = has(x.price) ? x.count * x.price : null; });
+  const candidates = r.enchant > 0 && r.maxAfter ? enchantChainCandidates(entryCosts, stepCosts, r.enchant) : [];
+  const winner = candidates[0] || null;
+  const after = winner ? winner.cost : null;
   const saleKey = `sale:${rowKey(r)}`;
   const grossSale = has(own[saleKey]) ? own[saleKey] : (r.sale ? r.sale.avgPrice : null);
   const net = has(grossSale) ? grossSale * (1 - ctx.taxRate - fee) : null;
@@ -57,15 +66,16 @@ export function computeRow(r, ctx) {
   const missing = [];
   if (cost === null) {
     if (r.enchant === 0 || !has(capeDirect)) missing.push({ key: `mat:${r.capeDirect.id}`, id: r.capeDirect.id, label: r.capeDirect.label, hint: 'цена обычного плаща' });
-    if (r.enchant > 0 && r.maxAfter) {
-      if (!has(cape0)) missing.push({ key: `mat:${r.cape0.id}`, id: r.cape0.id, label: r.cape0.label, hint: 'плащ .0 (путь «после крафта»)' });
+    if (r.enchant > 0 && r.maxAfter && !winner) {
+      // Ни один вход в цепочку не посчитан целиком — показываем все точки входа и шаги, любая из которых достающая цену открывает путь
+      for (const x of capeByLevel) if (!has(x.price)) missing.push({ key: `mat:${x.id}`, id: x.id, label: `Плащ .${x.level}`, hint: x.level === 0 ? 'плащ .0 (путь «после крафта»)' : 'вход в цепочку не с нуля' });
       for (const x of runes) if (!has(x.price)) missing.push({ key: `mat:${x.id}`, id: x.id, label: x.label, hint: 'руна, душа или реликт' });
     }
   }
   if (!has(grossSale)) missing.push({ key: saleKey, label: 'Цена продажи плаща', hint: 'своя цена продажи', sale: true });
   if (!has(crestPrice)) missing.push({ key: crestKey, id: r.crestId, label: `Герб T${r.tier}`, hint: 'рыночная цена — для варианта «за серебро» и сравнения с продажей', part: true });
   if (!has(heartPrice)) missing.push({ key: heartKey, id: r.heartId, label: 'Сердце', hint: 'рыночная цена', part: true });
-  return { r, key: rowKey(r), cost, path, grossSale, net, profitAll, partsNet, cap, capMarket, vol, variants, missing, pointsAll, crestPrice, heartPrice };
+  return { r, key: rowKey(r), cost, path, entryLevel: path === 'after' && winner ? winner.entryLevel : null, grossSale, net, profitAll, partsNet, cap, capMarket, vol, variants, missing, pointsAll, crestPrice, heartPrice };
 }
 
 // Жадный план: на каждом шаге берётся лучший «профит на очко» среди вариантов; одна деталь за серебро может позже «дорасти» до варианта «всё за очки».

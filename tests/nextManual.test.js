@@ -45,6 +45,43 @@ describe('applyManualPrices', () => {
   });
 });
 
+describe('applyManualPrices: вход в цепочку зачарования не с нуля (chainEntryLevel > 0)', () => {
+  const withChain = (over) => {
+    const d = base();
+    d.itemId = 'T4_CAPE';
+    d.effectiveCostPerUnit = 3960;
+    d.enchantAfterCraft = {
+      forced: false, targetLevel: 2, capped: false, baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: 5000, baseCostPerUnit: 5000,
+      steps: [
+        { level: 1, materialId: 'T4_RUNE', materialName: 'Руна', count: 10, cheapestPrice: null, cost: null },
+        { level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 10, cheapestPrice: 96, cost: 960 },
+      ],
+      chainEntryLevel: 1, chainEntryId: 'T4_CAPE@1', chainEntryLabel: 'Плащ .1', chainEntryCity: 'Caerleon', stepsCostPerUnit: 960,
+      neededSteps: [{ level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 10, cheapestPrice: 96, cost: 960 }],
+      candidates: [{ entryLevel: 1, cost: 3960, entryPrice: 3000 }],
+      ...over,
+    };
+    return d;
+  };
+  it('своя цена материала базового рецепта .0 (тряпка) не влияет на себестоимость — вход уже с .1, база .0 не используется', () => {
+    const d = applyManualPrices(withChain(), { hasOwn: true, ownPrice: (r) => (r === 'T4_CLOTH' ? 500 : undefined) });
+    expect(d.effectiveCostPerUnit).toBe(3960);
+  });
+  it('своя цена нужного шага (душа) меняет себестоимость; неиспользуемый шаг (руна) — не меняет', () => {
+    const d = applyManualPrices(withChain(), { hasOwn: true, ownPrice: (r) => (r === 'T4_SOUL' ? 80 : r === 'T4_RUNE' ? 5 : undefined) });
+    expect(d.effectiveCostPerUnit).toBeCloseTo(3000 + 80 * 10, 6);
+    expect(d.enchantAfterCraft.neededSteps[0]).toMatchObject({ materialId: 'T4_SOUL', cheapestPrice: 80, manualPrice: true });
+    const rune = d.enchantAfterCraft.steps.find((st) => st.materialId === 'T4_RUNE');
+    expect(rune).toMatchObject({ cheapestPrice: 5, manualPrice: true });        // сама цена шага обновляется (информационно)
+  });
+  it('своя цена самого входа (готовый плащ .1) заменяет цену покупки и город', () => {
+    const d = applyManualPrices(withChain(), { hasOwn: true, ownPrice: () => undefined, buyPrice: (k) => (k === 'T4_CAPE@1' ? { price: 2500, city: 'Bridgewatch' } : undefined) });
+    expect(d.effectiveCostPerUnit).toBeCloseTo(2500 + 960, 6);
+    expect(d.enchantAfterCraft.chainEntryCity).toBe('Bridgewatch');
+    expect(d.enchantAfterCraft.candidates[0]).toMatchObject({ entryLevel: 1, entryPrice: 2500 });
+  });
+});
+
 describe('лог закупок', () => {
   it('средняя цена по стакам и сколько куплено; пустые и нулевые стаки игнорируются', () => {
     expect(lotsAverage([{ qty: 100, price: 10 }, { qty: 300, price: 20 }, { qty: '', price: 5 }])).toEqual({ qty: 400, avg: 17.5 });

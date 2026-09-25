@@ -23,9 +23,14 @@ export function acquisitionRows(data, nameOf = (id) => id) {
     rows.push({ id, key: key || id, name: label(id), why, needed, cities, unit: missing ? null : unit, sum: missing ? null : cities.reduce((s, c) => s + c.qty * c.price, 0) || unit * needed, missing, days: srv && srv.daysToAcquire !== undefined ? srv.daysToAcquire : null });
   };
   const eac = data.enchantAfterCraft;
-  if (eac && eac.baseSource === 'buy' && eac.baseBuy) {
+  // Вход в цепочку зачарования не с нуля (купили уже готовый .1/.2 на рынке, см. server.js enchantChainCandidates) — базовый
+  // рецепт .0 тогда вообще ни при чём, в закупку идёт только сама покупка этого уровня и оставшиеся шаги (neededSteps ниже).
+  if (eac && eac.chainEntryLevel > 0 && eac.chainEntryId) {
+    const entry = (eac.candidates || []).find((c) => c.entryLevel === eac.chainEntryLevel);
+    push({ id: eac.chainEntryId, key: eac.chainEntryId, why: `куплено готовым: ${eac.chainEntryLabel}`, needed: data.quantity, srv: planFor((a) => a.resource === eac.chainEntryId), price: entry ? entry.entryPrice : null, city: eac.chainEntryCity });
+  } else if (eac && eac.baseSource === 'buy' && eac.baseBuy) {
     push({ id: data.itemId, key: data.itemId, why: 'плащ .0 — выгоднее купить готовый', needed: data.quantity, srv: planFor((a) => a.resource === data.itemId), price: eac.baseBuy.price, city: eac.baseBuy.city });
-  } else {
+  } else if (!eac || eac.chainEntryLevel === 0) {
     for (const r of data.recipe || []) {
       if (r.materialSource === 'points') continue;                       // за очки — в серебре не покупается
       const rid = r.queryId || r.resource;
@@ -43,7 +48,7 @@ export function acquisitionRows(data, nameOf = (id) => id) {
       }
     }
   }
-  for (const st of (eac && eac.steps) || []) {
+  for (const st of (eac && eac.neededSteps) || (eac && eac.steps) || []) {
     push({ id: st.materialId, key: st.materialId, why: `чары .${st.level - 1} → .${st.level}`, needed: st.count * data.quantity, srv: planFor((a) => a.resource === st.materialId), price: st.cheapestPrice, city: st.cheapestCity });
   }
   return rows;

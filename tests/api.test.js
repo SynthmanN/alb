@@ -285,16 +285,37 @@ describe('охотничьи плащи', () => {
 
 describe('калькулятор крафта: зачарование после крафта', () => {
   const get = (q) => request(app).get(`/api/craft-calc?item=T4_MAIN_SWORD&quantity=10&${q}`);
-  it('шаги зачарования: руна и душа, по 288 на вещь для одноручного, себестоимость = база + материалы', async () => {
+  it('шаги зачарования: руна и душа, по 288 на вещь для одноручного, себестоимость = вход + оставшиеся материалы', async () => {
     const d = (await get('enchant=2&enchantAfterCraft=true')).body;
     const e = d.enchantAfterCraft;
     expect(e.targetLevel).toBe(2);
     expect(e.capped).toBe(false);
+    // steps — полный список от .0 (для описания «что вообще нужно на этом пути»), даже если реально используется не с нуля
     expect(e.steps.map((st) => st.materialId)).toEqual(['T4_RUNE', 'T4_SOUL']);
     expect(e.steps.every((st) => st.count === 288)).toBe(true);
-    expect(e.stepsCostPerUnit).toBeCloseTo(e.steps.reduce((sum, st) => sum + st.cheapestPrice * 288, 0), 6);
-    expect(d.effectiveCostPerUnit).toBeCloseTo(e.baseCostPerUnit + e.stepsCostPerUnit, 6);
+    // Промежуточный уровень .1 тоже продаётся на рынке — со своей ценой это ещё одна точка входа в цепочку (не только «с нуля»)
+    expect(e.candidates.map((c) => c.entryLevel).sort()).toEqual([0, 1]);
+    expect(e.chainEntryLevel).toBe(e.candidates[0].entryLevel);   // используется самый дешёвый из найденных входов
+    // stepsCostPerUnit — только шаги ПОСЛЕ выбранной точки входа, не всегда все шаги с нуля
+    expect(e.neededSteps).toEqual(e.steps.filter((st) => st.level > e.chainEntryLevel));
+    expect(e.stepsCostPerUnit).toBeCloseTo(e.neededSteps.reduce((sum, st) => sum + st.cheapestPrice * 288, 0), 6);
+    const entryPrice = e.chainEntryLevel === 0 ? e.baseCostPerUnit : e.candidates.find((c) => c.entryLevel === e.chainEntryLevel).entryPrice;
+    expect(d.effectiveCostPerUnit).toBeCloseTo(entryPrice + e.stepsCostPerUnit, 6);
     expect(['craft', 'buy']).toContain(e.baseSource);
+  });
+  it('без промежуточных уровней (target=1) — только вход с нуля, ни одного другого кандидата', async () => {
+    const e = (await get('enchant=1&enchantAfterCraft=true')).body.enchantAfterCraft;
+    expect(e.candidates.map((c) => c.entryLevel)).toEqual([0]);
+    expect(e.chainEntryLevel).toBe(0);
+    expect(e.neededSteps).toEqual(e.steps);
+  });
+  it('на руны нет цены вообще, но вход с покупкой .1 полностью посчитан — hasAllPrices не должен ломаться из-за ненужного пути', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => ({ ok: true, status: 200, json: async () => fakeAodp(url) }));
+    jugDb.exec("DELETE FROM prices WHERE query_id='T4_RUNE'");   // руны — материал, читается из кувшина, не из подменённого AODP
+    const d = (await get('enchant=2&enchantAfterCraft=true')).body;
+    expect(d.hasAllMaterialPrices).toBe(true);   // путь через .1 (души, без рун) полностью посчитан
+    expect(d.enchantAfterCraft.chainEntryLevel).toBe(1);
+    expect(d.enchantAfterCraft.candidates.map((c) => c.entryLevel)).toEqual([1]);   // вход с 0 отброшен — не хватает цены рун
   });
   it('.4 не поддерживается: считаем до .3 и помечаем capped', async () => {
     const e = (await get('enchant=4&enchantAfterCraft=true')).body.enchantAfterCraft;

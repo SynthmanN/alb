@@ -48,6 +48,24 @@ describe('acquisitionRows', () => {
     expect(rows[0]).toMatchObject({ needed: 10, unit: 4000, sum: 40000, why: expect.stringContaining('купить готовый') });
     expect(rows[1]).toMatchObject({ needed: 960, name: 'Руна (знаток)', sum: 4800 });
   });
+  it('вход в цепочку не с нуля (chainEntryLevel > 0): в закупку идёт покупка уже готового уровня + только нужные шаги дальше', () => {
+    const d = base({
+      enchant: 2, recipe: [{ resource: 'T4_CLOTH', queryId: 'T4_CLOTH', materialSource: 'buy', neededToBuy: 1, cheapestPrice: 1, cheapestCity: 'Martlock' }],
+      names: { 'T4_CAPE@1': 'Плащ .1', T4_SOUL: 'Душа' },
+      enchantAfterCraft: {
+        baseSource: 'craft', baseBuy: null, targetLevel: 2, chainEntryLevel: 1, chainEntryId: 'T4_CAPE@1', chainEntryLabel: 'Плащ .1', chainEntryCity: 'Caerleon',
+        steps: [{ level: 1, materialId: 'T4_RUNE', materialName: 'Руна (знаток)', count: 96, cheapestCity: 'Brecilien', cheapestPrice: 5 }, { level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 96, cheapestCity: 'Martlock', cheapestPrice: 10 }],
+        neededSteps: [{ level: 2, materialId: 'T4_SOUL', materialName: 'Душа', count: 96, cheapestCity: 'Martlock', cheapestPrice: 10 }],
+        candidates: [{ entryLevel: 1, cost: 3960, entryPrice: 3000 }],
+      },
+    });
+    const rows = acquisitionRows(d);
+    // базовый рецепт .0 (T4_CLOTH) не участвует, руна (шаг 1) тоже не нужна — вход уже с .1
+    expect(rows.map((r) => r.id)).toEqual(['T4_CAPE@1', 'T4_SOUL']);
+    expect(rows[0]).toMatchObject({ needed: 10, unit: 3000, why: expect.stringContaining('куплено готовым') });
+    expect(rows[0].cities).toEqual([{ city: 'Caerleon', qty: 10, price: 3000 }]);
+    expect(rows[1]).toMatchObject({ needed: 960, name: 'Душа', sum: 9600 });
+  });
 });
 
 describe('mergeRows', () => {
