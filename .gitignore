@@ -9,6 +9,7 @@ export/
 
 # личные данные пользователя
 data/user-masteries.json
+data/user-profiles.json
 
 # локальная база «кувшина» (наполняется краулером)
 data/jug.db

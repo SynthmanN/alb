@@ -57,7 +57,7 @@ export function acquisitionRows(data, nameOf = (id) => id) {
 // Строка закупки по своей цене (ov: { price, city? }): цена и сумма пересчитываются, если задан город — вся партия идёт в него
 export function withOverride(row, ov) {
   if (!ov) return row;
-  return { ...row, unit: ov.price, cities: ov.city ? [{ city: ov.city, qty: row.needed, price: ov.price }] : row.cities, sum: ov.price * row.needed, missing: false, manual: true };
+  return { ...row, unit: ov.price, cities: ov.city ? [{ city: ov.city, qty: row.needed, price: ov.price }] : row.cities, sum: ov.price * row.needed, missing: false, manual: !ov.picked, picked: !!ov.picked };
 }
 
 // Строки, где не хватает цены материала (можно вписать свою)
@@ -84,4 +84,21 @@ export function mergeRows(list) {
     const cities = [...e.cities.entries()].map(([city, c]) => ({ city, qty: c.qty, price: c.cost / c.qty }));
     return { id: e.id, key: e.key, name: e.name, needed: e.needed, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
   }).sort((a, b) => b.sum - a.sum);
+}
+
+// Порядок закупки «по городам»: покупки одного города идут подряд, чтобы в городе видеть по порядку всё, что здесь купить.
+// Строка относится к городу, где её основная часть (больше всего штук; при равенстве — по сумме); строка из нескольких городов стоит один раз, в основном.
+// Города — по алфавиту (предсказуемо), внутри города — дороже выше; строки без города (нет цены) — в конце. Входные строки не меняются.
+export const primaryCity = (row) => {
+  let best = null;
+  for (const c of row.cities || []) if (!best || c.qty > best.qty || (c.qty === best.qty && c.qty * c.price > best.qty * best.price)) best = c;
+  return best ? best.city : null;
+};
+export function sortByCity(rows, rowOf = (x) => x) {
+  return [...rows].sort((a, b) => {
+    const ra = rowOf(a); const rb = rowOf(b);
+    const ca = primaryCity(ra); const cb = primaryCity(rb);
+    if (ca !== cb) return ca === null ? 1 : cb === null ? -1 : ca.localeCompare(cb, 'ru');
+    return (rb.sum || 0) - (ra.sum || 0);
+  });
 }

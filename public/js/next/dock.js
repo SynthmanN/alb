@@ -24,6 +24,7 @@ export function Dock() {
       <div class="d"><span>Крафт-лист</span><b><span class="cnt" id="dock-count">${items.length}</span></b></div>
       <div class="d hide-s"><span>Вложения</span><b id="dock-inv">${items.length ? fmt(t.cost) : '—'}</b></div>
       <div class="d"><span>Профит</span><b class=${tone(t.profit)} id="dock-pr">${items.length ? signed(t.profit) : '—'}</b></div>
+      <div class="d hide-s" title="Выручка после налога и сбора: сколько серебра окажется на руках (вложения + профит)"><span>Чистые деньги</span><b id="dock-net">${items.length ? fmt(t.income) : '—'}</b></div>
     </div>
     <button class="btn primary dock-open" type="button" id="open-list" onClick=${() => drawerStore.set({ open: true })}><${Icon} d=${ICONS.list} />Открыть</button></div>`;
 }

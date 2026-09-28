@@ -7,7 +7,7 @@ import { Glyph, Tags, CityPill, CityPills, Seg, Switch, Icon, ICONS, Spinner } f
 import { addToList } from './list.js';
 import { nav } from './nav.js';
 
-export const scanStore = createStore({ mode: 'patient', category: 'all', minDaily: 3, after: true, mixed: true, chainEntry: false, data: null, loading: false, error: '', sort: { k: 'marketProfitPerDay', dir: -1 }, open: null });
+export const scanStore = createStore({ mode: 'patient', category: 'all', minDaily: 0, after: true, mixed: true, chainEntry: false, data: null, loading: false, error: '', sort: { k: 'marketProfitPerDay', dir: -1 }, open: null });
 
 export async function runScan() {
   const sc = scanStore.get();
@@ -22,7 +22,7 @@ export async function runScan() {
   }
 }
 
-const COLS = [['name', 'Предмет', ''], ['cost', 'Себестоимость → продажа', 'r hide-n'], ['profitPerUnit', 'Профит с штуки', 'r'], ['marketProfitPerDay', 'Маржа рынка в день', 'r hide-n']];
+const COLS = [['name', 'Предмет', ''], ['cost', 'Себестоимость → продажа', 'r hide-n'], ['profitPerUnit', 'Профит с штуки', 'r'], ['marketProfitPerDay', 'Маржа рынка в день', 'r hide-n'], ['marketNetPerDay', 'Чистые деньги в день', 'r hide-n']];
 // чары после крафта у строки: сервер помечает её сам (режим auto — только там, где выгоднее прямого на 7%); старые ответы — по режиму скана
 const isAfter = (r, data) => (r.after !== undefined ? !!r.after && r.enchant > 0 : data.enchantMode === 'after' && r.enchant > 0);
 const rowKey = (r) => `${r.itemId}|${r.enchant}|${r.quality}`;
@@ -95,6 +95,7 @@ export function ScanTab() {
             <div class="cell r hide-n"><span class="neg">${fmt(r.cost)}</span> <span class="muted">→</span> ${fmt(r.cost + r.profitPerUnit)}<small>расходы → доход</small></div>
             <div class="cell r"><b class="pos">${signed(r.profitPerUnit)}</b><small>${fmt(r.profitPct, 0)}% к вложениям</small></div>
             <div class="cell r hide-n"><b>${fmt(r.marketProfitPerDay)}</b><small>${fmt(r.dailyVolume, 0)} шт/день</small></div>
+            <div class="cell r hide-n" title="Выручка после налога и сбора × оборот в день: сколько серебра оказалось бы на руках, если забрать весь оборот"><b>${fmt(r.marketNetPerDay)}</b><small>после налога</small></div>
             <div><button class="btn sm" type="button" title="В крафт-лист" aria-label="В крафт-лист" onClick=${(e) => { e.stopPropagation(); addToList({ itemId: r.itemId, enchant: r.enchant, quality: r.quality, quantity: 1, cost: r.cost, profit: r.profitPerUnit, after: isAfter(r, data) }); }}>+</button></div>
           </div>
           ${isOpen ? html`<${Detail} r=${r} data=${data} />` : null}</div>`;

@@ -53,10 +53,10 @@ export const decideAfter = (item, pair) => pickAfter(item, pair).use;
 
 export const silverParts = (item) => [item.crestSilver ? 'crest' : null, item.heartSilver ? 'heart' : null].filter(Boolean);
 
-// Итоги по включённым позициям
+// Итоги по включённым позициям. income — «чистые деньги»: сколько серебра окажется на руках после продажи (уже за вычетом налога и сбора)
 export function stackTotals(items, results, available = 0) {
   const on = items.filter((i) => i.on !== false);
-  const t = { items: on.length, capes: on.reduce((s, i) => s + i.quantity, 0), cost: 0, profit: 0, points: 0, noPrice: 0, pending: 0, errors: 0, fallback: 0, available };
+  const t = { items: on.length, capes: on.reduce((s, i) => s + i.quantity, 0), cost: 0, profit: 0, income: 0, points: 0, noPrice: 0, pending: 0, errors: 0, fallback: 0, available };
   for (const item of on) {
     const raw = results.get(item.uid);
     if (!raw) { t.pending++; continue; }
@@ -66,6 +66,7 @@ export function stackTotals(items, results, available = 0) {
     if (pf.basis !== 'plan') t.fallback++;
     t.cost += raw.totalCost;
     t.profit += pf.unit * item.quantity;
+    t.income += (pf.unit + raw.effectiveCostPerUnit) * item.quantity;                 // чистые деньги: выручка после налога и сбора = профит + себестоимость
     if (raw.faction) t.points += raw.faction.pointsPerCape * item.quantity;
   }
   return t;

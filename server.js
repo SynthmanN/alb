@@ -2758,6 +2758,7 @@ app.get('/api/unified-scan', (req, res) => {
       // взвешивается, а не отсекается порогом. Количество и капитал в скане не участвуют — масштаб вводится в калькуляторе.
       const rankScore = opportunityScore(profitPct, dailyVolume) * freshnessDecay(freshMinutes);
       const marketProfitPerDay = profitPerUnit * dailyVolume;        // «профит рынка/день»: профит/шт × оборот/день — масштаб в серебре, если бы забрал весь оборот
+      const marketNetPerDay = (cost + profitPerUnit) * dailyVolume;  // «чистые деньги рынка/день»: выручка после налога и сбора × оборот/день — сколько серебра оказалось бы на руках (профит + вложения)
       let tradeHours = tradeHoursOf(seriesOfItem, quality, sellCities);
       if (confidenceMaterials && needs.length) {
         // слабое звено: доверие определяет самый «тонкий» материал (разные часы торговли за период «Истории»), если он тоньше самого предмета
@@ -2766,7 +2767,7 @@ app.get('/api/unified-scan', (req, res) => {
       }
       return {
         kind, itemId, enchant, quality, tier, type, after: !!after, cost, avgSellPrice: sellPrice, sellCities, blackMarket: blackMarketRow, sellTaxRate: mode === 'instant' ? sellTax : blackMarketRow ? bmTaxRate : taxRate + SETUP_FEE_RATE, tradeHours, confidence: confidenceOf(tradeHours),
-        dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, marketProfitPerDay,
+        dailyVolume, marketDailyVolume, byCity: volumeBreakdown(seriesOfItem, finishedId, days, quality, blackMarket ? [...queryCities, BM_QUERY_LOCATION] : queryCities, sellCities), profitPerUnit, profitPct, marketProfitPerDay, marketNetPerDay,
         freshMinutes, rankScore,
         ...(points ? { factionPoints: points, profitPerPoint: profitPerUnit / points, partsNet, partsPerPoint: partsNet === null ? null : partsNet / points, craftBeatsParts: partsNet === null ? true : profitPerUnit > partsNet } : {}),
         dataAgeDays: lastTradeAgeDays(seriesOfItem, quality, sellCities, now),                 // возраст последней сделки в городах продажи — «данные устарели на N дней»
@@ -3389,6 +3390,68 @@ app.post('/api/masteries', (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'не удалось сохранить уровни мастерок', details: err.message });
+  }
+});
+
+// --- Профили крафта (сохранённые наборы позиций калькулятора) ---
+// Как и уровни мастерок: отдельно для каждого посетителя (анонимная cookie-сессия sid), в data/user-profiles.json:
+// { sessions: { <sid>: [профиль, …] } }. Профиль — { id, name, savedAt, roi, items, faction }; состав позиций серверу не важен, проверяется только форма и размер.
+// USER_PROFILES_PATH переопределяется в тестах, чтобы они не трогали реальные данные пользователя.
+const USER_PROFILES_PATH = process.env.USER_PROFILES_PATH || path.join(__dirname, 'data', 'user-profiles.json');
+const PROFILE_ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+const MAX_PROFILES = 100;
+const MAX_PROFILE_ITEMS = 300;
+function readProfilesFile() {
+  try { return JSON.parse(fs.readFileSync(USER_PROFILES_PATH, 'utf8')); } catch { return {}; }
+}
+const loadUserProfiles = (sessionId) => { const list = (readProfilesFile().sessions || {})[sessionId]; return Array.isArray(list) ? list : []; };
+function saveUserProfiles(sessionId, list) {
+  const sessions = readProfilesFile().sessions || {};
+  sessions[sessionId] = list;
+  const tmp = `${USER_PROFILES_PATH}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify({ sessions }));
+  fs.renameSync(tmp, USER_PROFILES_PATH);                           // запись целиком или никак: оборванный файл не портит остальные профили
+}
+function cleanProfile(id, body) {
+  if (!body || typeof body !== 'object') return null;
+  const name = String(body.name || '').trim().slice(0, 120);
+  if (!name || !Array.isArray(body.items) || body.items.length > MAX_PROFILE_ITEMS) return null;
+  if (!body.items.every((i) => i && typeof i === 'object' && typeof i.itemId === 'string')) return null;
+  const savedAt = Number.isFinite(Number(body.savedAt)) ? Number(body.savedAt) : Date.now();
+  const roi = Number.isFinite(Number(body.roi)) && body.roi !== null ? Number(body.roi) : null;
+  return { id, name, savedAt, roi, items: body.items, faction: typeof body.faction === 'string' ? body.faction : null };
+}
+app.get('/api/profiles', (req, res) => {
+  res.json({ profiles: loadUserProfiles(req.sessionId) });
+});
+// Создать или заменить профиль (сохранение и переименование — одна и та же запись); новые идут вперёд списка
+app.put('/api/profiles/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!PROFILE_ID_RE.test(id)) return res.status(400).json({ error: 'некорректный id профиля' });
+    const p = cleanProfile(id, req.body);
+    if (!p) return res.status(400).json({ error: 'профиль: нужны название и список позиций (до 300)' });
+    const list = loadUserProfiles(req.sessionId);
+    const at = list.findIndex((x) => x.id === id);
+    if (at >= 0) list[at] = p;
+    else if (list.length >= MAX_PROFILES) return res.status(400).json({ error: `профилей может быть не больше ${MAX_PROFILES}: удали ненужные` });
+    else list.unshift(p);
+    saveUserProfiles(req.sessionId, list);
+    res.json({ ok: true, profile: p });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'не удалось сохранить профиль', details: err.message });
+  }
+});
+app.delete('/api/profiles/:id', (req, res) => {
+  try {
+    const list = loadUserProfiles(req.sessionId);
+    const next = list.filter((x) => x.id !== req.params.id);
+    if (next.length !== list.length) saveUserProfiles(req.sessionId, next);
+    res.json({ ok: true, removed: list.length - next.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'не удалось удалить профиль', details: err.message });
   }
 });
 

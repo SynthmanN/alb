@@ -20,3 +20,16 @@ export const removeProfile = (profiles, id) => profiles.filter((p) => p.id !== i
 // пустое имя не сохраняется — остаётся прежнее
 export const renameProfile = (profiles, id, name) => { const n = String(name || '').trim(); return n ? profiles.map((p) => (p.id === id ? { ...p, name: n } : p)) : profiles; };
 export const findProfile = (profiles, id) => profiles.find((p) => p.id === id) || null;
+
+// Выбор профиля в списке двухшаговый (защита от случайной загрузки): загрузить профиль можно, только пока в списке стоит «— выберите профиль —».
+// Чтобы сменить один профиль на другой, сначала выбирают «— выберите профиль —», потом нужный. Возврат на «выберите» разрешён всегда.
+export const canPickProfile = (current, next) => !next || !current;
+
+// Синхронизация с сервером. Сервер — источник правды. Один раз (migrated=false) профили, которые до переезда жили только в браузере,
+// дозаливаются на сервер; после этого удалённое на сервере не воскресает из локальной копии. Возвращает итоговый список и то, что надо отправить.
+export function mergeProfiles(remote, local, migrated) {
+  if (migrated) return { profiles: remote, toPush: [] };
+  const have = new Set(remote.map((p) => p.id));
+  const toPush = local.filter((p) => !have.has(p.id));
+  return { profiles: [...remote, ...toPush].sort((a, b) => b.savedAt - a.savedAt), toPush };
+}

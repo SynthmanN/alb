@@ -26,7 +26,7 @@ export function useStackData({ ops, engine }) {
   const t = useMemo(() => {
     const total = stackTotals(items, results, faction ? faction.points : 0);
     // позиции, ещё не посчитанные, дают в итоги приблизительные цифры из скана (себестоимость и профит при добавлении)
-    for (const it of items) if (it.on !== false && !results.get(it.uid) && it.cost !== undefined) { total.cost += (it.cost || 0) * it.quantity; total.profit += (it.profit || 0) * it.quantity; }
+    for (const it of items) if (it.on !== false && !results.get(it.uid) && it.cost !== undefined) { total.cost += (it.cost || 0) * it.quantity; total.profit += (it.profit || 0) * it.quantity; total.income += ((it.cost || 0) + (it.profit || 0)) * it.quantity; }
     return total;
   }, [items, results, faction]);
   return { items, faction, autoAfter, results, pairs, pending, totals: t, prices: pr, cities, settings: s };
@@ -88,7 +88,7 @@ export function StackTotals({ data }) {
   const { totals: t, faction } = data;
   const over = faction && t.points > faction.points;
   return html`<${Fragment}>
-    <div class="totals four"><div><span>Вложения</span><b class="neg">${fmt(t.cost)}</b></div><div class="soft-good"><span>Профит</span><b class=${tone(t.profit)}>${signed(t.profit)}</b></div>
+    <div class="totals four" id="stack-totals"><div><span>Вложения</span><b class="neg">${fmt(t.cost)}</b></div><div class="soft-good"><span>Профит</span><b class=${tone(t.profit)}>${signed(t.profit)}</b></div><div id="stack-net" title="Выручка от продажи после налога и сбора Setup Fee: сколько серебра окажется на руках (вложения + профит)"><span>Чистые деньги</span><b>${fmt(t.income)}</b></div>
       <div><span>Очки${faction ? ` из ${fmt(faction.points)}` : ''}</span><b class=${over ? 'neg' : ''}>${fmt(t.points)}</b></div><div><span>Плащей / позиций</span><b>${fmt(t.capes)} / ${t.items}</b></div></div>
     ${over ? html`<div class="note neg" style="margin:0">Очков не хватает: ${fmt(t.points - faction.points)}</div>` : null}
     ${t.noPrice || t.pending || t.errors ? html`<div class="note" style="margin:0">${t.pending ? `Считается позиций: ${t.pending}. ` : ''}${t.noPrice ? `Не хватает цен материалов или продажи (в итоги не входят): ${t.noPrice} — впиши их в карточках. ` : ''}${t.errors ? `С ошибкой: ${t.errors}.` : ''}</div>` : null}</${Fragment}>`;

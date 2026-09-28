@@ -1,24 +1,44 @@
 // Профили крафта: сохранение/удаление/переименование и загрузка в калькулятор (стек заполняется теми же позициями и количествами).
-// Живут в браузере (localStorage), как и крафт-лист.
-import { html, createStore, useStore, useState } from './lib.js';
+// Живут на сервере (личные, по анонимной cookie-сессии, как уровни мастерок); в браузере (localStorage) — копия на случай, если сервер недоступен.
+import { html, createStore, useStore, useState, useEffect, apiGet, apiSend } from './lib.js';
 import { stack, list } from './list.js';
 import { calcStore } from './calc-store.js';
 import { listDef, stackDef } from './listcalc.js';
 import { useStackData } from './stack-ui.js';
 import { toast } from './ui.js';
-import { addProfile, removeProfile, renameProfile, findProfile, makeProfile, roiOf, formatStamp } from './logic/profiles.js';
+import { addProfile, removeProfile, renameProfile, findProfile, makeProfile, roiOf, formatStamp, canPickProfile, mergeProfiles } from './logic/profiles.js';
 
-export const profilesStore = createStore({ profiles: [], selected: null }, { key: 'albion_next_profiles' });
+export const profilesStore = createStore({ profiles: [], selected: null, migrated: false }, { key: 'albion_next_profiles' });
 let seq = 0;
 const newId = () => `p${Date.now().toString(36)}${++seq}`;
 
+const pushProfile = (p) => apiSend('PUT', `/api/profiles/${encodeURIComponent(p.id)}`, p).catch((e) => toast(`Профиль сохранён только в этом браузере: ${e.message}`));
 export function saveProfile(items, faction, roi) {
   const p = makeProfile({ items, faction, roi, now: Date.now(), id: newId() });
   profilesStore.set((s) => ({ profiles: addProfile(s.profiles, p), selected: p.id }));
+  pushProfile(p);
   return p;
 }
-export const deleteProfile = (id) => profilesStore.set((s) => ({ profiles: removeProfile(s.profiles, id), selected: s.selected === id ? null : s.selected }));
-export const renameProfileById = (id, name) => profilesStore.set((s) => ({ profiles: renameProfile(s.profiles, id, name) }));
+export const deleteProfile = (id) => {
+  profilesStore.set((s) => ({ profiles: removeProfile(s.profiles, id), selected: s.selected === id ? null : s.selected }));
+  apiSend('DELETE', `/api/profiles/${encodeURIComponent(id)}`).catch((e) => toast(`Не удалось удалить профиль на сервере: ${e.message}`));
+};
+export const renameProfileById = (id, name) => {
+  profilesStore.set((s) => ({ profiles: renameProfile(s.profiles, id, name) }));
+  const p = findProfile(profilesStore.get().profiles, id);
+  if (p) pushProfile(p);
+};
+// Подтянуть профили с сервера (при открытии калькулятора). Сервер недоступен — остаются локальные копии.
+export async function syncProfiles() {
+  try {
+    const { profiles: remote } = await apiGet('/api/profiles', {});
+    const st = profilesStore.get();
+    const { profiles, toPush } = mergeProfiles(remote || [], st.profiles, st.migrated);
+    profilesStore.set({ profiles, migrated: true, selected: profiles.some((p) => p.id === st.selected) ? st.selected : null });
+    for (const p of toPush) await pushProfile(p);
+    return true;
+  } catch { return false; }
+}
 // Загрузка: калькулятор сразу переходит в режим стека с позициями и количествами профиля
 export function loadProfile(id) {
   const p = findProfile(profilesStore.get().profiles, id);
@@ -37,6 +57,7 @@ export function ProfileBar() {
   const data = useStackData(c.stackMode ? stackDef : listDef);
   const [renaming, setRenaming] = useState(null);      // null — не переименовываем; строка — вводимое имя
   const [confirmDel, setConfirmDel] = useState(false);
+  useEffect(() => { syncProfiles(); }, []);
   const sel = findProfile(profiles, selected);
   const source = c.stackMode ? stack.store.get().items : list.store.get().items;
   const active = source.filter((i) => i.on !== false);
@@ -45,14 +66,21 @@ export function ProfileBar() {
     const p = saveProfile(source, c.stackMode ? stack.store.get().faction : list.store.get().faction, roiOf(data.totals));
     toast(`Профиль сохранён: ${p.name}`);
   };
+  // Двухшаговый выбор: пока стоит профиль, прямая смена на другой не срабатывает — сначала «— выберите профиль —», потом нужный
+  const pick = (e) => {
+    const id = e.target.value;
+    setRenaming(null);
+    if (!canPickProfile(selected, id)) { e.target.value = selected; toast('Чтобы выбрать другой профиль, сначала выберите «— выберите профиль —»'); return; }
+    if (id) loadProfile(id); else profilesStore.set({ selected: null });
+  };
   const doRename = () => { if (sel) renameProfileById(sel.id, renaming); setRenaming(null); };
   const del = () => {
     if (!confirmDel) { setConfirmDel(true); setTimeout(() => setConfirmDel(false), 3500); return; }
     deleteProfile(sel.id); setConfirmDel(false); toast('Профиль удалён');
   };
   return html`<div class="profilebar card" id="profile-bar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:12px 16px;margin-bottom:14px">
-    <label class="f" style="min-width:260px;flex:1">Профиль крафта<select id="profile-select" value=${selected || ''} onChange=${(e) => { setRenaming(null); if (e.target.value) loadProfile(e.target.value); else profilesStore.set({ selected: null }); }}>
-      <option value="">${profiles.length ? '— выбрать профиль —' : 'Профилей пока нет'}</option>
+    <label class="f" style="min-width:260px;flex:1">Профиль крафта<select id="profile-select" value=${selected || ''} onChange=${pick}>
+      <option value="">${profiles.length ? '— выберите профиль —' : 'Профилей пока нет'}</option>
       ${profiles.map((p) => html`<option key=${p.id} value=${p.id} title=${`Сохранён ${formatStamp(p.savedAt)}`}>${p.name} · ${p.items.length} поз.</option>`)}</select></label>
     ${renaming === null ? null : html`<label class="f" style="min-width:220px">Новое название<input id="profile-name" type="text" value=${renaming} onInput=${(e) => setRenaming(e.target.value)} onKeyDown=${(e) => { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') setRenaming(null); }} /></label>
       <button class="btn sm primary" type="button" id="profile-name-ok" onClick=${doRename}>Готово</button>`}

@@ -165,6 +165,15 @@ export async function apiPost(path, body) {
   if (path.includes('manual-price') || path.includes('freshness/refresh')) clearApiCache();   // цена изменилась — кэш расчётов недействителен
   return res.json().catch(() => ({}));
 }
+// PUT/DELETE для личных данных (профили крафта): ответ — JSON, ошибка HTTP бросает исключение с текстом сервера
+export async function apiSend(method, path, body) {
+  await takeSlot();
+  let res;
+  try { res = await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }); } catch (e) { throw new Error('нет связи с сервером — проверь, что он запущен'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `сервер ответил HTTP ${res.status}`);
+  return data;
+}
 
 // ---------- справочники (предметы и группы оружия) ----------
 // Без них у предметов нет названий, а список категорий пуст, поэтому грузим через общий слой запросов: при «слишком много запросов» он ждёт и повторяет.

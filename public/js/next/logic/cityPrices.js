@@ -47,7 +47,12 @@ export function cityRows(list, own, cities, fee = SETUP_FEE, all = []) {
 }
 
 // Закупка с учётом своих цен городов: свои цены — как есть, рыночные — с комиссией. undefined — своих цен нет (расчёт идёт по рынку)
-export function bestBuy(list, own, cities, fee = SETUP_FEE) {
+// pick — город, выбранный кликом в панели «Все города»: закупка идёт именно в него (даже не самый дешёвый), пока у него есть цена
+export function bestBuy(list, own, cities, fee = SETUP_FEE, pick = null) {
+  if (pick) {
+    const chosen = cityRows(list, own, cities, fee, [pick]).find((r) => r.city === pick && Number.isFinite(r.effective));
+    if (chosen) return { price: chosen.effective, city: chosen.city, fromOwn: chosen.own !== undefined, picked: true };
+  }
   if (!own || !Object.keys(own).length) return undefined;
   const rows = cityRows(list, own, cities, fee);
   const top = rows.find((r) => !r.inactive && Number.isFinite(r.effective));

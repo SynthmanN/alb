@@ -3,11 +3,11 @@
 // Цены общие для калькулятора, листа и стека (prices.js): вписал здесь — пересчитались позиции и итоги.
 import { html, useStore, fmt, itemLabel } from './lib.js';
 import { drawerStore } from './nav.js';
-import { prices, setCityOwn } from './prices.js';
+import { prices, setCityOwn, pickCity } from './prices.js';
 import { CityPriceList } from './citylist.js';
 import { OwnPrice } from './calc-buy.js';
 import { CityPill, MaterialName } from './ui.js';
-import { acquisitionRows, mergeRows, withOverride } from './logic/acquire.js';
+import { acquisitionRows, mergeRows, withOverride, sortByCity } from './logic/acquire.js';
 import { makeOverride } from './logic/adjust.js';
 import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
 
@@ -20,7 +20,7 @@ export function StackShopping({ data }) {
   for (const i of active) { const d = results.get(i.uid); fee = d.setupFeeRate ?? fee; for (const [k, v] of Object.entries(priceLists(d))) if (!lists[k] || (!lists[k].length && v.length)) lists[k] = v; }
   const m = makeOverride(lists, pr, { purchaseLog: s.purchaseLog, cities, fee });
   const raw = mergeRows(active.map((i) => acquisitionRows(results.get(i.uid), itemLabel)));
-  const rows = raw.map((r) => ({ base: r, row: withOverride(r, m.override(r.key)) }));
+  const rows = sortByCity(raw.map((r) => ({ base: r, row: withOverride(r, m.override(r.key)) })), (x) => x.row);       // по городам: что купить здесь — подряд
   if (!rows.length) return null;
   const done = rows.filter(({ row }) => checks[row.id]).length;
   const total = rows.reduce((sum, { row }) => sum + (row.sum || 0), 0);
@@ -32,7 +32,7 @@ export function StackShopping({ data }) {
           <div class="shop-body"><${MaterialName} id=${r.id} name=${r.name} />${r.manual ? html` <small class="is-manual-note">своя цена</small>` : null}
             <span class="shop-c">${r.cities.length ? r.cities.map((c) => html`<span key=${c.city}><${CityPill} name=${c.city} /> <small class="muted">${fmt(c.qty)} шт по ${fmt(c.price, c.price < 100 ? 1 : 0)}</small></span>`) : html`<span class="pill w">нет цены на рынке — впиши свою</span>`}${r.missing && r.cities.length ? html`<span class="pill w" title="У части позиций нет цены на рынке — впиши свою, и она закроет все позиции">у части позиций нет цены</span>` : null}</span>
             <div class="shop-own"><span class="muted">Своя цена за шт</span> <${OwnPrice} resKey=${r.key} market=${unit} needed=${r.needed} scope="stack" /></div>
-            <${CityPriceList} resKey=${r.key} list=${lists[r.key] || []} own=${pr.cityOwn[r.key]} fee=${fee} onSet=${(city, v) => setCityOwn(r.key, city, v)} />
+            <${CityPriceList} resKey=${r.key} list=${lists[r.key] || []} own=${pr.cityOwn[r.key]} fee=${fee} picked=${(pr.cityPick || {})[r.key]} onPick=${(city) => pickCity(r.key, city)} onSet=${(city, v) => setCityOwn(r.key, city, v)} />
           </div></div>
         <span class="shop-n"><b>${fmt(r.needed)}</b> шт<br /><span class="neg">${r.sum === null || r.sum === undefined ? '—' : fmt(r.sum)}</span></span></div>`;
     })}</div>

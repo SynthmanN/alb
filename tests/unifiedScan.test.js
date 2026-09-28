@@ -83,6 +83,7 @@ describe('GET /api/unified-scan', () => {
     const res = await scan({ mode: 'patient' });
     const row = res.results.find((r) => r.itemId === 'T4_MAIN_SWORD');
     expect(row.marketProfitPerDay).toBeCloseTo(row.profitPerUnit * row.dailyVolume, 6);
+    expect(row.marketNetPerDay).toBeCloseTo((row.cost + row.profitPerUnit) * row.dailyVolume, 6);        // чистые деньги в день: выручка после налога × оборот
     expect(res).not.toHaveProperty('capital');
     expect(res).not.toHaveProperty('minDays');
     expect(res).not.toHaveProperty('premiumPrice');

@@ -137,5 +137,6 @@ describe('стек: профит позиции и автовыбор «посл
     const t = stackTotals(items, results, 10000);
     expect(t).toMatchObject({ items: 2, capes: 3, cost: 100000, points: 6800, pending: 1, noPrice: 0 });
     expect(t.profit).toBeCloseTo(2 * (100000 * 0.92 - 50000), 6);
+    expect(t.income).toBeCloseTo(2 * 100000 * 0.92, 6);        // чистые деньги = выручка после налога = профит + себестоимость
   });
 });

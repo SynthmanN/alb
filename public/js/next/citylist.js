@@ -7,7 +7,7 @@ import { cityRows, SETUP_FEE } from './logic/cityPrices.js';
 
 const ph = (p) => (p === null || p === undefined ? 'своя цена' : String(Math.round(p * (p < 100 ? 10 : 1)) / (p < 100 ? 10 : 1)));
 
-export function CityPriceList({ resKey, list, own, onSet, fee = SETUP_FEE, label = 'Все города' }) {
+export function CityPriceList({ resKey, list, own, onSet, picked = null, onPick = null, fee = SETUP_FEE, label = 'Все города' }) {
   const s = useStore(settings);
   const rows = cityRows(list, own, activeCities(s), fee, ALL_CITIES);
   if (!rows.length) return null;
@@ -15,10 +15,10 @@ export function CityPriceList({ resKey, list, own, onSet, fee = SETUP_FEE, label
   return html`<details class="cityprices" data-res=${resKey}>
     <summary><span>${label}</span><span class="cp-count">${rows.filter((r) => r.market !== null).length}${mine ? html` · <b>своих ${mine}</b>` : null}</span></summary>
     <div class="cp-list" role="table" aria-label=${`Цены по городам: ${resKey}`}>
-      ${rows.map((r) => html`<div class=${`cp-row ${r.isBest ? 'is-best' : ''} ${r.inactive ? 'is-inactive' : ''}`} role="row" key=${r.city}>
+      ${rows.map((r) => html`<div class=${`cp-row ${r.isBest ? 'is-best' : ''} ${r.inactive ? 'is-inactive' : ''} ${picked === r.city ? 'is-picked' : ''} ${onPick ? 'is-pickable' : ''}`} role="row" key=${r.city} data-pick=${r.city} title=${onPick ? (picked === r.city ? 'Закупка идёт в этот город. Клик ещё раз — вернуть самый дешёвый' : 'Клик — закупать именно в этом городе') : null} onClick=${onPick ? () => onPick(r.city) : null}>
         <${CityPill} name=${r.city} />${r.inactive ? html`<small class="cp-off" title="Город вне расчёта: цена для справки. Впиши свою цену — город войдёт в расчёт; или включи город в параметрах">вне расчёта</small>` : null}
-        <span class="cp-price" role="cell">${r.market === null ? html`<span class="muted">нет цены</span>` : fmt(r.market, r.market < 100 ? 1 : 0)}${r.market !== null && r.date ? html` <small class="cp-age" title=${`AODP видел эту цену: ${fmtAge(priceAgeMinutes(r.date))} — настоящее время сделки/ценника, не опрос нашего краулера`}>${fmtAgeShort(priceAgeMinutes(r.date))}</small>` : null}${r.isBest ? html` <span class="cp-best" title="Самая выгодная закупка с учётом комиссии 2.5% и твоих цен">лучший</span>` : null}</span>
-        <input type="number" min="0" step="1" data-city=${r.city} class=${r.own !== undefined ? 'is-manual' : ''} placeholder=${ph(r.market)} value=${r.own ?? ''} onInput=${(e) => onSet(r.city, e.target.value)} aria-label=${`Своя цена в ${r.city}`} title="Серым — рыночная цена. Видишь в игре другую или платишь иначе — впиши свою: выбор города и себестоимость пересчитаются сразу" />
+        <span class="cp-price" role="cell">${r.market === null ? html`<span class="muted">нет цены</span>` : fmt(r.market, r.market < 100 ? 1 : 0)}${r.market !== null && r.date ? html` <small class="cp-age" title=${`AODP видел эту цену: ${fmtAge(priceAgeMinutes(r.date))} — настоящее время сделки/ценника, не опрос нашего краулера`}>${fmtAgeShort(priceAgeMinutes(r.date))}</small>` : null} ${picked === r.city ? html` <span class="cp-picked">выбран</span>` : null}${r.isBest ? html` <span class="cp-best" title="Самая выгодная закупка с учётом комиссии 2.5% и твоих цен">лучший</span>` : null}</span>
+        <input type="number" min="0" step="1" data-city=${r.city} class=${r.own !== undefined ? 'is-manual' : ''} placeholder=${ph(r.market)} value=${r.own ?? ''} onInput=${(e) => onSet(r.city, e.target.value)} onClick=${(e) => e.stopPropagation()} aria-label=${`Своя цена в ${r.city}`} title="Серым — рыночная цена. Видишь в игре другую или платишь иначе — впиши свою: выбор города и себестоимость пересчитаются сразу" />
       </div>`)}
       <p class="cp-note">Рыночные цены без комиссии; для сравнения к ним добавляется 2.5% за свой Buy Order, а своя цена считается как есть. Города «вне расчёта» показаны для справки: впиши в них свою цену или включи город в параметрах — и он войдёт в выбор.</p>
     </div></details>`;

@@ -3,10 +3,10 @@
 import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, apiPost } from './lib.js';
 import { settings } from './settings.js';
 import { calcStore, resetOwn, setChainChoice, setForceMain } from './calc-store.js';
-import { prices, setOwn, setCityOwn, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
+import { prices, setOwn, setCityOwn, pickCity, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
 import { CityPriceList } from './citylist.js';
 import { CityPill, Tags, MaterialName, Switch, toast } from './ui.js';
-import { acquisitionRows, withOverride } from './logic/acquire.js';
+import { acquisitionRows, withOverride, sortByCity } from './logic/acquire.js';
 import { lotsAverage } from './logic/manual.js';
 
 const unitPlaceholder = (p) => (p === null || p === undefined ? 'своя цена' : String(Math.round(p * (Math.abs(p) < 100 ? 10 : 1)) / (Math.abs(p) < 100 ? 10 : 1)));
@@ -56,7 +56,7 @@ function ComponentPrices({ d, components, lists }) {
   return html`<div class="comp-list">${components.map((cp) => html`<div class="comp-row" key=${cp.id}>
     <${MaterialName} id=${cp.id} name=${nameOf(d, cp.id)} />
     <${OwnPrice} resKey=${cp.id} market=${cp.price} needed=${cp.count * d.quantity} scope="component" />
-    ${lists[cp.id] && lists[cp.id].length ? html`<${CityPriceList} resKey=${cp.id} list=${lists[cp.id]} own=${pr.cityOwn[cp.id]} fee=${d.setupFeeRate} label="Все города" onSet=${(city, v) => setCityOwn(cp.id, city, v)} />` : null}
+    ${lists[cp.id] && lists[cp.id].length ? html`<${CityPriceList} resKey=${cp.id} list=${lists[cp.id]} own=${pr.cityOwn[cp.id]} fee=${d.setupFeeRate} label="Все города" picked=${(pr.cityPick || {})[cp.id]} onPick=${(city) => pickCity(cp.id, city)} onSet=${(city, v) => setCityOwn(cp.id, city, v)} />` : null}
   </div>`)}</div>`;
 }
 
@@ -103,7 +103,7 @@ function RecipeTable({ d, lists, invalidate }) {
         <td>${fmt(r.needed)}${r.byRecipe !== undefined && r.byRecipe !== r.needed ? html`<br /><small>по рецепту ${fmt(r.byRecipe)}</small>` : null}</td>
         <td>${missing ? html`<span class="pill w">нет цены</span> <${MissingServerPrice} id=${id} label=${nameOf(d, id)} onSaved=${invalidate} />`
           : r.materialSource === 'points' ? html`<span class="pill n" title="Получено у интенданта за фракционные очки — в серебре 0">за очки: ${fmt(r.points)} на шт · ${fmt(r.points * d.quantity)} на ${fmt(d.quantity)} шт</span>`
-          : html`${sourceLine(r, (x) => nameOf(d, x))}${r.priceSource === 'quote' ? html`<br /><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>` : null}${r.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}<br /><${OwnPrice} resKey=${r.resource} market=${r.marketPrice ?? r.cheapestPrice} needed=${r.needed} scope="recipe" />${lists[r.resource] ? html`<br /><${CityPriceList} resKey=${r.resource} list=${lists[r.resource]} own=${pr.cityOwn[r.resource]} fee=${d.setupFeeRate} label=${r.materialSource === 'buy' ? 'Все города' : 'Готовый — все города'} onSet=${(city, v) => setCityOwn(r.resource, city, v)} />` : null}${r.materialSource === 'refine' && r.refineOption ? html`<${ComponentPrices} d=${d} components=${r.refineOption.components} lists=${lists} />` : r.materialSource === 'craft' && r.craftOption ? html`<${ComponentPrices} d=${d} components=${r.craftOption.components} lists=${lists} />` : null}`}</td>
+          : html`${sourceLine(r, (x) => nameOf(d, x))}${r.priceSource === 'quote' ? html`<br /><small class="scan-stale" title="Сделок за окно нет — взята текущая котировка">котировка</small>` : null}${r.manual ? html` <span class="fp-warn" title="Вписано вручную — недостоверная цена">⚠</span>` : null}<br /><${OwnPrice} resKey=${r.resource} market=${r.marketPrice ?? r.cheapestPrice} needed=${r.needed} scope="recipe" />${lists[r.resource] ? html`<br /><${CityPriceList} resKey=${r.resource} list=${lists[r.resource]} own=${pr.cityOwn[r.resource]} fee=${d.setupFeeRate} label=${r.materialSource === 'buy' ? 'Все города' : 'Готовый — все города'} picked=${(pr.cityPick || {})[r.resource]} onPick=${(city) => pickCity(r.resource, city)} onSet=${(city, v) => setCityOwn(r.resource, city, v)} />` : null}${r.materialSource === 'refine' && r.refineOption ? html`<${ComponentPrices} d=${d} components=${r.refineOption.components} lists=${lists} />` : r.materialSource === 'craft' && r.craftOption ? html`<${ComponentPrices} d=${d} components=${r.craftOption.components} lists=${lists} />` : null}`}</td>
         <td class=${missing ? 'neg' : ''}>${missing ? '—' : fmt(r.cheapestPrice * r.needed)}</td>
         <td>${days !== null ? fmtDays(days) : '—'}${bottleneck === r.resource ? ' 🐢' : ''}</td>
         <td>${r.materialSource === 'craft' && r.craftOption ? html`<span title="Плащ-ингредиент не возвращается, но при крафте плаща самому ткань и кожа возвращаются">${fmt((d.rrrOptions ? d.rrrOptions.gearRate : 0) * 100, 1)}% на ткань и кожу</span>`
@@ -116,7 +116,7 @@ function PlanTable({ d, c, override }) {
   const rows = useMemo(() => acquisitionRows(d, itemLabel), [d]);
   const done = rows.filter((r) => c.checks[r.key]).length;
   let total = 0;
-  const view = rows.map((raw) => { const ov = override(raw.key); const r = ov ? withOverride(raw, ov) : raw; if (r.sum !== null) total += r.sum; return { r, own: ov ? ov.price : undefined }; });
+  const view = sortByCity(rows.map((raw) => { const ov = override(raw.key); const r = ov ? withOverride(raw, ov) : raw; if (r.sum !== null) total += r.sum; return { r, own: ov && !ov.picked ? ov.price : undefined }; }), (x) => x.r);   // по городам: что купить здесь — подряд
   return html`<div class="card" style="margin-top:14px"><div class="tw"><table id="buy-table">
     <thead><tr><th>Что покупаем</th><th>Нужно</th><th>Где и по чём</th><th>Цена / шт</th><th>Своя цена</th><th>Сумма</th><th>Дней</th></tr></thead>
     <tbody>${view.map(({ r, own }) => html`<tr key=${r.key + r.why} class=${c.checks[r.key] ? 'done' : ''}>

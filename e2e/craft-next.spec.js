@@ -2,8 +2,8 @@
 const { test, expect } = require('@playwright/test');
 
 const SCAN = { faction: null, mode: 'patient', enchantMode: 'after', taxRate: 0.08, setupFeeRate: 0.025, jug: { lastPricePass: Date.now() - 180000 }, results: [
-  { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 2, quality: 4, tier: 4, cost: 40000, avgSellPrice: 60000, sellCities: ['Martlock', 'Caerleon', 'Lymhurst'], dailyVolume: 12.5, profitPerUnit: 15200, profitPct: 38, marketProfitPerDay: 190000, freshMinutes: 12, confidence: 0.6 },
-  { kind: 'gear', itemId: 'T4_CAPE', enchant: 1, quality: 4, tier: 4, cost: 2700, avgSellPrice: 22000, sellCities: ['Thetford'], dailyVolume: 300, profitPerUnit: 17000, profitPct: 600, marketProfitPerDay: 5100000, freshMinutes: 400, confidence: 0.9 },
+  { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 2, quality: 4, tier: 4, cost: 40000, avgSellPrice: 60000, sellCities: ['Martlock', 'Caerleon', 'Lymhurst'], dailyVolume: 12.5, profitPerUnit: 15200, profitPct: 38, marketProfitPerDay: 190000, marketNetPerDay: 710000, freshMinutes: 12, confidence: 0.6 },
+  { kind: 'gear', itemId: 'T4_CAPE', enchant: 1, quality: 4, tier: 4, cost: 2700, avgSellPrice: 22000, sellCities: ['Thetford'], dailyVolume: 300, profitPerUnit: 17000, profitPct: 600, marketProfitPerDay: 5100000, marketNetPerDay: 6600000, freshMinutes: 400, confidence: 0.9 },
 ] };
 
 const calc = (q) => ({
@@ -67,6 +67,10 @@ test('скан → раскрыть строку → в крафт-лист → 
   expect(log.scan[0].get('gearRrrCustom')).toBe('15.3');
   expect(log.scan[0].get('source')).toBe('jug');
   expect(log.scan[0].get('enchantMode')).toBe('auto');
+  await expect(page.locator('#s-min')).toHaveValue('0');                                                // оборот от — по умолчанию 0: ничего не отсекается
+  expect(log.scan[0].get('minDaily')).toBe('0');
+  await expect(page.locator('#scan-rows .row').first()).toContainText('6 600 000');                    // «Чистые деньги в день» — рядом с маржой рынка
+  await expect(page.locator('#scan-head')).toContainText('Чистые деньги в день');
   await expect(page.locator('#scan-rows .row').first()).toContainText('5 100 000');                    // по умолчанию — по марже рынка в день
   await page.locator('#scan-rows .row').nth(1).click();
   await expect(page.locator('.detail')).toContainText('Свежесть цен');
@@ -175,7 +179,7 @@ test('фракционный план: «Свежесть данных» — т�
   await expect(page.locator('#plan-table tbody tr.on-plan')).toHaveCount(2);
   const fresh = await mockFreshness(page, {
     staleIds: ['T6_CAPEITEM_FW_MARTLOCK_BP', 'T1_FACTION_HIGHLAND_TOKEN_1'],
-    freshIds: ['T6_CAPEITEM_FW_MARTLOCK@3', 'T6_CAPE@3', 'T5_CAPEITEM_FW_MARTLOCK@2', 'T5_CAPE@2', 'T5_CAPEITEM_FW_MARTLOCK_BP'],
+    freshIds: ['T6_CAPEITEM_FW_MARTLOCK@3', 'T6_CAPE@3', 'T6_CAPE', 'T5_CAPEITEM_FW_MARTLOCK@2', 'T5_CAPE@2', 'T5_CAPE', 'T5_CAPEITEM_FW_MARTLOCK_BP'],   // окно берёт материалы всех вариантов рецепта, в т.ч. плащ .0 для «после крафта»
   });
   await page.locator('#freshness-open').click();
   await expect(page.locator('#freshness-dialog')).toBeVisible();
@@ -489,10 +493,11 @@ test('лог закупок по лотам: средняя цена стако�
   await page.getByText('Лог закупок по лотам').click();
   const plan = page.locator('#buy-table [data-res="T4_CLOTH"].lot-add');
   await plan.click();
-  await page.locator('#buy-table .lot-log').first().locator('.lot-qty').fill('100');
-  await page.locator('#buy-table .lot-log').first().locator('.lot-price').fill('150');                    // средняя 150: (150 − 100) × 20 × 0.75 = +750
+  const clothLog = page.locator('#buy-table .lot-log', { has: page.locator('[data-res="T4_CLOTH"].lot-add') });        // строки закупки идут по городам — свой лог ищем по ресурсу, а не «первый»
+  await clothLog.locator('.lot-qty').fill('100');
+  await clothLog.locator('.lot-price').fill('150');                    // средняя 150: (150 − 100) × 20 × 0.75 = +750
   await expect(cost(page)).toContainText('2 610');
-  await expect(page.locator('#buy-table .lot-sum').first()).toContainText('куплено 100 из 20');
+  await expect(clothLog.locator('.lot-sum')).toContainText('куплено 100 из 20');
 });
 
 test('продажа: своя цена в Buy Order, план по городам — включение города, своё количество, сброс к автоплану, своя цена города', async ({ page }) => {
@@ -609,6 +614,28 @@ test('панель «Все города» материала: серая рын
   await expect(page.locator('#cost-summary')).toContainText('1 860');
 });
 
+test('клик по городу в «Все города»: закупка идёт именно в него, повторный клик возвращает самый дешёвый; сброс своих цен снимает выбор', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  const panel = page.locator('#craft-recipe-table details.cityprices[data-res="T4_CLOTH"]');
+  await panel.locator('summary').click();
+  await expect(panel.locator('.cp-row.is-best')).toContainText('Martlock');
+  await panel.locator('.cp-row[data-pick="Lymhurst"]').click();                                               // не самый дешёвый — но выбран именно он
+  await expect(panel.locator('.cp-row.is-picked')).toContainText('Lymhurst');
+  await expect(panel.locator('.cp-row.is-picked')).toContainText('выбран');
+  await expect(page.locator('#buy-table tr', { hasText: 'Изысканная ткань' })).toContainText('Lymhurst');
+  await expect(page.locator('#buy-table tr', { hasText: 'Изысканная ткань' })).not.toContainText('своя');    // это не «своя цена»
+  await panel.locator('.cp-row[data-pick="Lymhurst"]').click();                                               // повторный клик — снова самый дешёвый
+  await expect(panel.locator('.cp-row.is-picked')).toHaveCount(0);
+  await expect(page.locator('#buy-table tr', { hasText: 'Изысканная ткань' })).toContainText('Martlock');
+  await panel.locator('.cp-row[data-pick="Lymhurst"]').click();
+  await expect(page.locator('.manual-reset')).toBeVisible();
+  await page.locator('.manual-reset').click();
+  await expect(panel.locator('.cp-row.is-picked')).toHaveCount(0);
+  await panel.locator('input[data-city="Lymhurst"]').fill('50');                                              // клик по полю своей цены город не выбирает
+  await expect(panel.locator('.cp-row.is-picked')).toHaveCount(0);
+});
+
 test('крафт-лист: панель «Все города» в сводной закупке, своя цена города пересчитывает итоги листа', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await openCalc(page, log);
@@ -621,6 +648,9 @@ test('крафт-лист: панель «Все города» в сводно�
   await expect(row).toContainText('1 000');                                                                   // 20 шт × 50
   await expect(page.locator('#drawer-list .totals')).toContainText('11 100');                                    // (1860 − 750) × 10 шт
   await expect(page.locator('#dock-inv')).toContainText('11 100');
+  // чистые деньги — выручка после налога (вложения + профит) рядом с «Вложения» и «Профит»
+  const num = async (sel) => Number((await page.locator(sel).innerText()).replace(/[^\d-]/g, ''));
+  expect(await num('#dock-net')).toBe(await num('#dock-inv') + await num('#dock-pr'));
 });
 
 // ---------- стек калькулятора ----------
@@ -727,12 +757,15 @@ test('стек: сводная закупка — для каких позици
   await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
   const cloth = page.locator('#shopping .shop[data-res="T4_CLOTH"]');
   await expect(cloth).toContainText('40');                                                          // ткань двух позиций сложена в одну строку
+  await expect(page.locator('#shopping .shop').first()).toHaveAttribute('data-res', 'T4_RUNE');     // закупка идёт по городам: руна в Lymhurst, ткань в Martlock — по алфавиту руна раньше
+  await expect(page.locator('#shopping .shop').nth(1)).toHaveAttribute('data-res', 'T4_CLOTH');
   // руна: в ответе нет ни одной рыночной цены по городам — панель всё равно есть, со всеми активными городами
   const rune = page.locator('#shopping .shop[data-res="T4_RUNE"]');
   await rune.locator('details.cityprices summary').click();
   for (const city of ['Lymhurst', 'Martlock', 'Thetford', 'Bridgewatch', 'Fort Sterling']) await expect(rune.locator(`input[data-city="${city}"]`)).toBeVisible();
   await rune.locator('input[data-city="Bridgewatch"]').fill('3');                                    // своя цена города без рыночных данных
   await expect(rune).toContainText('своя цена');
+  await expect(page.locator('#shopping .shop').first()).toHaveAttribute('data-res', 'T4_RUNE');     // руна теперь покупается в Bridgewatch — этот город по алфавиту раньше Martlock
   // единая своя цена материала
   await cloth.locator('input.manual-price').fill('50');
   await expect(cloth).toContainText('2 000');                                                        // 40 шт × 50
@@ -993,10 +1026,12 @@ test('профили крафта: сохранить стек, перезагр
   await page.locator('#profile-save').click();
   // название по умолчанию: ROI и дата/время сохранения
   await expect(page.locator('#profile-select option:checked')).toContainText(/ROI .*% · \d\d\.\d\d\.\d{4} \d\d:\d\d · 2 поз\./);
-  // случайная перезагрузка страницы: стек калькулятора не восстанавливается сам, но профиль остался
+  // случайная перезагрузка страницы: стек калькулятора не восстанавливается сам, но профиль остался — и на сервере: копия в браузере не нужна
+  await page.evaluate(() => localStorage.removeItem('albion_next_profiles'));
   await page.reload();
   await page.getByRole('tab', { name: 'Калькулятор' }).click();
-  await expect(page.locator('#profile-select option')).toHaveCount(2);                     // «выбрать» + профиль
+  await expect(page.locator('#profile-select option')).toHaveCount(2);                     // «выберите» + профиль (пришёл с сервера)
+  await expect(page.locator('#profile-select option').first()).toHaveText('— выберите профиль —');
   await page.locator('#profile-select').selectOption({ index: 1 });
   await expect(cards).toHaveCount(2);
   await expect(cards.first().locator('.qty input')).toHaveValue('7');                     // количество из профиля
@@ -1005,12 +1040,28 @@ test('профили крафта: сохранить стек, перезагр
   await page.locator('#profile-name').fill('Плащи на неделю');
   await page.locator('#profile-name-ok').click();
   await expect(page.locator('#profile-select option:checked')).toContainText('Плащи на неделю');
+  // выбор в два шага: пока стоит профиль, прямой клик по другому не загружает его — сначала «— выберите профиль —»
+  await cards.first().locator('.qty input').fill('9');
+  await cards.first().locator('.qty input').blur();
+  await page.locator('#profile-save').click();                                             // второй профиль (количество 9) — он теперь выбран
+  await expect(page.locator('#profile-select option')).toHaveCount(3);
+  await page.locator('#profile-select').selectOption({ index: 2 });                        // прямая смена на «Плащи на неделю»
+  await expect(page.locator('#profile-select option:checked')).toContainText(/ROI/);       // остался второй профиль
+  await expect(cards.first().locator('.qty input')).toHaveValue('9');                      // стек не тронут
+  await page.locator('#profile-select').selectOption({ index: 0 });                        // шаг 1: «— выберите профиль —»
+  await expect(cards.first().locator('.qty input')).toHaveValue('9');                      // сам по себе стек не меняет
+  await page.locator('#profile-select').selectOption({ index: 2 });                        // шаг 2: нужный профиль
+  await expect(page.locator('#profile-select option:checked')).toContainText('Плащи на неделю');
+  await expect(cards.first().locator('.qty input')).toHaveValue('7');
   // удаление — в два шага (случайный клик не удаляет)
   await page.locator('#profile-delete').click();
   await expect(page.locator('#profile-delete')).toContainText('Точно удалить?');
   await page.locator('#profile-delete').click();
-  await expect(page.locator('#profile-select option')).toHaveCount(1);
+  await expect(page.locator('#profile-select option')).toHaveCount(2);
   await expect(page.locator('#profile-delete')).toBeDisabled();
+  await page.reload();                                                                     // удалённое не возвращается: и на сервере его больше нет
+  await page.getByRole('tab', { name: 'Калькулятор' }).click();
+  await expect(page.locator('#profile-select option')).toHaveCount(2);
 });
 
 test('смешанные рецепты: калькулятор считает базу .0 и гибрид .1, выбирает дешевле; дропдаун и «только основной рецепт» переключают рецепт; окно свежести знает материалы обоих', async ({ page }) => {

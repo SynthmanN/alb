@@ -11,10 +11,11 @@ export function makeOverride(lists, prices, { purchaseLog = false, cities = [], 
     if (purchaseLog) { const a = lotsAverage(prices.lots[res]); if (a) return a.avg; }
     return has(prices.own, res) ? prices.own[res] : undefined;
   };
-  const buyPrice = (res) => bestBuy(lists[res], prices.cityOwn[res], cities, fee);
+  const pickOf = (res) => (prices.cityPick && prices.cityPick[res]) || null;
+  const buyPrice = (res) => bestBuy(lists[res], prices.cityOwn[res], cities, fee, pickOf(res));
   // что покупаем по своей цене: единая своя цена (или лог лотов) важнее цен городов
-  const override = (res) => { const o = ownPrice(res); if (o !== undefined) return { price: o }; const b = buyPrice(res); return b ? { price: b.price, city: b.city } : undefined; };
-  const hasOwn = Object.keys(prices.own).length > 0 || Object.keys(prices.cityOwn).length > 0 || (purchaseLog && Object.values(prices.lots).some((l) => lotsAverage(l)));
+  const override = (res) => { const o = ownPrice(res); if (o !== undefined) return { price: o }; const b = buyPrice(res); return b ? { price: b.price, city: b.city, ...(b.picked && !b.fromOwn ? { picked: true } : {}) } : undefined; };
+  const hasOwn = Object.keys(prices.own).length > 0 || Object.keys(prices.cityOwn).length > 0 || Object.keys(prices.cityPick || {}).length > 0 || (purchaseLog && Object.values(prices.lots).some((l) => lotsAverage(l)));
   return { ownPrice, buyPrice, override, hasOwn };
 }
 
