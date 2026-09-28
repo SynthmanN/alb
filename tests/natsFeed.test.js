@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
-const { applyOrder, orderToPriceRow, LOCATION_NAMES } = require('../lib/natsFeed.js');
+const { applyOrder, orderToPriceRow, applyHistory, historyToSeries, ticksToIso, LOCATION_NAMES } = require('../lib/natsFeed.js');
 const { openJug, upsertPriceSnapshots } = require('../lib/jugStore.js');
 
 const order = (over = {}) => ({
@@ -68,5 +68,77 @@ describe('applyOrder — пишет в кувшин, только если ор�
     const row = db.prepare('SELECT * FROM prices').get();
     expect(row.buy_price_max).toBe(220);
     expect(row.sell_price_min).toBe(300);   // вторая половина строки (sell) сохранилась нетронутой
+  });
+});
+
+// История сделок (markethistories.deduped): сообщение снято с живого потока, тики .NET, час = 36e9 тиков.
+const TICKS_2026_09_28_12 = 639261936000000000;      // 2026-09-28T12:00:00 UTC
+const HOUR = 36000000000;
+const NOW = Date.parse('2026-09-28T20:30:00Z');
+const hist = (over = {}) => ({
+  AlbionId: 666, LocationId: 7, QualityLevel: 2, Timescale: 0, AlbionIdString: 'T4_METALBAR',
+  MarketHistories: [
+    { ItemAmount: 9, SilverAmount: 631847, Timestamp: TICKS_2026_09_28_12 },
+    { ItemAmount: 6, SilverAmount: 415408, Timestamp: TICKS_2026_09_28_12 - 5 * HOUR },
+  ], ...over,
+});
+
+describe('ticksToIso', () => {
+  it('тики .NET → время как у REST, без миллисекунд', () => {
+    expect(ticksToIso(TICKS_2026_09_28_12)).toBe('2026-09-28T12:00:00');
+    expect(ticksToIso(TICKS_2026_09_28_12 - 5 * HOUR)).toBe('2026-09-28T07:00:00');
+  });
+});
+
+describe('historyToSeries', () => {
+  it('почасовые точки: цена = сумма / штуки с округлением вниз (как у REST), город и id — строками', () => {
+    expect(historyToSeries(hist(), catalog)).toEqual({
+      item_id: 'T4_METALBAR', location: 'Thetford', quality: 2,
+      data: [{ timestamp: '2026-09-28T12:00:00', item_count: 9, avg_price: 70205 }, { timestamp: '2026-09-28T07:00:00', item_count: 6, avg_price: 69234 }],
+    });
+  });
+  it('6-часовые корзины (Timescale 1 и 2) не пишем: удвоили бы оборот рядом с почасовыми точками', () => {
+    expect(historyToSeries(hist({ Timescale: 1 }), catalog)).toBeNull();
+    expect(historyToSeries(hist({ Timescale: 2 }), catalog)).toBeNull();
+  });
+  it('чужой город, предмет вне каталога, нет строкового id, пустой ответ — null', () => {
+    expect(historyToSeries(hist({ LocationId: 999999 }), catalog)).toBeNull();
+    expect(historyToSeries(hist({ AlbionIdString: 'SOME_JUNK' }), catalog)).toBeNull();
+    expect(historyToSeries(hist({ AlbionIdString: undefined }), catalog)).toBeNull();
+    expect(historyToSeries(hist({ MarketHistories: [] }), catalog)).toBeNull();
+    expect(historyToSeries(hist({ QualityLevel: 0 }), catalog)).toBeNull();
+  });
+  it('точки без сделок или без серебра пропускаются', () => {
+    const r = historyToSeries(hist({ MarketHistories: [{ ItemAmount: 0, SilverAmount: 0, Timestamp: TICKS_2026_09_28_12 }, { ItemAmount: 3, SilverAmount: 900, Timestamp: TICKS_2026_09_28_12 - HOUR }] }), catalog);
+    expect(r.data).toEqual([{ timestamp: '2026-09-28T11:00:00', item_count: 3, avg_price: 300 }]);
+  });
+});
+
+describe('applyHistory — пишет почасовые точки в кувшин', () => {
+  const rows = (db) => db.prepare('SELECT ts, item_count, avg_price FROM history ORDER BY ts').all();
+  it('пишет новые часы', () => {
+    const db = openJug();
+    expect(applyHistory(db, hist(), catalog, NOW)).toBe(2);
+    expect(rows(db)).toEqual([{ ts: '2026-09-28T07:00:00', item_count: 6, avg_price: 69234 }, { ts: '2026-09-28T12:00:00', item_count: 9, avg_price: 70205 }]);
+  });
+  it('уже известный час не затирается меньшим числом сделок, но обновляется равным или большим', () => {
+    const db = openJug();
+    applyHistory(db, hist(), catalog, NOW);
+    const older = hist({ MarketHistories: [{ ItemAmount: 4, SilverAmount: 100, Timestamp: TICKS_2026_09_28_12 }] });
+    expect(applyHistory(db, older, catalog, NOW)).toBe(0);
+    expect(rows(db).find((r) => r.ts === '2026-09-28T12:00:00')).toMatchObject({ item_count: 9, avg_price: 70205 });
+    const fuller = hist({ MarketHistories: [{ ItemAmount: 12, SilverAmount: 840104, Timestamp: TICKS_2026_09_28_12 }] });
+    expect(applyHistory(db, fuller, catalog, NOW)).toBe(1);
+    expect(rows(db).find((r) => r.ts === '2026-09-28T12:00:00')).toMatchObject({ item_count: 12, avg_price: 70008 });
+  });
+  it('точки старше окна истории (10 дней) не пишутся', () => {
+    const db = openJug();
+    const old = hist({ MarketHistories: [{ ItemAmount: 5, SilverAmount: 500, Timestamp: TICKS_2026_09_28_12 - 300 * HOUR }] });
+    expect(applyHistory(db, old, catalog, NOW)).toBe(0);
+    expect(rows(db)).toEqual([]);
+  });
+  it('не относящееся к каталогу — ничего не пишет', () => {
+    const db = openJug();
+    expect(applyHistory(db, hist({ AlbionIdString: 'SOME_JUNK' }), catalog, NOW)).toBe(0);
   });
 });
