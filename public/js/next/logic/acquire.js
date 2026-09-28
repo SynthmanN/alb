@@ -1,63 +1,100 @@
 // План закупки по ответу /api/craft-calc: что и где покупать, сколько и почём. Чистые функции — без DOM, их же использует крафт-лист.
 
-// Возвращает строки { id, name, why, needed, cities: [{ city, qty, price }], unit, sum, missing }.
+// Возвращает { rows, lines }.
+// rows — строки { id, name, why, needed, have, toBuy, cities: [{ city, qty, price }], unit, sum, missing }: needed — сколько всего надо, have — сколько
+// закрыто твоими материалами (pool из logic/inventory.js), toBuy — сколько докупить; города, цена и сумма считаются только на toBuy.
+// lines — строки рецепта для «что уже можно скрафтить»: { id, name, needed, covered, via, comps } — covered в штуках этого материала
+// (для крафта самому/переработки — с учётом компонентов), comps — строки закупки компонентов.
 // nameOf(id) — название материала (ответ сервера знает руны, души, реликты, плащ с зачарованием).
-export function acquisitionRows(data, nameOf = (id) => id) {
+const EPS = 1e-9;
+// Оставляем самые дешёвые города, пока не наберётся qty штук (server-план считан на полную потребность)
+export function trimCities(cities, qty) {
+  if (cities.reduce((s, c) => s + c.qty, 0) <= qty) return cities;                // ничего не режем — порядок сервера сохраняется
+  let left = qty;
+  const out = [];
+  for (const c of [...cities].sort((a, b) => a.price - b.price)) {
+    if (left <= 0) break;
+    const q = Math.min(c.qty, left);
+    if (q > 0) out.push({ ...c, qty: q });
+    left -= q;
+  }
+  return out;
+}
+
+export function acquisition(data, nameOf = (id) => id, pool = null) {
   const byRes = data.acquire ? data.acquire.byResource : [];
   const planFor = (pick) => byRes.find(pick) || null;
   const names = data.names || {};
   const label = (id) => names[id] || nameOf(id);
   const rows = [];
+  const lines = [];
   const push = ({ id, key, why, needed, srv, price, city }) => {
+    const have = pool ? pool.take(id, needed) : 0;
+    const toBuy = needed - have;
     const plan = srv && srv.plan && srv.plan.cities.length && srv.plan.cities.reduce((s, c) => s + c.qty, 0) === needed ? srv.plan : null;
     let cities;
     let unit;
     if (plan) {
-      cities = plan.cities.map((c) => ({ city: c.city, qty: c.qty, price: c.avgPrice }));
-      unit = plan.avgPrice;
+      cities = trimCities(plan.cities.map((c) => ({ city: c.city, qty: c.qty, price: c.avgPrice })), toBuy);
+      unit = have > 0 && cities.length ? cities.reduce((s, c) => s + c.qty * c.price, 0) / toBuy : plan.avgPrice;
     } else {
       unit = srv && srv.unitPrice ? srv.unitPrice : price;
-      cities = unit === null || unit === undefined || !city ? [] : [{ city, qty: needed, price: unit }];
+      cities = unit === null || unit === undefined || !city || toBuy <= 0 ? [] : [{ city, qty: toBuy, price: unit }];
     }
-    const missing = unit === null || unit === undefined;
-    rows.push({ id, key: key || id, name: label(id), why, needed, cities, unit: missing ? null : unit, sum: missing ? null : cities.reduce((s, c) => s + c.qty * c.price, 0) || unit * needed, missing, days: srv && srv.daysToAcquire !== undefined ? srv.daysToAcquire : null });
+    const missing = (unit === null || unit === undefined) && (toBuy > 0 || have === 0);
+    const noUnit = unit === null || unit === undefined;
+    const row = { id, key: key || id, name: label(id), why, needed, have, toBuy, cities, unit: noUnit ? null : unit, sum: missing ? null : cities.reduce((s, c) => s + c.qty * c.price, 0) || (noUnit ? 0 : unit * toBuy), missing, days: srv && srv.daysToAcquire !== undefined ? srv.daysToAcquire : null };
+    rows.push(row);
+    return row;
+  };
+  const line = (id, needed, row) => { lines.push({ id, name: label(id), needed, covered: row.have, via: null, comps: [] }); };
+  // Полуфабрикат (слиток, кожа, ткань, плащ-ингредиент), который делаем сами: сначала твой готовый, остальное — из компонентов
+  const viaComponents = (r, rid, via, build) => {
+    const total = r.neededToBuy;
+    const got = pool ? pool.take(rid, total) : 0;
+    const rest = total - got;
+    if (got > 0) rows.push({ id: rid, key: rid, name: label(rid), why: 'твой готовый полуфабрикат', needed: total, have: got, toBuy: 0, cities: [], unit: null, sum: 0, missing: false, days: null, covered: true });
+    const comps = build(rest);
+    const cov = comps.length ? Math.min(...comps.map((c) => (c.needed > 0 ? c.have / c.needed : 1))) : 0;
+    lines.push({ id: rid, name: label(rid), needed: total, covered: got + rest * cov, via, comps });
   };
   const eac = data.enchantAfterCraft;
   // Вход в цепочку зачарования не с нуля (купили уже готовый .1/.2 на рынке, см. server.js enchantChainCandidates) — базовый
   // рецепт .0 тогда вообще ни при чём, в закупку идёт только сама покупка этого уровня и оставшиеся шаги (neededSteps ниже).
   if (eac && eac.chainEntryLevel > 0 && eac.chainEntryId) {
     const entry = (eac.candidates || []).find((c) => c.entryLevel === eac.chainEntryLevel);
-    push({ id: eac.chainEntryId, key: eac.chainEntryId, why: `куплено готовым: ${eac.chainEntryLabel}`, needed: data.quantity, srv: planFor((a) => a.resource === eac.chainEntryId), price: entry ? entry.entryPrice : null, city: eac.chainEntryCity });
+    line(eac.chainEntryId, data.quantity, push({ id: eac.chainEntryId, key: eac.chainEntryId, why: `куплено готовым: ${eac.chainEntryLabel}`, needed: data.quantity, srv: planFor((a) => a.resource === eac.chainEntryId), price: entry ? entry.entryPrice : null, city: eac.chainEntryCity }));
   } else if (eac && eac.baseSource === 'buy' && eac.baseBuy) {
-    push({ id: data.itemId, key: data.itemId, why: 'плащ .0 — выгоднее купить готовый', needed: data.quantity, srv: planFor((a) => a.resource === data.itemId), price: eac.baseBuy.price, city: eac.baseBuy.city });
+    line(data.itemId, data.quantity, push({ id: data.itemId, key: data.itemId, why: 'плащ .0 — выгоднее купить готовый', needed: data.quantity, srv: planFor((a) => a.resource === data.itemId), price: eac.baseBuy.price, city: eac.baseBuy.city }));
   } else if (!eac || eac.chainEntryLevel === 0) {
     for (const r of data.recipe || []) {
       if (r.materialSource === 'points') continue;                       // за очки — в серебре не покупается
       const rid = r.queryId || r.resource;
       if (r.materialSource === 'craft' && r.craftOption) {
-        for (const cp of r.craftOption.components) {
-          push({ id: cp.id, key: cp.id, why: `для крафта самому: ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * cp.factor), srv: planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id), price: cp.price, city: cp.city });
-        }
+        viaComponents(r, rid, 'craft', (rest) => r.craftOption.components.map((cp) => push({ id: cp.id, key: cp.id, why: `для крафта самому: ${label(rid)}`, needed: Math.ceil(rest * cp.count * cp.factor), srv: planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id), price: cp.price, city: cp.city })));
       } else if (r.materialSource === 'refine' && r.refineOption) {
-        r.refineOption.components.forEach((cp, i) => {
+        viaComponents(r, rid, 'refine', (rest) => r.refineOption.components.map((cp, i) => {
           const role = i === 0 ? 'raw' : 'prev';
-          push({ id: cp.id, key: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} для переработки в ${label(rid)}`, needed: Math.ceil(r.neededToBuy * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
-        });
+          return push({ id: cp.id, key: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} для переработки в ${label(rid)}`, needed: Math.ceil(rest * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
+        }));
       } else {
-        push({ id: rid, key: rid, why: r.enchanted ? `зачарование .${eac && eac.baseLevel ? eac.baseLevel : data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity });
+        line(rid, r.neededToBuy, push({ id: rid, key: rid, why: r.enchanted ? `зачарование .${eac && eac.baseLevel ? eac.baseLevel : data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity }));
       }
     }
   }
   for (const st of (eac && eac.neededSteps) || (eac && eac.steps) || []) {
-    push({ id: st.materialId, key: st.materialId, why: `чары .${st.level - 1} → .${st.level}`, needed: st.count * data.quantity, srv: planFor((a) => a.resource === st.materialId), price: st.cheapestPrice, city: st.cheapestCity });
+    line(st.materialId, st.count * data.quantity, push({ id: st.materialId, key: st.materialId, why: `чары .${st.level - 1} → .${st.level}`, needed: st.count * data.quantity, srv: planFor((a) => a.resource === st.materialId), price: st.cheapestPrice, city: st.cheapestCity }));
   }
-  return rows;
+  return { rows, lines };
 }
+
+export const acquisitionRows = (data, nameOf, pool) => acquisition(data, nameOf, pool).rows;
 
 // Строка закупки по своей цене (ov: { price, city? }): цена и сумма пересчитываются, если задан город — вся партия идёт в него
 export function withOverride(row, ov) {
   if (!ov) return row;
-  return { ...row, unit: ov.price, cities: ov.city ? [{ city: ov.city, qty: row.needed, price: ov.price }] : row.cities, sum: ov.price * row.needed, missing: false, manual: !ov.picked, picked: !!ov.picked };
+  const qty = row.toBuy ?? row.needed;
+  return { ...row, unit: ov.price, cities: ov.city && qty > 0 ? [{ city: ov.city, qty, price: ov.price }] : row.cities, sum: ov.price * qty, missing: false, manual: !ov.picked, picked: !!ov.picked };
 }
 
 // Строки, где не хватает цены материала (можно вписать свою)
@@ -68,8 +105,10 @@ export function mergeRows(list) {
   const map = new Map();
   for (const rows of list) {
     for (const r of rows) {
-      const e = map.get(r.id) || { id: r.id, key: r.key || r.id, name: r.name, needed: 0, cities: new Map(), missing: false };
+      const e = map.get(r.id) || { id: r.id, key: r.key || r.id, name: r.name, needed: 0, have: 0, toBuy: 0, cities: new Map(), missing: false };
       e.needed += r.needed;
+      e.have += r.have || 0;
+      e.toBuy += r.toBuy ?? r.needed;
       if (r.missing) e.missing = true;
       for (const c of r.cities) {
         if (!(c.qty > 0) || !Number.isFinite(c.price)) continue;                       // город без штук или без цены в сводку не идёт
@@ -82,7 +121,7 @@ export function mergeRows(list) {
   }
   return [...map.values()].map((e) => {
     const cities = [...e.cities.entries()].map(([city, c]) => ({ city, qty: c.qty, price: c.cost / c.qty }));
-    return { id: e.id, key: e.key, name: e.name, needed: e.needed, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
+    return { id: e.id, key: e.key, name: e.name, needed: e.needed, have: e.have, toBuy: e.toBuy, cities, sum: cities.reduce((s, c) => s + c.qty * c.price, 0), missing: e.missing };
   }).sort((a, b) => b.sum - a.sum);
 }
 

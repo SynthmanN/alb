@@ -1116,3 +1116,50 @@ test('свежесть данных: окно само перепроверяе�
   await page.waitForTimeout(9000);
   expect(fresh.get.length).toBe(n);                                                           // окно закрыто — запросов больше нет
 });
+
+test('мои материалы: калькулятор одной вещи вычитает имеющееся из закупки и показывает, сколько можно скрафтить', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  await page.locator('#my-materials summary').click();
+  await expect(page.locator('#buy-table')).toContainText('20');
+  await expect(page.locator('.ready')).toHaveCount(0);                                              // пока ничего не указано — сводки по рецепту нет
+  const before = log.calc.length;
+  await page.locator('#my-materials input[data-have="T4_CLOTH"]').fill('12');
+  await page.locator('#my-materials input[data-have="T4_RUNE"]').fill('96');
+  const cloth = page.locator('#buy-table tr', { hasText: 'Изысканная ткань' });
+  await expect(cloth).toContainText('есть 12');
+  await expect(cloth).toContainText('докупить 8');
+  await expect(cloth).toContainText('800');                                                          // 8 шт × 100
+  await expect(page.locator('#buy-table tr', { hasText: 'Руна' })).toContainText('хватает своих');
+  await expect(page.locator('.ready')).toContainText('можно скрафтить 6 из 10');                     // ткани хватает на 12/20 = 60% от 10 штук
+  expect(log.calc.length).toBe(before);                                                              // без запроса к серверу
+  await page.locator('#my-materials input[data-have="T4_CLOTH"]').fill('25');
+  await expect(page.locator('.ready')).toContainText('всё есть на 10 шт');
+  await expect(cloth).toContainText('хватает своих');
+  await page.locator('#inv-reset').click();
+  await expect(page.locator('.ready')).toHaveCount(0);
+  await expect(page.locator('#my-materials input[data-have="T4_CLOTH"]')).toHaveValue('');
+  await expect(cloth).not.toContainText('хватает своих');
+});
+
+test('мои материалы: стек раздаёт общий запас позициям по порядку — по каждому гиру видно, что докупить и сколько уже можно скрафтить', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
+  await page.locator('#my-materials summary').click();
+  await page.locator('#my-materials input[data-have="T4_CLOTH"]').fill('30');
+  await page.locator('#my-materials input[data-have="T4_RUNE"]').fill('500');
+  const cards = page.locator('#shopping .ready');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.nth(0)).toContainText('всё есть');                                              // первая позиция забрала свои 20 ткани и 96 рун
+  await expect(cards.nth(1)).not.toContainText('всё есть');                                          // второй досталось 10 ткани из 20
+  await expect(cards.nth(1).locator('tbody tr').first().locator('td').nth(3)).toHaveText('10');            // ткани у второй позиции — докупить 10
+  const cloth = page.locator('#shopping .shop[data-res="T4_CLOTH"]');
+  await expect(cloth).toContainText('нужно 40, есть 30');
+  await expect(cloth.locator('.shop-n b').first()).toHaveText('10');
+  await expect(page.locator('#shopping .shop[data-res="T4_RUNE"]')).toContainText('хватает своих');
+  await expect(page.locator('#shopping .statusline')).toContainText('Итого докупить');
+  await page.reload();                                                                               // запас хранится в браузере
+  expect(JSON.parse(await page.evaluate(() => localStorage.getItem('albion_next_inventory'))).have).toEqual({ T4_CLOTH: 30, T4_RUNE: 500 });
+});

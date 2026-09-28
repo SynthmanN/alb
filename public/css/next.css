@@ -553,3 +553,19 @@ details.cityprices > summary:hover { color: var(--text); }
 .comp-row .item.mat { font-size: 13px; }
 .comp-row .item.mat .glyph { width: 28px; height: 28px; }
 .comp-row .manual-price { width: 110px; }
+
+/* Мои материалы и «что можно скрафтить» */
+.inv-panel { padding: 12px 16px; margin-bottom: 14px; }
+.inv-panel > summary { cursor: pointer; }
+.inv-panel .tw { margin-top: 10px; }
+.inv-panel td, .ready-table td { vertical-align: top; }
+.inv-panel .inv-sep td { padding-top: 12px; font-size: 12.5px; }
+.inv-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-top: 10px; font-size: 12.5px; }
+input.have-input { width: 96px; padding: 5px 8px; border-radius: 9px; font-size: 13.5px; }
+input.have-input.is-manual { box-shadow: inset 0 0 0 1.5px var(--accent); }
+tr.inv-ok td { background: color-mix(in srgb, var(--good) 6%, transparent); }
+.ready-list { display: grid; gap: 10px; margin-top: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); }
+.ready { padding: 12px 16px; }
+.ready-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 8px; }
+.ready-table { width: 100%; }
+.ready-comp { margin: 3px 0 0 6px; font-size: 12.5px; color: var(--muted); }

@@ -6,7 +6,9 @@ import { calcStore, resetOwn, setChainChoice, setForceMain } from './calc-store.
 import { prices, setOwn, setCityOwn, pickCity, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
 import { CityPriceList } from './citylist.js';
 import { CityPill, Tags, MaterialName, Switch, toast } from './ui.js';
-import { acquisitionRows, withOverride, sortByCity } from './logic/acquire.js';
+import { withOverride, sortByCity } from './logic/acquire.js';
+import { makePool, allocateItem } from './logic/inventory.js';
+import { MyMaterials, Readiness, useInventory } from './inventory-ui.js';
 import { lotsAverage } from './logic/manual.js';
 
 const unitPlaceholder = (p) => (p === null || p === undefined ? 'своя цена' : String(Math.round(p * (Math.abs(p) < 100 ? 10 : 1)) / (Math.abs(p) < 100 ? 10 : 1)));
@@ -112,8 +114,7 @@ function RecipeTable({ d, lists, invalidate }) {
     <tfoot><tr class="materials-total"><td colspan="3">Итого материалы к закупке (с учётом возврата)</td><td class="neg">${fmt(total)}</td><td></td><td></td></tr></tfoot></table></div></div>`;
 }
 
-function PlanTable({ d, c, override }) {
-  const rows = useMemo(() => acquisitionRows(d, itemLabel), [d]);
+function PlanTable({ d, c, override, rows }) {
   const done = rows.filter((r) => c.checks[r.key]).length;
   let total = 0;
   const view = sortByCity(rows.map((raw) => { const ov = override(raw.key); const r = ov ? withOverride(raw, ov) : raw; if (r.sum !== null) total += r.sum; return { r, own: ov && !ov.picked ? ov.price : undefined }; }), (x) => x.r);   // по городам: что купить здесь — подряд
@@ -123,10 +124,10 @@ function PlanTable({ d, c, override }) {
       <td><div class="matrow"><input type="checkbox" class="ck" checked=${!!c.checks[r.key]} onChange=${(e) => calcStore.set({ checks: { ...c.checks, [r.key]: e.target.checked } })} aria-label=${`Куплено: ${r.name}`} />
         <${MaterialName} id=${r.id} name=${r.name} /></div>
         ${r.why ? html`<div class="muted" style="font-size:12.5px;margin-left:28px">${r.why}</div>` : null}</td>
-      <td>${fmt(r.needed)}</td>
-      <td class="plan-cities">${r.cities.length ? r.cities.map((x) => html`<div key=${x.city}><${CityPill} name=${x.city} /> <span class="muted">${fmt(x.qty)} шт по ${fmt(x.price, x.price < 100 ? 1 : 0)}</span></div>`) : html`<span class="pill w">нет данных</span>`}</td>
-      <td class="neg">${r.unit === null || r.unit === undefined ? 'нет цены' : fmt(r.unit, r.unit < 100 ? 1 : 0)}${own !== undefined ? html` <small class="is-manual-note">своя</small>` : null}</td>
-      <td><${OwnPrice} resKey=${r.key} market=${raw0(rows, r.key)} needed=${r.needed} scope="plan" /></td>
+      <td>${fmt(r.needed)}${r.have > 0 ? html`<br /><small class="muted" title="Закрыто твоими материалами">есть ${fmt(r.have)}${r.toBuy > 0 ? html` · докупить <b>${fmt(r.toBuy)}</b>` : ''}</small>` : null}</td>
+      <td class="plan-cities">${r.have > 0 && r.toBuy === 0 ? html`<span class="pill g">хватает своих</span>` : r.cities.length ? r.cities.map((x) => html`<div key=${x.city}><${CityPill} name=${x.city} /> <span class="muted">${fmt(x.qty)} шт по ${fmt(x.price, x.price < 100 ? 1 : 0)}</span></div>`) : html`<span class="pill w">нет данных</span>`}</td>
+      <td class="neg">${r.have > 0 && r.toBuy === 0 ? '—' : r.unit === null || r.unit === undefined ? 'нет цены' : fmt(r.unit, r.unit < 100 ? 1 : 0)}${own !== undefined ? html` <small class="is-manual-note">своя</small>` : null}</td>
+      <td><${OwnPrice} resKey=${r.key} market=${raw0(rows, r.key)} needed=${r.toBuy ?? r.needed} scope="plan" /></td>
       <td class="neg">${r.sum === null || r.sum === undefined ? '—' : fmt(r.sum)}</td>
       <td>${r.days !== null && r.days !== undefined ? fmtDays(r.days) : '—'}</td></tr>`)}</tbody>
     <tfoot><tr class="materials-total"><td colspan="5">Итого на план закупки</td><td class="neg">${fmt(total)}</td><td></td></tr></tfoot></table></div>
@@ -178,10 +179,15 @@ export function BuyTab({ c, d, lists, override, invalidate }) {
   const pr = useStore(prices);
   const eac = d.enchantAfterCraft;
   const b = d.baseChoice;
+  const have = useInventory();
+  const alloc = useMemo(() => allocateItem(d, itemLabel, makePool(have)), [d, have]);
+  const anyHave = Object.keys(have).length > 0;
   return html`<div id="sub-buy">
+    <${MyMaterials} allocs=${[alloc]} nameOf=${(id) => nameOf(d, id)} />
+    ${anyHave ? html`<${Readiness} title=${itemLabel(d.itemId)} alloc=${alloc} />` : null}
     ${d.hasAllMaterialPrices === false ? html`<p class="calc-note warnline">⚠ По части материалов (например, чертежи и жетоны фракций) нет рыночных цен в выбранных городах — итоговая себестоимость занижена на их стоимость.</p>` : null}
     <${RecipeTable} d=${d} lists=${lists} invalidate=${invalidate} />
-    <${PlanTable} d=${d} c=${c} override=${override} />
+    <${PlanTable} d=${d} c=${c} override=${override} rows=${alloc.rows} />
     ${d.manualPrices && hasAnyPrices(pr) ? html`<p class="note"><button type="button" class="btn sm manual-reset" onClick=${resetOwn}>Сбросить свои цены</button> Расчёт идёт по твоим ценам; «Сравнение по тирам» и качеству считает по рыночным.</p>` : null}
     <div class="card box" style="margin-top:14px"><div class="kv" id="cost-summary">
       <div><span>Себестоимость материала / шт (сырое)</span><b>${fmt(Math.round(d.materialCostPerUnit))}</b></div>
