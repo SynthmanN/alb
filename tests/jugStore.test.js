@@ -109,3 +109,38 @@ describe('кувшин: вписанные цены (общие, недосто�
     expect(getManualPrices(db, ['T1_FACTION_FOREST_TOKEN_1'], now + MANUAL_PRICE_TTL_MS + 10)).toEqual({});   // прошло 10 дней
   });
 });
+
+describe('кувшин: REST не откатывает более свежее (живой поток NATS)', () => {
+  const row = (db) => db.prepare('SELECT * FROM prices').get();
+  it('ответ REST с более ранней датой не затирает цену, а с более поздней или равной — обновляет', () => {
+    const db = openJug();
+    upsertPriceSnapshots(db, [price({ sell_price_min: 900, sell_price_min_date: '2026-01-01T12:00:00' })], 1000);
+    upsertPriceSnapshots(db, [price({ sell_price_min: 1000, sell_price_min_date: '2026-01-01T10:00:00' })], 2000);
+    expect(row(db)).toMatchObject({ sell_price_min: 900, sell_price_min_date: '2026-01-01T12:00:00', fetched_at: 2000 });
+    upsertPriceSnapshots(db, [price({ sell_price_min: 950, sell_price_min_date: '2026-01-01T12:00:00' })], 3000);
+    expect(row(db).sell_price_min).toBe(950);
+    upsertPriceSnapshots(db, [price({ sell_price_min: 1100, sell_price_min_date: '2026-01-01T13:00:00' })], 4000);
+    expect(row(db)).toMatchObject({ sell_price_min: 1100, sell_price_min_date: '2026-01-01T13:00:00' });
+  });
+  it('продажа и покупка сравниваются по отдельности: устаревшая половина не мешает обновиться другой', () => {
+    const db = openJug();
+    upsertPriceSnapshots(db, [price({ sell_price_min_date: '2026-01-01T12:00:00', buy_price_max: 800, buy_price_max_date: '2026-01-01T09:00:00' })], 1000);
+    upsertPriceSnapshots(db, [price({ sell_price_min: 1234, sell_price_min_date: '2026-01-01T10:00:00', buy_price_max: 850, buy_price_max_date: '2026-01-01T11:00:00' })], 2000);
+    expect(row(db)).toMatchObject({ sell_price_min: 1000, buy_price_max: 850, buy_price_max_date: '2026-01-01T11:00:00' });
+  });
+  it('ответ без даты (ордеров нет) по-прежнему убирает цену', () => {
+    const db = openJug();
+    upsertPriceSnapshots(db, [price()], 1000);
+    upsertPriceSnapshots(db, [price({ sell_price_min: 0, sell_price_min_date: '0001-01-01T00:00:00' })], 2000);
+    expect(row(db)).toMatchObject({ sell_price_min: null, sell_price_min_date: null });
+  });
+  it('история: отстающий REST с меньшим числом сделок в часе не затирает уже записанное, большее — обновляет', () => {
+    const db = openJug();
+    const series = (n, avg) => [{ item_id: 'T4_MAIN_SWORD', location: 'Lymhurst', quality: 1, data: [{ timestamp: '2026-01-01T10:00:00', item_count: n, avg_price: avg }] }];
+    upsertHistoryBatch(db, series(9, 700), 1000);
+    upsertHistoryBatch(db, series(5, 650), 2000);
+    expect(db.prepare('SELECT item_count, avg_price FROM history').get()).toMatchObject({ item_count: 9, avg_price: 700 });
+    upsertHistoryBatch(db, series(12, 720), 3000);
+    expect(db.prepare('SELECT item_count, avg_price FROM history').get()).toMatchObject({ item_count: 12, avg_price: 720 });
+  });
+});
