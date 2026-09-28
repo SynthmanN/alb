@@ -1,11 +1,13 @@
 // Расчёт позиций стека: каждая считается обычным /api/craft-calc (со своим количеством, деталями за серебро и «чарами после крафта»);
 // при включённом автовыборе считаются оба варианта, «после крафта» применяется при выигрыше 7%+. Движок создаётся на каждый стек:
 // у крафт-листа и стека калькулятора свои результаты, но одна логика.
-import { createStore, apiGet } from './lib.js';
+import { createStore, apiGet, itemLabel } from './lib.js';
 import { list, stack } from './list.js';
 import { calcStore } from './calc-store.js';
 import { commonParams, settings } from './settings.js';
 import { pickAfter, afterPossible, silverParts } from './logic/stack.js';
+import { inventory } from './inventory.js';
+import { stackPicks, hasHave } from './logic/inventory.js';
 
 const wantsAuto = (item, autoAfter) => autoAfter && afterPossible(item);
 const itemSig = (item, autoAfter, faction, common) => JSON.stringify([
@@ -69,9 +71,30 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
       cache.set(item.uid, { sig, data, pair });
       publish();
     }));
-    if (my === token) { store.set({ pending: 0 }); publish(); }
+    if (my === token) { store.set({ pending: 0 }); reapply(); }
+  }
+  // Автовыбор рецепта у позиций с вариантами: по профиту, а со своими материалами — ещё и по серебру, которое они экономят (logic/inventory.js stackPicks).
+  // Без запросов: варианты уже посчитаны. Идёт по всем позициям сразу, потому что материалы раздаются им по порядку.
+  function reapply() {
+    const { items } = ops.store.get();
+    const pairs = new Map();
+    const results = new Map();
+    for (const it of items) { const c = cache.get(it.uid); if (c) { results.set(it.uid, c.data); if (c.pair) pairs.set(it.uid, c.pair); } }
+    const picks = hasHave(inventory.get().have)
+      ? stackPicks(items, pairs, results, inventory.get().have, itemLabel)
+      : new Map(items.filter((it) => pairs.has(it.uid) && it.on !== false).map((it) => [it.uid, pickAfter(it, pairs.get(it.uid))]));
+    for (const it of items) {
+      const c = cache.get(it.uid);
+      const pick = picks.get(it.uid);
+      if (!c || !c.pair || !pick) continue;
+      c.data = pick.data;
+      if (!!it.after !== pick.use || (it.craftEnchant || 0) !== pick.level) ops.patch(it.uid, { after: pick.use, craftEnchant: pick.level });
+    }
+    publish();
   }
   const schedule = () => { clearTimeout(timer); timer = setTimeout(run, 450); };
+  let invTimer = null;
+  inventory.subscribe(() => { clearTimeout(invTimer); invTimer = setTimeout(reapply, 120); });   // свои материалы меняют выбор рецепта — без запросов
   ops.store.subscribe(schedule);
   settings.subscribe(schedule);
   for (const w of watch) w.subscribe(schedule);
@@ -81,15 +104,7 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
     schedule,
     invalidate(uid) { cache.delete(uid); schedule(); },
     // своя цена продажи меняет выбор «после крафта» по уже посчитанным вариантам — без запросов
-    redecide(uid) {
-      const c = cache.get(uid);
-      const item = ops.store.get().items.find((i) => i.uid === uid);
-      if (!c || !c.pair || !item) return;
-      const pick = pickAfter(item, c.pair);
-      c.data = pick.data;
-      if (!!item.after !== pick.use || (item.craftEnchant || 0) !== pick.level) ops.patch(uid, { after: pick.use, craftEnchant: pick.level });
-      publish();
-    },
+    redecide() { reapply(); },
   };
 }
 

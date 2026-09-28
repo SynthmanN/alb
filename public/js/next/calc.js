@@ -16,10 +16,41 @@ import { SellTab } from './calc-sell.js';
 import { FreshnessButton } from './freshness.js';
 import { ProfileBar } from './profiles.js';
 import { collectVariantIds } from './logic/freshness.js';
+import { useInventory } from './inventory-ui.js';
+import { hasHave } from './logic/inventory.js';
 
 export { calcStore };
 const maxEnchant = (id) => (itemTier(id) >= 4 ? 4 : 0);
 let runId = 0;
+
+function calcParams(c, after) {
+  const params = { ...commonParams(), item: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, ...(after ? { enchantAfterCraft: 'true' } : {}) };
+  const fac = craftList.get().faction;
+  if (c.faction && fac) {                                   // фракционный плащ из плана: герб и сердце за очки, если не куплены за серебро
+    params.faction = fac.id; params.factionPoints = fac.points;
+    const sp = [c.crestSilver ? 'crest' : null, c.heartSilver ? 'heart' : null].filter(Boolean);
+    if (sp.length) params.partsSilver = sp.join(',');
+  }
+  return params;
+}
+// Смешанные рецепты: ещё по одному расчёту на каждый уровень базы .1…(цель-1) — сравнение и выбор в панели «Зачарование после крафта»
+const hybridLevels = (c, after) => (after && c.enchant >= 2 && settings.get().mixedRecipes ? Array.from({ length: Math.min(c.enchant, 3) - 1 }, (_, i) => i + 1) : []);
+
+// Второй путь той же вещи (если загружен прямой — «после крафта» и смешанные, и наоборот): нужен, чтобы сравнить рецепты на твоих материалах
+export async function loadAlt(sig) {
+  const c = calcStore.get();
+  if (!c.itemId || c.enchant < 1 || c.enchant > 3) return;
+  const other = !c.after;
+  const params = calcParams(c, other);
+  const levels = hybridLevels(c, other);
+  try {
+    const [data, ...hy] = await Promise.all([apiGet('/api/craft-calc', params, { ttl: 90000 }), ...levels.map((l) => apiGet('/api/craft-calc', { ...params, craftEnchant: l }, { ttl: 90000 }).catch(() => null))]);
+    if (calcStore.get().sig !== sig) return;
+    calcStore.set({ alt: { sig, data, hybrids: Object.fromEntries(levels.map((l, i) => [l, hy[i]]).filter(([, d]) => d)) } });
+  } catch (err) {
+    if (calcStore.get().sig === sig) calcStore.set({ alt: { sig, data: null, hybrids: {}, error: err.message } });
+  }
+}
 
 export async function runCalc(sig) {
   const c = calcStore.get();
@@ -27,20 +58,13 @@ export async function runCalc(sig) {
   const id = ++runId;
   calcStore.set({ loading: true, error: '' });
   try {
-    const params = { ...commonParams(), item: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, ...(c.after ? { enchantAfterCraft: 'true' } : {}) };
-    const fac = craftList.get().faction;
-    if (c.faction && fac) {                                   // фракционный плащ из плана: герб и сердце за очки, если не куплены за серебро
-      params.faction = fac.id; params.factionPoints = fac.points;
-      const sp = [c.crestSilver ? 'crest' : null, c.heartSilver ? 'heart' : null].filter(Boolean);
-      if (sp.length) params.partsSilver = sp.join(',');
-    }
-    // Смешанные рецепты: ещё по одному расчёту на каждый уровень базы .1…(цель-1) — сравнение и выбор в панели «Зачарование после крафта»
-    const levels = c.after && c.enchant >= 2 && settings.get().mixedRecipes ? Array.from({ length: Math.min(c.enchant, 3) - 1 }, (_, i) => i + 1) : [];
+    const params = calcParams(c, c.after);
+    const levels = hybridLevels(c, c.after);
     const [data, ...hy] = await Promise.all([apiGet('/api/craft-calc', params, { ttl: 90000 }), ...levels.map((l) => apiGet('/api/craft-calc', { ...params, craftEnchant: l }, { ttl: 90000 }).catch(() => null))]);
     const hybrids = Object.fromEntries(levels.map((l, i) => [l, hy[i]]).filter(([, d]) => d));
     if (id !== runId) return;
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
-    calcStore.set({ data, hybrids, sig, loading: false, checks: {}, toggles: null, manualQty: {} });      // план продажи сбрасывается с новым расчётом; свои цены остаются
+    calcStore.set({ data, hybrids, sig, loading: false, checks: {}, toggles: null, manualQty: {}, alt: null });      // план продажи сбрасывается с новым расчётом; свои цены остаются
   } catch (err) {
     if (id === runId) calcStore.set({ loading: false, error: err.message, sig });
   }
@@ -119,7 +143,12 @@ function SingleCalc() {
     if (c.stackMode && c.stackFocus && c.itemId) stack.patch(c.stackFocus, { itemId: c.itemId, enchant: c.enchant, quality: c.quality, quantity: c.qty, after: c.after, plan: planOfStore(c) });
   }, [c.stackFocus, c.itemId, c.enchant, c.quality, c.qty, c.after, c.toggles, c.manualQty, c.cityPrices, c.strategy]);
   const set = (p) => calcStore.set(p);
-  const { d, st, p, override, lists } = useMemo(() => derive(c, s, pr), [c.data, c.hybrids, c.chainChoice, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog]);
+  const have = useInventory();
+  const owned = hasHave(have);
+  useEffect(() => {                                              // свои материалы есть — грузим второй рецепт той же вещи для сравнения
+    if (owned && c.data && !c.loading && c.sig === sig && (!c.alt || c.alt.sig !== sig)) loadAlt(sig);
+  }, [owned, c.data, c.loading, c.sig, sig]);
+  const { d, st, p, override, lists, variantLevel } = useMemo(() => derive(c, s, pr, have), [c.data, c.hybrids, c.chainChoice, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog, have]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
   const subs = [['buy', 'Закупка'], ['sell', 'Продажа']];   // «Сравнение по тирам» и по качеству — свёрнутым блоком «Ещё сравнения» внутри «Продажа» (calc-sell.js)
@@ -144,6 +173,6 @@ function SingleCalc() {
       <div class="statusnote" style="margin:0 2px 10px;text-align:left" id="calc-source">${d.dataSource === 'aodp' ? 'Данные: AODP напрямую' : `Данные: краулер${d.jug && d.jug.lastPricePass ? ` · цены обновлены ${fmtAge((Date.now() - d.jug.lastPricePass) / 60000)}` : ''}`}${d.blackMarket ? ' · Чёрный Рынок — живым запросом (краулер его не собирает)' : ''}${c.loading ? ' · пересчитываю…' : ''}</div>
       <${Verdict} c=${c} d=${d} p=${p} st=${st} invalidate=${invalidate} />
       <div class="subtabs" role="tablist">${subs.map(([id, t]) => html`<button type="button" role="tab" key=${id} aria-selected=${String(c.sub === id)} onClick=${() => set({ sub: id })}>${t}</button>`)}</div>
-      ${c.sub === 'buy' ? html`<${BuyTab} c=${c} d=${d} lists=${lists} override=${override} invalidate=${invalidate} />` : html`<${SellTab} c=${c} d=${d} p=${p} st=${st} />`}</div>` : null}
+      ${c.sub === 'buy' ? html`<${BuyTab} c=${c} d=${d} lists=${lists} override=${override} invalidate=${invalidate} variantLevel=${variantLevel} />` : html`<${SellTab} c=${c} d=${d} p=${p} st=${st} />`}</div>` : null}
   </section>`;
 }

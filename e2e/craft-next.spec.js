@@ -1163,3 +1163,89 @@ test('мои материалы: стек раздаёт общий запас �
   await page.reload();                                                                               // запас хранится в браузере
   expect(JSON.parse(await page.evaluate(() => localStorage.getItem('albion_next_inventory'))).have).toEqual({ T4_CLOTH: 30, T4_RUNE: 500 });
 });
+
+test('мои материалы: пикер добавляет любой материал, в том числе зачарованный, и он запоминается', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  await page.locator('#my-materials summary').click();
+  await page.locator('#inv-search').fill('T4_CLOTH_LEVEL2');
+  await expect(page.locator('#inv-suggest [data-add]')).toHaveCount(1);
+  await page.locator('#inv-suggest [data-add="T4_CLOTH_LEVEL2@2"]').click();
+  const input = page.locator('#my-materials input[data-have="T4_CLOTH_LEVEL2@2"]');
+  await expect(input).toHaveValue('1');
+  await expect(input).toBeFocused();
+  await input.fill('7');
+  await page.locator('#inv-search').fill('');
+  await page.locator('#inv-kind').selectOption('enchant');
+  await page.locator('#inv-tier').selectOption('5');
+  await expect(page.locator('#inv-suggest [data-add]')).toHaveCount(3);                              // руна, душа и реликвия пятого тира
+  await page.reload();
+  expect(JSON.parse(await page.evaluate(() => localStorage.getItem('albion_next_inventory'))).have).toEqual({ 'T4_CLOTH_LEVEL2@2': 7 });
+});
+
+test('мои материалы: свои сырьё и ткань предыдущего тира переключают путь ткани с покупки на переработку', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await page.route('**/api/unified-scan*', (route) => route.fulfill({ json: SCAN }));
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    log.calc.push(q);
+    const d = calc(q);
+    d.recipe[0].refineOption = { rate: 0.5, price: 130, components: [{ id: 'T4_FIBER', count: 2, price: 80, city: 'Martlock' }, { id: 'T3_CLOTH', count: 1, price: 100, city: 'Martlock' }] };
+    route.fulfill({ json: d });
+  });
+  await page.goto('/craft.html');
+  await page.locator('[data-tab="calc"]').click();
+  await page.locator('#c-search').fill('лук');
+  await page.locator('.suggest button').first().click();
+  await expect(page.locator('#verdict')).toBeVisible();
+  await page.locator('#my-materials summary').click();
+  await page.locator('#inv-search').fill('T4_FIBER');
+  await page.locator('#inv-suggest [data-add="T4_FIBER"]').click();
+  await page.locator('#my-materials input[data-have="T4_FIBER"]').fill('20');
+  const before = log.calc.length;
+  const refine = page.locator('#buy-table tr', { hasText: 'для переработки' });                     // готовую ткань не покупаем — делаем сами
+  await expect(refine).toHaveCount(2);
+  await expect(refine.filter({ hasText: 'предыдущий тир' })).toContainText('10 шт по 100');           // ткань предыдущего тира — докупить 10
+  await expect(refine.filter({ hasText: 'сырьё' })).toContainText('хватает своих');                  // сырьё закрыто своим
+  await expect(page.locator('.ready')).toContainText('по твоим материалам');
+  expect(log.calc.length).toBe(before);                                                               // путь пересчитан на клиенте, без запросов
+});
+
+test('мои материалы: карточка сравнения рецептов одной вещи — выгоднее всего тот, под который есть материалы; кнопка переключает расчёт', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await mock(page, log);
+  // прямой — 9 000/шт, база .0 + чары — 8 000/шт, гибрид с базой .1 — 8 100/шт (зато под него можно принести свою ткань .1)
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    log.calc.push(q);
+    const base = calc(q);
+    const after = q.get('enchantAfterCraft') === 'true';
+    const lvl = Number(q.get('craftEnchant') || 0);
+    const cost = !after ? 9000 : lvl === 1 ? 8100 : 8000;
+    const steps = [{ level: lvl + 1, materialId: 'T4_RUNE', materialName: 'Руна', count: 96, cheapestPrice: 10, cheapestCity: 'Martlock', cost: 960 }];
+    const out = { ...base, effectiveCostPerUnit: cost, totalCost: cost * Number(q.get('quantity')), hasAllMaterialPrices: true };
+    if (after) {
+      out.recipe = [{ ...base.recipe[0], resource: 'T4_CLOTH', queryId: lvl === 1 ? 'T4_CLOTH_LEVEL1@1' : 'T4_CLOTH' }];
+      out.enchantAfterCraft = { forced: false, targetLevel: 2, capped: false, baseLevel: lvl, baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: cost - 960, baseCostPerUnit: cost - 960, steps, stepsCostPerUnit: 960,
+        chainEntryLevel: 0, chainEntryId: null, chainEntryLabel: null, chainEntryCity: null, neededSteps: steps, readyItems: [], candidates: [{ entryLevel: 0, cost, entryPrice: cost - 960, entryCity: null, entryLabel: null }] };
+    }
+    route.fulfill({ json: out });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#scan-run').click();
+  await page.locator('#scan-rows .row').nth(1).click();
+  await page.locator('.detail .btn', { hasText: 'Открыть в калькуляторе' }).click();
+  await expect(page.locator('#verdict')).toBeVisible();
+  await expect(page.locator('#recipe-compare')).toHaveCount(0);                                     // пока материалов нет — сравнивать нечего
+  await page.locator('#my-materials summary').click();
+  await page.locator('#inv-search').fill('T4_CLOTH_LEVEL1');
+  await page.locator('#inv-suggest [data-add="T4_CLOTH_LEVEL1@1"]').click();
+  await page.locator('#my-materials input[data-have="T4_CLOTH_LEVEL1@1"]').fill('20');
+  const cmp = page.locator('#recipe-compare');
+  await expect(cmp.locator('tr[data-variant]')).toHaveCount(3);                                     // прямой, база .0 и база .1
+  await expect(cmp.locator('tr[data-variant="after1"]')).toContainText('выгоднее всего');           // 8 100 − 2 000/10 = 7 900 против 8 000
+  await expect(page.locator('#cost-summary')).toContainText('8 100');                                // расчёт выбрал этот рецепт сам
+  await cmp.locator('tr[data-variant="direct"] [data-use]').click();
+  await expect(cmp.locator('tr[data-variant="direct"]')).toContainText('выбран');
+  await expect(page.locator('#cost-summary')).toContainText('9 000');
+});

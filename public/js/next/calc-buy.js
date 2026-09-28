@@ -7,8 +7,8 @@ import { prices, setOwn, setCityOwn, pickCity, addLot, setLot, delLot, hasAnyPri
 import { CityPriceList } from './citylist.js';
 import { CityPill, Tags, MaterialName, Switch, toast } from './ui.js';
 import { withOverride, sortByCity } from './logic/acquire.js';
-import { makePool, allocateItem } from './logic/inventory.js';
-import { MyMaterials, Readiness, useInventory } from './inventory-ui.js';
+import { makePool, allocateItem, recipeVariants, compareVariants } from './logic/inventory.js';
+import { MyMaterials, Readiness, RecipeCompare, useInventory } from './inventory-ui.js';
 import { lotsAverage } from './logic/manual.js';
 
 const unitPlaceholder = (p) => (p === null || p === undefined ? 'своя цена' : String(Math.round(p * (Math.abs(p) < 100 ? 10 : 1)) / (Math.abs(p) < 100 ? 10 : 1)));
@@ -174,7 +174,7 @@ function Teleport({ d }) {
       <div><span>Себестоимость с логистикой / шт</span><b>${fmt(t.costPerUnit)}</b></div>${opt('Продажа через Sell Order', t.patient)}${opt('Продажа в Buy Order', t.instant)}</div>`);
 }
 
-export function BuyTab({ c, d, lists, override, invalidate }) {
+export function BuyTab({ c, d, lists, override, invalidate, variantLevel = 0 }) {
   const s = useStore(settings);
   const pr = useStore(prices);
   const eac = d.enchantAfterCraft;
@@ -182,8 +182,14 @@ export function BuyTab({ c, d, lists, override, invalidate }) {
   const have = useInventory();
   const alloc = useMemo(() => allocateItem(d, itemLabel, makePool(have)), [d, have]);
   const anyHave = Object.keys(have).length > 0;
+  const cmp = useMemo(() => {
+    const variants = anyHave && c.alt ? recipeVariants({ after: c.after, data: c.data, hybrids: c.hybrids, alt: c.alt }) : [];
+    return variants.length > 1 ? compareVariants(variants, have, itemLabel) : null;
+  }, [anyHave, have, c.alt, c.after, c.data, c.hybrids]);
+  const useVariant = (v) => { if (v.after) setChainChoice(v.level, null); calcStore.set({ after: v.after }); };
   return html`<div id="sub-buy">
     <${MyMaterials} allocs=${[alloc]} nameOf=${(id) => nameOf(d, id)} />
+    <${RecipeCompare} cmp=${cmp} currentKey=${c.after ? `after${variantLevel}` : 'direct'} onPick=${useVariant} />
     ${anyHave ? html`<${Readiness} title=${itemLabel(d.itemId)} alloc=${alloc} />` : null}
     ${d.hasAllMaterialPrices === false ? html`<p class="calc-note warnline">⚠ По части материалов (например, чертежи и жетоны фракций) нет рыночных цен в выбранных городах — итоговая себестоимость занижена на их стоимость.</p>` : null}
     <${RecipeTable} d=${d} lists=${lists} invalidate=${invalidate} />

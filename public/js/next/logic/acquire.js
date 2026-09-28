@@ -21,6 +21,45 @@ export function trimCities(cities, qty) {
   return out;
 }
 
+// Порог как на сервере (server.js, MIN_ALT_GAIN): переработка/крафт самому вместо покупки — только если дешевле не меньше чем на 5%
+export const MIN_ALT_GAIN = 0.05;
+
+// Цена и город покупки готового материала. Если сервер выбрал переработку/крафт, покупная цена лежит в buyPrice, а город — среди cityPrices
+export function buyQuote(r) {
+  if ((r.materialSource || 'buy') === 'buy') return { price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity };
+  if (!(r.buyPrice > 0)) return { price: null, city: null };
+  const cheapest = [...(r.cityPrices || [])].sort((a, b) => a.price - b.price)[0];
+  return { price: r.buyPrice, city: cheapest ? cheapest.city : null };
+}
+const compNeeds = (r, kind, rest) => (kind === 'craft'
+  ? r.craftOption.components.map((cp) => ({ cp, need: Math.ceil(rest * cp.count * cp.factor) }))
+  : r.refineOption.components.map((cp, i) => ({ cp, need: Math.ceil(rest * cp.count * (1 - r.refineOption.rate)), role: i === 0 ? 'raw' : 'prev' })));
+
+// Путь материала рецепта с учётом твоих материалов: купить готовый / переработать / скрафтить самому — по цене того, что придётся докупить.
+// Свой готовый полуфабрикат и свои компоненты стоят 0. Без пула (или если свои материалы этого пути не касаются) остаётся выбор сервера;
+// другой путь берётся, только если он дешевле выбора сервера не меньше чем на MIN_ALT_GAIN.
+export function chooseSource(r, pool) {
+  const server = r.materialSource || 'buy';
+  if (!pool || server === 'points') return server;
+  const kinds = ['buy', ...(r.refineOption ? ['refine'] : []), ...(r.craftOption ? ['craft'] : [])];
+  if (kinds.length < 2) return server;
+  const rid = r.queryId || r.resource;
+  const total = r.neededToBuy;
+  const rest = total - Math.min(pool.peek(rid), total);
+  const cost = (kind) => {
+    if (kind === 'buy') { const q = buyQuote(r); return q.price > 0 ? rest * q.price : Infinity; }
+    return compNeeds(r, kind, rest).reduce((sum, { cp, need }) => {
+      const left = Math.max(need - pool.peek(cp.id), 0);
+      return sum + (left <= 0 ? 0 : cp.price > 0 ? left * cp.price : Infinity);
+    }, 0);
+  };
+  const cur = cost(server);
+  let best = server;
+  let bestCost = cur;
+  for (const kind of kinds) { const v = cost(kind); if (v < bestCost) { best = kind; bestCost = v; } }
+  return best !== server && bestCost < cur * (1 - MIN_ALT_GAIN) ? best : server;
+}
+
 export function acquisition(data, nameOf = (id) => id, pool = null) {
   const byRes = data.acquire ? data.acquire.byResource : [];
   const planFor = (pick) => byRes.find(pick) || null;
@@ -70,16 +109,20 @@ export function acquisition(data, nameOf = (id) => id, pool = null) {
     for (const r of data.recipe || []) {
       if (r.materialSource === 'points') continue;                       // за очки — в серебре не покупается
       const rid = r.queryId || r.resource;
-      if (r.materialSource === 'craft' && r.craftOption) {
+      const src = chooseSource(r, pool);
+      const before = lines.length;
+      if (src === 'craft' && r.craftOption) {
         viaComponents(r, rid, 'craft', (rest) => r.craftOption.components.map((cp) => push({ id: cp.id, key: cp.id, why: `для крафта самому: ${label(rid)}`, needed: Math.ceil(rest * cp.count * cp.factor), srv: planFor((a) => a.parent === r.resource && a.source === 'craft' && a.queryId === cp.id), price: cp.price, city: cp.city })));
-      } else if (r.materialSource === 'refine' && r.refineOption) {
+      } else if (src === 'refine' && r.refineOption) {
         viaComponents(r, rid, 'refine', (rest) => r.refineOption.components.map((cp, i) => {
           const role = i === 0 ? 'raw' : 'prev';
           return push({ id: cp.id, key: cp.id, why: `${role === 'raw' ? 'сырьё' : 'предыдущий тир'} для переработки в ${label(rid)}`, needed: Math.ceil(rest * cp.count * (1 - r.refineOption.rate)), srv: planFor((a) => a.parent === r.resource && a.source === 'refine' && a.role === role), price: cp.price, city: cp.city });
         }));
       } else {
-        line(rid, r.neededToBuy, push({ id: rid, key: rid, why: r.enchanted ? `зачарование .${eac && eac.baseLevel ? eac.baseLevel : data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: r.buyPrice || r.cheapestPrice, city: r.cheapestCity }));
+        const q = buyQuote(r);
+        line(rid, r.neededToBuy, push({ id: rid, key: rid, why: r.enchanted ? `зачарование .${eac && eac.baseLevel ? eac.baseLevel : data.enchant}` : '', needed: r.neededToBuy, srv: planFor((a) => (a.parent || a.resource) === r.resource && (a.source || 'buy') === 'buy'), price: q.price, city: q.city }));
       }
+      if (lines.length > before) Object.assign(lines[lines.length - 1], { source: src, switched: src !== (r.materialSource || 'buy') });
     }
   }
   for (const st of (eac && eac.neededSteps) || (eac && eac.steps) || []) {

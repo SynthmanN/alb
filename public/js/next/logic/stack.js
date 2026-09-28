@@ -38,15 +38,17 @@ export function itemProfit(item, d) {
 // Автовыбор рецепта: прямой крафт против «чар после крафта» — а «после» бывает разной глубины: база .0 и вся цепочка (pair.after) или
 // смешанный рецепт — база на уровне .L из зачарованного сырья (pair.hybrids[L]). Среди «после»-вариантов берётся самый выгодный по профиту,
 // и только если он выигрывает у прямого крафта на 7%+ (logic/afterCraft.js) — иначе остаётся прямой. level — уровень базы победителя (0 — обычная).
-export function pickAfter(item, pair) {
-  const pd = itemProfit(item, pair.direct);
+export function pickAfter(item, pair, bonus = null) {
+  // bonus(d) — серебро на штуку, которое экономят твои материалы в варианте d (logic/inventory.js); без своих материалов выбор — по чистому профиту
+  const value = (d) => { const pf = d ? itemProfit(item, d) : null; return pf ? pf.unit + (bonus ? bonus(d) : 0) : null; };
+  const pd = value(pair.direct);
   let best = null;
   const variants = [[0, pair.after], ...Object.entries(pair.hybrids || {}).map(([lvl, d]) => [Number(lvl), d])];
   for (const [level, d] of variants) {
-    const pf = d ? itemProfit(item, d) : null;
-    if (pf && (!best || pf.unit > best.unit)) best = { level, unit: pf.unit, data: d };
+    const v = value(d);
+    if (v !== null && (!best || v > best.unit)) best = { level, unit: v, data: d };
   }
-  const use = afterCraftWins(pd && pd.unit, best && best.unit);
+  const use = afterCraftWins(pd, best && best.unit);
   return { use, level: use ? best.level : 0, data: use ? best.data : pair.direct };
 }
 export const decideAfter = (item, pair) => pickAfter(item, pair).use;

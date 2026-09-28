@@ -9,6 +9,7 @@ import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
 import { makeOverride } from './logic/adjust.js';
 import { resetPrices } from './prices.js';
 import { activeCities } from './settings.js';
+import { makePool, ownedGain, hasHave } from './logic/inventory.js';
 
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 // своё для одной вещи (цены материалов — общие, в prices.js): цена мгновенной продажи, цены городов продажи, план продажи по городам,
@@ -17,7 +18,7 @@ export const emptyManual = () => ({ sellPrice: null, chainChoice: { baseLevel: n
 export const manualFromPlan = (plan) => ({ sellPrice: null, chainChoice: { baseLevel: null, entryLevel: null, forceMain: false }, ...emptyPlan(), ...(plan || {}) });
 export const calcStore = createStore({
   itemId: null, enchant: 0, quality: 4, qty: 10, after: false, faction: false, crestSilver: false, heartSilver: false, sub: 'buy',
-  data: null, hybrids: {}, loading: false, error: '', sig: '', checks: {}, ...emptyManual(),
+  data: null, hybrids: {}, alt: null, loading: false, error: '', sig: '', checks: {}, ...emptyManual(),
   stackMode: false, stackFocus: null,          // режим стека: общий вид активных позиций или одна позиция в фокусе (uid)
 });
 const set = (p) => calcStore.set(p);
@@ -41,10 +42,12 @@ export const setChainChoice = (baseLevel, entryLevel) => set({ chainChoice: { ba
 export const setForceMain = (on) => set({ chainChoice: { baseLevel: null, entryLevel: null, forceMain: on } });
 
 // Всё производное от ответа сервера и «своего»: пересчитанный результат, живой план продажи, профит
-export function derive(c, settings, prices) {
+// have — твои материалы (inventory.js): с ними автовыбор смешанного рецепта учитывает, сколько серебра они экономят
+export function derive(c, settings, prices, have = null) {
   if (!c.data) return { d: null, st: null, p: null };
   // Смешанные рецепты: выбранный вариант базы (.0 или гибрид .L) — дальше всё считается по нему, как по обычному ответу калькулятора
-  const variant = pickVariant(c.data, c.hybrids, c.chainChoice);
+  const gain = hasHave(have) ? (dd) => ownedGain(dd, (id) => id, makePool(have)) / (dd.quantity || 1) : null;
+  const variant = pickVariant(c.data, c.hybrids, c.chainChoice, gain);
   const base = variant.data;
   const lists = priceLists(base);
   const cities = activeCities(settings);
