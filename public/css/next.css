@@ -322,9 +322,9 @@ input[type=checkbox].ck:checked::after { content: ""; width: 4px; height: 8px; b
 .pbar .more .i { transition: transform .15s; }
 .pbar .more[aria-expanded="true"] .i { transform: rotate(90deg); }
 .pcities { justify-content: center; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); }
-.adv { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 26px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); }
-.adv[hidden] { display: none; }
-.adv input[type=number] { width: 110px; padding: 7px 11px; border-radius: 10px; }
+.pmore { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 26px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); }
+.pmore[hidden] { display: none; }
+.pmore input[type=number] { width: 110px; padding: 7px 11px; border-radius: 10px; }
 .statusnote { color: var(--muted); font-size: 12.5px; text-align: right; margin: -10px 2px 16px; }
 /* города: спокойные цветные метки (точка + текст одного оттенка на слабой подложке) */
 .city { --cc: var(--muted); --cb: var(--surface-2); --cl: transparent; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 99px; font-size: 12.5px; font-weight: 600; line-height: 1.55; color: var(--cc); background: var(--cb); box-shadow: inset 0 0 0 1px var(--cl); white-space: nowrap; border: 0; }
@@ -475,7 +475,7 @@ div.lot-row input { width: 76px; padding: 4px 7px; border-radius: 9px; font-size
 tr.below-threshold td { opacity: .45; }
 .warnline { color: var(--warn); }
 .kv b input { margin-left: 8px; }
-.adv input[type=number] { width: 120px; }
+.pmore input[type=number] { width: 120px; }
 .detail .dextra { grid-column: 1 / -1; display: grid; gap: 6px; }
 .detail .dextra:empty { display: none; }
 ul.bycity { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; font-size: 13px; }

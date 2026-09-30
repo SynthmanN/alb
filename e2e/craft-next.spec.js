@@ -64,7 +64,7 @@ test('параметры: профиль выставляет возврат, п
     expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(2);
   }
   await page.getByRole('button', { name: 'Ещё' }).click();
-  await expect(page.locator('#adv')).toBeVisible();
+  await expect(page.locator('#params-more')).toBeVisible();
   await page.locator('#cities .city', { hasText: 'Caerleon' }).click();
   await expect(page.locator('#status-note')).toContainText('городов 6');
 });
@@ -1283,7 +1283,7 @@ test('реролл качества: вложения растут на сред
   await page.locator('#reroll').selectOption('2');                                                    // после крафта уже хорошее — дешевле
   await expect(page.locator('#reroll-note')).toContainText('рерол 90 774');
   await page.locator('#reroll').selectOption('1');
-  await page.locator('[aria-controls="adv"], .more').first().click();
+  await page.locator('.more').first().click();
   await page.locator('#reroll-base').fill('5000');                                                    // своя цена первой попытки
   await expect(page.locator('#reroll-note')).toContainText('рерол 197 271');
   await page.locator('#reroll').selectOption('off');

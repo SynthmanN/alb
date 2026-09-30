@@ -75,7 +75,7 @@ export function ParamsBar() {
     <div class="pcities"><span class="pl">Города</span><span class="citylist" id="cities">
       ${MAIN_CITIES.map((c) => html`<${CityToggle} key=${c} name=${c} fixed=${true} on=${true} />`)}
       ${OPTIONAL_CITIES.map((c) => html`<${CityToggle} key=${c} name=${c} fixed=${false} on=${s.optional.includes(c)} />`)}</span></div>
-    ${more ? html`<div class="adv" id="adv">
+    ${more ? html`<div class="pmore" id="params-more">
       <${Switch} checked=${s.blackMarket} onChange=${(v) => settings.set({ blackMarket: v })} title="Показать цену Чёрного Рынка (свой налог: налог + Setup Fee всегда) в таблицах — вне расчёта, пока не включишь галочкой отдельно. Краулер его не собирает — он идёт живым запросом">Показывать Чёрный Рынок</${Switch}>
       <${Switch} checked=${s.enchantedRecipes} onChange=${(v) => settings.set({ enchantedRecipes: v })} title="Кроме «.0 → реролл качества → зачарование руны/души/реликты» считать рецепты из зачарованных материалов: прямой крафт .1/.2/.3 и смешанные (база на .1/.2). По умолчанию выключено: реролл .0 дешевле, а зачарование качество сохраняет">Рецепты с зачарованными материалами</${Switch}>
       <${Switch} checked=${s.mixedRecipes} onChange=${(v) => settings.set({ mixedRecipes: v })} title="Кроме «прямого» крафта и «.0 + вся цепочка рунами/душами/реликтами» считать смешанные рецепты: база сразу на уровне .1/.2 из зачарованного сырья, а докручиваются только оставшиеся шаги. Берётся самый выгодный, если он выигрывает у прямого не меньше чем на 7% профита">Смешанные рецепты зачарования</${Switch}>
