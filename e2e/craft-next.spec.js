@@ -1371,3 +1371,37 @@ test('стек: без рецептов из зачарованных матер
   expect(enchanted.every((q) => q.get('enchantAfterCraft') === 'true' && !q.get('craftEnchant'))).toBe(true);
   await expect(page.locator('#panel-calc .li-card').first().locator('.li-line')).toContainText('(рерол');
 });
+
+test('скан и реролл: настройки реролла и рецептов уходят на сервер; без зачарованных рецептов переключатели «после крафта» и «смешанные» скрыты; отдельной колонки реролла нет', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await page.addInitScript(() => localStorage.setItem('albion_next_settings', JSON.stringify({ rerollOn: true, rerollStart: 1, rerollBase: 3000, enchantedRecipes: false })));   // после beforeEach
+  await mock(page, log);
+  await page.route('**/api/unified-scan*', (route) => { log.scan.push(new URL(route.request().url()).searchParams); route.fulfill({ json: { ...SCAN, reroll: { on: true, from: 1, base: 3000, target: 4 }, enchantedRecipes: false } }); });
+  await page.goto('/craft.html');
+  await expect(page.getByText('Зачарка после крафта')).toHaveCount(0);
+  await expect(page.getByText('Смешанные рецепты')).toHaveCount(0);
+  await expect(page.getByText('Покупка готового уровня')).toBeVisible();
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-rows .row')).toHaveCount(2);
+  const q = log.scan[0];
+  expect(q.get('reroll')).toBe('true');
+  expect(q.get('rerollStart')).toBe('1');
+  expect(q.get('rerollBase')).toBe('3000');
+  expect(q.get('enchantedRecipes')).toBe('false');
+  expect(q.get('enchantMode')).toBe('auto');
+  await expect(page.locator('#scan-reroll-note')).toContainText('реролл');
+  await expect(page.locator('#scan-head')).not.toContainText('ерол');
+});
+
+test('скан и реролл: при включённых зачарованных рецептах переключатели на месте, выключенный реролл уходит как reroll=false', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await mock(page, log);
+  await page.goto('/craft.html');
+  await expect(page.getByText('Зачарка после крафта')).toBeVisible();
+  await expect(page.getByText('Смешанные рецепты')).toBeVisible();
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-rows .row')).toHaveCount(2);
+  expect(log.scan[0].get('reroll')).toBe('false');
+  expect(log.scan[0].get('enchantedRecipes')).toBe('true');
+  await expect(page.locator('#scan-reroll-note')).toHaveCount(0);
+});

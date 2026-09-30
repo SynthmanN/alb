@@ -1,7 +1,7 @@
 // Скан маржи и ликвидности: весь гир × зачарование × качество по данным кувшина. Строка раскрывается на месте: детали, количество, «в крафт-лист»,
 // «открыть в калькуляторе». Результат хранится в памяти — переключение вкладок его не сбрасывает.
 import { html, createStore, useStore, useState, fmt, signed, apiGet, findItem, itemLabel, itemTier, fmtAge } from './lib.js';
-import { commonParams, settings } from './settings.js';
+import { commonParams, settings, rerollConfig } from './settings.js';
 import { meta } from './params.js';
 import { Glyph, Tags, CityPill, CityPills, Seg, Switch, Icon, ICONS, Spinner } from './ui.js';
 import { addToList } from './list.js';
@@ -9,11 +9,17 @@ import { nav } from './nav.js';
 
 export const scanStore = createStore({ mode: 'patient', category: 'all', minDaily: 0, after: true, mixed: true, chainEntry: false, data: null, loading: false, error: '', sort: { k: 'marketProfitPerDay', dir: -1 }, open: null });
 
+// Реролл и опция «рецепты с зачарованными материалами» — как в калькуляторе; сервер считает реролл до «Отличного» в себестоимости до ранжирования
+export function scanRerollParams(s = settings.get()) {
+  const r = rerollConfig(s);
+  return { reroll: String(r.on), rerollStart: r.from, rerollBase: r.base, enchantedRecipes: String(!!s.enchantedRecipes) };
+}
+
 export async function runScan() {
-  const sc = scanStore.get();
+  const sc = { ...scanStore.get(), after: scanStore.get().after || !settings.get().enchantedRecipes };   // без «рецептов с зачарованными материалами» чары после крафта — единственный путь
   scanStore.set({ loading: true, error: '' });
   try {
-    const params = { ...commonParams(), mode: sc.mode, category: sc.category, enchantMode: sc.after ? 'auto' : 'direct', liquidity: 'sum', minDaily: sc.minDaily || 0, chainEntry: sc.after && sc.chainEntry ? 'true' : 'false', mixed: sc.after && sc.mixed ? 'true' : 'false' };
+    const params = { ...commonParams(), mode: sc.mode, category: sc.category, enchantMode: sc.after ? 'auto' : 'direct', liquidity: 'sum', minDaily: sc.minDaily || 0, chainEntry: sc.after && sc.chainEntry ? 'true' : 'false', mixed: sc.after && sc.mixed ? 'true' : 'false', ...scanRerollParams() };
     const data = await apiGet('/api/unified-scan', params);
     if (data.jug && data.jug.lastPricePass) meta.set({ jugAt: data.jug.lastPricePass });
     scanStore.set({ data, loading: false, open: null });
@@ -65,6 +71,8 @@ function Detail({ r, data }) {
 export function ScanTab() {
   const sc = useStore(scanStore);
   const set = (p) => scanStore.set(p);
+  const enchantedRecipes = !!useStore(settings).enchantedRecipes;
+  const after = sc.after || !enchantedRecipes;
   const { data } = sc;
   const rows = data ? sortRows(data.results, sc.sort) : [];
   const setSort = (k) => set({ sort: { k, dir: sc.sort.k === k ? -sc.sort.dir : (k === 'name' ? 1 : -1) } });
@@ -74,14 +82,15 @@ export function ScanTab() {
       <label class="f">Категория<select id="s-cat" value=${sc.category} onChange=${(e) => set({ category: e.target.value })}>
         ${[['all', 'Всё'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['cape', 'Плащи']].map(([v, t]) => html`<option value=${v} selected=${sc.category === v}>${t}</option>`)}</select></label>
       <label class="f" style="width:130px">Оборот от, шт/день<input id="s-min" type="number" min="0" step="0.5" value=${sc.minDaily} onInput=${(e) => set({ minDaily: e.target.value })} /></label>
-      <${Switch} checked=${sc.after} onChange=${(v) => set({ after: v })} title="Чары после крафта («плащ .0 + руны, души, реликты») считаются только там, где они выгоднее прямого крафта не меньше чем на 7% профита; остальной гир — прямым крафтом">Зачарка после крафта</${Switch}>
-      ${sc.after ? html`<${Switch} checked=${sc.mixed} onChange=${(v) => set({ mixed: v })} title="Кроме «.0 + вся цепочка рунами/душами/реликтами» считать смешанные рецепты: база сразу на уровне .1/.2 из зачарованного сырья, докручиваются только оставшиеся шаги. Берётся самый дешёвый путь">Смешанные рецепты</${Switch}>` : null}
-      ${sc.after ? html`<${Switch} checked=${sc.chainEntry} onChange=${(v) => set({ chainEntry: v })} title="Ещё один вариант зачарки: купить уже готовый .1/.2 на аукционе и докрутить только оставшимися шагами. Цена готового своя на каждое качество — доп. запросы, поэтому по умолчанию выключено">Покупка готового уровня</${Switch}>` : null}
+      ${enchantedRecipes ? html`<${Switch} checked=${sc.after} onChange=${(v) => set({ after: v })} title="Чары после крафта («плащ .0 + руны, души, реликты») считаются только там, где они выгоднее прямого крафта не меньше чем на 7% профита; остальной гир — прямым крафтом">Зачарка после крафта</${Switch}>` : null}
+      ${enchantedRecipes && after ? html`<${Switch} checked=${sc.mixed} onChange=${(v) => set({ mixed: v })} title="Кроме «.0 + вся цепочка рунами/душами/реликтами» считать смешанные рецепты: база сразу на уровне .1/.2 из зачарованного сырья, докручиваются только оставшиеся шаги. Берётся самый дешёвый путь">Смешанные рецепты</${Switch}>` : null}
+      ${after ? html`<${Switch} checked=${sc.chainEntry} onChange=${(v) => set({ chainEntry: v })} title="Ещё один вариант зачарки: купить уже готовый .1/.2 на аукционе и докрутить только оставшимися шагами. Цена готового своя на каждое качество — доп. запросы, поэтому по умолчанию выключено">Покупка готового уровня</${Switch}>` : null}
     </div>
     <div class="runbox">
       <button class="btn primary big" id="scan-run" type="button" disabled=${sc.loading} onClick=${runScan}>${sc.loading ? html`<${Spinner} />Считаю…` : html`<${Icon} d=${ICONS.search} />${data ? 'Обновить скан' : 'Сканировать'}`}</button>
       <span class="muted" style="font-size:13px" id="scan-note">${data ? `Найдено ${data.results.length} · клик по заголовку — сортировка · клик по строке — подробности` : 'Скан просматривает весь гир, зачарование и качество и ставит наверх самое выгодное'}</span>
     </div>
+    ${data && data.reroll && data.reroll.on ? html`<div class="muted" style="font-size:13px" id="scan-reroll-note">В себестоимость «Отличного» качества входит реролл на ремонтном станке; сколько он съедает — в калькуляторе.</div>` : null}
     ${sc.error ? html`<div class="card err" role="alert">Ошибка: ${sc.error}</div>` : null}
     ${data && rows.length === 0 ? html`<div class="card empty">Ничего не нашлось. Попробуй снизить «Оборот от» или сменить тип продажи.</div>` : null}
     ${rows.length ? html`<div class="headrow" id="scan-head">${COLS.map(([k, label, c]) => html`<button type="button" key=${k} class=${c} aria-sort=${sc.sort.k === k ? (sc.sort.dir < 0 ? 'descending' : 'ascending') : null} onClick=${() => setSort(k)}>${label}${sc.sort.k === k ? (sc.sort.dir < 0 ? ' ↓' : ' ↑') : ''}</button>`)}<span></span></div>

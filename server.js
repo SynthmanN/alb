@@ -2570,6 +2570,50 @@ function instantSellChoice(priceRecords, seriesOfItem, itemId, quality, days, co
   return best;
 }
 
+// --- Реролл качества на ремонтном станке (скан) ---
+// Копия модели public/js/next/logic/reroll.js (ESM сюда не подключить, как и enchantChain): меняешь там — меняй и здесь; сверка — tests/unifiedScanReroll.test.js.
+// Цена попытки = база × 2^зачарование × множитель текущего качества; шансы одинаковы у всех вещей; неудача качество не меняет. Ожидание — цепь Маркова.
+const REROLL_BASE_ATTEMPT = 2604.17;
+const REROLL_QUALITY_MULT = { 1: 1, 2: 1.25, 3: 1.5, 4: 6.25 };
+const REROLL_CRAFT_CHANCE = { 1: 70, 2: 15, 3: 10, 4: 4.5, 5: 0.5 };      // качество вещи сразу после крафта, % (без мастерок)
+const REROLL_TRANSITIONS = Object.fromEntries(Object.entries({
+  1: { 2: 80, 3: 15, 4: 5, 5: 0.1 }, 2: { 3: 60, 4: 9.9, 5: 0.1 }, 3: { 4: 49.9, 5: 0.1 }, 4: { 5: 0.5 },
+}).map(([q, row]) => {
+  const sum = Object.values(row).reduce((a, b) => a + b, 0);
+  const scale = sum > 100 ? 100 / sum : 1;
+  const out = Object.fromEntries(Object.entries(row).map(([r, p]) => [r, (p * scale) / 100]));
+  out.stay = Math.max(1 - Object.values(out).reduce((a, b) => a + b, 0), 0);
+  return [q, out];
+}));
+// В скане реролл считается только до «Отличного» — строки этого качества получают его в себестоимость
+const SCAN_REROLL_TARGET = 4;
+function rerollCostBetween(from, target, enchant, base) {
+  const memo = {};
+  const e = (q) => {
+    if (q >= target) return 0;
+    if (memo[q] !== undefined) return memo[q];
+    const t = REROLL_TRANSITIONS[q];
+    let sum = base * 2 ** enchant * REROLL_QUALITY_MULT[q];
+    for (let r = q + 1; r < target; r++) sum += (t[r] || 0) * e(r);
+    memo[q] = sum / (1 - t.stay);
+    return memo[q];
+  };
+  return e(from);
+}
+// Настройки из запроса: реролл включается только явным reroll=true (без параметра скан считает как раньше); from 0 — качество после крафта по шансам
+function parseScanReroll(req) {
+  const from = Math.min(Math.max(Math.round(Number(req.query.rerollStart)) || 0, 0), 4);
+  const base = Number(req.query.rerollBase);
+  return { on: req.query.reroll === 'true', from, base: Number.isFinite(base) && base > 0 ? base : REROLL_BASE_ATTEMPT };
+}
+// Средняя стоимость подъёма вещи до «Отличного» на уровне зачарования level; 0 — реролл выключен или стартовое качество не ниже цели
+function scanRerollCost(level, cfg) {
+  if (!cfg || !cfg.on) return 0;
+  if (cfg.from >= 1) return cfg.from < SCAN_REROLL_TARGET ? rerollCostBetween(cfg.from, SCAN_REROLL_TARGET, level, cfg.base) : 0;
+  const sum = Object.values(REROLL_CRAFT_CHANCE).reduce((a, b) => a + b, 0);
+  return Object.entries(REROLL_CRAFT_CHANCE).reduce((acc, [q, p]) => acc + (p / sum) * (Number(q) < SCAN_REROLL_TARGET ? rerollCostBetween(Number(q), SCAN_REROLL_TARGET, level, cfg.base) : 0), 0);
+}
+
 // «Чары после крафта» — только там, где выгоднее прямого крафта не меньше чем на 7% профита. Тот же вопрос и то же число решает
 // public/js/next/logic/afterCraft.js (AFTER_CRAFT_MIN_GAIN) для крафт-листа, стека калькулятора и фракционного плана — ESM-модуль
 // напрямую сюда (CommonJS) не подключить, поэтому значение продублировано: меняешь порог — меняй в обоих местах.
@@ -2611,7 +2655,11 @@ app.get('/api/unified-scan', (req, res) => {
     // качества (1–5) на КАЖДОМ уровне, а не одна общая — это доп. локальные запросы и код на весь перебор каталога.
     const chainEntry = req.query.chainEntry === 'true';
     // Смешанные рецепты: «после крафта» может начинаться не с базы .0, а с базы на уровне .L из зачарованного сырья (докрутка только L+1..цель)
-    const mixed = req.query.mixed === 'true';
+    // Рецепты с зачарованными материалами (опция калькулятора; без параметра — включены, как было). Выключены: гир .1–.3 считается только как «.0 + реролл на .0 + чары после
+    // крафта», а смешанные рецепты (база из зачарованного сырья) не рассматриваются; .0 и .4 — прямым крафтом.
+    const enchantedRecipes = req.query.enchantedRecipes !== 'false';
+    const mixed = req.query.mixed === 'true' && enchantedRecipes;
+    const rerollCfg = parseScanReroll(req);                                // реролл до «Отличного» входит в себестоимость строк этого качества ДО ранжирования
     const strictMaterials = parseStrictMaterials(req);                     // экспериментально: цена ордера сырья тоже не старше окна «История сырья»
     // Фракционный режим (только плащи выбранной фракции): гербы и сердца получены за очки, поэтому в серебре стоят 0; метрика — профит на очко
     const factionKey = FACTIONS[req.query.faction] ? req.query.faction : null;
@@ -2629,7 +2677,7 @@ app.get('/api/unified-scan', (req, res) => {
 
     const fresh = jugFreshness(jugDb, now);
     const refineParams = parseRefineRate(req);
-    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, chainEntry, mixed, strictMaterials, factionKey, factionPoints, factionPlanWanted, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
+    const cacheKey = JSON.stringify([mode, category, days, materialHours, enchantMode, liquidity, minDaily, rrrOpts, refineParams.rate, materialLiquidity, confidenceMaterials, chainEntry, mixed, enchantedRecipes, rerollCfg, strictMaterials, factionKey, factionPoints, factionPlanWanted, blackMarket, taxRate, locations, fresh.lastPricePass, fresh.lastHistoryPass]);
     if (unifiedScanCache && unifiedScanCache.key === cacheKey && now - unifiedScanCache.ts < 60_000) return res.json(unifiedScanCache.data);
 
     const itemById = new Map(ITEMS.map((i) => [i.id, i]));
@@ -2643,6 +2691,11 @@ app.get('/api/unified-scan', (req, res) => {
     for (const itemId of gearIds) {
       const item = itemById.get(itemId);
       const after = enchantMode === 'after' || requiresEnchantAfterCraft(itemId);
+      if (!enchantedRecipes && !after && item.tier >= 4 && ENCHANT_MATERIAL_COUNT[item.slot]) {
+        combos.push({ itemId, item, enchant: 0, after: false }, { itemId, item, enchant: 4, after: false });
+        for (let e = 1; e <= 3; e++) combos.push({ itemId, item, enchant: e, after: true });
+        continue;
+      }
       if (enchantMode === 'auto' && !after) {
         // обе ветки: прямой крафт .0–.4 и «чары после крафта» .1–.3 — что выгоднее, решается после расчёта (resolveAfterChoice)
         const maxDirect = item.tier >= 4 ? 4 : 0;
@@ -2843,18 +2896,25 @@ app.get('/api/unified-scan', (req, res) => {
       }
       // Покупка готового промежуточного уровня (отдельная опция chainEntry) без хотя бы одного пути с базой не считается
       if (!variants.length && !(chainEntry && c.after && c.enchant >= 2)) continue;
-      const best = variants.length ? variants.reduce((a, b) => (b.cost < a.cost ? b : a)) : null;
+      // Реролл (только строки «Отличного») делается на уровне базы: у «после крафта» это уровень входа, у прямого крафта — конечный
+      const rerollOf = (v, quality) => (quality === SCAN_REROLL_TARGET ? scanRerollCost(v.level, rerollCfg) : 0);
+      const bestFor = (quality) => {
+        let bestV = null;
+        for (const v of variants) if (!bestV || v.cost + rerollOf(v, quality) < bestV.cost + rerollOf(bestV, quality)) bestV = v;
+        return bestV && { ...bestV, cost: bestV.cost + rerollOf(bestV, quality) };
+      };
       const finishedId = gearEnchantId(c.itemId, c.enchant);
       // Покупка готового .1/.2 (опция chainEntry): цена покупки своя на каждое качество — поэтому кандидатов считаем здесь, внутри перебора
       // качеств, а не один раз на всю комбинацию, как остальную (quality-независимую) cost. Вход на уровне L — дешевле из «скрафтить базу на L»
       // и «купить готовый .L»; шаги — общие для всех входов.
       const useChainEntry = chainEntry && c.after && c.enchant >= 2;
       for (const quality of ALL_QUALITIES) {
+        const best = bestFor(quality);
         let chosen = best;
         let entryLevel = null;
         if (useChainEntry) {
           const entryCosts = {};
-          for (const v of variants) entryCosts[v.level] = v.baseCost;
+          for (const v of variants) entryCosts[v.level] = v.baseCost + rerollOf(v, quality);   // купленный готовый .L уже нужного качества — реролла не требует
           for (let lvl = 1; lvl < c.enchant; lvl++) {
             const buy = entryPriceOf.get(`${gearEnchantId(c.itemId, lvl)}|${quality}`);
             if (buy !== undefined && (entryCosts[lvl] === undefined || buy < entryCosts[lvl])) entryCosts[lvl] = buy;
@@ -2863,7 +2923,7 @@ app.get('/api/unified-scan', (req, res) => {
           if (candidates.length && (!chosen || candidates[0].cost < chosen.cost)) {
             const v = variants.find((x) => x.level === candidates[0].entryLevel);
             chosen = { ...(v || best || { needs: [], quoteDates: [], refined: [], partsNet: null }), cost: candidates[0].cost, level: candidates[0].entryLevel };
-            entryLevel = v && v.baseCost <= entryCosts[candidates[0].entryLevel] ? null : candidates[0].entryLevel;   // вход куплен готовым только если он дешевле рецепта базы на этом уровне
+            entryLevel = v && v.baseCost + rerollOf(v, quality) <= entryCosts[candidates[0].entryLevel] ? null : candidates[0].entryLevel;   // вход куплен готовым только если он дешевле рецепта базы на этом уровне
           }
         }
         if (!chosen) continue;
@@ -2899,7 +2959,7 @@ app.get('/api/unified-scan', (req, res) => {
       setupFeeRate: mode === 'patient' ? SETUP_FEE_RATE : 0,
       blackMarket, bmTaxRate: blackMarket ? bmTaxRate : null,
       rrrOptions: rrrOpts, refineRate: refineParams.rate, experiments: { materialLiquidity, confidenceMaterials }, enchantRange: enchantMode === 'after' ? '.0–.3' : '.0–.4',        // 'auto': прямой .0–.4, чары после крафта — .1–.3 только где выгоднее на 7%
-      scanned: combos.length, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
+      scanned: combos.length, enchantedRecipes, reroll: { on: rerollCfg.on, from: rerollCfg.from, base: rerollCfg.base, target: SCAN_REROLL_TARGET }, jug: fresh, results: rows.slice(0, UNIFIED_MAX_ROWS),
     };
     unifiedScanCache = { key: cacheKey, ts: now, data };
     res.json(data);
@@ -3818,6 +3878,7 @@ function resetCaches() {
 module.exports = {
   app,
   resetCaches,
+  scanRerollCost,
   enchantChainCandidates,
   refineComponents,
   subcraftAlternative,
