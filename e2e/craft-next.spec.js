@@ -2,13 +2,13 @@
 const { test, expect } = require('@playwright/test');
 
 // Реролл качества по умолчанию включён и добавляет к себестоимости сотни-тысячи серебра; остальные тесты считают чистую цену рецепта,
-// поэтому реролл в них выключен (тесты реролла включают его сами).
+// поэтому реролл в них выключен (тесты реролла включают его сами); рецепты из зачарованных материалов включены (по умолчанию выключены).
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     try {
       const key = 'albion_next_settings';
       const saved = JSON.parse(localStorage.getItem(key) || '{}');
-      if (!('rerollOn' in saved)) localStorage.setItem(key, JSON.stringify({ ...saved, rerollOn: false }));
+      if (!('rerollOn' in saved)) localStorage.setItem(key, JSON.stringify({ ...saved, rerollOn: false, enchantedRecipes: true }));
     } catch (e) { /* хранилище недоступно */ }
   });
 });
@@ -1267,7 +1267,7 @@ test('реролл качества: вложения растут на сред
   await openCalc(page, log);
   await page.locator('#reroll').selectOption('0');                                                    // по шансам крафта (80 / 15 / 5 / 0,1)
   await page.locator('#c-ench').selectOption('3');
-  await expect(page.locator('#reroll-note')).toContainText('рерол 98 839');                          // чуть дешевле, чем всегда с обычного: часть вещей выходит сразу хорошими и выше
+  await expect(page.locator('#reroll-note')).toContainText('рерол 91 788');                          // чуть дешевле, чем всегда с обычного: часть вещей выходит сразу хорошими и выше
   await expect(page.locator('#reroll-row')).toContainText('после крафта по шансам');
   await page.locator('#c-ench').selectOption('0');
   await page.locator('#reroll').selectOption('1');                                                    // вещь всегда выходит обычной
@@ -1343,4 +1343,31 @@ test('реролл качества в стеке: у позиции видно 
   await expect(cards.nth(1).locator('.li-line')).toContainText('(рерол');
   await page.locator('#reroll').selectOption('off');
   await expect(cards.first().locator('.li-line')).not.toContainText('рерол');
+});
+
+test('рецепты с зачарованными материалами выключены по умолчанию: зачарованная вещь считается только как «.0 + реролл + чары», тумблер в «Ещё» возвращает прямой крафт', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await page.addInitScript(() => localStorage.setItem('albion_next_settings', JSON.stringify({ rerollOn: true })));   // после beforeEach: настройки по умолчанию
+  await openCalc(page, log);
+  await page.locator('#c-ench').selectOption('3');
+  await expect.poll(() => log.calc.some((q) => q.get('enchant') === '3')).toBe(true);
+  const forEnchant3 = () => log.calc.filter((q) => q.get('enchant') === '3');
+  expect(forEnchant3().every((q) => q.get('enchantAfterCraft') === 'true' && !q.get('craftEnchant'))).toBe(true);   // ни прямого, ни смешанных рецептов
+  await expect(page.getByText('Чары после крафта')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Ещё' }).click();
+  await page.getByText('Рецепты с зачарованными материалами').click();
+  await expect(page.getByText('Чары после крафта')).toBeVisible();
+});
+
+test('стек: без рецептов из зачарованных материалов зачарованные позиции считаются только как «.0 + чары», без запросов прямого и смешанных рецептов', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await page.addInitScript(() => localStorage.setItem('albion_next_settings', JSON.stringify({ rerollOn: true })));
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  await expect(page.locator('#panel-calc .li-card')).toHaveCount(2);
+  await expect.poll(() => log.calc.length).toBeGreaterThan(1);
+  const enchanted = log.calc.filter((q) => Number(q.get('enchant')) >= 1);
+  expect(enchanted.length).toBeGreaterThan(0);
+  expect(enchanted.every((q) => q.get('enchantAfterCraft') === 'true' && !q.get('craftEnchant'))).toBe(true);
+  await expect(page.locator('#panel-calc .li-card').first().locator('.li-line')).toContainText('(рерол');
 });

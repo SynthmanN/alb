@@ -48,8 +48,8 @@ export function rerollCost(from, target, enchant = 0, base = BASE_ATTEMPT) {
 }
 export const rerollAttempts = (from, target) => expected(from, target, () => 1);
 
-// Шансы качества вещи сразу после крафта (без мастерок), %: обычное 80, хорошее 15, выдающееся 5, отличное 0,1 (сумма нормализуется)
-export const CRAFT_CHANCE = { 1: 80, 2: 15, 3: 5, 4: 0.1 };
+// Шансы качества вещи сразу после крафта (без мастерок), %: обычное 70, хорошее 15, выдающееся 10, отличное 4,5, шедевр 0,5 (сумма нормализуется)
+export const CRAFT_CHANCE = { 1: 70, 2: 15, 3: 10, 4: 4.5, 5: 0.5 };
 export const craftDistribution = () => {
   const sum = Object.values(CRAFT_CHANCE).reduce((a, b) => a + b, 0);
   return Object.entries(CRAFT_CHANCE).map(([q, p]) => [Number(q), p / sum]);

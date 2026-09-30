@@ -76,13 +76,14 @@ describe('настройки', () => {
   });
 });
 
-describe('качество после крафта по шансам (80 / 15 / 5 / 0,1)', () => {
+describe('качество после крафта по шансам (70 / 15 / 10 / 4,5 / 0,5)', () => {
   const chance = { on: true, from: 0, base: BASE_ATTEMPT };
   it('шансы нормализуются в сумму 1', () => {
     const dist = craftDistribution();
-    expect(dist.map(([q]) => q)).toEqual([1, 2, 3, 4]);
+    expect(dist.map(([q]) => q)).toEqual([1, 2, 3, 4, 5]);
     expect(dist.reduce((s, [, p]) => s + p, 0)).toBeCloseTo(1, 9);
-    expect(dist[0][1]).toBeCloseTo(0.8 / 1.001, 9);
+    expect(dist[0][1]).toBeCloseTo(0.7, 9);
+    expect(dist[4][1]).toBeCloseTo(0.005, 9);
   });
   it('ожидаемый рерол — взвешенная сумма по стартовым качествам; дешевле, чем всегда с обычного', () => {
     const d = direct(3);

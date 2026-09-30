@@ -13,7 +13,7 @@ import { stackPicks, hasHave } from './logic/inventory.js';
 const wantsAuto = (item, autoAfter) => autoAfter && afterPossible(item);
 const itemSig = (item, autoAfter, faction, common) => JSON.stringify([
   item.itemId, item.enchant, item.quality, item.quantity, wantsAuto(item, autoAfter) ? 'auto' : [!!item.after, item.craftEnchant || 0], item.crestSilver, item.heartSilver,
-  faction && item.faction ? [faction.id, faction.points] : null, common, settings.get().mixedRecipes,
+  faction && item.faction ? [faction.id, faction.points] : null, common, settings.get().mixedRecipes, settings.get().enchantedRecipes,
 ]);
 
 // level — уровень базы смешанного рецепта (craftEnchant): 0 — обычная база .0 и вся цепочка
@@ -58,7 +58,11 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
       const sig = itemSig(item, autoAfter, faction, common);
       let data;
       let pair = null;
-      if (wantsAuto(item, autoAfter)) {
+      if (!settings.get().enchantedRecipes && afterPossible(item)) {
+        // только «.0 + реролл + чары»: прямой крафт и смешанные рецепты из зачарованных материалов не считаем
+        data = await fetchOne(item, true, faction, common);
+        if (!item.after || (item.craftEnchant || 0) !== 0) ops.patch(item.uid, { after: true, craftEnchant: 0 });
+      } else if (wantsAuto(item, autoAfter)) {
         // смешанные рецепты: база на уровнях 1..enchant-1 (сырьё зачарованное до .L) + докрутка оставшихся шагов
         const levels = settings.get().mixedRecipes ? Array.from({ length: Math.max(item.enchant - 1, 0) }, (_, i) => i + 1) : [];
         const [direct, after, ...hy] = await Promise.all([fetchOne(item, false, faction, common), fetchOne(item, true, faction, common), ...levels.map((l) => fetchOne(item, true, faction, common, l))]);

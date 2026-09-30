@@ -34,12 +34,12 @@ function calcParams(c, after) {
   return params;
 }
 // Смешанные рецепты: ещё по одному расчёту на каждый уровень базы .1…(цель-1) — сравнение и выбор в панели «Зачарование после крафта»
-const hybridLevels = (c, after) => (after && c.enchant >= 2 && settings.get().mixedRecipes ? Array.from({ length: Math.min(c.enchant, 3) - 1 }, (_, i) => i + 1) : []);
+const hybridLevels = (c, after) => (after && c.enchant >= 2 && settings.get().enchantedRecipes && settings.get().mixedRecipes ? Array.from({ length: Math.min(c.enchant, 3) - 1 }, (_, i) => i + 1) : []);
 
 // Второй путь той же вещи (если загружен прямой — «после крафта» и смешанные, и наоборот): нужен, чтобы сравнить рецепты на твоих материалах
 export async function loadAlt(sig) {
   const c = calcStore.get();
-  if (!c.itemId || c.enchant < 1 || c.enchant > 3) return;
+  if (!c.itemId || c.enchant < 1 || c.enchant > 3 || !settings.get().enchantedRecipes) return;
   const other = !c.after;
   const params = calcParams(c, other);
   const levels = hybridLevels(c, other);
@@ -133,7 +133,7 @@ function SingleCalc() {
   const pr = useStore(prices);
   const [, force] = useState(0);
   useEffect(() => { Promise.all([itemsReady, groupsReady]).then(() => force((n) => n + 1)); }, []);
-  const sig = JSON.stringify([c.itemId, c.enchant, c.quality, c.qty, c.after, c.faction, c.crestSilver, c.heartSilver, commonParams(s), s.mixedRecipes]);
+  const sig = JSON.stringify([c.itemId, c.enchant, c.quality, c.qty, c.after, c.faction, c.crestSilver, c.heartSilver, commonParams(s), s.mixedRecipes, s.enchantedRecipes]);
   useEffect(() => {
     if (!c.itemId || sig === c.sig) return undefined;
     const t = setTimeout(() => runCalc(sig), 350);
@@ -145,10 +145,13 @@ function SingleCalc() {
   const set = (p) => calcStore.set(p);
   const have = useInventory();
   const owned = hasHave(have);
-  const rerollMatters = s.rerollOn !== false && c.quality > s.rerollStart && c.enchant >= 1 && c.enchant <= 3;    // рерол дорожает с зачарованием: прямой и «после крафта» стоит сравнить
+  const rerollMatters = s.enchantedRecipes && s.rerollOn !== false && c.quality > s.rerollStart && c.enchant >= 1 && c.enchant <= 3;    // рерол дорожает с зачарованием: прямой и «после крафта» стоит сравнить
   useEffect(() => {                                              // свои материалы есть — грузим второй рецепт той же вещи для сравнения
-    if ((owned || rerollMatters) && c.data && !c.loading && c.sig === sig && (!c.alt || c.alt.sig !== sig)) loadAlt(sig);
-  }, [owned, rerollMatters, c.data, c.loading, c.sig, sig]);
+    if (s.enchantedRecipes && (owned || rerollMatters) && c.data && !c.loading && c.sig === sig && (!c.alt || c.alt.sig !== sig)) loadAlt(sig);
+  }, [owned, rerollMatters, s.enchantedRecipes, c.data, c.loading, c.sig, sig]);
+  useEffect(() => {                                              // без рецептов из зачарованных материалов зачарованная вещь всегда считается как «.0 + чары после крафта»
+    if (!s.enchantedRecipes && c.enchant >= 1 && c.enchant <= 3 && !c.after) calcStore.set({ after: true });
+  }, [s.enchantedRecipes, c.enchant, c.after]);
   const { d, st, p, override, lists, variantLevel } = useMemo(() => derive(c, s, pr, have), [c.data, c.hybrids, c.chainChoice, c.quality, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog, s.rerollOn, s.rerollStart, s.rerollBase, have]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
@@ -164,7 +167,7 @@ function SingleCalc() {
       <label class="f" style="width:120px">Зачарование<select id="c-ench" value=${c.enchant} onChange=${(e) => set({ enchant: +e.target.value })}>${[0, 1, 2, 3, 4].map((e) => html`<option value=${e} selected=${c.enchant === e} disabled=${e > maxE}>.${e}</option>`)}</select></label>
       <label class="f" style="width:150px">Качество<select id="c-q" value=${c.quality} onChange=${(e) => set({ quality: +e.target.value })}>${[1, 2, 3, 4, 5].map((q) => html`<option value=${q} selected=${c.quality === q}>${QN[q]}</option>`)}</select></label>
       <label class="f" style="width:110px">Количество<input id="c-qty" type="number" min="1" value=${c.qty} onInput=${(e) => set({ qty: Math.max(1, parseInt(e.target.value, 10) || 1) })} /></label>
-      <${Switch} checked=${c.after} onChange=${(v) => set({ after: v })} title="Считать чары как «плащ .0 + руны, души, реликты»">Чары после крафта</${Switch}>
+      ${s.enchantedRecipes ? html`<${Switch} checked=${c.after} onChange=${(v) => set({ after: v })} title="Считать чары как «плащ .0 + руны, души, реликты»">Чары после крафта</${Switch}>` : null}
     </div>
     ${family.length > 1 ? html`<div class="tiers-switch"><span class="pl">Тир</span>${family.map((i) => html`<button type="button" key=${i.id} class=${`tag t${i.tier} tierbtn ${i.id === c.itemId ? 'on' : ''}`} onClick=${() => pickItem(i.id, { enchant: Math.min(c.enchant, maxEnchant(i.id)) })}>T${i.tier}</button>`)}</div>` : null}
     ${!c.itemId ? html`<div class="card empty">Выбери предмет в поиске или открой его из скана — здесь появится расчёт: вердикт, закупка, продажа и сравнение по тирам.</div>` : null}
