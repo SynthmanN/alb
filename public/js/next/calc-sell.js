@@ -5,6 +5,8 @@ import { html, useStore, fmt, signed, tone, fmtDays, QN, fmtAge, fmtAgeShort, pr
 import { calcStore, emptyManual, setSellPrice, calcPlanActions, planOfStore } from './calc-store.js';
 import { CityPlanTable, cityPlanTitle } from './cityplan.js';
 import { CityPill } from './ui.js';
+import { rerollConfig } from './settings.js';
+import { qualityRerollRows } from './logic/reroll.js';
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 // Возраст цены рядом с числом — настоящее время AODP (когда был выставлен этот ордер), не опрос нашего краулера.
@@ -80,12 +82,13 @@ function SellOrderCard({ c, d, p, st }) {
 }
 
 function QualityTable({ d }) {
-  const q = d.qualityComparison;
-  if (!q || q.length < 2) return null;
+  if (!d.qualityComparison || d.qualityComparison.length < 2) return null;
+  const q = qualityRerollRows(d, rerollConfig());          // профит каждого качества — за вычетом реролла до него
+  const anyReroll = q.some((x) => x.rerollCost > 0);
   const best = q.reduce((a, b) => ((b.daysToSellBatch ?? Infinity) < (a.daysToSellBatch ?? Infinity) ? b : a));
-  return html`<div class="tw"><span class="pl">По качеству</span><table id="quality-table"><thead><tr><th>Качество</th><th>Средняя цена</th><th>Сделок в день</th><th>Дней на распродажу</th><th>Профит / шт</th></tr></thead>
-    <tbody>${q.map((x) => { const slow = x.daysToSellBatch !== null && x.daysToSellBatch > 30; return html`<tr key=${x.quality} class=${x.quality === d.quality ? 'sel' : ''}><td><span class=${`tag q${x.quality}`}>${QN[x.quality]}</span>${x.quality === best.quality ? ' ⚡' : ''}</td><td>${fmt(x.avgSellPrice)}</td><td>${fmt(x.avgDailyVolume, 1)}</td><td class=${slow ? 'scan-stale' : ''}>${fmtDays(x.daysToSellBatch)}${slow ? ' ⚠' : ''}</td><td class=${tone(x.profitPerUnit)}>${signed(x.profitPerUnit)}</td></tr>`; })}</tbody></table>
-    <p class="note">⚡ — самая быстрая распродажа; выбранное качество выделено. Ликвидность разных качеств отличается на порядки.</p></div>`;
+  return html`<div class="tw"><span class="pl">По качеству</span><table id="quality-table"><thead><tr><th>Качество</th><th>Средняя цена</th><th>Сделок в день</th><th>Дней на распродажу</th>${anyReroll ? html`<th title="Средняя стоимость реролла с качества после крафта до этого качества">Рерол / шт</th>` : null}<th>${anyReroll ? 'Профит / шт с рероллом' : 'Профит / шт'}</th></tr></thead>
+    <tbody>${q.map((x) => { const slow = x.daysToSellBatch !== null && x.daysToSellBatch > 30; return html`<tr key=${x.quality} class=${x.quality === d.quality ? 'sel' : ''}><td><span class=${`tag q${x.quality}`}>${QN[x.quality]}</span>${x.quality === best.quality ? ' ⚡' : ''}</td><td>${fmt(x.avgSellPrice)}</td><td>${fmt(x.avgDailyVolume, 1)}</td><td class=${slow ? 'scan-stale' : ''}>${fmtDays(x.daysToSellBatch)}${slow ? ' ⚠' : ''}</td>${anyReroll ? html`<td class=${x.rerollCost > 0 ? 'neg' : 'muted'} title=${x.rerollCost > 0 ? `≈ ${fmt(x.rerollAttempts, 1)} попыток` : ''}>${x.rerollCost > 0 ? fmt(x.rerollCost) : '—'}</td>` : null}<td class=${tone(x.profitWithReroll)}>${signed(x.profitWithReroll)}</td></tr>`; })}</tbody></table>
+    <p class="note">⚡ — самая быстрая распродажа; выбранное качество выделено. Ликвидность разных качеств отличается на порядки.${anyReroll ? ' Рерол — среднее по цепочке попыток на ремонтном станке (промахи повторяются), на вещи-базе рецепта.' : ''}</p></div>`;
 }
 
 function TierTable({ d }) {

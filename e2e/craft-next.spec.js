@@ -1,6 +1,18 @@
 // Страница «Крафт» (/craft.html, новая): параметры, скан, калькулятор, крафт-лист, фракционный план, ленивый крафтер. Ответы расчётов подменены, список предметов — настоящий. Прежняя версия — /craft-classic.html (e2e/craft-and-masteries.spec.js).
 const { test, expect } = require('@playwright/test');
 
+// Реролл качества по умолчанию включён и добавляет к себестоимости сотни-тысячи серебра; остальные тесты считают чистую цену рецепта,
+// поэтому реролл в них выключен (тесты реролла включают его сами).
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      const key = 'albion_next_settings';
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      if (!('rerollOn' in saved)) localStorage.setItem(key, JSON.stringify({ ...saved, rerollOn: false }));
+    } catch (e) { /* хранилище недоступно */ }
+  });
+});
+
 const SCAN = { faction: null, mode: 'patient', enchantMode: 'after', taxRate: 0.08, setupFeeRate: 0.025, jug: { lastPricePass: Date.now() - 180000 }, results: [
   { kind: 'gear', itemId: 'T4_2H_BOW', enchant: 2, quality: 4, tier: 4, cost: 40000, avgSellPrice: 60000, sellCities: ['Martlock', 'Caerleon', 'Lymhurst'], dailyVolume: 12.5, profitPerUnit: 15200, profitPct: 38, marketProfitPerDay: 190000, marketNetPerDay: 710000, freshMinutes: 12, confidence: 0.6 },
   { kind: 'gear', itemId: 'T4_CAPE', enchant: 1, quality: 4, tier: 4, cost: 2700, avgSellPrice: 22000, sellCities: ['Thetford'], dailyVolume: 300, profitPerUnit: 17000, profitPct: 600, marketProfitPerDay: 5100000, marketNetPerDay: 6600000, freshMinutes: 400, confidence: 0.9 },
@@ -1248,4 +1260,82 @@ test('мои материалы: карточка сравнения рецеп�
   await cmp.locator('tr[data-variant="direct"] [data-use]').click();
   await expect(cmp.locator('tr[data-variant="direct"]')).toContainText('выбран');
   await expect(page.locator('#cost-summary')).toContainText('9 000');
+});
+
+test('реролл качества: вложения растут на среднюю цену подъёма до качества продажи, зависят от зачарования, выключаются и настраиваются', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await openCalc(page, log);
+  await page.locator('#reroll').selectOption('1');                                                    // включаем: вещь выходит с крафта обычной
+  await expect(page.locator('#reroll-note')).toBeVisible();                                           // качество продажи «Отличное», вещь выходит обычной — рерол в вложениях
+  await page.locator('#c-ench').selectOption('3');
+  await expect(page.locator('#reroll-note')).toContainText('рерол 102 746');                         // 2604 × 2³ и цепочка обычное → отличное (≈ 4,9 цены первой попытки)
+  await expect(page.locator('#reroll-row')).toContainText('«Обычное» → «Отличное» на .3');
+  await expect(page.locator('#reroll-row')).toContainText('102 746');
+  await expect(page.locator('#cost-summary')).toContainText('104 606');                              // 1 860 + рерол
+  await page.locator('#c-q').selectOption('1');                                                       // продаём обычное — реролить нечего
+  await expect(page.locator('#reroll-note')).toHaveCount(0);
+  await page.locator('#c-q').selectOption('4');
+  await page.locator('#reroll').selectOption('2');                                                    // после крафта уже хорошее — дешевле
+  await expect(page.locator('#reroll-note')).toContainText('рерол 90 774');
+  await page.locator('#reroll').selectOption('1');
+  await page.locator('[aria-controls="adv"], .more').first().click();
+  await page.locator('#reroll-base').fill('5000');                                                    // своя цена первой попытки
+  await expect(page.locator('#reroll-note')).toContainText('рерол 197 271');
+  await page.locator('#reroll').selectOption('off');
+  await expect(page.locator('#reroll-note')).toHaveCount(0);
+  await expect(page.locator('#reroll-row')).toHaveCount(0);
+});
+
+test('реролл качества: карточка сравнения рецептов и без своих материалов — на .0 рерол дешевле, «после крафта» выигрывает; выключенный реролл убирает карточку', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await mock(page, log);
+  await page.route('**/api/craft-calc*', (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    log.calc.push(q);
+    const base = calc(q);
+    const after = q.get('enchantAfterCraft') === 'true';
+    const lvl = Number(q.get('craftEnchant') || 0);
+    const cost = after ? 9500 : 9000;                                                                 // прямой чуть дешевле по материалам
+    const steps = [{ level: lvl + 1, materialId: 'T4_RUNE', materialName: 'Руна', count: 96, cheapestPrice: 10, cheapestCity: 'Martlock', cost: 960 }];
+    const out = { ...base, effectiveCostPerUnit: cost, totalCost: cost * Number(q.get('quantity')), hasAllMaterialPrices: true };
+    if (after) {
+      out.enchantAfterCraft = { forced: false, targetLevel: 2, capped: false, baseLevel: lvl, baseSource: 'craft', baseBuy: null, baseCraftCostPerUnit: cost - 960, baseCostPerUnit: cost - 960, steps, stepsCostPerUnit: 960,
+        chainEntryLevel: 0, chainEntryId: null, chainEntryLabel: null, chainEntryCity: null, neededSteps: steps, readyItems: [], candidates: [{ entryLevel: 0, cost, entryPrice: cost - 960, entryCity: null, entryLabel: null }] };
+    }
+    route.fulfill({ json: out });
+  });
+  await page.goto('/craft.html');
+  await page.locator('#scan-run').click();
+  await page.locator('#scan-rows .row').nth(0).click();
+  await page.locator('.detail .btn', { hasText: 'Открыть в калькуляторе' }).click();
+  await expect(page.locator('#verdict')).toBeVisible();
+  await page.locator('#reroll').selectOption('1');
+  const cmp = page.locator('#recipe-compare');
+  await expect(cmp.locator('tr[data-variant]')).toHaveCount(2);                                       // прямой и .0 + зачарование, материалов у нас нет
+  await expect(cmp.locator('tr[data-variant="direct"]')).toContainText('25 686');                    // вещь .1: рерол вдвое дороже, чем на базе .0
+  await expect(cmp.locator('tr[data-variant="after0"]')).toContainText('12 843');
+  await expect(cmp.locator('tr[data-variant="after0"]')).toContainText('выгоднее всего');
+  await expect(cmp.locator('th', { hasText: 'Докупить' })).toHaveCount(0);
+  await expect(cmp.locator('tr[data-variant="after0"]')).toContainText('выбран');                     // расчёт сам взял выгоднейший
+  await cmp.locator('tr[data-variant="direct"] [data-use]').click();
+  await expect(page.locator('#cost-summary')).toContainText('34 686');                               // 9 000 + 25 686
+  await cmp.locator('tr[data-variant="after0"] [data-use]').click();
+  await expect(page.locator('#reroll-row')).toContainText('на .0');                                  // рерол считается на базе .0, а не на конечной вещи
+  await expect(page.locator('#cost-summary')).toContainText('22 343');                               // 9 500 + 12 843
+  await page.locator('#reroll').selectOption('off');
+  await expect(cmp).toHaveCount(0);
+});
+
+test('реролл качества в стеке: у позиции видно «(рерол …)», отключение убирает его', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await twoItemsInList(page, log);
+  await page.locator('#open-in-calc').click();
+  const cards = page.locator('#panel-calc .li-card');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first().locator('.li-line')).not.toContainText('рерол');                        // по умолчанию в тестах реролл выключен
+  await page.locator('#reroll').selectOption('1');
+  await expect(cards.first().locator('.li-line')).toContainText('(рерол');
+  await expect(cards.nth(1).locator('.li-line')).toContainText('(рерол');
+  await page.locator('#reroll').selectOption('off');
+  await expect(cards.first().locator('.li-line')).not.toContainText('рерол');
 });

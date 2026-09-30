@@ -4,7 +4,8 @@
 import { createStore, apiGet, itemLabel } from './lib.js';
 import { list, stack } from './list.js';
 import { calcStore } from './calc-store.js';
-import { commonParams, settings } from './settings.js';
+import { commonParams, settings, rerollConfig } from './settings.js';
+import { rerollDelta } from './logic/reroll.js';
 import { pickAfter, afterPossible, silverParts } from './logic/stack.js';
 import { inventory } from './inventory.js';
 import { stackPicks, hasHave } from './logic/inventory.js';
@@ -44,6 +45,7 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
     for (const it of items) { const c = cache.get(it.uid); if (c) { results.set(it.uid, c.data); if (c.pair) pairs.set(it.uid, c.pair); } }
     store.set({ results, pairs });
   };
+  const extraOf = (it) => (d) => rerollDelta(d, it.quality, rerollConfig());
   async function run() {
     if (!enabled()) return;
     const my = ++token;
@@ -61,7 +63,7 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
         const levels = settings.get().mixedRecipes ? Array.from({ length: Math.max(item.enchant - 1, 0) }, (_, i) => i + 1) : [];
         const [direct, after, ...hy] = await Promise.all([fetchOne(item, false, faction, common), fetchOne(item, true, faction, common), ...levels.map((l) => fetchOne(item, true, faction, common, l))]);
         pair = { direct, after, hybrids: Object.fromEntries(levels.map((l, i) => [l, hy[i]])) };
-        const pick = pickAfter(item, pair);
+        const pick = pickAfter(item, pair, (d) => -extraOf(item)(d));
         data = pick.data;
         if (!!item.after !== pick.use || (item.craftEnchant || 0) !== pick.level) ops.patch(item.uid, { after: pick.use, craftEnchant: pick.level });
       } else {
@@ -81,8 +83,8 @@ export function createStackEngine(ops, { enabled = () => true, watch = [] } = {}
     const results = new Map();
     for (const it of items) { const c = cache.get(it.uid); if (c) { results.set(it.uid, c.data); if (c.pair) pairs.set(it.uid, c.pair); } }
     const picks = hasHave(inventory.get().have)
-      ? stackPicks(items, pairs, results, inventory.get().have, itemLabel)
-      : new Map(items.filter((it) => pairs.has(it.uid) && it.on !== false).map((it) => [it.uid, pickAfter(it, pairs.get(it.uid))]));
+      ? stackPicks(items, pairs, results, inventory.get().have, itemLabel, extraOf)
+      : new Map(items.filter((it) => pairs.has(it.uid) && it.on !== false).map((it) => [it.uid, pickAfter(it, pairs.get(it.uid), (d) => -extraOf(it)(d))]));
     for (const it of items) {
       const c = cache.get(it.uid);
       const pick = picks.get(it.uid);

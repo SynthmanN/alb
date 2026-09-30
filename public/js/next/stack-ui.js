@@ -1,7 +1,8 @@
 // Общие компоненты стека позиций: карточки (включить/выключить, количество, детали за серебро, цена продажи), итоги и сводная закупка.
 // Используются и панелью крафт-листа, и калькулятором в режиме стека: def = { ops, engine } — хранилище позиций и его расчёт.
-import { html, Fragment, useStore, useState, useMemo, fmt, signed, tone, itemLabel, itemTier, apiPost } from './lib.js';
-import { settings, activeCities } from './settings.js';
+import { html, Fragment, useStore, useState, useMemo, fmt, signed, tone, itemLabel, itemTier, apiPost, QN } from './lib.js';
+import { settings, activeCities, rerollConfig } from './settings.js';
+import { withReroll } from './logic/reroll.js';
 import { prices } from './prices.js';
 import { Glyph, Tags, Turnover, toast } from './ui.js';
 import { missingPrices, itemProfit, stackTotals } from './logic/stack.js';
@@ -17,12 +18,15 @@ export function useStackData({ ops, engine }) {
   const s = useStore(settings);
   const cities = activeCities(s);
   const citiesKey = cities.join();
+  const rr = rerollConfig(s);
   const results = useMemo(() => {
     const out = new Map();
     const planOf = new Map(items.map((i) => [i.uid, i.plan]));
-    for (const [uid, d] of raw) out.set(uid, applyItemPlan(adjustData(d, pr, { purchaseLog: s.purchaseLog, cities }), planOf.get(uid)));   // правки плана продажи позиции — в профит
+    const qualityOf = new Map(items.map((i) => [i.uid, i.quality]));
+    // рерол качества добавляется последним: свои цены и план продажи пересчитывают вложения с нуля и не должны его потерять
+    for (const [uid, d] of raw) out.set(uid, withReroll(applyItemPlan(adjustData(d, pr, { purchaseLog: s.purchaseLog, cities }), planOf.get(uid)), qualityOf.get(uid), rr));   // правки плана продажи позиции — в профит
     return out;
-  }, [raw, pr, s.purchaseLog, citiesKey, items]);
+  }, [raw, pr, s.purchaseLog, citiesKey, items, s.rerollOn, s.rerollFrom, s.rerollBase]);
   const t = useMemo(() => {
     const total = stackTotals(items, results, faction ? faction.points : 0);
     // позиции, ещё не посчитанные, дают в итоги приблизительные цифры из скана (себестоимость и профит при добавлении)
@@ -56,7 +60,7 @@ export function StackCard({ def, x, result, pair, onDetail, detailLabel = 'От�
   const on = x.on !== false;
   let afterNote = '';
   if (x.after) {
-    const pd = pair ? itemProfit(x, pair.direct) : null;
+    const pd = pair ? itemProfit(x, withReroll(pair.direct, x.quality, rerollConfig())) : null;
     afterNote = pd && pf && pd.unit !== 0 ? ` · чары после крафта (+${fmt(((pf.unit - pd.unit) / Math.abs(pd.unit)) * 100, 0)}% к профиту)` : ' · чары после крафта';
   }
   return html`<div class=${`li-card ${on ? 'on' : 'off'}`} data-uid=${x.uid}>
@@ -67,7 +71,7 @@ export function StackCard({ def, x, result, pair, onDetail, detailLabel = 'От�
       <div class="qty"><button type="button" aria-label="Меньше" onClick=${() => ops.setQuantity(x.uid, x.quantity - 1)}>−</button><input type="number" min="1" value=${x.quantity} onChange=${(e) => ops.setQuantity(x.uid, e.target.value)} aria-label="Количество" /><button type="button" aria-label="Больше" onClick=${() => ops.setQuantity(x.uid, x.quantity + 1)}>+</button></div>
       <button class="x" type="button" aria-label="Убрать" title="Убрать" onClick=${() => ops.remove(x.uid)}>✕</button>
     </div>
-    <div class="li-line">${!result ? html`<span class="muted">считаю…</span>` : result.error ? html`<span class="neg">${result.error}</span>` : html`вложения <b>${miss.length ? '—' : fmt(d.totalCost)}</b> · профит <b class=${tone(total)}>${total === null ? (miss.length ? 'не хватает цен' : 'нет цены продажи') : signed(total)}</b>${pts !== null ? html` · очков ${fmt(pts)}` : null}${afterNote}`}</div>
+    <div class="li-line">${!result ? html`<span class="muted">считаю…</span>` : result.error ? html`<span class="neg">${result.error}</span>` : html`вложения <b>${miss.length ? '—' : fmt(d.totalCost)}</b>${d.reroll && !miss.length ? html` <span class="muted" title=${`Реролл качества «${QN[d.reroll.from]}» → «${QN[d.reroll.target]}» на .${d.reroll.level}: ≈ ${fmt(d.reroll.attempts, 1)} попыток на вещь`}>(рерол ${fmt(d.reroll.perUnit * x.quantity)})</span>` : null} · профит <b class=${tone(total)}>${total === null ? (miss.length ? 'не хватает цен' : 'нет цены продажи') : signed(total)}</b>${pts !== null ? html` · очков ${fmt(pts)}` : null}${afterNote}`}</div>
     ${d ? html`<div class="li-turn"><${Turnover} info=${turnoverInfo(x.quantity, turnoverPerDay(x, d).perDay, windowDays)} qty=${x.quantity} /></div>` : null}
     <div class="li-opts">
       ${x.faction ? html`<label class="switch sm"><input type="checkbox" checked=${!!x.crestSilver} onChange=${(e) => ops.patch(x.uid, { crestSilver: e.target.checked })} /> герб за серебро</label>

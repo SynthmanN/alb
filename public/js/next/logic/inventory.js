@@ -68,7 +68,7 @@ export function allocateStack(items, results, have, nameOf) {
 
 // Автовыбор рецепта позиций стека с учётом твоих материалов: варианты (прямой, «после крафта», смешанные) сравниваются по профиту плюс
 // серебро, которое экономят твои материалы; пул раздаётся позициям по порядку. Возвращает Map uid → { use, level, data } для позиций с вариантами.
-export function stackPicks(items, pairs, results, have, nameOf) {
+export function stackPicks(items, pairs, results, have, nameOf, extra = null) {
   const pool = makePool(have);
   const picks = new Map();
   const owned = hasHave(have);
@@ -77,7 +77,9 @@ export function stackPicks(items, pairs, results, have, nameOf) {
     const pair = pairs.get(it.uid);
     let d = results.get(it.uid);
     if (pair) {
-      const pick = pickAfter(it, pair, owned ? (dd) => ownedGain(dd, nameOf, pool) / (dd.quantity || 1) : null);
+      const own = owned ? (dd) => ownedGain(dd, nameOf, pool) / (dd.quantity || 1) : null;
+      const cost = extra ? extra(it) : null;                                       // рерол качества позиции: вычитается из выгоды варианта
+      const pick = pickAfter(it, pair, own || cost ? (dd) => (own ? own(dd) : 0) - (cost ? cost(dd) : 0) : null);
       picks.set(it.uid, pick);
       d = pick.data;
     }
@@ -110,12 +112,14 @@ export function recipeVariants({ after, data, hybrids, alt }) {
 
 // Сравнение вариантов рецепта на твоих материалах: сколько докупать, что можно скрафтить и во сколько штука обходится со своими материалами.
 // ownCost — вложения на штуку минус серебро, которое экономят свои материалы (null — нет цен). best — самый дешёвый вариант.
-export function compareVariants(variants, have, nameOf) {
+// extra(d) — добавка на штуку сверх цены рецепта (рерол качества, logic/reroll.js): у прямого и «после крафта» она разная
+export function compareVariants(variants, have, nameOf, extra = null) {
   const rows = variants.map((v) => {
     const alloc = allocateItem(v.data, nameOf, makePool(have));
     const priced = v.data.hasAllMaterialPrices !== false && v.data.effectiveCostPerUnit !== null && v.data.effectiveCostPerUnit !== undefined;
-    const ownCost = priced ? Math.max(v.data.effectiveCostPerUnit - alloc.saved / (v.data.quantity || 1), 0) : null;
-    return { ...v, alloc, cash: cashOf(alloc.rows), ownCost };
+    const add = extra ? extra(v.data) : 0;
+    const ownCost = priced ? Math.max(v.data.effectiveCostPerUnit - alloc.saved / (v.data.quantity || 1), 0) + add : null;
+    return { ...v, alloc, cash: cashOf(alloc.rows), ownCost, reroll: add };
   });
   let best = null;
   for (const r of rows) if (r.ownCost !== null && (!best || r.ownCost < best.ownCost)) best = r;

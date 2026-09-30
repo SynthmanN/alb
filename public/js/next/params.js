@@ -64,6 +64,11 @@ export function ParamsBar() {
       <${Select} id="share" label="Доля рынка" kind="percent" value=${s.share} options=${SHARES} onChange=${(v) => settings.set({ share: v })} />
       <${Select} id="hist" label="История гира" kind="days" value=${s.hist} options=${HISTS} onChange=${(v) => settings.set({ hist: v })} />
       <${Select} id="mhist" label="История сырья" kind="hours" value=${s.mhist} options=${MHISTS} onChange=${(v) => settings.set({ mhist: v })} />
+      <div class="pg"><span class="pl">Рерол качества</span><span class="selwrap">
+        <select id="reroll" title="Готовая вещь поднимается до выбранного качества продажи на ремонтном станке. Цена попытки растёт вдвое с каждым уровнем зачарования, поэтому выгоднее реролить .0 и зачаровывать после" value=${s.rerollOn === false ? 'off' : String(s.rerollFrom)} onChange=${(e) => (e.target.value === 'off' ? settings.set({ rerollOn: false }) : settings.set({ rerollOn: true, rerollFrom: +e.target.value }))}>
+          <option value="off" selected=${s.rerollOn === false}>Не считать</option>
+          <option value="1" selected=${s.rerollOn !== false && s.rerollFrom === 1}>После крафта: обычное</option>
+          <option value="2" selected=${s.rerollOn !== false && s.rerollFrom === 2}>После крафта: хорошее</option></select></span></div>
       <button type="button" class="more" aria-expanded=${String(more)} onClick=${() => setMore(!more)}>Ещё<${Icon} d=${ICONS.chevron} /></button>
     </div>
     <div class="pcities"><span class="pl">Города</span><span class="citylist" id="cities">
@@ -76,6 +81,7 @@ export function ParamsBar() {
       <${Switch} checked=${s.strictMaterials} onChange=${(v) => settings.set({ strictMaterials: v })} title="Экспериментально. Цена материала без сделок в окне «История сырья» тоже должна быть не старше этого окна (сейчас годится любая когда-либо записанная). Материалы без свежей цены станут «нет цены» и попадут в окно свежести — включай, если хочешь строгую свежесть">Строго по окну истории сырья*</${Switch}>
       <${Switch} checked=${s.teleport} onChange=${(v) => settings.set({ teleport: v })} title="Материалы покупаются в разных городах и едут в город сборки, готовый предмет — в город продажи: логистика по весу и дистанции">Учитывать телепорт</${Switch}>
       <${Switch} checked=${s.purchaseLog} onChange=${(v) => settings.set({ purchaseLog: v })} title="Купил сырьё стаками — впиши каждый стак (количество и цену за штуку): калькулятор посчитает среднюю цену и покажет, сколько ещё докупить">Лог закупок по лотам</${Switch}>
+      <label class="f" title="Цена первой попытки реролла (с обычного качества) на .0; на .1 вдвое больше, на .2 вчетверо и так далее. Замер из игры: 2604">Реролл: цена попытки на .0<input id="reroll-base" type="number" min="1" step="1" value=${s.rerollBase} onInput=${(e) => settings.set({ rerollBase: parseFloat(e.target.value) || 2604.17 })} /></label>
       <label class="f" title="Ценовой допуск плана закупки по городам, %">Допуск цены закупки, %<input id="tolerance" type="number" min="0" max="50" step="1" value=${s.tolerance} onInput=${(e) => settings.set({ tolerance: parseFloat(e.target.value) || 0 })} /></label>
       <label class="f" title="Sell Order: показать все города, где средняя цена не ниже порога, с суммарным спросом">Порог продажи<input id="sell-threshold" type="number" min="0" placeholder="нет" value=${s.sellThreshold} onInput=${(e) => settings.set({ sellThreshold: e.target.value })} /></label>
       <label class="f" title="Схема «закупаю по Buy Order, продаю партией»: проверить, укладывается ли себестоимость в потолок">Потолок себестоимости/шт<input id="ceiling" type="number" min="0" placeholder="без потолка" value=${s.ceiling} onInput=${(e) => settings.set({ ceiling: e.target.value })} /></label>

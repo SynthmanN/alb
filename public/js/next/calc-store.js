@@ -8,7 +8,8 @@ import { profitOf } from './logic/profit.js';
 import { priceLists, SETUP_FEE } from './logic/cityPrices.js';
 import { makeOverride } from './logic/adjust.js';
 import { resetPrices } from './prices.js';
-import { activeCities } from './settings.js';
+import { activeCities, rerollConfig } from './settings.js';
+import { withReroll, rerollDelta } from './logic/reroll.js';
 import { makePool, ownedGain, hasHave } from './logic/inventory.js';
 
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -46,7 +47,10 @@ export const setForceMain = (on) => set({ chainChoice: { baseLevel: null, entryL
 export function derive(c, settings, prices, have = null) {
   if (!c.data) return { d: null, st: null, p: null };
   // Смешанные рецепты: выбранный вариант базы (.0 или гибрид .L) — дальше всё считается по нему, как по обычному ответу калькулятора
-  const gain = hasHave(have) ? (dd) => ownedGain(dd, (id) => id, makePool(have)) / (dd.quantity || 1) : null;
+  // Рерол качества дорожает с зачарованием базы: у вариантов «после крафта» он разный, поэтому входит в выбор наравне с серебром от своих материалов
+  const rr = rerollConfig(settings);
+  const pool = hasHave(have) ? makePool(have) : null;
+  const gain = pool || rr.on ? (dd) => (pool ? ownedGain(dd, (id) => id, pool) / (dd.quantity || 1) : 0) - rerollDelta(dd, c.quality, rr) : null;
   const variant = pickVariant(c.data, c.hybrids, c.chainChoice, gain);
   const base = variant.data;
   const lists = priceLists(base);
@@ -54,7 +58,7 @@ export function derive(c, settings, prices, have = null) {
   const fee = base.setupFeeRate ?? SETUP_FEE;
   const m = makeOverride(lists, prices, { purchaseLog: settings.purchaseLog, cities, fee });
   const chosen = applyChainChoice(base, c.chainChoice);
-  const d = applyManualPrices(chosen, { ownPrice: m.ownPrice, buyPrice: m.buyPrice, hasOwn: m.hasOwn, sellPrice: c.sellPrice, cityPrices: c.cityPrices });
+  const d = withReroll(applyManualPrices(chosen, { ownPrice: m.ownPrice, buyPrice: m.buyPrice, hasOwn: m.hasOwn, sellPrice: c.sellPrice, cityPrices: c.cityPrices }), c.quality, rr);
   const st = d.patientSell ? salePlanState(d.patientSell, d, { toggles: c.toggles, manualQty: c.manualQty, strategy: c.strategy }) : null;
   const p = profitOf(d, st);
   return { d, st, p, override: m.override, lists, variantLevel: variant.level };

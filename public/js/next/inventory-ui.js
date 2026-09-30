@@ -69,17 +69,19 @@ export function MyMaterials({ allocs, nameOf }) {
 }
 
 
-// Сравнение рецептов одной вещи на твоих материалах: что докупить в каждом, что можно скрафтить и какой дешевле. cmp — результат compareVariants
-export function RecipeCompare({ cmp, currentKey, onPick }) {
+// Сравнение рецептов одной вещи: что докупить в каждом (на твоих материалах), сколько стоит рерол качества и какой вариант дешевле. cmp — результат compareVariants
+export function RecipeCompare({ cmp, currentKey, onPick, withMaterials = true }) {
   if (!cmp || cmp.rows.length < 2) return null;
+  const anyReroll = cmp.rows.some((r) => r.reroll > 0);
   return html`<div class="card recipe-compare" id="recipe-compare">
-    <div class="ready-head"><b>Рецепты на твоих материалах</b> <span class="muted">выгоднее тот, где со своими материалами штука обходится дешевле</span></div>
-    <div class="tw"><table class="ready-table"><thead><tr><th>Рецепт</th><th>Докупить</th><th>Можно скрафтить</th><th>Вложения / шт</th><th></th></tr></thead><tbody>
+    <div class="ready-head"><b>${withMaterials ? 'Рецепты на твоих материалах' : 'Сравнение рецептов'}</b> <span class="muted">выгоднее тот, где штука обходится дешевле${anyReroll ? ' с учётом реролла качества: он дорожает с зачарованием, поэтому .0 + зачарование часто выгоднее' : ''}</span></div>
+    <div class="tw"><table class="ready-table"><thead><tr><th>Рецепт</th>${withMaterials ? html`<th>Докупить</th><th>Можно скрафтить</th>` : null}${anyReroll ? html`<th>Рерол / шт</th>` : null}<th>${withMaterials ? 'Вложения / шт' : 'Вложения / шт (с рероллом)'}</th><th></th></tr></thead><tbody>
       ${cmp.rows.map((r) => html`<tr key=${r.key} data-variant=${r.key} class=${r.key === cmp.best ? 'inv-ok' : ''}>
         <td>${recipeName(r)} ${r.key === currentKey ? html`<span class="pill n">выбран</span>` : null}${r.key === cmp.best ? html` <span class="pill g">выгоднее всего</span>` : null}</td>
-        <td>${r.ownCost === null ? html`<span class="pill w">нет цен</span>` : fmt(r.cash)}</td>
-        <td>${fmt(r.alloc.craftable)} из ${fmt(r.alloc.quantity)}</td>
-        <td>${r.ownCost === null ? '—' : fmt(r.ownCost)}</td>
+        ${withMaterials ? html`<td>${r.ownCost === null ? html`<span class="pill w">нет цен</span>` : fmt(r.cash)}</td>
+        <td>${fmt(r.alloc.craftable)} из ${fmt(r.alloc.quantity)}</td>` : null}
+        ${anyReroll ? html`<td>${r.reroll > 0 ? fmt(r.reroll) : '—'}</td>` : null}
+        <td>${r.ownCost === null ? (withMaterials ? '—' : html`<span class="pill w">нет цен</span>`) : fmt(r.ownCost)}</td>
         <td>${r.key !== currentKey && r.ownCost !== null ? html`<button type="button" class="btn sm" data-use=${r.key} onClick=${() => onPick(r)}>Считать по нему</button>` : null}</td></tr>`)}
     </tbody></table></div></div>`;
 }

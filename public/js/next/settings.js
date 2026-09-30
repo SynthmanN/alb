@@ -1,6 +1,7 @@
 // Общие параметры расчётов: одна панель на все инструменты страницы. Города, премиум и источник данных хранятся под теми же ключами,
 // что и на старых страницах, поэтому выбор общий для всего сайта.
 import { createStore } from './lib.js';
+import { normalizeReroll } from './logic/reroll.js';
 
 export const PROFILES = {
   bonus: { name: 'Бонус', craft: 24.8, refine: 36.7, note: 'город с бонусом' },
@@ -22,7 +23,7 @@ const legacy = readLegacy();
 export const settings = createStore({
   profile: 'bonus', rrrCraft: 24.8, rrrRefine: 36.7, share: 0.25, hist: 3, mhist: 24,
   premium: legacy.premium, source: legacy.source, optional: legacy.optional,
-  blackMarket: false, teleport: false, mixedRecipes: true, buyReady: false, strictMaterials: false, purchaseLog: false, ceiling: '', sellLow: '', sellHigh: '', sellThreshold: '', tolerance: 2,
+  blackMarket: false, teleport: false, mixedRecipes: true, buyReady: false, strictMaterials: false, purchaseLog: false, rerollOn: true, rerollFrom: 1, rerollBase: 2604.17, ceiling: '', sellLow: '', sellHigh: '', sellThreshold: '', tolerance: 2,
 }, { key: 'albion_next_settings' });
 
 // общие ключи сайта — города, премиум, источник данных — пишем и туда
@@ -66,3 +67,6 @@ export function commonParams(s = settings.get()) {
     ...(s.ceiling ? { ceiling: s.ceiling } : {}), ...(s.sellLow ? { sellLow: s.sellLow } : {}), ...(s.sellHigh ? { sellHigh: s.sellHigh } : {}), ...(s.sellThreshold ? { sellThreshold: s.sellThreshold } : {}),
   };
 }
+
+// Реролл качества для расчётов: { on, from, base } (logic/reroll.js)
+export const rerollConfig = (s = settings.get()) => normalizeReroll(s);

@@ -1,7 +1,8 @@
 // Вкладка «Закупка»: материалы рецепта (откуда дешевле, переработка/крафт самому), план закупки по городам, свои цены и лог закупок по лотам,
 // база .0, чары после крафта, логистика по телепорту.
-import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, apiPost } from './lib.js';
-import { settings } from './settings.js';
+import { html, useStore, useMemo, fmt, tone, signed, itemLabel, fmtDays, apiPost, QN } from './lib.js';
+import { settings, rerollConfig } from './settings.js';
+import { rerollDelta } from './logic/reroll.js';
 import { calcStore, resetOwn, setChainChoice, setForceMain } from './calc-store.js';
 import { prices, setOwn, setCityOwn, pickCity, addLot, setLot, delLot, hasAnyPrices } from './prices.js';
 import { CityPriceList } from './citylist.js';
@@ -182,14 +183,16 @@ export function BuyTab({ c, d, lists, override, invalidate, variantLevel = 0 }) 
   const have = useInventory();
   const alloc = useMemo(() => allocateItem(d, itemLabel, makePool(have)), [d, have]);
   const anyHave = Object.keys(have).length > 0;
+  const rr = rerollConfig(s);
+  const rerollPer = d.reroll ? d.reroll.perUnit : 0;
   const cmp = useMemo(() => {
-    const variants = anyHave && c.alt ? recipeVariants({ after: c.after, data: c.data, hybrids: c.hybrids, alt: c.alt }) : [];
-    return variants.length > 1 ? compareVariants(variants, have, itemLabel) : null;
-  }, [anyHave, have, c.alt, c.after, c.data, c.hybrids]);
+    const variants = (anyHave || rr.on) && c.alt ? recipeVariants({ after: c.after, data: c.data, hybrids: c.hybrids, alt: c.alt }) : [];
+    return variants.length > 1 ? compareVariants(variants, have, itemLabel, (dd) => rerollDelta(dd, c.quality, rr)) : null;
+  }, [anyHave, have, c.alt, c.after, c.data, c.hybrids, c.quality, s.rerollOn, s.rerollFrom, s.rerollBase]);
   const useVariant = (v) => { if (v.after) setChainChoice(v.level, null); calcStore.set({ after: v.after }); };
   return html`<div id="sub-buy">
     <${MyMaterials} allocs=${[alloc]} nameOf=${(id) => nameOf(d, id)} />
-    <${RecipeCompare} cmp=${cmp} currentKey=${c.after ? `after${variantLevel}` : 'direct'} onPick=${useVariant} />
+    <${RecipeCompare} cmp=${cmp} withMaterials=${anyHave} currentKey=${c.after ? `after${variantLevel}` : 'direct'} onPick=${useVariant} />
     ${anyHave ? html`<${Readiness} title=${itemLabel(d.itemId)} alloc=${alloc} />` : null}
     ${d.hasAllMaterialPrices === false ? html`<p class="calc-note warnline">⚠ По части материалов (например, чертежи и жетоны фракций) нет рыночных цен в выбранных городах — итоговая себестоимость занижена на их стоимость.</p>` : null}
     <${RecipeTable} d=${d} lists=${lists} invalidate=${invalidate} />
@@ -197,7 +200,9 @@ export function BuyTab({ c, d, lists, override, invalidate, variantLevel = 0 }) 
     ${d.manualPrices && hasAnyPrices(pr) ? html`<p class="note"><button type="button" class="btn sm manual-reset" onClick=${resetOwn}>Сбросить свои цены</button> Расчёт идёт по твоим ценам; «Сравнение по тирам» и качеству считает по рыночным.</p>` : null}
     <div class="card box" style="margin-top:14px"><div class="kv" id="cost-summary">
       <div><span>Себестоимость материала / шт (сырое)</span><b>${fmt(Math.round(d.materialCostPerUnit))}</b></div>
-      <div><span title=${d.rrrPreset ? d.rrrPreset.label : ''}>Себестоимость с учётом возврата (в среднем ${fmt((d.rrrPreset ? d.rrrPreset.rrr : 0) * 100, 1)}%) / шт</span><b>${fmt(Math.round(d.effectiveCostPerUnit))}</b></div></div></div>
+      <div><span title=${d.rrrPreset ? d.rrrPreset.label : ''}>Себестоимость с учётом возврата (в среднем ${fmt((d.rrrPreset ? d.rrrPreset.rrr : 0) * 100, 1)}%) / шт</span><b>${fmt(Math.round(d.effectiveCostPerUnit - rerollPer))}</b></div>
+      ${d.reroll ? html`<div id="reroll-row"><span title=${`Цена попытки на .${d.reroll.level}: ${fmt(Math.round(d.reroll.first))} (растёт с качеством). Промахи повторяются, поэтому в среднем ≈ ${fmt(d.reroll.attempts, 1)} попыток`}>Рерол качества «${QN[d.reroll.from]}» → «${QN[d.reroll.target]}» на .${d.reroll.level} / шт</span><b>${fmt(Math.round(d.reroll.perUnit))}</b></div>
+      <div><strong>Итого с рероллом / шт</strong><b>${fmt(Math.round(d.effectiveCostPerUnit))}</b></div>` : null}</div></div>
     ${b ? html`<div class="card box base-choice" style="margin-top:14px"><div class="kv">
       <div><strong>Базовый предмет (.0): выгоднее ${b.baseSource === 'buy' ? 'купить готовый' : 'скрафтить'}</strong><b>${fmt(b.baseCostPerUnit)} / шт</b></div>
       <div><span>Себестоимость крафта / шт</span><b>${b.baseCraftCostPerUnit !== null ? fmt(b.baseCraftCostPerUnit) : 'нет цен на материалы'}</b></div>
@@ -212,7 +217,7 @@ export function BuyTab({ c, d, lists, override, invalidate, variantLevel = 0 }) 
         : eac.baseSource === 'buy' ? html`база .${eac.baseLevel || 0} — покупка дешевле крафта: <${CityPill} name=${eac.baseBuy.city} /> ${fmt(eac.baseBuy.price)}` : `база .${eac.baseLevel || 0} — крафт из материалов${eac.baseLevel ? ' (сырьё зачарованное до .' + eac.baseLevel + ')' : ''}: ${fmt(eac.baseCraftCostPerUnit)}`}</b></div>
       ${(eac.neededSteps || eac.steps).map((st) => html`<div key=${st.level}><span>.${st.level - 1} → .${st.level}: ${st.materialName} × ${fmt(st.count * d.quantity)} (${fmt(st.count)} на вещь)</span><b>${st.cost !== null ? `${fmt(st.cost)} / шт` : 'нет цены'}</b></div>`)}
       <div><span>Зачарование / шт (материалы — в таблице выше)</span><b>${fmt(eac.stepsCostPerUnit)}</b></div>
-      <div><strong>Итого себестоимость с зачарованием / шт</strong><b>${fmt(d.effectiveCostPerUnit)}</b></div></div></div>` : null}
+      <div><strong>Итого себестоимость с зачарованием / шт</strong><b>${fmt(d.effectiveCostPerUnit - rerollPer)}</b></div></div></div>` : null}
     ${s.teleport ? html`<${Teleport} d=${d} />` : null}
     <p class="note">Клик по названию копирует его для поиска на аукционе. Галочки — чек-лист закупки.</p></div>`;
 }
