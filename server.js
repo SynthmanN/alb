@@ -2602,7 +2602,8 @@ function rerollCostBetween(from, target, enchant, base) {
 }
 // Настройки из запроса: реролл включается только явным reroll=true (без параметра скан считает как раньше); from 0 — качество после крафта по шансам
 function parseScanReroll(req) {
-  const from = Math.min(Math.max(Math.round(Number(req.query.rerollStart)) || 0, 0), 4);
+  const rawFrom = req.query.rerollStart === undefined || req.query.rerollStart === '' ? 1 : Number(req.query.rerollStart);   // по умолчанию — вещь после крафта «Обычная»: лучше занизить профит, чем завысить
+  const from = Math.min(Math.max(Math.round(rawFrom) || 0, 0), 4);
   const base = Number(req.query.rerollBase);
   return { on: req.query.reroll === 'true', from, base: Number.isFinite(base) && base > 0 ? base : REROLL_BASE_ATTEMPT };
 }
@@ -2909,6 +2910,7 @@ app.get('/api/unified-scan', (req, res) => {
       // и «купить готовый .L»; шаги — общие для всех входов.
       const useChainEntry = chainEntry && c.after && c.enchant >= 2;
       for (const quality of ALL_QUALITIES) {
+        if (rerollCfg.on && quality !== SCAN_REROLL_TARGET) continue;   // с рерол: в скане только «Отличное» — у других качеств цена рерола не сопоставима, а AODP по качествам даёт неровные данные
         const best = bestFor(quality);
         let chosen = best;
         let entryLevel = null;

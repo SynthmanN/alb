@@ -23,7 +23,7 @@ const legacy = readLegacy();
 export const settings = createStore({
   profile: 'bonus', rrrCraft: 24.8, rrrRefine: 36.7, share: 0.25, hist: 3, mhist: 24,
   premium: legacy.premium, source: legacy.source, optional: legacy.optional,
-  blackMarket: false, teleport: false, enchantedRecipes: false, mixedRecipes: true, buyReady: false, strictMaterials: false, purchaseLog: false, rerollOn: true, rerollStart: 0, rerollBase: 2604.17, ceiling: '', sellLow: '', sellHigh: '', sellThreshold: '', tolerance: 2,
+  blackMarket: false, teleport: false, enchantedRecipes: false, mixedRecipes: true, buyReady: false, strictMaterials: false, purchaseLog: false, rerollOn: true, rerollStart: 1, rerollBase: 2604.17, ceiling: '', sellLow: '', sellHigh: '', sellThreshold: '', tolerance: 2,
 }, { key: 'albion_next_settings' });
 
 // общие ключи сайта — города, премиум, источник данных — пишем и туда

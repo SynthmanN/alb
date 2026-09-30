@@ -70,7 +70,7 @@ describe('ожидаемая стоимость подъёма', () => {
 
 describe('настройки', () => {
   it('нормализуются: по умолчанию включено, качество после крафта по шансам (0), база 2604', () => {
-    expect(normalizeReroll({})).toEqual({ on: true, from: 0, base: BASE_ATTEMPT });
+    expect(normalizeReroll({})).toEqual({ on: true, from: 1, base: BASE_ATTEMPT });
     expect(normalizeReroll({ rerollOn: false, rerollStart: 2, rerollBase: 3000 })).toEqual({ on: false, from: 2, base: 3000 });
     expect(normalizeReroll({ rerollStart: 99, rerollBase: -5 })).toEqual({ on: true, from: 4, base: BASE_ATTEMPT });
   });

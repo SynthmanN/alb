@@ -90,7 +90,7 @@ export function ScanTab() {
       <button class="btn primary big" id="scan-run" type="button" disabled=${sc.loading} onClick=${runScan}>${sc.loading ? html`<${Spinner} />Считаю…` : html`<${Icon} d=${ICONS.search} />${data ? 'Обновить скан' : 'Сканировать'}`}</button>
       <span class="muted" style="font-size:13px" id="scan-note">${data ? `Найдено ${data.results.length} · клик по заголовку — сортировка · клик по строке — подробности` : 'Скан просматривает весь гир, зачарование и качество и ставит наверх самое выгодное'}</span>
     </div>
-    ${data && data.reroll && data.reroll.on ? html`<div class="muted" style="font-size:13px" id="scan-reroll-note">В себестоимость «Отличного» качества входит реролл на ремонтном станке; сколько он съедает — в калькуляторе.</div>` : null}
+    ${data && data.reroll && data.reroll.on ? html`<div class="muted" style="font-size:13px" id="scan-reroll-note">Реролл включён: в скане только качество «Отличное», реролл до него (вещь после крафта — «Обычное», если не выбрано иное) входит в себестоимость. Другие качества скрыты; чтобы увидеть их — выключи реролл в «Параметрах».</div>` : null}
     ${sc.error ? html`<div class="card err" role="alert">Ошибка: ${sc.error}</div>` : null}
     ${data && rows.length === 0 ? html`<div class="card empty">Ничего не нашлось. Попробуй снизить «Оборот от» или сменить тип продажи.</div>` : null}
     ${rows.length ? html`<div class="headrow" id="scan-head">${COLS.map(([k, label, c]) => html`<button type="button" key=${k} class=${c} aria-sort=${sc.sort.k === k ? (sc.sort.dir < 0 ? 'descending' : 'ascending') : null} onClick=${() => setSort(k)}>${label}${sc.sort.k === k ? (sc.sort.dir < 0 ? ' ↓' : ' ↑') : ''}</button>`)}<span></span></div>

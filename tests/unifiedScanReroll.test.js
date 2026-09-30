@@ -26,7 +26,7 @@ function seedSales(id, { quality = 1, avg, perDay }) {
   upsertHistoryBatch(jugDb, [{ item_id: id, location: CITY, quality, data: days().map((ts) => ({ timestamp: ts, item_count: perDay, avg_price: avg })) }], NOW);
 }
 const sword = async (extra = {}) => (await request(app).get('/api/unified-scan').query({ ...QUERY, ...extra })).body.results.find((r) => r.itemId === 'T4_MAIN_SWORD');
-const RE = { reroll: 'true' };
+const RE = { reroll: 'true', rerollStart: 0 };     // 0 — по шансам крафта (11 473,5 на .0); без rerollStart сервер берёт «Обычное»
 const BASE0 = 24 * 100 * 1.025;       // меч .0: 16 слитков + 8 кожи по 100 с комиссией 2.5%
 const STEP = 288 * 10 * 1.025;        // один шаг чар одноручного при руне/душе по 10
 
@@ -63,11 +63,17 @@ describe('реролл в себестоимости скана', () => {
     expect(off.profitPerUnit - on.profitPerUnit).toBeCloseTo(11473.5, 0);
     expect(on.profitPct).toBeCloseTo((on.profitPerUnit / on.cost) * 100, 6);
   });
-  it('другие качества реролла не получают (в скане он только до «Отличного»)', async () => {
+  it('без rerollStart вещь после крафта считается «Обычной» (лучше занизить профит, чем завысить)', async () => {
+    seedSales('T4_MAIN_SWORD', { quality: 4, avg: 40000, perDay: 30 });
+    expect((await sword({ reroll: 'true' })).cost).toBeCloseTo(BASE0 + 12843, 0);
+    expect((await sword({ reroll: 'true', rerollStart: '' })).cost).toBeCloseTo(BASE0 + 12843, 0);
+  });
+  it('с рероллом в скане остаётся только «Отличное»: гир, который продаётся лишь другим качеством, пропадает; без реролла — остаётся', async () => {
     seedSales('T4_MAIN_SWORD', { quality: 3, avg: 40000, perDay: 30 });
-    const row = await sword(RE);
-    expect(row.quality).toBe(3);
-    expect(row.cost).toBeCloseTo(BASE0, 2);
+    expect(await sword(RE)).toBeUndefined();
+    expect((await sword()).quality).toBe(3);
+    seedSales('T4_MAIN_SWORD', { quality: 4, avg: 40000, perDay: 30 });
+    expect((await sword(RE)).quality).toBe(4);
   });
   it('rerollStart — фиксированное качество после крафта, rerollBase — цена попытки; «Отличное» после крафта — без реролла', async () => {
     seedSales('T4_MAIN_SWORD', { quality: 4, avg: 40000, perDay: 30 });

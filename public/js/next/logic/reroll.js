@@ -60,9 +60,10 @@ export const fromLabel = (from) => (from >= 1 ? `с «${QUALITY_NAMES[from]}»` 
 const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
 
 // Настройки реролла: on — учитывать ли, from — качество вещи сразу после крафта (0 — по шансам крафта), base — цена первой попытки на .0
-export const DEFAULT_REROLL = { on: true, from: 0, base: BASE_ATTEMPT };
+export const DEFAULT_REROLL = { on: true, from: 1, base: BASE_ATTEMPT };
 export const normalizeReroll = (s = {}) => {
-  const from = Math.min(Math.max(Math.round(Number(s.rerollStart ?? s.from)) || 0, 0), 4);
+  const rawFrom = s.rerollStart ?? s.from;
+  const from = Math.min(Math.max(Math.round(Number(rawFrom ?? 1)) || 0, 0), 4);
   const raw = Number(s.rerollBase ?? s.base);
   return { on: (s.rerollOn ?? s.on) !== false, from, base: Number.isFinite(raw) && raw > 0 ? raw : BASE_ATTEMPT };
 };

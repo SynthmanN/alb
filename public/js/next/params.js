@@ -67,7 +67,7 @@ export function ParamsBar() {
       <div class="pg"><span class="pl">Рерол качества</span><span class="selwrap">
         <select id="reroll" title="Готовая вещь поднимается до выбранного качества продажи на ремонтном станке. Цена попытки растёт вдвое с каждым уровнем зачарования, поэтому выгоднее реролить .0 и зачаровывать после" value=${s.rerollOn === false ? 'off' : String(s.rerollStart)} onChange=${(e) => (e.target.value === 'off' ? settings.set({ rerollOn: false }) : settings.set({ rerollOn: true, rerollStart: +e.target.value }))}>
           <option value="off" selected=${s.rerollOn === false}>Не считать</option>
-          <option value="0" selected=${s.rerollOn !== false && !s.rerollStart}>После крафта: по шансам</option>
+          <option value="0" selected=${s.rerollOn !== false && s.rerollStart === 0}>После крафта: по шансам</option>
           <option value="1" selected=${s.rerollOn !== false && s.rerollStart === 1}>После крафта: обычное</option>
           <option value="2" selected=${s.rerollOn !== false && s.rerollStart === 2}>После крафта: хорошее</option></select></span></div>
       <button type="button" class="more" aria-expanded=${String(more)} onClick=${() => setMore(!more)}>Ещё<${Icon} d=${ICONS.chevron} /></button>

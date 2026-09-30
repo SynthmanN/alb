@@ -1389,7 +1389,7 @@ test('скан и реролл: настройки реролла и рецеп�
   expect(q.get('rerollBase')).toBe('3000');
   expect(q.get('enchantedRecipes')).toBe('false');
   expect(q.get('enchantMode')).toBe('auto');
-  await expect(page.locator('#scan-reroll-note')).toContainText('реролл');
+  await expect(page.locator('#scan-reroll-note')).toContainText('только качество «Отличное»');
   await expect(page.locator('#scan-head')).not.toContainText('ерол');
 });
 
@@ -1404,4 +1404,18 @@ test('скан и реролл: при включённых зачарованн
   expect(log.scan[0].get('reroll')).toBe('false');
   expect(log.scan[0].get('enchantedRecipes')).toBe('true');
   await expect(page.locator('#scan-reroll-note')).toHaveCount(0);
+});
+
+test('реролл по умолчанию — после крафта «Обычное»: выпадающий список и параметр скана', async ({ page }) => {
+  const log = { scan: [], calc: [] };
+  await page.addInitScript(() => localStorage.setItem('albion_next_settings', JSON.stringify({ rerollOn: true })));   // после beforeEach: rerollStart не задан
+  await mock(page, log);
+  await page.goto('/craft.html');
+  await expect(page.locator('#reroll')).toHaveValue('1');
+  await expect(page.locator('#reroll option:checked')).toHaveText('После крафта: обычное');
+  await page.locator('#scan-run').click();
+  await expect(page.locator('#scan-rows .row')).toHaveCount(2);
+  expect(log.scan[0].get('rerollStart')).toBe('1');
+  await page.locator('#reroll').selectOption('0');
+  await expect(page.locator('#reroll option:checked')).toHaveText('После крафта: по шансам');
 });
