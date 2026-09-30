@@ -65,10 +65,11 @@ export function ParamsBar() {
       <${Select} id="hist" label="История гира" kind="days" value=${s.hist} options=${HISTS} onChange=${(v) => settings.set({ hist: v })} />
       <${Select} id="mhist" label="История сырья" kind="hours" value=${s.mhist} options=${MHISTS} onChange=${(v) => settings.set({ mhist: v })} />
       <div class="pg"><span class="pl">Рерол качества</span><span class="selwrap">
-        <select id="reroll" title="Готовая вещь поднимается до выбранного качества продажи на ремонтном станке. Цена попытки растёт вдвое с каждым уровнем зачарования, поэтому выгоднее реролить .0 и зачаровывать после" value=${s.rerollOn === false ? 'off' : String(s.rerollFrom)} onChange=${(e) => (e.target.value === 'off' ? settings.set({ rerollOn: false }) : settings.set({ rerollOn: true, rerollFrom: +e.target.value }))}>
+        <select id="reroll" title="Готовая вещь поднимается до выбранного качества продажи на ремонтном станке. Цена попытки растёт вдвое с каждым уровнем зачарования, поэтому выгоднее реролить .0 и зачаровывать после" value=${s.rerollOn === false ? 'off' : String(s.rerollStart)} onChange=${(e) => (e.target.value === 'off' ? settings.set({ rerollOn: false }) : settings.set({ rerollOn: true, rerollStart: +e.target.value }))}>
           <option value="off" selected=${s.rerollOn === false}>Не считать</option>
-          <option value="1" selected=${s.rerollOn !== false && s.rerollFrom === 1}>После крафта: обычное</option>
-          <option value="2" selected=${s.rerollOn !== false && s.rerollFrom === 2}>После крафта: хорошее</option></select></span></div>
+          <option value="0" selected=${s.rerollOn !== false && !s.rerollStart}>После крафта: по шансам</option>
+          <option value="1" selected=${s.rerollOn !== false && s.rerollStart === 1}>После крафта: обычное</option>
+          <option value="2" selected=${s.rerollOn !== false && s.rerollStart === 2}>После крафта: хорошее</option></select></span></div>
       <button type="button" class="more" aria-expanded=${String(more)} onClick=${() => setMore(!more)}>Ещё<${Icon} d=${ICONS.chevron} /></button>
     </div>
     <div class="pcities"><span class="pl">Города</span><span class="citylist" id="cities">

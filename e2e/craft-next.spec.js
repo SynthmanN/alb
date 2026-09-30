@@ -1265,11 +1265,16 @@ test('мои материалы: карточка сравнения рецеп�
 test('реролл качества: вложения растут на среднюю цену подъёма до качества продажи, зависят от зачарования, выключаются и настраиваются', async ({ page }) => {
   const log = { scan: [], calc: [] };
   await openCalc(page, log);
-  await page.locator('#reroll').selectOption('1');                                                    // включаем: вещь выходит с крафта обычной
+  await page.locator('#reroll').selectOption('0');                                                    // по шансам крафта (80 / 15 / 5 / 0,1)
+  await page.locator('#c-ench').selectOption('3');
+  await expect(page.locator('#reroll-note')).toContainText('рерол 98 839');                          // чуть дешевле, чем всегда с обычного: часть вещей выходит сразу хорошими и выше
+  await expect(page.locator('#reroll-row')).toContainText('после крафта по шансам');
+  await page.locator('#c-ench').selectOption('0');
+  await page.locator('#reroll').selectOption('1');                                                    // вещь всегда выходит обычной
   await expect(page.locator('#reroll-note')).toBeVisible();                                           // качество продажи «Отличное», вещь выходит обычной — рерол в вложениях
   await page.locator('#c-ench').selectOption('3');
   await expect(page.locator('#reroll-note')).toContainText('рерол 102 746');                         // 2604 × 2³ и цепочка обычное → отличное (≈ 4,9 цены первой попытки)
-  await expect(page.locator('#reroll-row')).toContainText('«Обычное» → «Отличное» на .3');
+  await expect(page.locator('#reroll-row')).toContainText('(с «Обычное») → «Отличное» на .3');
   await expect(page.locator('#reroll-row')).toContainText('102 746');
   await expect(page.locator('#cost-summary')).toContainText('104 606');                              // 1 860 + рерол
   await page.locator('#c-q').selectOption('1');                                                       // продаём обычное — реролить нечего

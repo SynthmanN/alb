@@ -188,7 +188,7 @@ export function BuyTab({ c, d, lists, override, invalidate, variantLevel = 0 }) 
   const cmp = useMemo(() => {
     const variants = (anyHave || rr.on) && c.alt ? recipeVariants({ after: c.after, data: c.data, hybrids: c.hybrids, alt: c.alt }) : [];
     return variants.length > 1 ? compareVariants(variants, have, itemLabel, (dd) => rerollDelta(dd, c.quality, rr)) : null;
-  }, [anyHave, have, c.alt, c.after, c.data, c.hybrids, c.quality, s.rerollOn, s.rerollFrom, s.rerollBase]);
+  }, [anyHave, have, c.alt, c.after, c.data, c.hybrids, c.quality, s.rerollOn, s.rerollStart, s.rerollBase]);
   const useVariant = (v) => { if (v.after) setChainChoice(v.level, null); calcStore.set({ after: v.after }); };
   return html`<div id="sub-buy">
     <${MyMaterials} allocs=${[alloc]} nameOf=${(id) => nameOf(d, id)} />
@@ -201,7 +201,7 @@ export function BuyTab({ c, d, lists, override, invalidate, variantLevel = 0 }) 
     <div class="card box" style="margin-top:14px"><div class="kv" id="cost-summary">
       <div><span>Себестоимость материала / шт (сырое)</span><b>${fmt(Math.round(d.materialCostPerUnit))}</b></div>
       <div><span title=${d.rrrPreset ? d.rrrPreset.label : ''}>Себестоимость с учётом возврата (в среднем ${fmt((d.rrrPreset ? d.rrrPreset.rrr : 0) * 100, 1)}%) / шт</span><b>${fmt(Math.round(d.effectiveCostPerUnit - rerollPer))}</b></div>
-      ${d.reroll ? html`<div id="reroll-row"><span title=${`Цена попытки на .${d.reroll.level}: ${fmt(Math.round(d.reroll.first))} (растёт с качеством). Промахи повторяются, поэтому в среднем ≈ ${fmt(d.reroll.attempts, 1)} попыток`}>Рерол качества «${QN[d.reroll.from]}» → «${QN[d.reroll.target]}» на .${d.reroll.level} / шт</span><b>${fmt(Math.round(d.reroll.perUnit))}</b></div>
+      ${d.reroll ? html`<div id="reroll-row"><span title=${`Цена попытки на .${d.reroll.level}: ${fmt(Math.round(d.reroll.first))} (растёт с качеством). Промахи повторяются, поэтому в среднем ≈ ${fmt(d.reroll.attempts, 1)} попыток`}>Рерол качества (${d.reroll.fromLabel}) → «${QN[d.reroll.target]}» на .${d.reroll.level} / шт</span><b>${fmt(Math.round(d.reroll.perUnit))}</b></div>
       <div><strong>Итого с рероллом / шт</strong><b>${fmt(Math.round(d.effectiveCostPerUnit))}</b></div>` : null}</div></div>
     ${b ? html`<div class="card box base-choice" style="margin-top:14px"><div class="kv">
       <div><strong>Базовый предмет (.0): выгоднее ${b.baseSource === 'buy' ? 'купить готовый' : 'скрафтить'}</strong><b>${fmt(b.baseCostPerUnit)} / шт</b></div>

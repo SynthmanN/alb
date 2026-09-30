@@ -1,7 +1,7 @@
 // Реролл качества: цена попытки, ожидаемая стоимость подъёма, добавка к себестоимости и выбор рецепта.
 import { describe, it, expect } from 'vitest';
 import {
-  BASE_ATTEMPT, TRANSITIONS, attemptCost, rerollCost, rerollAttempts, rerollFor, rerollLevel, withReroll, qualityRerollRows, normalizeReroll,
+  BASE_ATTEMPT, TRANSITIONS, attemptCost, rerollCost, rerollAttempts, rerollFor, rerollLevel, withReroll, qualityRerollRows, normalizeReroll, craftDistribution, fromLabel,
 } from '../public/js/next/logic/reroll.js';
 import { pickAfter, itemProfit } from '../public/js/next/logic/stack.js';
 import { pickVariant } from '../public/js/next/logic/enchantChain.js';
@@ -69,10 +69,40 @@ describe('ожидаемая стоимость подъёма', () => {
 });
 
 describe('настройки', () => {
-  it('нормализуются: по умолчанию включено, обычное после крафта, база 2604', () => {
-    expect(normalizeReroll({})).toEqual({ on: true, from: 1, base: BASE_ATTEMPT });
-    expect(normalizeReroll({ rerollOn: false, rerollFrom: 2, rerollBase: 3000 })).toEqual({ on: false, from: 2, base: 3000 });
-    expect(normalizeReroll({ rerollFrom: 99, rerollBase: -5 })).toEqual({ on: true, from: 4, base: BASE_ATTEMPT });
+  it('нормализуются: по умолчанию включено, качество после крафта по шансам (0), база 2604', () => {
+    expect(normalizeReroll({})).toEqual({ on: true, from: 0, base: BASE_ATTEMPT });
+    expect(normalizeReroll({ rerollOn: false, rerollStart: 2, rerollBase: 3000 })).toEqual({ on: false, from: 2, base: 3000 });
+    expect(normalizeReroll({ rerollStart: 99, rerollBase: -5 })).toEqual({ on: true, from: 4, base: BASE_ATTEMPT });
+  });
+});
+
+describe('качество после крафта по шансам (80 / 15 / 5 / 0,1)', () => {
+  const chance = { on: true, from: 0, base: BASE_ATTEMPT };
+  it('шансы нормализуются в сумму 1', () => {
+    const dist = craftDistribution();
+    expect(dist.map(([q]) => q)).toEqual([1, 2, 3, 4]);
+    expect(dist.reduce((s, [, p]) => s + p, 0)).toBeCloseTo(1, 9);
+    expect(dist[0][1]).toBeCloseTo(0.8 / 1.001, 9);
+  });
+  it('ожидаемый рерол — взвешенная сумма по стартовым качествам; дешевле, чем всегда с обычного', () => {
+    const d = direct(3);
+    const r = rerollFor(d, 4, chance);
+    const dist = craftDistribution();
+    const expected = dist.reduce((s, [q, p]) => s + p * rerollCost(q, 4, 3), 0);
+    expect(r.perUnit).toBeCloseTo(expected, 6);
+    expect(r.perUnit).toBeLessThan(rerollCost(1, 4, 3));
+    expect(r.perUnit).toBeGreaterThan(rerollCost(2, 4, 3));
+    expect(r.from).toBe(0);
+    expect(r.fromLabel).toBe('после крафта по шансам');
+  });
+  it('цель «хорошее»: обычное реролится, остальные уже годны', () => {
+    const p1 = craftDistribution()[0][1];
+    expect(rerollFor(direct(0), 2, chance).perUnit).toBeCloseTo(p1 * rerollCost(1, 2, 0), 6);
+  });
+  it('цель «обычное» — реролл не нужен; фиксированный старт даёт прежний результат', () => {
+    expect(rerollFor(direct(3), 1, chance)).toBeNull();
+    expect(rerollFor(direct(3), 4, cfg).perUnit).toBeCloseTo(rerollCost(1, 4, 3), 9);
+    expect(fromLabel(1)).toBe('с «Обычное»');
   });
 });
 

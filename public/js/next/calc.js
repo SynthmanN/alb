@@ -115,7 +115,7 @@ function Verdict({ c, d, p, st, invalidate }) {
       <div class=${`stat lead ${ok ? '' : 'bad'}`}><span>Профит с одной штуки</span><b class=${tone(p && p.unit)}>${p ? signed(p.unit) : '—'}</b></div>
       <div class="stat"><span>ROI</span><b>${p && p.roi !== null ? `${fmt(p.roi, 0)}%` : '—'}</b></div>
       <div class="stat"><span>Профит всего</span><b class=${tone(p && p.total)}>${p ? signed(p.total) : '—'}</b></div>
-      <div class="stat"><span>Вложения на штуку</span><b class="neg">${fmt(d.effectiveCostPerUnit)}</b>${d.reroll ? html`<small class="muted" id="reroll-note" title=${`Средняя стоимость реролла с «${QN[d.reroll.from]}» до «${QN[d.reroll.target]}» на .${d.reroll.level}`}>в т.ч. рерол ${fmt(d.reroll.perUnit)}</small>` : null}</div>
+      <div class="stat"><span>Вложения на штуку</span><b class="neg">${fmt(d.effectiveCostPerUnit)}</b>${d.reroll ? html`<small class="muted" id="reroll-note" title=${`Средняя стоимость реролла (${d.reroll.fromLabel}) до «${QN[d.reroll.target]}» на .${d.reroll.level}`}>в т.ч. рерол ${fmt(d.reroll.perUnit)}</small>` : null}</div>
       <div class="stat"><span>Оборот в день</span><b>${d.patientSell && !d.patientSell.orderOnly ? fmt(d.patientSell.marketDailyVolume, 1) : '—'}</b></div>
       <div class="stat"><span>Мгновенно (Buy Order)</span><b class=${tone(d.profitPerUnit)}>${signed(d.profitPerUnit)}</b></div>
     </div></div>`;
@@ -145,11 +145,11 @@ function SingleCalc() {
   const set = (p) => calcStore.set(p);
   const have = useInventory();
   const owned = hasHave(have);
-  const rerollMatters = s.rerollOn !== false && c.quality > s.rerollFrom && c.enchant >= 1 && c.enchant <= 3;    // рерол дорожает с зачарованием: прямой и «после крафта» стоит сравнить
+  const rerollMatters = s.rerollOn !== false && c.quality > s.rerollStart && c.enchant >= 1 && c.enchant <= 3;    // рерол дорожает с зачарованием: прямой и «после крафта» стоит сравнить
   useEffect(() => {                                              // свои материалы есть — грузим второй рецепт той же вещи для сравнения
     if ((owned || rerollMatters) && c.data && !c.loading && c.sig === sig && (!c.alt || c.alt.sig !== sig)) loadAlt(sig);
   }, [owned, rerollMatters, c.data, c.loading, c.sig, sig]);
-  const { d, st, p, override, lists, variantLevel } = useMemo(() => derive(c, s, pr, have), [c.data, c.hybrids, c.chainChoice, c.quality, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog, s.rerollOn, s.rerollFrom, s.rerollBase, have]);
+  const { d, st, p, override, lists, variantLevel } = useMemo(() => derive(c, s, pr, have), [c.data, c.hybrids, c.chainChoice, c.quality, pr, c.sellPrice, c.cityPrices, c.toggles, c.manualQty, c.strategy, s.purchaseLog, s.rerollOn, s.rerollStart, s.rerollBase, have]);
   const maxE = c.itemId ? maxEnchant(c.itemId) : 4;
   const family = c.itemId ? allItems().filter((i) => GEAR(i) && i.category === (findItem(c.itemId) || {}).category && familyOf(i.id) === familyOf(c.itemId)).sort((a, b) => a.tier - b.tier) : [];
   const subs = [['buy', 'Закупка'], ['sell', 'Продажа']];   // «Сравнение по тирам» и по качеству — свёрнутым блоком «Ещё сравнения» внутри «Продажа» (calc-sell.js)

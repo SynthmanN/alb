@@ -48,10 +48,21 @@ export function rerollCost(from, target, enchant = 0, base = BASE_ATTEMPT) {
 }
 export const rerollAttempts = (from, target) => expected(from, target, () => 1);
 
-// Настройки реролла: on — учитывать ли, from — качество вещи сразу после крафта, base — цена первой попытки на .0
-export const DEFAULT_REROLL = { on: true, from: 1, base: BASE_ATTEMPT };
+// Шансы качества вещи сразу после крафта (без мастерок), %: обычное 80, хорошее 15, выдающееся 5, отличное 0,1 (сумма нормализуется)
+export const CRAFT_CHANCE = { 1: 80, 2: 15, 3: 5, 4: 0.1 };
+export const craftDistribution = () => {
+  const sum = Object.values(CRAFT_CHANCE).reduce((a, b) => a + b, 0);
+  return Object.entries(CRAFT_CHANCE).map(([q, p]) => [Number(q), p / sum]);
+};
+// Стартовое качество: 0 — по шансам крафта, 1..4 — вещь всегда выходит в этом качестве
+const startDistribution = (from) => (from >= 1 ? [[from, 1]] : craftDistribution());
+export const fromLabel = (from) => (from >= 1 ? `с «${QUALITY_NAMES[from]}»` : 'после крафта по шансам');
+const QUALITY_NAMES = { 1: 'Обычное', 2: 'Хорошее', 3: 'Выдающееся', 4: 'Отличное', 5: 'Шедевр' };
+
+// Настройки реролла: on — учитывать ли, from — качество вещи сразу после крафта (0 — по шансам крафта), base — цена первой попытки на .0
+export const DEFAULT_REROLL = { on: true, from: 0, base: BASE_ATTEMPT };
 export const normalizeReroll = (s = {}) => {
-  const from = Math.min(Math.max(Math.round(Number(s.rerollFrom ?? s.from)) || 1, 1), 4);
+  const from = Math.min(Math.max(Math.round(Number(s.rerollStart ?? s.from)) || 0, 0), 4);
   const raw = Number(s.rerollBase ?? s.base);
   return { on: (s.rerollOn ?? s.on) !== false, from, base: Number.isFinite(raw) && raw > 0 ? raw : BASE_ATTEMPT };
 };
@@ -68,11 +79,13 @@ export function rerollLevel(d) {
 export function rerollFor(d, target, cfg = DEFAULT_REROLL) {
   if (!d || d.error || !cfg || !cfg.on) return null;
   const goal = target || d.quality;
-  if (!(goal > cfg.from)) return null;
+  const start = startDistribution(cfg.from);
+  if (!(goal > start[0][0])) return null;
   const level = rerollLevel(d);
+  const mix = (f) => start.reduce((sum, [q, p]) => sum + p * f(q), 0);
   return {
-    perUnit: rerollCost(cfg.from, goal, level, cfg.base), attempts: rerollAttempts(cfg.from, goal),
-    first: attemptCost(cfg.from, level, cfg.base), level, from: cfg.from, target: goal,
+    perUnit: mix((q) => rerollCost(q, goal, level, cfg.base)), attempts: mix((q) => rerollAttempts(q, goal)),
+    first: attemptCost(start[0][0], level, cfg.base), level, from: cfg.from, target: goal, fromLabel: fromLabel(cfg.from),
   };
 }
 export const rerollDelta = (d, target, cfg) => { const r = rerollFor(d, target, cfg); return r ? r.perUnit : 0; };
