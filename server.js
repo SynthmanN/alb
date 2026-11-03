@@ -334,6 +334,7 @@ const RESOURCE_TYPES = ['WOOD', 'ORE', 'FIBER', 'HIDE', 'ROCK'];
 const RESOURCE_BASE_NAMES = new Set(['WOOD', 'ORE', 'FIBER', 'HIDE', 'ROCK', 'PLANKS', 'METALBAR', 'CLOTH', 'LEATHER']);
 
 const app = express();
+app.disable('x-powered-by'); // nginx перед сайтом и так срезает заголовок, но пусть Express не отдаёт его даже при прямом обращении
 const PORT = process.env.PORT || 3000;
 
 // Europe-сервер AODP. Для West/East поменять на west./east.
