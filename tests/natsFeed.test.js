@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { describe, it, expect } from 'vitest';
 
 const require = createRequire(import.meta.url);
-const { applyOrder, orderToPriceRow, applyHistory, historyToSeries, ticksToIso, LOCATION_NAMES } = require('../lib/natsFeed.js');
+const { applyOrder, orderToPriceRow, applyHistory, historyToSeries, ticksToIso, LOCATION_NAMES, NOISY_STATUS } = require('../lib/natsFeed.js');
 const { openJug, upsertPriceSnapshots } = require('../lib/jugStore.js');
 
 const order = (over = {}) => ({
@@ -37,6 +37,17 @@ describe('LOCATION_NAMES', () => {
     expect(LOCATION_NAMES).toEqual({
       3003: 'Black Market', 5003: 'Brecilien', 2004: 'Bridgewatch', 3005: 'Caerleon', 4002: 'Fort Sterling', 1002: 'Lymhurst', 3008: 'Martlock', 7: 'Thetford',
     });
+  });
+});
+
+describe('NOISY_STATUS', () => {
+  it('pingTimer — обычный heartbeat, не логируем как warn (топил error.log на проде)', () => {
+    expect(NOISY_STATUS.has('pingTimer')).toBe(true);
+  });
+  it('реальные события соединения (disconnect, reconnecting, error и т.п.) не фильтруются', () => {
+    for (const type of ['disconnect', 'reconnecting', 'reconnect', 'error', 'update', 'ldm', 'staleConnection', 'forceReconnect', 'close']) {
+      expect(NOISY_STATUS.has(type)).toBe(false);
+    }
   });
 });
 
