@@ -448,7 +448,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: 'craft.html' })); // главная «/» — страница «Крафт», не «Цены»; index.html остаётся доступен по своему адресу
 app.use(express.json());
 
 // Анонимная сессия посетителя: случайный идентификатор в cookie (без пароля и логина) — чтобы личные данные
@@ -3856,7 +3856,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   app.listen(PORT, process.env.HOST || undefined, () => {
-    console.log(`Albion market table запущен на http://${process.env.HOST || 'localhost'}:${PORT}`);
+    console.log(`Albion Silver Flow запущен на http://${process.env.HOST || 'localhost'}:${PORT}`);
   });
   startJug();
   // Живой поток NATS (см. lib/natsFeed.js) — отдельно от краулера, ничего в его расписании не меняет: просто пишет в

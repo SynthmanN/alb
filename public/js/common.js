@@ -413,7 +413,7 @@ function renderSiteChrome() {
   const current = (location.pathname.split('/').pop() || 'index.html').replace('craft-classic.html', 'craft.html');   // классическая версия «Крафта» подсвечивает тот же пункт
   holder.innerHTML = `
     <nav class="site-nav">
-      <a class="site-title" href="index.html">Albion Market Table</a>
+      <a class="site-title" href="index.html">Albion Silver Flow</a>
       <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Меню">☰</button>
       <div class="nav-links" id="nav-links">
         ${SITE_PAGES.map((p) => `<a href="${p.href}" class="${p.href === current ? 'active' : ''}">${p.label}</a>`).join('')}
