@@ -3854,8 +3854,8 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Albion market table запущен на http://localhost:${PORT}`);
+  app.listen(PORT, process.env.HOST || undefined, () => {
+    console.log(`Albion market table запущен на http://${process.env.HOST || 'localhost'}:${PORT}`);
   });
   startJug();
   // Живой поток NATS (см. lib/natsFeed.js) — отдельно от краулера, ничего в его расписании не меняет: просто пишет в

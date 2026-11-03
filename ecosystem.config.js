@@ -12,6 +12,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        HOST: '127.0.0.1', // за nginx: наружу порт 3000 не торчит
+        TRUST_PROXY: 'true',
       },
       max_restarts: 10,
       restart_delay: 3000,
