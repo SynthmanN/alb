@@ -24,7 +24,7 @@ export function App() {
   }, []);
   return html`<div>
     <header class="top">
-      <div class="brand"><b>A</b>lbion Silver Flow</div>
+      <div class="brand">Albion Silver Flow</div>
       <nav class="nav" aria-label="Разделы">${PAGES.map(([href, label, on]) => html`<a href=${href} class=${on ? 'on' : ''} key=${href}>${label}</a>`)}</nav>
       <span class="sp"></span>
       <${Seg} label="Источник данных" value=${s.source} onChange=${(v) => settings.set({ source: v })} options=${[['jug', 'Краулер'], ['aodp', 'AODP']]} cls="src" />
